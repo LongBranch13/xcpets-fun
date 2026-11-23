@@ -1,19 +1,20 @@
 /* v2-zombie-look (cemetery loop, display only, owner Oct 29 2026 'needs to be way more zombie looking and dead looking').
  * One pure pixel pass that turns a pet's 32x32 frame into its risen-zombie version, shared by My Pets (js/v2-zombies.js) and the seance rise
  * (js/v2-cemetery-altar.js), so both show the same dead pet. 8-bit only: whole pixels, small fixed palette, nothing smoothed.
- *  - rotting grey-green skin (desaturated, a hint of the species' own colour kept), mottled with darker decay patches and a few pustules
- *  - feral (opt.feral, hunger ran out): same look, but both eyes lit red, blood instead of green drool, and blood round the jaw
- *  - hollow black eye sockets: one tiny glowing pupil, and the other eye X'd out with thread, or an empty socket (picked by pet id)
- *  - lips and tongue go to dead gum; a crooked jaw with teeth (one missing) or a crooked stitched mouth (by pet id); green drool drips
- *  - exposed ribs (bone bars in a torn cavity) low on the body, or a bare skull patch when the body is too small
- *  - a bite torn out of the top (ear / head) and a ragged notch at a lower edge; a 1 px head slouch toward one side
- *  - two flies and stink waves that move frame to frame, grave dirt on the feet and a dirt smudge on the ground
- * The silhouette changes (bites, slouch) are applied to the keyed copies too, so the Mythic aura traces the zombie, not the old outline.
+ * Redrawn Nov 23 2026 (owner: 'zombie sprites need work'; the old pass made every pet the same noisy olive blob): the pet stays itself, just dead.
+ *  - its main skin colour (found round the eyes) turns rot-green, Pepe-green skins turn grey-teal; every pixel keeps its lightness, so the face reads
+ *  - clothes, hair, wings and the Mythic rim keep their own colours, faded; whites go dingy; the dark outline stays crisp
+ *  - eyes: dark sockets with a 2-3 px glowing green eye (red when feral); one eye stitched shut on some pets (by pet id). Community pets drawn
+ *    from their own sprite files (Homer Pepe, Kek, FUNTRUMP...) keep their own eyes: yellowed whites, glowing pupils
+ *  - a toothy jaw (one tooth missing) or a stitched-shut mouth, a short drool drip (blood when feral), one stitched scar, a bite out of an ear
+ *  - no random speckle, rot patches, ribs, dirt, flies or stink lines any more (the old extras and head slouch only run when asked for)
+ * The silhouette change (the bite) is applied to the keyed copies too, so the Mythic aura traces the zombie, not the old outline.
  * Nothing here touches rules, burns, replay or pet-core: it only edits pixels handed to it. */
 (function () {
   'use strict';
   var RAMP = [[22, 27, 19], [40, 50, 34], [60, 72, 51], [82, 96, 68], [106, 118, 86], [134, 146, 106], [164, 172, 128], [188, 192, 152]];
-  var C = { line: [12, 15, 10], hole: [5, 6, 5], rim: [30, 36, 26], pupil: [214, 255, 168], pupil2: [150, 214, 96], thread: [196, 186, 146], threadD: [120, 110, 84],
+  var C = { line: [12, 15, 10], hole: [5, 6, 5], rim: [30, 36, 26], pupil: [200, 255, 120], pupil2: [110, 214, 72], thread: [196, 186, 146], threadD: [120, 110, 84],
+    eye: [222, 214, 150], eyeD: [178, 166, 104], seam: [44, 30, 34],
     gum: [70, 34, 42], gumD: [40, 18, 24], tooth: [226, 218, 186], toothD: [170, 160, 128], mouth: [16, 8, 8], bone: [230, 222, 192], boneD: [166, 156, 124], cav: [38, 16, 20],
     flesh: [128, 54, 48], fleshD: [84, 32, 30], rot: [52, 46, 34], rotD: [36, 32, 24], pus: [168, 180, 88], drool: [150, 210, 92], droolL: [214, 255, 150],
     blood: [140, 18, 22], bloodL: [214, 46, 40], fpupil: [255, 72, 52], fpupil2: [196, 28, 24],
@@ -50,63 +51,76 @@
     if (!out.length) { var ey = b.y0 + Math.round(b.H * 0.3), ew = Math.max(2, Math.round(b.W * 0.12)); [0.3, 0.62].forEach(function (f) { var ex = b.x0 + Math.round(b.W * f); out.push({ x0: ex, x1: ex + ew - 1, y0: ey, y1: ey + 1, guess: true }); }); }
     out.forEach(function (e) { if (e.x1 - e.x0 < 2) { var c = Math.round((e.x0 + e.x1) / 2); e.x0 = c - 1; e.x1 = c + 1; } if (e.y1 - e.y0 < 1) e.y1 = e.y0 + 1; }); return out; }
 
+  /* colour helpers: the dead look keeps each pixel's lightness (so the face, outline and shading still read) and only moves its hue / saturation */
+  function toHsl(r, g, b) { r /= 255; g /= 255; b /= 255; var mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, h = 0, s = 0, d = mx - mn;
+    if (d > 0) { s = d / (1 - Math.abs(2 * l - 1) || 1); h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; h *= 60; if (h < 0) h += 360; } return [h, Math.min(1, s), l, d]; } /* d: chroma, so near-whites (high HSL saturation, tiny chroma) count as neutral */
+  function fromHsl(h, s, l) { h = ((h % 360) + 360) % 360; l = Math.max(0, Math.min(1, l)); s = Math.max(0, Math.min(1, s)); var c = (1 - Math.abs(2 * l - 1)) * s, x = c * (1 - Math.abs((h / 60) % 2 - 1)), m = l - c / 2, r = 0, g = 0, b = 0;
+    if (h < 60) { r = c; g = x; } else if (h < 120) { r = x; g = c; } else if (h < 180) { g = c; b = x; } else if (h < 240) { g = x; b = c; } else if (h < 300) { r = x; b = c; } else { r = c; b = x; }
+    return [q8((r + m) * 255 + 4), q8((g + m) * 255 + 4), q8((b + m) * 255 + 4)]; }
+  function hueGap(a, b) { var d = Math.abs(a - b) % 360; return d > 180 ? 360 - d : d; }
+  function set(L, q, col) { var j = q * 4; L.c[j] = col[0]; L.c[j + 1] = col[1]; L.c[j + 2] = col[2]; }
+
+  /* zombie-clean (owner Nov 23 2026 'zombie sprites need work': the old pass turned every pet into the same noisy olive blob).
+   * Now: the pet stays itself, just dead. Its main skin colour turns rot-green (Pepe-green pets go a grey-teal so they still change), clothes, hair and
+   * the Mythic rim keep their own colours but faded, whites go dingy, the outline stays crisp. On top, a few clean pixel-art marks only:
+   * glowing eyes (green; red when feral) in dark sockets or in the pet's own eyes, a stitched or toothy mouth, one stitched scar, a bite out of an ear,
+   * and a short drool drip. No random speckle, rot patches, ribs, dirt, flies or head shift any more. */
   function zombifyLayer(src, L, id, fi, nf, opt) {
-    var b = bbox(L.m); if (b.x1 < 0) return null; var i, q, x, y, j, H = b.H, W = b.W, v = Math.abs(id | 0), side = v & 1 ? 1 : -1;
-    var E = opt.eyes && opt.eyes.length ? opt.eyes.map(function (e) { return { x0: e.x0, x1: e.x1, y0: e.y0, y1: e.y1 }; }) : eyes(src, L, b);
-    /* 1. skin: rot ramp by brightness, a little of the original colour kept so the species still reads; outlines go near black; lips/tongue go to dead gum */
-    for (q = 0; q < 1024; q++) { if (L.m[q] !== 1) continue; j = q * 4; var r = src[j], g = src[j + 1], bl = src[j + 2], l = lum(r, g, bl); x = q & 31; y = q >> 5;
-      if (l < 42) { L.c[j] = C.line[0]; L.c[j + 1] = C.line[1]; L.c[j + 2] = C.line[2]; continue; }
-      var red = r > 140 && r - g > 60 && r - bl > 30;
-      if (red && y > b.y0 + H * 0.35) { var gc = l > 120 ? C.gum : C.gumD; L.c[j] = gc[0]; L.c[j + 1] = gc[1]; L.c[j + 2] = gc[2]; continue; }
-      var rp = rampAt(l * 1.02 + 8), k = 0.2; L.c[j] = q8(rp[0] * (1 - k) + r * k * 0.8); L.c[j + 1] = q8(rp[1] * (1 - k) + g * k * 0.8); L.c[j + 2] = q8(rp[2] * (1 - k) + bl * k * 0.7); }
-    /* 2. decay patches (irregular blobs, fixed to the body so they don't swim when it bobs), speckle and pustules */
-    var np = 3 + (v % 2);
-    for (i = 0; i < np; i++) { var px0 = b.x0 + 2 + Math.floor(hsh(v, i, 11) * Math.max(1, W - 4)), py0 = b.y0 + 2 + Math.floor(hsh(v, i, 12) * Math.max(1, H - 4)), rr = 1.3 + hsh(v, i, 13) * 1.4;
-      for (y = py0 - 3; y <= py0 + 3; y++) for (x = px0 - 3; x <= px0 + 3; x++) { if (!on(L, x, y)) continue; var dd = Math.sqrt((x - px0) * (x - px0) + (y - py0) * (y - py0)) + hsh(x - b.x0, y - b.y0, v) * 0.9;
-        if (dd > rr) continue; j = (y * 32 + x) * 4; if (L.c[j] + L.c[j + 1] < 40) continue; var cc = dd < rr * 0.5 ? C.rotD : C.rot; L.c[j] = q8(L.c[j] * 0.35 + cc[0] * 0.65); L.c[j + 1] = q8(L.c[j + 1] * 0.35 + cc[1] * 0.65); L.c[j + 2] = q8(L.c[j + 2] * 0.35 + cc[2] * 0.65); } }
-    for (q = 0; q < 1024; q++) { if (L.m[q] !== 1) continue; x = q & 31; y = q >> 5; var hv = hsh(x - b.x0, y - b.y0, v + 7); j = q * 4; if (L.c[j] + L.c[j + 1] < 40) continue;
-      if (hv < 0.06) { L.c[j] = q8(L.c[j] * 0.72); L.c[j + 1] = q8(L.c[j + 1] * 0.7); L.c[j + 2] = q8(L.c[j + 2] * 0.74); } else if (hv > 0.985 && inner(L, x, y)) { L.c[j] = C.pus[0]; L.c[j + 1] = C.pus[1]; L.c[j + 2] = C.pus[2]; } }
-    /* 3. eyes: hollow black sockets with a sunken rim; one tiny glowing pupil; the other X'd out with thread, or empty */
-    var F = !!opt.feral, ev = v % 3, glow = F ? (fi % 2 ? C.fpupil : C.fpupil2) : (fi % 2 ? C.pupil : C.pupil2), eb = 0;
-    E.forEach(function (e, n) { var x0 = e.x0, x1 = e.x1, y0 = e.y0, y1 = e.y1; eb = Math.max(eb, y1);
+    var b = bbox(L.m); if (b.x1 < 0) return null; var i, q, x, y, j, H = b.H, W = b.W, v = Math.abs(id | 0), side = v & 1 ? 1 : -1, F = !!opt.feral;
+    var E = opt.eyes && opt.eyes.length ? opt.eyes.map(function (e) { return { x0: e.x0, x1: e.x1, y0: e.y0, y1: e.y1, cells: e.cells || null }; }) : eyes(src, L, b);
+    var own = E.length && E.every(function (e) { return e.cells; }), eyeQ = {}; /* own: the sprite told us its real eye pixels (community pets) */
+    if (own) E.forEach(function (e) { e.cells.E.concat(e.cells.P).forEach(function (c) { eyeQ[c] = 1; }); });
+    /* 1. find the main skin colour: the commonest strong hue (head counts double), or "pale" when a pale neutral skin wins (Wojak, the White Rabbit) */
+    var hist = new Float64Array(25), tot = 0;
+    for (q = 0; q < 1024; q++) { if (L.m[q] !== 1 || eyeQ[q]) continue; j = q * 4; var s0 = toHsl(src[j], src[j + 1], src[j + 2]), wt = (q >> 5) < b.y0 + H * 0.6 ? 2 : 1; tot += wt;
+      if (E.some(function (e) { var ex = q & 31, ey = q >> 5; return ex >= e.x0 - 3 && ex <= e.x1 + 3 && ey >= e.y0 - 2 && ey <= e.y1 + 3; })) wt *= 3; /* skin is what sits round the eyes (FUNTRUMP's hair is bigger than his face) */
+      if (s0[2] < 0.16) continue; if (s0[1] > 0.2 && s0[3] >= 0.1) hist[Math.floor(s0[0] / 15) % 24] += wt; else if (s0[2] > 0.6 && (s0[1] <= 0.2 || s0[3] < 0.1)) hist[24] += wt; }
+    var bi = -1, bv = 0; for (i = 0; i < 24; i++) { var sm = hist[i] + 0.6 * (hist[(i + 23) % 24] + hist[(i + 1) % 24]); if (sm > bv) { bv = sm; bi = i; } }
+    var pale = hist[24] > bv, skinH = bi * 15 + 7.5, hs = 0, hc = 0, hn = 0, ss = 0, skinS = 0.5, green, TH, TS; /* the skin's real hue: circular mean of the strong pixels near the peak */
+    if (!pale) { for (q = 0; q < 1024; q++) { if (L.m[q] !== 1 || eyeQ[q]) continue; j = q * 4; var s1 = toHsl(src[j], src[j + 1], src[j + 2]); if (s1[1] > 0.2 && s1[3] >= 0.1 && s1[2] >= 0.16 && hueGap(s1[0], skinH) <= 22) { var w1 = E.some(function (e) { var ex = q & 31, ey = q >> 5; return ex >= e.x0 - 3 && ex <= e.x1 + 3 && ey >= e.y0 - 2 && ey <= e.y1 + 3; }) ? 1 : 0.05; hs += w1 * Math.sin(s1[0] * Math.PI / 180); hc += w1 * Math.cos(s1[0] * Math.PI / 180); hn += w1; ss += w1 * s1[1]; } }
+      if (hn) { skinH = Math.atan2(hs, hc) * 180 / Math.PI; if (skinH < 0) skinH += 360; skinS = ss / hn; } }
+    green = !pale && skinH >= 70 && skinH <= 170; TH = green ? 168 : 96; TS = green ? 0.2 : 0.3;
+    if (!pale && bv < tot * 0.08) skinH = -999; /* no clear skin: everything is treated as clothes (faded) */
+    /* 2. recolour, keeping lightness */
+    for (q = 0; q < 1024; q++) { if (L.m[q] !== 1) continue; j = q * 4; var r = src[j], g = src[j + 1], bl = src[j + 2], l = lum(r, g, bl); y = q >> 5;
+      if (eyeQ[q]) continue;
+      if (l < 42) { set(L, q, C.line); continue; }
+      if (r > 140 && r - g > 60 && r - bl > 30 && y > b.y0 + H * 0.35 && y < b.y0 + H * 0.8 && skinH !== -999 && hueGap(toHsl(r, g, bl)[0], skinH) > 25) { set(L, q, l > 120 ? C.gum : C.gumD); continue; } /* lips, tongue: dead gum */
+      var t = toHsl(r, g, bl), x = q & 31, rimPx = !on(L, x - 1, y) || !on(L, x + 1, y) || !on(L, x, y - 1) || !on(L, x, y + 1), /* the Mythic gold rim sits on the silhouette edge: never skin */
+        isSkin = !rimPx && (pale ? ((t[1] <= 0.2 || t[3] < 0.1) && t[2] > 0.6) || (t[1] < 0.45 && t[2] > 0.55 && hueGap(t[0], 30) < 35) : (t[1] > 0.12 && t[3] >= 0.06 && hueGap(t[0], skinH) <= 16 && Math.abs(t[1] - skinS) < 0.24)); /* same hue AND about the same strength: FUNTRUMP's hair is his skin's hue, but duller */
+      if (isSkin) { set(L, q, fromHsl(TH + (t[2] - 0.5) * 16, TS * (0.8 + 0.4 * Math.min(1, t[1] + 0.3)), 0.1 + t[2] * 0.8)); continue; }
+      if (t[1] < 0.15 || t[3] < 0.08) { set(L, q, t[2] > 0.72 ? fromHsl(52, 0.2, t[2] * 0.86) : fromHsl(100, 0.08, t[2] * 0.9)); continue; } /* whites go dingy, greys go a touch green */
+      set(L, q, fromHsl(t[0], t[1] * 0.5, 0.05 + t[2] * 0.82)); } /* clothes, hair, the Mythic rim: own colour, faded */
+    /* 3. eyes */
+    var ev = v % 3, glow = F ? C.fpupil : C.pupil, glow2 = F ? C.fpupil2 : C.pupil2, eb = 0;
+    if (own) E.forEach(function (e) { eb = Math.max(eb, e.y1); var ey1 = -1; e.cells.E.forEach(function (c) { ey1 = Math.max(ey1, c >> 5); });
+        e.cells.E.forEach(function (c) { var jj = c * 4; if (L.m[c] !== 1 || lum(src[jj], src[jj + 1], src[jj + 2]) < 150) return; set(L, c, (c >> 5) === ey1 ? C.eyeD : C.eye); });
+        e.cells.P.forEach(function (c, n) { if (L.m[c] !== 1) return; set(L, c, n % 2 && fi % 2 ? glow2 : glow); }); });
+    else E.forEach(function (e, n) { var x0 = e.x0, x1 = e.x1, y0 = e.y0, y1 = e.y1; eb = Math.max(eb, y1);
       for (y = y0 - 1; y <= y1 + 1; y++) for (x = x0 - 1; x <= x1 + 1; x++) { if (!on(L, x, y)) continue; var edge = x < x0 || x > x1 || y < y0 || y > y1; j = (y * 32 + x) * 4; if (edge) { if (L.c[j] + L.c[j + 1] > 60) put(L, x, y, C.rim, 1); } else put(L, x, y, C.hole, 1); }
-      var mode = F || E.length < 2 ? 'pupil' : ev === 0 ? 'pupil' : ev === 1 ? (n === 1 ? 'x' : 'pupil') : (n === 0 ? 'empty' : 'pupil');
-      var cx = Math.round((x0 + x1) / 2 + (n ? -0.3 : 0.3)), cy = Math.round((y0 + y1) / 2 + (n ? 0 : 0.4));
-      if (mode === 'pupil') { put(L, cx, cy, glow, 1); if (F && x1 - x0 >= 2) put(L, cx + (n ? -1 : 1), cy, fi % 2 ? C.fpupil2 : C.fpupil, 1); } /* feral: both eyes lit red, 2 px */
-      else if (mode === 'x') { var s = Math.min(x1 - x0, y1 - y0 + 1, 3); for (var t = 0; t <= s; t++) { put(L, x0 + t, y0 + t, C.thread, 1); put(L, x0 + s - t, y0 + t, C.thread, 1); } }
-      else { put(L, cx, y1 + 1, C.drool, 1); } /* empty socket: one wet pixel under it */ });
-    /* 4. mouth: crooked jaw with teeth (one missing) or a crooked stitched slit; any old mouth below stays as dead gum */
+      var mode = !F && E.length === 2 && ev === 1 && n === 1 ? 'x' : 'pupil', cx = Math.round((x0 + x1) / 2 + (n ? -0.3 : 0.3)), cy = Math.round((y0 + y1) / 2);
+      if (mode === 'pupil') { put(L, cx, cy, glow, 1); if (x1 - x0 >= 2) put(L, cx + (n ? -1 : 1), cy, glow2, 1); if (y1 - y0 >= 2) put(L, cx, cy - 1, glow2, 1); } /* a 2-3 px glowing eye */
+      else { var s = Math.min(x1 - x0, y1 - y0 + 1, 3); for (var tt = 0; tt <= s; tt++) { put(L, x0 + tt, y0 + tt, C.thread, 1); put(L, x0 + s - tt, y0 + tt, C.thread, 1); } } }); /* one eye stitched shut */
+    /* 4. mouth (only where we placed the eyes ourselves; community pets keep their own mouth, gone to dead gum): teeth with one missing, or stitched shut */
     var ecx = E.length ? Math.round(E.reduce(function (a, e) { return a + (e.x0 + e.x1) / 2; }, 0) / E.length) : b.x0 + (W >> 1);
-    var my = Math.min(b.y0 + Math.round(H * 0.74), Math.max(eb + 3, b.y0 + Math.round(H * 0.55))), mw = Math.max(4, Math.min(9, Math.round(W * 0.32))), mx0 = ecx - (mw >> 1), mx1 = mx0 + mw - 1, half = mx0 + (mw >> 1);
+    var my = Math.min(b.y0 + Math.round(H * 0.74), Math.max(eb + 3, b.y0 + Math.round(H * 0.55))), mw = Math.max(4, Math.min(8, Math.round(W * 0.3))), mx0 = ecx - (mw >> 1), mx1 = mx0 + mw - 1;
     var stitched = v % 4 === 3, miss = mx0 + 1 + (v % Math.max(1, mw - 2));
-    for (x = mx0; x <= mx1; x++) { var yy = my + (x >= half ? 1 : 0); if (!on(L, x, yy) || !on(L, x, yy + 1)) continue;
-      if (stitched) { put(L, x, yy, C.mouth, 1); if ((x - mx0) % 2 === 1) { put(L, x, yy - 1, C.thread, 1); put(L, x, yy + 1, C.threadD, 1); } }
-      else { put(L, x, yy, x === miss ? C.mouth : ((x - mx0) % 2 ? C.toothD : C.tooth), 1); put(L, x, yy + 1, C.mouth, 1); if (on(L, x, yy + 2) && (x - mx0) % 3 === 0) put(L, x, yy + 2, C.toothD, 1); } }
-    /* drool from the low corner (length moves with the frame) */
-    var dl = [2, 3, 4, 3, 2, 4][fi % 6] + (F ? 2 : 0), dx = side > 0 ? mx0 : mx1, dy0 = my + 2 + (dx >= half ? 1 : 0), dC = F ? C.blood : C.drool, dCL = F ? C.bloodL : C.droolL;
-    for (i = 0; i < dl; i++) put(L, dx, dy0 + i, i === dl - 1 ? dCL : dC, L.m[(dy0 + i) * 32 + dx] === 1 ? 1 : 2);
-    if (F) [[-2, -1], [-1, 1], [1, -2], [2, 1], [0, 3]].forEach(function (d, n3) { var bx = (n3 & 1 ? mx1 : mx0) + d[0], by = my + d[1]; if (on(L, bx, by) && hsh(bx, by, v + 21) < 0.7) put(L, bx, by, n3 % 2 ? C.blood : C.bloodL, 1); }); /* feral: fresh blood round the jaw */
-    /* 5. exposed ribs low on the body (opposite the drool), or a bare skull patch */
-    var rh = 5, rw = Math.max(3, Math.min(5, Math.round(W * 0.2))), ry = Math.max(my + 4, b.y0 + Math.round(H * 0.7)), rx = side > 0 ? b.x1 - rw - Math.max(2, Math.round(W * 0.14)) : b.x0 + Math.max(2, Math.round(W * 0.14));
-    if (ry + rh > b.y1) { ry = b.y1 - rh; } var ok = 0; for (y = ry; y < ry + rh; y++) for (x = rx; x < rx + rw; x++) if (inner(L, x, y)) ok++;
-    if (ok >= rw * rh * 0.7 && ry > my + 2) { for (y = ry; y < ry + rh; y++) for (x = rx; x < rx + rw; x++) { if (!inner(L, x, y)) continue; var bar = (y - ry) % 2 === 0, endp = x === rx || x === rx + rw - 1;
-        put(L, x, y, bar ? (endp ? C.boneD : C.bone) : C.cav, 1); }
-      for (y = ry - 1; y <= ry + rh; y++) for (x = rx - 1; x <= rx + rw; x++) if ((y === ry - 1 || y === ry + rh || x === rx - 1 || x === rx + rw) && on(L, x, y) && hsh(x, y, v + 3) < 0.6) put(L, x, y, hsh(x, y, v + 4) < 0.5 ? C.flesh : C.fleshD, 1); }
-    else { var sx = side > 0 ? b.x0 + Math.round(W * 0.22) : b.x1 - Math.round(W * 0.22) - 2, sy = b.y0 + Math.max(1, Math.round(H * 0.1)); /* bare skull */
-      for (y = sy; y < sy + 2; y++) for (x = sx; x < sx + 3; x++) if (inner(L, x, y)) put(L, x, y, (x + y) % 3 ? C.bone : C.boneD, 1);
-      [[-1, 0], [3, 0], [0, 2], [2, 2], [1, -1]].forEach(function (d) { if (on(L, sx + d[0], sy + d[1])) put(L, sx + d[0], sy + d[1], C.flesh, 1); }); }
-    /* 6. a stitched scar across the head (the side away from the bite) */
-    var hx = side > 0 ? b.x0 + Math.round(W * 0.3) : b.x0 + Math.round(W * 0.7), hy = b.y0 + Math.max(1, Math.round(H * 0.08));
-    for (i = 0; i < 3; i++) { if (inner(L, hx, hy + i)) put(L, hx, hy + i, C.threadD, 1); if (i !== 1) { if (inner(L, hx - 1, hy + i)) put(L, hx - 1, hy + i, C.thread, 1); if (inner(L, hx + 1, hy + i)) put(L, hx + 1, hy + i, C.thread, 1); } }
-    /* 7. grave dirt on the feet */
-    for (q = 0; q < 1024; q++) { if (L.m[q] !== 1) continue; x = q & 31; y = q >> 5; if (y < b.y1 - 2) continue; var pr = y === b.y1 ? 0.75 : y === b.y1 - 1 ? 0.45 : 0.15; if (hsh(x, y - b.y1, v + 9) < pr) put(L, x, y, C.dirt[Math.floor(hsh(x, y, v + 10) * 4)], 1); }
-    /* 8. torn: a bite out of the top on the bite side (an ear tip or the head), and a ragged notch at a lower edge */
+    if (!own) for (x = mx0; x <= mx1; x++) { if (!inner(L, x, my) || !on(L, x, my + 1)) continue;
+      if (stitched) { put(L, x, my, C.mouth, 1); if ((x - mx0) % 2 === 1) { put(L, x, my - 1, C.thread, 1); put(L, x, my + 1, C.thread, 1); } }
+      else { put(L, x, my, x === miss || x === mx0 || x === mx1 ? C.mouth : C.tooth, 1); put(L, x, my + 1, C.mouth, 1); } }
+    /* drool (or blood when feral) from one mouth corner; its length moves with the frame */
+    if (!own) { var dl = [2, 3, 3, 2][fi % 4] + (F ? 1 : 0), dx = side > 0 ? mx0 + 1 : mx1 - 1, dy0 = my + 2;
+      for (i = 0; i < dl; i++) if (dy0 + i < 32) put(L, dx, dy0 + i, i === dl - 1 ? (F ? C.bloodL : C.droolL) : (F ? C.blood : C.drool), L.m[(dy0 + i) * 32 + dx] === 1 ? 1 : 2); }
+    /* 5. one stitched scar on the head, away from the bite: a dark seam with 3 cross stitches */
+    var hx = side > 0 ? b.x0 + Math.round(W * 0.3) : b.x0 + Math.round(W * 0.7), hy = b.y0 + Math.max(1, Math.round(H * 0.1)), clear = true;
+    for (i = 0; i < 4; i++) if (!inner(L, hx, hy + i) || eyeQ[(hy + i) * 32 + hx]) clear = false;
+    if (clear) for (i = 0; i < 4; i++) { put(L, hx, hy + i, C.seam, 1); if (i % 2 === 0) { if (inner(L, hx - 1, hy + i)) put(L, hx - 1, hy + i, C.thread, 1); if (inner(L, hx + 1, hy + i)) put(L, hx + 1, hy + i, C.thread, 1); } }
+    /* 6. a bite out of the top on the bite side (an ear tip or the head), edged with outline so it stays crisp */
     var best = -1, bestY = 99; for (x = side > 0 ? b.x1 : b.x0; side > 0 ? x >= b.x0 + W * 0.55 : x <= b.x0 + W * 0.45; x -= side) { for (y = b.y0; y <= b.y1; y++) if (on(L, x, y)) { if (y < bestY) { bestY = y; best = x; } break; } }
-    var cut = []; if (best >= 0) [[0, 0], [side, 0], [0, 1], [side, 1], [-side, 0], [side * 2, 0], [side, 2]].forEach(function (d) { cut.push([best + d[0], bestY + d[1]]); });
-    var ly = b.y0 + Math.round(H * 0.62), lx = -1; if (side > 0) { for (x = b.x0; x <= b.x1; x++) if (on(L, x, ly)) { lx = x; break; } } else { for (x = b.x1; x >= b.x0; x--) if (on(L, x, ly)) { lx = x; break; } }
-    if (lx >= 0) [[0, 0], [0, 1], [side, 1], [0, 2], [0, -1]].forEach(function (d, n2) { if (n2 < 4 || v % 2) cut.push([lx + d[0], ly + d[1]]); });
+    var cut = []; if (best >= 0) [[0, 0], [side, 0], [0, 1], [-side, 0]].forEach(function (d) { cut.push([best + d[0], bestY + d[1]]); });
     cut.forEach(function (p2) { if (on(L, p2[0], p2[1])) { var q2 = p2[1] * 32 + p2[0]; L.m[q2] = 0; L.c[q2 * 4 + 3] = 0; } });
-    cut.forEach(function (p2) { [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(function (d) { var nx = p2[0] + d[0], ny = p2[1] + d[1]; if (on(L, nx, ny)) put(L, nx, ny, hsh(nx, ny, v + 5) < 0.45 ? C.flesh : C.line, 1); }); });
+    cut.forEach(function (p2) { [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(function (d) { var nx = p2[0] + d[0], ny = p2[1] + d[1]; if (on(L, nx, ny)) put(L, nx, ny, C.line, 1); }); });
+    if (best >= 0 && on(L, best, bestY + 2)) put(L, best, bestY + 2, C.flesh, 1);
     return { b: b, my: my, E: E };
   }
   /* slouch: the head rows (top 40%) lean 1 px to the bite side; done on colour and mask together */
@@ -129,7 +143,7 @@
    * centring, bob and left/right eye split (same maths as PetCore spriteBox + placeSprite; pet-core itself is untouched).
    * One socket per eye cluster, at most 4x3, centred on the cluster. null for hybrids, eggs or species without eye cells. */
   var SCALE = [0, 0.62, 0.78, 0.9, 1, 1], BOB = [0, -1, -1, 0];
-  function gameEyes(art, stage, fi) { try { var P = window.PetCore; if (!P || !art || art.hybrid || !P.SPECIES || !stage) return null;
+  function gameEyes(art, stage, fi) { var own = spriteEyes(art, stage, fi); if (own) return own; try { var P = window.PetCore; if (!P || !art || art.hybrid || !P.SPECIES || !stage) return null;
       var sp = null; for (var i = 0; i < P.SPECIES.length; i++) if (P.SPECIES[i].id === art.species) sp = P.SPECIES[i]; if (!sp) return null;
       var st = Math.max(1, Math.min(5, stage | 0)), map = (sp.stageMaps && sp.stageMaps[st]) || sp.map; if (!map || !map.length) return null;
       var W = map[0].length, H = map.length, s = SCALE[st], w = Math.max(4, Math.round(W * s)), h = Math.max(4, Math.round(H * s)), x0 = 16 - Math.round(w / 2), y0 = 28 - h + BOB[(fi || 0) % 4];
@@ -140,6 +154,20 @@
       S = S.filter(Boolean); if (!S.length) return null;
       return S.map(function (e) { var cx = (e.x0 + e.x1) / 2, cy = (e.y0 + e.y1) / 2, ww = Math.max(2, Math.min(4, e.x1 - e.x0 + 1)), hh = Math.max(2, Math.min(3, e.y1 - e.y0 + 1)), a = Math.round(cx - (ww - 1) / 2), c = Math.round(cy - (hh - 1) / 2);
         return { x0: a, x1: a + ww - 1, y0: c, y1: c + hh - 1 }; }); } catch (e) { return null; } }
+  /* community pets (Homer Pepe, Kek, FUNTRUMP, the Viking...) draw from their own sprite files, which mark eye whites 'E' and pupils 'P' on the same
+   * 32x32 grid as the frame. Their eyes are kept as they are (dingy whites, glowing pupils) instead of guessed sockets. Two biggest eye clusters at most. */
+  var OWN = { homer: 'HomerSprite', kek: 'KekSprite', funtrump: 'FuntrumpSprite', djpepe: 'DjPepeSprite', viking: 'VikingSprite', orangedragon: 'DragonSprite', rabbit: 'RabbitSprite', wizard: 'WizardSprite' };
+  function spriteEyes(art, stage, fi) { try { var g = art && !art.hybrid && OWN[art.species] && window[OWN[art.species]]; if (!g || typeof g.draw !== 'function') return null;
+      var m = g.draw(Math.max(0, Math.min(5, stage | 0)), (fi | 0) % 4, {}); if (!m || !m.length) return null; var seen = {}, cl = [];
+      for (var y = 0; y < 32; y++) for (var x = 0; x < 32; x++) { var k = (m[y] || [])[x]; if ((k !== 'E' && k !== 'P') || seen[y * 32 + x]) continue; var st = [[x, y]], c = { E: [], P: [], x0: 32, x1: -1, y0: 32, y1: -1 }; seen[y * 32 + x] = 1;
+        while (st.length) { var p = st.pop(), px = p[0], py = p[1], kk = m[py][px]; c[kk].push(py * 32 + px); c.x0 = Math.min(c.x0, px); c.x1 = Math.max(c.x1, px); c.y0 = Math.min(c.y0, py); c.y1 = Math.max(c.y1, py);
+          for (var dy = -1; dy <= 1; dy++) for (var dx = -1; dx <= 1; dx++) { var nx = px + dx, ny = py + dy, nk = nx >= 0 && ny >= 0 && nx < 32 && ny < 32 ? (m[ny] || [])[nx] : null; if ((nk === 'E' || nk === 'P') && !seen[ny * 32 + nx]) { seen[ny * 32 + nx] = 1; st.push([nx, ny]); } } }
+        cl.push(c); }
+      cl.sort(function (a, b) { return (b.E.length + b.P.length) - (a.E.length + a.P.length); }); var n0 = cl.length ? cl[0].E.length + cl[0].P.length : 0;
+      cl = cl.slice(0, 2).filter(function (c) { return c.E.length + c.P.length >= Math.max(1, n0 / 3); }); if (!cl.length) return null;
+      if (cl.length === 2 && Math.abs((cl[0].y0 + cl[0].y1) - (cl[1].y0 + cl[1].y1)) > 6) cl = [cl[0]];
+      return cl.map(function (c) { if (!c.P.length) { c.P = c.E.filter(function (q) { return (q >> 5) === Math.round((c.y0 + c.y1) / 2) && Math.abs((q & 31) - (c.x0 + c.x1) / 2) < 1; }); c.E = c.E.filter(function (q) { return c.P.indexOf(q) < 0; }); }
+        return { x0: c.x0, x1: c.x1, y0: c.y0, y1: c.y1, cells: { E: c.E, P: c.P } }; }); } catch (e) { return null; } }
   function starEyes(art, stage, fi) { try { var P = window.PetCore; if (!P || !art || art.hybrid || typeof P.render !== 'function') return null;
       var k = Object.assign({}, art, { background: 'solid', bgColor: '#ff00ff', pattern: 'none', eyes: 'star' }), o = { stage: stage, frame: fi || 0, gearOverride: {} }, out = null;
       for (var t = 0; t < 2 && !out; t++) { var d = P.render(k, t ? Object.assign({}, o, { openEyes: true }) : o).data, S = [null, null];
@@ -152,19 +180,19 @@
   function frame(src, ka, kb, id, fi, nf, opt) { opt = opt || {}; var L = { c: new Uint8ClampedArray(4096), m: new Uint8Array(1024) }, q, j, k;
     for (q = 0; q < 1024; q++) { j = q * 4; if (ka[j] === kb[j] && ka[j + 1] === kb[j + 1] && ka[j + 2] === kb[j + 2] && (ka[j + 3] > 0)) { L.m[q] = 1; for (k = 0; k < 4; k++) L.c[j + k] = src[j + k]; } }
     var r = zombifyLayer(src, L, id, fi, nf, opt); if (!r) return null; var side = Math.abs(id | 0) & 1 ? 1 : -1;
-    if (opt.slouch !== false) slouch(L, r.b, side); var b = bbox(L.m); if (opt.extras !== false) extras(L, b, fi, nf, Math.abs(id | 0), opt);
+    if (opt.slouch === true) slouch(L, r.b, side); var b = bbox(L.m); if (opt.extras === true) extras(L, b, fi, nf, Math.abs(id | 0), opt);
     var bgFill = function (out, kc) { for (q = 0; q < 1024; q++) { j = q * 4; if (kc) { out[j] = kc[j]; out[j + 1] = kc[j + 1]; out[j + 2] = kc[j + 2]; out[j + 3] = kc[j + 3]; } } };
     /* background under the old pet: the nearest pixel in the same row that was never pet (so a moved or bitten edge shows the tile, not a hole) */
     var img = new Uint8ClampedArray(src), orig = new Uint8Array(1024); for (q = 0; q < 1024; q++) { j = q * 4; orig[q] = ka[j] === kb[j] && ka[j + 1] === kb[j + 1] && ka[j + 2] === kb[j + 2] ? 1 : 0; }
     /* the warm 1 px rim some tiles draw around the pet: lifted off (filled like the background) and redrawn dull and patchy around the zombie's own outline */
-    var rimN = 0; if (opt.rim !== false) for (q = 0; q < 1024; q++) { if (orig[q]) continue; j = q * 4; var rx = q & 31, ry = q >> 5, near = false;
+    var rimN = 0; if (opt.rim === true) for /* zombie-clean 1123: off by default; the zombie keeps the pet's exact outline now, so the tile's own rim (Homer's ring) stays as drawn */ (q = 0; q < 1024; q++) { if (orig[q]) continue; j = q * 4; var rx = q & 31, ry = q >> 5, near = false;
       for (var oy = -1; oy <= 1 && !near; oy++) for (var ox = -1; ox <= 1; ox++) { var nx = rx + ox, ny = ry + oy; if (nx >= 0 && ny >= 0 && nx < 32 && ny < 32 && orig[ny * 32 + nx] === 1) { near = true; break; } }
       if (near && src[j] > 130 && src[j] - src[j + 2] > 50 && src[j + 1] > 70) { orig[q] = 3; rimN++; } }
     for (q = 0; q < 1024; q++) { if (!orig[q]) continue; var x = q & 31, y = q >> 5, s = -1; for (var d = 1; d < 32 && s < 0; d++) { if (x - d >= 0 && !orig[y * 32 + x - d]) s = y * 32 + x - d; else if (x + d < 32 && !orig[y * 32 + x + d]) s = y * 32 + x + d; }
       j = q * 4; if (s >= 0) { for (k = 0; k < 4; k++) img[j + k] = src[s * 4 + k]; } }
     if (rimN > 8) for (q = 0; q < 1024; q++) { if (L.m[q] === 1) continue; var ax = q & 31, ay = q >> 5, adj = false;
       for (var oy2 = -1; oy2 <= 1 && !adj; oy2++) for (var ox2 = -1; ox2 <= 1; ox2++) { var mx2 = ax + ox2, my2 = ay + oy2; if (mx2 >= 0 && my2 >= 0 && mx2 < 32 && my2 < 32 && L.m[my2 * 32 + mx2] === 1) { adj = true; break; } }
-      if (!adj) continue; var hr = hsh(ax, ay, 77), rc = hr < 0.15 ? null : hr < 0.6 ? [104, 102, 60] : [80, 80, 46]; if (!rc) continue; j = q * 4; img[j] = rc[0]; img[j + 1] = rc[1]; img[j + 2] = rc[2]; img[j + 3] = 255; }
+      if (!adj) continue; var rc = [92, 100, 60]; /* one clean dull rim (was patchy) */ j = q * 4; img[j] = rc[0]; img[j + 1] = rc[1]; img[j + 2] = rc[2]; img[j + 3] = 255; }
     var A = new Uint8ClampedArray(ka), B = new Uint8ClampedArray(kb), kA = ka.slice(0, 4), kB = kb.slice(0, 4);
     for (q = 0; q < 1024; q++) { j = q * 4; if (orig[q] === 1) { for (k = 0; k < 4; k++) { A[j + k] = kA[k]; B[j + k] = kB[k]; } } }
     for (q = 0; q < 1024; q++) { if (!L.m[q]) continue; j = q * 4; for (k = 0; k < 4; k++) img[j + k] = L.c[j + k]; if (L.m[q] === 1) for (k = 0; k < 4; k++) { A[j + k] = L.c[j + k]; B[j + k] = L.c[j + k]; } }
@@ -185,5 +213,5 @@
           if (sp && sp.pose) { handSaved.push([sp, sp.pose]); sp.pose = null; } }); }); }
     try { return fn.apply(self, args || []); }
     finally { if (--handDepth === 0 && handSaved) { handSaved.forEach(function (e) { e[0].pose = e[1]; }); handSaved = null; } } }
-  window.V2ZombieLook = { gameEyes: gameEyes, starEyes: starEyes, frame: frame, transparent: transparent, PAL: C, extras: extras, noHand: noHand };
+  window.V2ZombieLook = { gameEyes: gameEyes, spriteEyes: spriteEyes, starEyes: starEyes, frame: frame, transparent: transparent, PAL: C, extras: extras, noHand: noHand };
 })();
