@@ -18,7 +18,9 @@ function rig(tip, sale) { const els = {}; const el = id => els[id] || (els[id] =
     'this.T = { fireEndPlans: fireEndPlans, fireEndNote: fireEndNote, fireEndWire: fireEndWire, get pending() { return pendingPlans; }, set pending(v) { pendingPlans = v; } };', ctx);
   return { T: ctx.T, el }; }
 const sale = { arm: 973888, start: 973894, end: 973930 }, plans = [{ tag: 'pet:fr:37:AB', amount: 2887.65, petIds: [1, 2, 3, 4, 5, 6, 7, 8, 9] }, { tag: 'pet:sk:1', amount: 1e-8 }, { tag: 'pet:hatch', amount: 5.3475 }];
-let r = rig(973926, sale); ok(r.T.fireEndPlans({}, plans) === null, '3 blocks left: no warning');
+let r = rig(973922, sale); ok(r.T.fireEndPlans({}, plans) === null, '7 blocks left: no warning');
+r = rig(973923, sale); ok((r.T.fireEndPlans({}, plans) || {}).left === 6, '6 blocks left (about an hour): warning');
+r = rig(973926, sale); ok((r.T.fireEndPlans({}, plans) || {}).left === 3, '3 blocks left (the case a player hit): warning');
 r = rig(973927, sale); let fe = r.T.fireEndPlans({}, plans); ok(fe && fe.left === 2, '2 blocks left: warning');
 ok(fe && fe.full[0].amount >= 9315 && fe.full[0].amount < 9315.000001, 'feed run full cost covers 9 meals of 1035 (' + (fe && fe.full[0].amount) + ')');
 ok(fe && fe.full[2].amount >= 17.25 && fe.full[2].amount < 17.2501, 'hatch full cost 17.25 (' + (fe && fe.full[2].amount) + ')');
