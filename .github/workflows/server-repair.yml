@@ -17,6 +17,7 @@ on:
       diagnose_only: { description: 'Only look: print the diagnosis and change nothing on the disk', type: boolean, default: false }
       sync_rules: { description: 'Install the 12 rule files from main (the rsig files) and rebuild the world if its rsig differs from main', type: boolean, default: false }
       enable_builder: { description: 'Turn the world builder in the sync service back on (XP_SNAPSHOT=0 becomes 1; a .bak copy is kept)', type: boolean, default: false }
+      sync_memory: { description: 'Raise the sync service memory limit to MemoryHigh 2800M / MemoryMax 3200M so the burn check service fits (a drop-in file; delete it to undo)', type: boolean, default: false }
       node_watchdog: { description: 'Install the node cache watchdog (restarts the cache when it stops answering) and let the sync service restart itself', type: boolean, default: false }
 permissions: { contents: read }
 concurrency: { group: server-restart, cancel-in-progress: false }
@@ -64,7 +65,7 @@ jobs:
           done
           echo "The rescue system did not answer within 10 minutes."; exit 1
       - name: Diagnose and repair
-        env: { UPDATE: '${{ github.event.inputs.update_code }}', LOOK: '${{ github.event.inputs.diagnose_only }}', BUILD: '${{ github.event.inputs.enable_builder }}', RULES: '${{ github.event.inputs.sync_rules }}', DOG: '${{ github.event.inputs.node_watchdog }}' }
+        env: { UPDATE: '${{ github.event.inputs.update_code }}', LOOK: '${{ github.event.inputs.diagnose_only }}', BUILD: '${{ github.event.inputs.enable_builder }}', RULES: '${{ github.event.inputs.sync_rules }}', DOG: '${{ github.event.inputs.node_watchdog }}', SMEM: '${{ github.event.inputs.sync_memory }}' }
         run: |
           echo "::add-mask::$IP"
           S="ssh -i $RUNNER_TEMP/k -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR root@$IP"
@@ -208,6 +209,14 @@ jobs:
             for F in "$UNIT" ${ENVF:+"/mnt/r$ENVF"}; do
               if grep -q 'XP_SNAPSHOT=0' "$F" 2>/dev/null; then cp -a "$F" "$F.bak-$(date -u +%Y%m%d%H%M)"; sed -i 's/XP_SNAPSHOT=0/XP_SNAPSHOT=1/' "$F"; echo "world builder turned on in $(basename "$F") (old copy kept as .bak)"; fi
             done
+          fi
+          echo "sync memory limits now: $(cat "$UNIT" /mnt/r/etc/systemd/system/xcpets-sync.service.d/*.conf 2>/dev/null | grep -oE '^Memory(High|Max)=[^ ]+' | tr '\n' ' ')"
+          if [ "$SMEM" = "true" ] && [ "$LOOK" != "true" ]; then
+            # Nov 23 2026 (Jake approved): the burn check service (~1 GB) runs inside this service next to the follower (~0.7-0.9 GB).
+            # A drop-in read after the unit's own lines; the checker still waits for 1,200 MB free on the machine and stops during builds.
+            mkdir -p /mnt/r/etc/systemd/system/xcpets-sync.service.d
+            printf '[Service]\nMemoryHigh=2800M\nMemoryMax=3200M\n' > /mnt/r/etc/systemd/system/xcpets-sync.service.d/zz-check-memory.conf
+            echo "sync memory raised: $(grep -oE '^Memory(High|Max)=[^ ]+' /mnt/r/etc/systemd/system/xcpets-sync.service.d/zz-check-memory.conf | tr '\n' ' ')(drop-in zz-check-memory.conf; delete it to undo)"
           fi
           if [ "$UPDATE" = "true" ]; then
             T="/mnt/r$ROOT/tools"; B="sync-server.before-$(date -u +%Y%m%d%H%M)"
