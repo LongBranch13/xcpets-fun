@@ -40,7 +40,9 @@ const rows = [
   { tx_hash: 'b', block_index: 975629, source: 'bc1qearly', status: 'valid', amount: 69 },
   { tx_hash: 'c', block_index: 976000, source: 'bc1qdoom', status: 'invalid', amount: 69 }
 ];
-ok(W.survivedAddr('bc1qdoom', rows, 976100) && !W.survivedAddr('bc1qearly', rows, 976100) && !W.survivedAddr('bc1qnobody', rows, 976100), 'badge is any real burn inside the window');
+const rows2 = rows.map(r => Object.assign({}, r, { block_index: r.block_index - 975630 + 977136 }));
+ok(W.survivedAddr('bc1qdoom', rows2, 977136 + 470) && !W.survivedAddr('bc1qearly', rows2, 977136 + 470) && !W.survivedAddr('bc1qnobody', rows2, 977136 + 470), 'badge is any real burn inside the window');
+ok(!W.survivedAddr('bc1qdoom', rows, 976100), 'a burn in the first doom week does not count for week 2');
 ok(W.COUNT_PETS == null && !/petCount|BTC down, pets up/.test(fs.readFileSync(path.join(ROOT, 'js/doom-week.js'), 'utf8')), 'the counter has no pet-count reading');
 ok(W.parseCoinbase({ data: { amount: '68593.695' } }) === 68593.695 && W.parseKraken({ result: { XXBTZUSD: { c: ['68624.4', '1'] } } }) === 68624.4, 'Coinbase spot, then Kraken last');
 ok(W.parseSupply({ result: { supply: '6851580174498903' } }) === 6851580174498903 / 1e8, 'supply is raw units divided by 1e8');
@@ -55,7 +57,11 @@ ok(W.downFlags({ usd: 68764.4, tokens: 68515801.74 }, 68764.4, 68515701.74).supp
 var html = W.counterHtml(68000, 68e6, { btc: true, supply: false });
 ok(html.indexOf('dw-down') === html.lastIndexOf('dw-down') && html.indexOf('$68,000') < html.indexOf('dw-down') && html.indexOf('dw-down') < html.indexOf('XCPETS left') && !/price/i.test(html), 'the arrow sits beside the number that went down');
 ok(!/price/i.test(fs.readFileSync(path.join(ROOT, 'js/doom-week.js'), 'utf8').split('function paintCount')[1].split('function burners')[0]), 'the counter markup does not say price');
-ok(W.START === 975630 && W.END === 976648 && W.SABO_ID === 1765, 'window and Sabo id');
+ok(W.inWindow(977136) && W.inWindow(978143) && !W.inWindow(977135) && !W.inWindow(978144) && !W.inWindow(null), 'turns on at 977,136 and off at 978,144');
+ok(W.ENABLED === true && W.START === 977136 && W.END === W.START + 1008 && W.SABO_ID === 1765, 'doom week 2 window (1,008 blocks) and Sabo id');
+ok(!/xcpets_token/.test(fs.readFileSync(path.join(ROOT, 'js/doom-week.js'), 'utf8')), 'the XCPETS token art is never swapped');
+ok(!/V2Mock\.world\(/.test(fs.readFileSync(path.join(ROOT, 'js/doom-week.js'), 'utf8')), 'doom week never builds the full world');
+{ const pp = ctx.PetCore.characterPet('pepe', { tier: 'legendary' }); ok(D.frames(pp, 4) === D.frames(Object.assign({}, pp), 4), 'dressed showcase frames are cached'); }
 ok(W.PLACES && W.PLACES.join(',') === 'circus,rare,motel,spam,raid,cemetery,pantheon,tokens,live', 'every place is on the doom list');
 ['img/doom/sp-pepe.png', 'img/doom/sp-kek.png', 'img/doom/sp-wizard.png', 'img/doom/xcpets-cast.gif', 'img/doom/logo.png', 'img/doom/token.png', 'img/doom/badge.png', 'img/doom/doom-flag.png'].forEach(f => ok(fs.existsSync(path.join(ROOT, f)), 'asset ' + f));
 ok(!fs.readFileSync(path.join(ROOT, 'practice.html'), 'utf8').includes('doom-week.js'), 'practice pages are not wired');

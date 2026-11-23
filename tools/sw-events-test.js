@@ -7,8 +7,8 @@ const ok = (c, m) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (c) pass++; 
 const ROOT = path.join(__dirname, '..');
 const md5 = crypto.createHash('md5').update(fs.readFileSync(path.join(ROOT, 'js/v2-rules.js'))).digest('hex');
 ok(md5 === '11b5c6c1959c56a7fd51c09a8b2a2309', 'rules MD5 unchanged');
-ok(/var ENABLED = false/.test(fs.readFileSync(path.join(ROOT, 'js/doom-week.js'), 'utf8')), 'doom week file stays off');
-ok(/var DOOM_ENABLED = false/.test(fs.readFileSync(path.join(ROOT, 'js/v2-events.js'), 'utf8')), 'loader doom switch stays off');
+ok(/var ENABLED = true/.test(fs.readFileSync(path.join(ROOT, 'js/doom-week.js'), 'utf8')), 'doom week 2 file is on (it gates itself by block)');
+ok(/var DOOM_ENABLED = true/.test(fs.readFileSync(path.join(ROOT, 'js/v2-events.js'), 'utf8')), 'loader doom switch is on for doom week 2');
 ok(!fs.readFileSync(path.join(ROOT, 'practice.html'), 'utf8').includes('doom-week.js'), 'practice html does not name doom-week');
 ok(fs.readFileSync(path.join(ROOT, 'play.html'), 'utf8').includes('js/v2-events.js'), 'play loads the event loader');
 ok(!/<script src="js\/doom-week\.js/.test(fs.readFileSync(path.join(ROOT, 'play.html'), 'utf8')), 'play does not preload doom-week');
@@ -71,7 +71,9 @@ function events() {
     return added;
   }
   const off = run('', '/play.html', Date.UTC(2026, 10, 14));
-  ok(off.length === 0, 'no seasonal script on a normal November day');
+  ok(off.length === 1 && off[0].indexOf('doom-week.js') >= 0, 'only doom-week loads while doom week 2 is switched on');
+  ok(run('', '/play.html', Date.UTC(2026, 11, 4)).length === 0, 'no seasonal script once doom week 2 is surely over');
+  ok(run('?doom=0', '/play.html', Date.UTC(2026, 10, 24)).length === 0, '?doom=0 skips doom-week');
   ok(run('?halloween=1', '/play.html', Date.UTC(2026, 10, 14)).some(s => s.indexOf('halloween.js') >= 0), 'halloween preview flag loads it');
   ok(run('?votingday=1', '/index.html', Date.UTC(2026, 10, 14)).some(s => s.indexOf('voting-day.js') >= 0), 'voting-day preview flag loads it');
   ok(!run('?doom=1', '/practice.html', Date.UTC(2026, 10, 14)).some(s => s.indexOf('doom-week.js') >= 0), 'practice never loads doom-week');

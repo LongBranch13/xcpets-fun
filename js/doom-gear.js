@@ -127,9 +127,19 @@
     cornerChart(img);
     return img;
   }
+  /* Showcase pets are fixed character pets, so the same dressed frames are asked for again and again
+   * (hero refills every 4.2 s, 78 cast cells per tab click). Each set costs 12 renders, so keep them. */
+  var CACHE = {}, cacheN = 0;
   function frames(pet, stage) {
     stage = stage | 0;
     if (!pet || stage < 1) return null;
+    var ck; try { ck = stage + '|' + JSON.stringify(pet); } catch (e) { ck = null; }
+    if (ck && CACHE[ck]) return CACHE[ck];
+    var made = build(pet, stage);
+    if (ck && made) { if (cacheN > 400) { CACHE = {}; cacheN = 0; } CACHE[ck] = made; cacheN++; }
+    return made;
+  }
+  function build(pet, stage) {
     var PC = root.PetCore; if (!PC || !PC.render || !root.BonusGear) return null;
     var species = pet.species, sp = (PC.SPECIES || []).filter(function (s) { return s.id === species; })[0];
     if (!sp) return null;
