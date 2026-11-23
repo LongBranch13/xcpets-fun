@@ -24,6 +24,17 @@
     flip: function () { if (!on()) return; noise(0.12, 0.12, 3000); },
     wrap: function () { if (!on()) return; noise(0.35, 0.1, 2400, 0, true); tone('square', 784, 0, 0.08, 0.06, 0.32); tone('square', 1046, 0, 0.14, 0.06, 0.4); },
     blip: function () { if (!on()) return; tone('square', 660, 0, 0.05, 0.06); },
+    /* reveal sounds (Nov 23 2026, "who does it best" #2: every hatch, spin and breed gets a rarity sound). Played by js/v2-life-anim.js on its frames. */
+    knock: function () { if (!on()) return; tone('square', 300, 200, 0.05, 0.07); },
+    crack: function () { if (!on()) return; noise(0.16, 0.3, 4200); tone('square', 1200, 400, 0.08, 0.06); },
+    /** reveal(t): t 0 Common .. 3 Legendary, 4 Mythic / Legend find. Longer, higher arpeggio the rarer it is. */
+    reveal: function (t) { if (!on()) return; t = Math.max(0, Math.min(4, t | 0)); var N = [[523, 659], [523, 659, 784], [523, 659, 784, 1047], [523, 659, 784, 1047, 1319, 1568], [392, 523, 659, 784, 1047, 1319, 1568, 2093]][t];
+      N.forEach(function (f, i) { tone('square', f, 0, 0.1 + (i === N.length - 1 ? 0.25 : 0), 0.07, i * 0.07); });
+      if (t >= 3) { noise(0.9, 0.12, 6000, N.length * 0.07, true); tone('triangle', N[N.length - 1] * 2, 0, 0.6, 0.05, N.length * 0.07 + 0.05); } },
+    fanfare: function () { if (!on()) return; [[523, 0], [523, 0.12], [523, 0.24], [698, 0.36], [880, 0.62], [784, 0.82], [1047, 1.0]].forEach(function (n, i, a) { tone('square', n[0], 0, i === a.length - 1 ? 0.7 : 0.14, 0.08, n[1]); tone('triangle', n[0] / 2, 0, i === a.length - 1 ? 0.7 : 0.14, 0.06, n[1]); });
+      noise(1.6, 0.14, 5000, 1.0, true); },
+    munch: function () { if (!on()) return; noise(0.06, 0.16, 1400); tone('square', 240, 160, 0.06, 0.05, 0.02); },
+    sad: function () { if (!on()) return; tone('triangle', 392, 0, 0.3, 0.08); tone('triangle', 370, 0, 0.3, 0.08, 0.32); tone('triangle', 349, 0, 0.3, 0.08, 0.64); tone('triangle', 330, 262, 0.8, 0.08, 0.96); },
     on: on,
     ctx: ac, /* download-clips-1107: V2Clip records this context's sound */
     set: function (v) { if (window.V2Announcer) V2Announcer.setVoice(v); else try { localStorage.setItem(KEY, v ? '1' : '0'); } catch (e) { } paint(); },
