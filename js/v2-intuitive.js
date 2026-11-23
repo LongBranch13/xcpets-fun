@@ -49,6 +49,36 @@
   function stageLadder(w, p) { var ct = V2Render.careTarget(w, p, w.tip), th = ct.th, n = stageNames();
     return '<ol class="ip-ladder">' + th.map(function (v, i) { var sk = i > p.stage && i < 5 && v >= th[5]; /* meal-count-fix: stages the Mythic shortcut jumps over */ return '<li class="' + (i === p.stage ? 'on' : i < p.stage ? 'done' : '') + '">' + n[i] + ' <span class="muted">' + fmt(v) + (sk ? ' · skipped' : '') + '</span></li>'; }).join('') + '</ol>'; }
 
+  /* MYTHIC ROAD (display only, Nov 23 2026): the two roads to Mythic side by side, from the engine's own thresholds (V2Rules.petThresholds), plus
+   * whether this wallet has the shorter road and, if not, which of its pets is closest to unlocking it. No rule change: RAISED-ONLY, GROW FASTER and
+   * MYTHIC KEEP are only explained here. */
+  var ROAD_COL = ['#7a6a9a', '#58c06a', '#3fa7ff', '#ff9f43', '#c86bff'];
+  function roads(sp, tip) { var R = V(); if (!R || !R.petThresholds) return null; var o = { species: sp, owner: '@' };
+    return { normal: R.petThresholds({}, o, tip), short: R.petThresholds({ mythicOwners: { '@': 0 } }, o, tip) }; }
+  function mealsTo(R, c, sp, tip, th) { var n = 0, m; if (!R || !R.mealFor) return null; while (c < th[5] && n < 999) { m = R.mealFor(c, sp, tip + 1, th); if (!(m > 0)) return null; c += m; n++; } return n; }
+  var ROAD_SHORT = ['', 'Hatch', 'Juv', 'Adult', 'Elder'];
+  function roadBar(th, max, care, on, label, sub, ticks) { var n = stageNames(), seg = '';
+    for (var i = 1; i < 5; i++) { var wd = 100 * (th[i + 1] - th[i]) / max; seg += '<i style="left:' + (100 * th[i] / max).toFixed(2) + '%;width:' + wd.toFixed(2) + '%;background:' + ROAD_COL[i] + '" title="' + n[i] + ' from ' + fmt(th[i]) + '">' + (ticks && wd >= 9 ? ROAD_SHORT[i] : '') + '</i>'; }
+    var mk = care != null ? '<b class="ip-mp-me" style="left:' + Math.min(100 * Math.min(care, th[5]) / max, 100).toFixed(2) + '%"></b>' : '';
+    return '<div class="ip-mp-row' + (on ? ' on' : '') + '"><div class="ip-mp-lab">' + label + ' <span class="muted">' + sub + '</span></div><div class="ip-mp-bar">' + seg + mk + '<span class="ip-mp-end" style="left:' + (100 * th[5] / max).toFixed(2) + '%">🌕</span></div>' +
+      '<div class="ip-mp-ticks">' + (ticks ? th.slice(2) : [th[5]]).map(function (v, k) { return '<span style="left:' + (100 * v / max).toFixed(2) + '%">' + fmt(v) + '</span>'; }).join('') + '</div></div>'; }
+  function mythicRoad(w, p, full) { var R = V(), tip = w && w.tip, sp = p ? p.species : 'pepe', rd = roads(sp, tip); if (!rd) return '';
+    var who = p ? p.owner : me(), mine = !!who && who === me(), got = !!(w && w.mythicOwners && who && w.mythicOwners[who] != null), N = rd.normal, S = rd.short, max = N[5];
+    if (!(S[5] < N[5])) return ''; /* species with no shorter road */
+    var care = p && !p.dead && p.stage < 5 && !p.community ? p.care : null, wal = mine ? 'Your wallet' : 'This wallet';
+    var h = '<div class="ip-mp"><div class="ip-mp-st ' + (got ? 'on' : 'off') + '">' + (got ? '🔓 <b>' + wal + ' raised a Mythic.</b> Every pet in it takes the short road: Mythic at ' + fmt(S[5]) + ' care.'
+      : '🔒 <b>' + wal + ' hasn\'t raised a Mythic yet.</b> Raise one all the way to ' + fmt(N[5]) + ' and every pet in it switches to the short road (' + fmt(S[5]) + ').') + '</div>' +
+      roadBar(N, max, got ? null : care, !got, 'Normal road', fmt(N[5]) + ' care', true) +
+      roadBar(S, max, got ? care : null, got, 'Short road', fmt(S[5]) + ' care · ' + fmt(N[5] - S[5]) + ' less', false) +
+      (care != null ? '<p class="small ip-mp-you"><b class="ip-mp-me ip-mp-dot"></b> #' + p.id + ' is here: ' + fmt(care) + ' care.</p>' : '');
+    if (got) { var m = care != null ? mealsTo(R, care, sp, tip, S) : null; if (m) h += '<p class="small">#' + p.id + ' is ' + m + ' meal' + (m === 1 ? '' : 's') + ' from Mythic.</p>'; }
+    else if (mine && w && w.pets) { var best = null; w.pets.forEach(function (q) { if (q.owner === who && !q.dead && !q.released && !q.community && q.stage < 5 && (!R.raisedBy || !w.mythicGot || R.raisedBy(w, q)) && (!best || q.care > best.care)) best = q; });
+      if (best) { var bm = mealsTo(R, best.care, best.species, tip, R.petThresholds({}, best, tip)); h += '<p class="small ip-mp-tip">🎯 <b>Closest to unlocking it:</b> #' + best.id + (best.name ? ' ' + esc(best.name) : '') + ', ' + fmt(best.care) + ' / ' + fmt(N[5]) + ' care' + (bm ? ', about ' + bm + ' meal' + (bm === 1 ? '' : 's') + ' (one a day)' : '') + '.</p>'; } }
+    if (full) h += '<ul class="ip-list small"><li><b>Raise it yourself.</b> It counts if the Mythic never left your wallet, or you fed more than half its care. A Mythic you bought, swapped or were gifted doesn\'t unlock the short road.</li>' +
+      '<li><b>No stages skipped.</b> On the short road every stage comes sooner: Juvenile ' + fmt(S[2]) + ', Adult ' + fmt(S[3]) + ', Elder ' + fmt(S[4]) + '. Meals cost the same.</li>' +
+      '<li><b>Once Mythic, always Mythic</b>, even after a sale. The buyer\'s other pets stay on their own road.</li></ul>';
+    return h + '</div>'; }
+
   // ------------------------------------------------------------------ tips (each one is one tap away)
   var TIPS = {
     neglect: function (id) { var w = W(), p = pet(id), R = window.V2Render, si = p && R && R.starveInfo ? R.starveInfo(w, p) : null, meal = p && p.nextMeal;
@@ -57,9 +87,10 @@
     care: function (id) { var w = W(), p = pet(id); if (!w || !p) return '<p>Loading…</p>'; var n = careNext(w, p), ct = V2Render.careTarget(w, p, w.tip);
       return '<h3>📈 #' + p.id + ' care: ' + fmt(p.care) + '</h3>' + stageLadder(w, p) +
         (n ? '<p>' + esc(stageNames()[p.stage]) + ' → <b>' + n.next + '</b> at ' + fmt(n.at) + ' care: ' + fmt(n.need) + ' to go' + (n.meals ? ' · ' + n.meals + ' meal' + (n.meals === 1 ? '' : 's') + ' (one per chain day, up to ' + fmt(n.per) + ' care each) · earliest ~block ' + fmt(n.earliest) : '') + '.' + (n.skip && p.stage < 4 ? ' The Mythic shortcut comes first, so it skips ' + (p.stage < 3 ? 'Adult and Elder' : 'Elder') + '.' : '') + '</p>' : p.stage >= 5 ? '<p>Mythic: fully grown. Mythic pets never starve.</p>' : '') +
-        (ct.discount ? '<p class="small">' + TIPS.mythic() + '</p>' : '') + more('feed', 'Stages and meals'); },
+        (p.stage < 5 ? mythicRoad(w, p, false) + '<p class="small"><button type="button" class="q" data-ip="mythicPath" data-arg="' + p.id + '">🌕 How the short road works ▸</button></p>' : '') + more('feed', 'Stages and meals'); },
     mythic: function () { var c = V() && V().MYTHIC_DISCOUNT_CARE; return '<b>Mythic shortcut:</b> once an address raises a living Mythic, every pet it owns reaches Mythic at ' + fmt(c || 21000) + ' care instead of 69,069. That\'s why a Mythic can show less care than a pet still growing.'; },
     mythicRank: function () { return '<h3>Why is this Mythic\'s care lower?</h3><p>' + TIPS.mythic() + '</p>' + more('feed', 'Stages'); },
+    mythicPath: function (id) { var w = W(), p = id ? pet(id) : null; if (!w) return '<p>Loading…</p>'; return '<h3>🌕 The road to Mythic</h3>' + (mythicRoad(w, p, true) || '<p>' + TIPS.mythic() + '</p>') + more('feed', 'Stages and meals'); },
     hatch: function () { var T = (window.PetCore && PetCore.TIERS) || [], rows = T.slice(0, 4).map(function (t) { return '<tr><td>' + esc(t.name) + '</td><td>' + (t.chance / 100) + '%</td><td>+' + (t.statBonus || 0) + ' stats</td></tr>'; }).join('');
       return '<h3>🥚 Hatch odds and upkeep</h3><table class="ip-tbl"><tr><th>Tier</th><th>Chance</th><th>Bonus</th></tr>' + rows + '</table>' +
         '<ul class="ip-list"><li>Pepe, Wojak, Chud, Peepo, Doge: any tier. Bobo, Mumu, Sarutobi, Lenny: Uncommon+. Snibby, KEVIN: Rare+. Dodo: Legendary only.</li><li>' + cpT('help-egg', '1 in 777 eggs is a Bitcoin Wizard.') + '</li>' +
@@ -221,6 +252,7 @@
   // ------------------------------------------------------------------ items 7, 8, 9, 10: '?' next to existing headings
   function addQ(sel, key, label) { var h = d.querySelector(sel); if (!h || h.querySelector('.ip-q[data-ip="' + key + '"]')) return; h.insertAdjacentHTML('beforeend', ' ' + q(key, null, label)); }
   function heads() { addQ('#hatchPanel > h2', 'hatch', 'Hatch odds and upkeep'); addQ('#battlePanel > h3', 'fight', 'How fights work, what\'s at stake'); addQ('#breedPanel > h2', 'breed', 'Breeding odds');
+    var ph = d.querySelector('#petsPanel > h2'); if (ph && !ph.querySelector('.ip-mp-chip')) ph.insertAdjacentHTML('beforeend', ' <button type="button" class="q ip-mp-chip" data-ip="mythicPath" aria-label="The road to Mythic">🌕 Road to Mythic</button>');
     var rb = d.querySelector('#invPanel .lair-h') ; if (rb && !rb.querySelector('[data-ip=roll]')) rb.insertAdjacentHTML('beforeend', ' ' + q('roll', null, 'How gear rolls work'));
     /* locked Lair slots: tap says why */ d.querySelectorAll('#invPanel [data-slot].locked:not([data-ip]), #invPanel .slot.locked:not([data-ip])').forEach(function (s) { s.setAttribute('data-ip', 'slot'); s.setAttribute('data-arg', s.getAttribute('data-slot') || ''); });
     /* fight stat letters get their full names on hover / long-press */ d.querySelectorAll('#faceoff .sk:not([title])').forEach(function (k) { var n = { VIG: 'Vigor', SPA: 'Spark', GRI: 'Grit', ZOO: 'Zoom', LUC: 'Luck' }[k.textContent]; if (n) k.title = n; }); }
