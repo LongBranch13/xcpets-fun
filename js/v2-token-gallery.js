@@ -36,7 +36,7 @@
       /* A partial view only holds one wallet. A pet that is not in it is not known to be dead, so the feed row stays.
          Once every living pet has been read, a missing pet is not alive and stays out of the parade. */
       if (p && !alive(p)) return;
-      if (!p && w && w._ranked) return;
+      if (!p && w && (w._ranked || build.lead)) return;
       e.listed = !!listed[e.id]; out.push(e); });
     /* same block: api/ties.json order (its index); ties replayed past the feed come after, by tx then id */
     out.sort(function (a, b) { return a.block - b.block || (a.idx === b.idx ? 0 : a.idx === Infinity ? 1 : b.idx === Infinity ? -1 : a.idx - b.idx) || String(a.tx).localeCompare(String(b.tx)) || a.id - b.id; });
@@ -89,6 +89,16 @@
     var went = 0; /* board-stall-1123: go() runs once, from the board read or from the 45 s safety below, and a failure shows on screen instead of a frozen 'Reading…' */
     function go() { if (went) return; went = 1; try { st.list = build(feed); wire(); render(); window.V2TokenGallery = { list: function () { return st.list; } }; } catch (e) { var s0 = $('status'); if (s0) s0.textContent = 'Proof Parade could not load. Refresh the page to try again.'; if (window.console) console.warn('[tokens]', e); } }
     var w = null; try { w = M && M.world(); } catch (e) {}
+    /* lead-1123: the server's lead file holds every tokenized pet (dead ones too), so the parade needs that small file, not every pet */
+    if (w && w._view && !w._ranked && window.V2Split && V2Split.loadLead && !go.leadTried) {
+      go.leadTried = 1; var sL = $('status'); if (sL) sL.textContent = 'Getting the tokenized pets…';
+      var lDone = 0, lNext = function (L) { if (lDone) return; lDone = 1; if (L) { build.lead = 1; go(); } else boardRead(); };
+      V2Split.loadLead().then(lNext, function () { lNext(null); }); setTimeout(function () { lNext(null); }, 20000);
+      return;
+    }
+    boardRead();
+    function boardRead() {
+    w = null; try { w = M && M.world(); } catch (e) {}
     if (w && w._view && !w._ranked && window.V2Split && V2Split.loadBoard) {
       var s = $('status'); if (s) s.textContent = 'Reading every living pet…';
       V2Split.loadBoard(function (i, n) { if (s) s.textContent = 'Reading every living pet… ' + i + ' files, ' + fmt(n) + ' pets'; }).then(go, go);
@@ -96,5 +106,6 @@
       return;
     }
     go();
+    }
   });
 })();
