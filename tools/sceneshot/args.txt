@@ -1,1 +1,1 @@
---pages petdex.html,petdex.html?tab=hybrids
+--pages petdex.html?tab=hybrids,petdex.html
