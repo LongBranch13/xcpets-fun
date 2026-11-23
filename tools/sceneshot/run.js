@@ -23,6 +23,7 @@ async function shot(browser, page, who) {
   if (who !== 'new') await cx.addInitScript(a => { try { localStorage.setItem('xcpets-v2-me', a); localStorage.setItem('xcpets-tut-coach-skip', '1'); localStorage.setItem('xcpets-tut-seen', '1'); } catch (e) {} }, who);
   const pg = await cx.newPage(), errs = [], t0 = Date.now();
   pg.on('pageerror', e => errs.push(String(e.message || e).slice(0, 200)));
+  pg.on('console', m => { if ((m.type() === 'error' || m.type() === 'warning') && errs.length < 8 && !/Failed to load resource/.test(m.text())) errs.push(m.type() + ': ' + m.text().slice(0, 160)); });
   const base = page.replace(/\.html/, '').replace(/[^a-z0-9]+/gi, '-') + '-' + (who === 'new' ? 'new' : 'player');
   try {
     await pg.goto(SITE + '/' + page + (page.includes('?') ? '&' : '?') + 'shot=' + Date.now(), { waitUntil: 'domcontentloaded', timeout: 90000 });
@@ -36,6 +37,7 @@ async function shot(browser, page, who) {
     await pg.waitForTimeout(400);
     await pg.screenshot({ path: path.join(OUT, base + '-2top.png') });
     await pg.screenshot({ path: path.join(OUT, base + '-3full.png'), fullPage: true });
+    if (process.env.SHOT_PROBE) { try { errs.push('probe: ' + await pg.evaluate(process.env.SHOT_PROBE)); } catch (e) { errs.push('probe failed: ' + String(e.message || e).slice(0, 160)); } }
   } catch (e) { errs.push('goto: ' + String(e.message || e).slice(0, 200)); }
   await cx.close();
   return { page, who: who === 'new' ? 'new visitor' : 'player', secs: (Date.now() - t0) / 1000, errs };

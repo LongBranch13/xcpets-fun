@@ -25,7 +25,7 @@ jobs:
       - if: steps.on.outputs.go == '1'
         run: npm install --no-save --no-package-lock playwright-core@1
       - if: steps.on.outputs.go == '1'
-        run: node tools/sceneshot/run.js --branch $(cat tools/sceneshot/args.txt 2>/dev/null)
+        run: SHOT_PROBE="$(cat tools/sceneshot/probe.js 2>/dev/null)" node tools/sceneshot/run.js --branch $(cat tools/sceneshot/args.txt 2>/dev/null)
       - name: Commit the shots to this branch
         if: steps.on.outputs.go == '1'
         run: |
