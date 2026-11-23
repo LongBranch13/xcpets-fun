@@ -1,7 +1,7 @@
 /* mypets-calm (owner Nov 23 2026: "I want my pets to be easier to look at and sort. there is too much going on here"). LAYOUT ONLY:
  * no burn, no rule change, no new state. Every control stays in the page with the same id and the same handler; this file only moves
  * and restyles them so the pets are the first thing you see:
- *   1. one slim header line: pets · hungry · next meal day, with 🧹 Daily chores as a small button on the right
+ *   1. one header line: pets · hungry, with 🧹 Daily chores (full size, with its WAGMI + feed + spins note) on the right; the WAGMI streak bar stays above it
  *   2. one toolbar: 🔎 Find + ↕️ Sort + 🃏 view + ⚙️ More + ☑️ Select, then the rarity pills with "N of N pets match" on the right
  *   3. ⚙️ More opens a drawer: Show (species, token, Never fed only, zombie filters) and Care (Feed all hungry,
  *      Discard pile, next feed cycle) and a link to Flex Forge in The Rare Room
@@ -22,7 +22,8 @@
       '#petsPanel #streakBar{padding:6px 10px!important;margin:0 0 6px!important;flex-wrap:nowrap}#petsPanel #streakBar .sk-joke{display:none}#petsPanel #streakBar .sk-msg{flex:1 1 auto;min-width:0}#petsPanel #streakBar .sk-btn{flex:0 0 auto;width:auto;padding:4px 12px;min-height:36px;font-size:13px}#petsPanel #streakBar .sk-btn .cost{display:none}' +
       '#petsPanel .mpc-head{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;margin:2px 0 8px}#petsPanel .mpc-head .mpt-stat{margin:0!important;flex:1 1 auto;font-size:13px}' +
       '#petsPanel .mpc-head .mpt-stat br,#petsPanel .mpc-head .mpt-stat .mpt-next{display:none}#petsPanel .mpc-head #dcRow{margin:0!important;padding:0!important;flex:0 0 auto;justify-content:flex-end}' +
-      '#petsPanel .mpc-head #dcRow .dc-note{display:none}#petsPanel .mpc-head #dcBtn{font-size:14px;padding:6px 14px;min-height:38px}' +
+      /* owner Nov 23 2026: "I dont want to lose wagmi and daily chores": Daily chores keeps its full size and its one-line "WAGMI + feed + spins in one burn" note */
+      '#petsPanel .mpc-head #dcRow{display:flex;align-items:center;gap:4px 10px;flex-wrap:wrap}#petsPanel .mpc-head #dcRow .dc-note{display:inline;font-size:12px;max-width:340px}' +
       /* toolbar */
       '#petsPanel .petsticky{background:transparent}#petsPanel #ctlRow{display:flex;flex-wrap:nowrap;align-items:center;gap:8px;margin:0}' +
       '#petsPanel #ctlRow .mpt-view{flex:0 0 auto;min-height:40px}#petsPanel #ctlRow .psearch{flex:1 1 auto;min-width:0;display:flex;align-items:center;gap:4px}#petsPanel #ctlRow .psearch input{flex:1;min-width:0;width:100%;min-height:40px;font-size:15px}' +
@@ -49,7 +50,7 @@
       '#petsPanel #bulkRow #bulkOld{display:inline-flex;flex-wrap:wrap;gap:6px;align-items:center;order:-1}#petsPanel #bulkRow #selCount,#petsPanel #bulkRow #selMode{display:none}' +
       '#petsPanel #bulkRow #mpcDone{order:0}#petsPanel #bulkRow #bFeedKept{order:1;font-size:14px!important;padding:8px 14px!important;min-height:42px;margin-left:auto}#petsPanel #bulkRow .mpt-alt{order:2}#petsPanel #bulkRow #selLair{order:3}#petsPanel #bulkRow #bFeedKept .cost{display:block;font-size:11px}' +
       '#petsPanel #bulkRow .mpt-alt{display:inline-flex;gap:6px;order:2}#petsPanel #bulkRow #bFeedHungry,#petsPanel #bulkRow #bDiscAsk{display:none!important}' +
-      '@media (max-width:640px){#petsPanel #ctlRow{flex-wrap:wrap}#petsPanel #ctlRow .psearch{flex:1 1 100%}#petsPanel #ctlRow .psort{flex:1 1 0;min-width:0}#petsPanel #ctlRow .psort xc-select{flex:1;min-width:0}' +
+      '@media (max-width:640px){#petsPanel .mpc-head #dcRow{flex:1 1 100%}#petsPanel .mpc-head #dcRow .dc-note{flex:1 1 140px}#petsPanel #ctlRow{flex-wrap:wrap}#petsPanel #ctlRow .psearch{flex:1 1 100%}#petsPanel #ctlRow .psort{flex:1 1 0;min-width:0}#petsPanel #ctlRow .psort xc-select{flex:1;min-width:0}' +
         '#petsPanel #ctlRow .psort{font-size:0}#petsPanel #ctlRow .psort xc-select{font-size:14px}#petsPanel #ctlRow .mpc-tb,#petsPanel #ctlRow .mpt-view{padding-left:8px;padding-right:8px;font-size:13px}#petsPanel .mpc-rar{flex-wrap:wrap}#petsPanel .mpc-rar #fRarRow{flex:1 1 100%;flex-wrap:nowrap;overflow-x:auto}#petsPanel .mpc-rar #fShowingSlot{display:none}' +
         'body.selmode #petsPanel #bulkRow,body.mpc-sel #petsPanel #bulkRow{bottom:0;width:100%;border-radius:10px 10px 0 0;border-width:3px 0 0;padding:8px 10px calc(8px + env(safe-area-inset-bottom))}' +
         '#petsPanel #bulkRow #bFeedKept{flex:1 1 100%;order:3}#petsPanel #bulkRow .mpt-alt{order:2}#petsPanel #bulkRow .selall{font-size:13px}}';
