@@ -77,7 +77,8 @@ jobs:
         if: steps.ready.outputs.go && env.UPDATE == '' && env.SERIES == '' && env.RECAP == ''
         run: node --max-old-space-size=6000 hatchbot/announce.js --state state/state.json
       - name: Save memory
-        if: steps.ready.outputs.go && env.UPDATE == '' && env.SERIES == '' && env.RECAP == ''
+        # always(): also after a crash, hang or timeout, so what was already posted is never posted again
+        if: always() && steps.ready.outputs.go && env.UPDATE == '' && env.SERIES == '' && env.RECAP == ''
         run: |
           [ -f state/state.json ] || exit 0
           cd state && git init -q && git checkout -q -b hatchbot-state
