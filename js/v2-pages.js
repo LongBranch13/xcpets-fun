@@ -373,7 +373,15 @@
   }
   function ranking() {
     var w0 = M.world();
-    if (w0 && w0._view && !w0._ranked && !ranking.gaveUp && window.V2Split && V2Split.loadBoard) {
+    /* lead-1123: the server's small lead file paints the first rows in a second or two; every living pet (rank.json) is read only when
+     * a view needs more (a species, Show more past the file, Find, This week on Battle wins, Hall of Fame, Trait rarity, Rare finds). */
+    if (w0 && w0._view && !w0._ranked && !ranking.gaveUp && !ranking.leadTried && window.V2Split && V2Split.loadLead) {
+      ranking.leadTried = 1; var stL = $('status'); if (stL) stL.textContent = 'Getting the boards…';
+      var lGo = 0; function lOnce(L) { if (lGo) return; lGo = 1; ranking.lead = L || null; ranking(); }
+      V2Split.loadLead().then(lOnce, function () { lOnce(null); }); setTimeout(function () { lOnce(null); }, 20000);
+      return;
+    }
+    if (w0 && w0._view && !w0._ranked && !ranking.gaveUp && !ranking.lead && window.V2Split && V2Split.loadBoard) {
       var st0 = $('status'); if (st0) st0.textContent = 'Reading every living pet for the boards…';
       var rkGo = 0; function rkOnce(ok) { if (rkGo) return; rkGo = 1; var nw = M.world(); if (!ok || !nw || !nw._ranked) ranking.gaveUp = 1; ranking(); } /* board-stall-1123: a stalled board read falls back after 45 s instead of 'Reading…' forever */
       V2Split.loadBoard(function (i, n) { var s = $('status'); if (s) s.textContent = 'Reading every living pet… ' + i + ' files, ' + fmt(n) + ' pets'; }).then(function () { rkOnce(true); }, function () { rkOnce(false); });
@@ -385,9 +393,15 @@
     var w, live, tip, burned, burnedWk, winsWk, score = function (p) { return p.stage * 1e7 + streak(p, w.tip) * 1e5 + Math.min(p.care, 99999); };
     /* ranking tabs (ux-batch 2026-10-16, UI only): every board is computed from the same replayed world; dead and released pets never count */
     var WEEK = 1008, RW = [1, 3, 10, 33];
-    function capture() { rowGen = (typeof rowGen === 'number' ? rowGen : 0) + 1; w = M.world(); live = w.pets.filter(function (p) { return !p.dead && !p.released; }); tip = w.tip || M.state().tip || 0;
+    function capture() { rowGen = (typeof rowGen === 'number' ? rowGen : 0) + 1; w = M.world(); live = w.pets.filter(function (p) { return !p.dead && !p.released && !(ranking.lead && !w._ranked && (p.id | 0) === 1765); }); /* lead-1123: the full board leaves 1765 out, so the lead view does too */ tip = w.tip || M.state().tip || 0;
       burned = {}; burnedWk = {}; winsWk = {}; }
     capture();
+    /* lead-1123: Q = the lead file while the full board is not read yet. needFull() reads it (once) and redraws the same view. */
+    var Q = ranking.lead || null, fullP = null;
+    function quick() { if (Q && w._ranked) Q = ranking.lead = null; return Q; }
+    function needFull() { if (!quick()) return Promise.resolve(); if (fullP) return fullP; var s0 = $('status'); if (s0) s0.textContent = 'Reading every living pet for this view…';
+      fullP = V2Split.loadBoard(function (i, n) { var s = $('status'); if (s) s.textContent = 'Reading every living pet… ' + fmt(n) + ' pets'; }).then(function () { Q = ranking.lead = null; refreshWorld(true); }, function () { Q = ranking.lead = null; ranking.gaveUp = 1; refreshWorld(true); });
+      return fullP; }
     var power = function (p) { var s = p.stats || {}; return ['vigor', 'spark', 'grit', 'zoom', 'luck'].reduce(function (a, k) { return a + (s[k] || 0); }, 0); };
     var inWeek = function (b) { return b != null && b > tip - WEEK; };
     var BOARDS = [
@@ -420,7 +434,7 @@
     function crewName(sp) { return sp === 'hybrid' ? 'Hybrids' : spLabel(sp); }
     function crewOne(sp) { return sp === 'hybrid' ? 'hybrid' : crewName(sp); }
     function speciesIds() { var has = {}, ids = [];
-      (w.pets || []).forEach(function (p) { if (p.released) return; var k = spOf(p); if (k) has[k] = 1; });
+      (quick() ? Q.species.map(function (x) { return { species: x }; }) : (w.pets || [])).forEach(function (p) { if (p.released) return; var k = spOf(p); if (k) has[k] = 1; });
       (PetCore.SPECIES || []).forEach(function (s) { if (has[s.id]) { ids.push(s.id); has[s.id] = 2; } });
       Object.keys(has).filter(function (k) { return k !== 'hybrid' && has[k] === 1; }).sort(function (a, b) { return crewName(a).localeCompare(crewName(b)); }).forEach(function (k) { ids.push(k); });
       if (has.hybrid) ids.push('hybrid');
@@ -440,17 +454,21 @@
       if (B.id === 'wagmi') { var WA = (w.wagmi || {}), ow = Object.keys(WA).map(function (o) { return { o: o, s: V.streakOf(w, o, tip) }; }).filter(function (x) { return x.s.days > 0; });
         if (st.sp) { var wagmiOwn = {}; pool.forEach(function (p) { if (p.owner) wagmiOwn[p.owner] = 1; }); ow = ow.filter(function (x) { return wagmiOwn[x.o]; }); }
         pool.forEach(function (p) { if (!best[p.owner] || p.tier > best[p.owner].tier || (p.tier === best[p.owner].tier && p.stage > best[p.owner].stage)) best[p.owner] = p; });
+        if (quick() && !st.sp) ow.forEach(function (x) { var b = Q.best[x.o], p = b && w.byId[b[0]]; if (p) best[x.o] = p; }); /* lead-1123 */
         ow.sort(function (a, b) { return b.s.current - a.s.current || b.s.best - a.s.best || b.s.days - a.s.days || (a.o < b.o ? -1 : 1); });
         return ow.map(function (x) { return { owner: x.o, p: best[x.o] || null, score: x.s.current ? '🔥 ' + x.s.current + '-day WAGMI' : '<span class="badge bad">💀 NGMI</span>', sub: 'best ' + x.s.best + ' · ' + x.s.days + ' day' + (x.s.days === 1 ? '' : 's') + ' said' + (x.s.today ? ' · ✓ today' : '') }; }); }
       if (B.id === 'burn') { var burnOwn = null; if (st.sp) { burnOwn = {}; pool.forEach(function (p) { if (p.owner) burnOwn[p.owner] = 1; }); }
         Object.keys(wk ? burnedWk : burned).forEach(function (o) { if (burnOwn && !burnOwn[o]) return; add(o, (wk ? burnedWk : burned)[o]); }); }
-      pool.forEach(function (p) { var fresh = !wk || inWeek(p.hatchBlock);
+      var QL = quick() && !st.sp && B.id !== 'burn' && Q.players[B.id + (wk ? ':week' : '')]; /* lead-1123: the server's totals per wallet */
+      if (QL) QL.forEach(function (e) { m[e.o] = e.v; best[e.o] = w.byId[e.id] || null; });
+      else pool.forEach(function (p) { var fresh = !wk || inWeek(p.hatchBlock);
         if (B.id === 'pets' && fresh) add(p.owner, 1, p);
         if (B.id === 'rare' && fresh) add(p.owner, RW[p.tier] || 0, p);
         if (B.id === 'leg' && fresh && p.tier === 3) add(p.owner, 1, p);
         if (B.id === 'wins') add(p.owner, wk ? (winsWk[p.id] || 0) : (p.wins || 0), p);
         if (B.id === 'power') { var v = power(p); if (!m[p.owner] || v > m[p.owner]) { m[p.owner] = v; best[p.owner] = p; } }
         if (B.id === 'burn' && m[p.owner] && (!best[p.owner] || p.tier > best[p.owner].tier)) best[p.owner] = p; });
+      if (B.id === 'burn' && quick() && !st.sp) Object.keys(m).forEach(function (o) { var b = Q.best[o], p = b && w.byId[b[1]]; if (p) best[o] = p; });
       var unit = { pets: ' pets', rare: ' pts', leg: ' Legendary', wins: ' wins', power: ' power', burn: ' XCPETS' }[B.id];
       return Object.keys(m).filter(function (o) { return m[o] > 0; }).sort(function (a, b) { return m[b] - m[a] || (a < b ? -1 : 1); }).map(function (o) { return { owner: o, p: best[o] || null, score: B.id === 'power' && best[o] ? '<span' + ptA(best[o]) + '>' + fmt(m[o]) + unit + '</span>' : fmt(Math.round(m[o] * 1e8) / 1e8) + unit, sub: B.id === 'power' && best[o] ? shardSub(best[o]) : undefined }; }); }
     var MED = ['🥇', '🥈', '🥉'], TCOL = ['#9aa3b5', '#4fd18b', '#4f9dff', '#ffc93c'];
@@ -458,9 +476,17 @@
     /* rank-speed-1123 (Jake: 'rankings page went unresponsive'): the rows of a board are built once per world copy and reused by every
      * render (Show more, Find me, Find a pet, the podium) instead of re-sorting every living pet on each tap. capture() starts a new copy. */
     var rowMemo = {}, rowGen = 0;
-    function cur() { var B = board(), md = mode(B), wk = !!B.week && st.span === 'week', k = rowGen + '|' + B.id + '|' + md + '|' + wk + '|' + st.sp, rows = rowMemo[k];
-      if (!rows) { rowMemo = {}; rows = rowMemo[k] = md === 'pets' ? petRows(B, wk) : playerRows(B, wk); }
-      return { B: B, md: md, wk: wk, rows: rows }; }
+    /* lead-1123: which views the lead file answers exactly: every board's whole list (no species), all time, plus This week on the player
+     * boards the server totals. Pet boards hold the true top 300 of that board; total = the board's real size, for the count. */
+    function quickOK(B, md, wk) { if (!quick() || st.sp || B.hof || B.trait || B.finds) return false;
+      if (md === 'pets') return !wk && !!Q.tops[B.id];
+      return B.id === 'wagmi' || B.id === 'burn' || !!Q.players[B.id + (wk ? ':week' : '')]; }
+    function cur() { var B = board(), md = mode(B), wk = !!B.week && st.span === 'week', q = quickOK(B, md, wk), k = rowGen + '|' + B.id + '|' + md + '|' + wk + '|' + st.sp + '|' + (q ? 'q' : 'f'), rows = rowMemo[k];
+      if (!rows) { rowMemo = {}; rows = md === 'pets' ? petRows(B, wk) : playerRows(B, wk); if (q && md === 'pets') rows = rows.slice(0, Q.tops[B.id].length); rowMemo[k] = rows; }
+      var total = rows.length, ck = 'players:' + B.id + (wk ? ':week' : '');
+      if (q && md === 'pets' && Q.counts[B.id] != null) total = Q.counts[B.id];
+      if (q && md === 'players' && B.id !== 'wagmi' && B.id !== 'burn' && Q.counts[ck] != null) total = Q.counts[ck];
+      return { B: B, md: md, wk: wk, rows: rows, quick: q, total: Math.max(total, rows.length) }; }
     function wireBoards() { $('board').querySelectorAll('[data-board]').forEach(function (x) { x.onclick = function () { st.board = x.dataset.board; if (st.board !== 'hof') st.base = st.board; if (st.board !== 'hof' && st.hofAuto) { st.sp = ''; st.hofAuto = false; } /* rankings-tidy: the species the Hall of Fame picked by itself does not follow you to other boards */ st.n = STEP; st.hits = null; st.all = null; $('boardAll').onclick = more; try { var u = new URL(location.href); ['pets', 'alive', 'page', 'pet'].forEach(function (k) { u.searchParams.delete(k); }); history.replaceState(null, '', u); } catch (e) { } /* trait-rank-1101: the Trait rarity board's own params do not follow to other boards */ render(); }; }); }
     function tabsHtml(on) { return '<div class="pettabs rktabs" role="tablist">' + BOARDS.map(function (x) { var sel = x.id === on; return '<button type="button" role="tab" class="tab' + (sel ? ' on' : '') + '" data-board="' + x.id + '" aria-selected="' + sel + '">' + esc(x.label) + '</button>'; }).join('') + '</div>'; }
     function syncUrl() { try { var u = new URL(location.href), B = board(); u.searchParams.set('board', B.id);
@@ -501,6 +527,9 @@
       h.innerHTML = ''; h.appendChild(t); var on = t.querySelector('.on'); if (on && t.scrollWidth > t.clientWidth) t.scrollLeft = Math.max(0, on.offsetLeft - t.offsetLeft - 16); }
     if (window.MutationObserver && !ranking.mo) { ranking.mo = new MutationObserver(liftTabs); ranking.mo.observe($('board'), { childList: true }); }
     function render() {
+      /* lead-1123: a view the lead file cannot answer (a species, Show more past it, Battle wins this week, Hall of Fame, Trait rarity, Rare finds) reads every pet first */
+      if (quick()) { var B0 = board(), c00 = quickOK(B0, mode(B0), !!B0.week && st.span === 'week') && cur();
+        if (!c00 || (st.n > c00.rows.length && c00.total > c00.rows.length)) { needFull(); return; } }
       document.body.classList.toggle('rk-finds', !!board().finds);
       if (board().finds) { syncUrl(); var sh = $('rkSpecies'); if (sh) sh.innerHTML = '';
         $('status').textContent = '';
@@ -529,22 +558,22 @@
           [0, 1, 2, 3, 4].map(function (i) { var a = F5[i]; return '<li' + (a && a === ME ? ' class="me"' : '') + '>' + (a ? '<b title="' + esc(a) + '">' + esc(short(a)) + '</b>' + (a === ME ? ' (you)' : '') : '<span class="muted">open</span>') + '</li>'; }).join('') + '</ol></div>'; }
       var empty = st.sp ? 'No living ' + esc(crewOne(st.sp)) + ' on this board yet.' : (B.id === 'wagmi' ? '🚀 Nobody has said WAGMI yet. Say it once a chain day on the <a href="play.html#petsPanel">My Pets</a> 🔥 bar and you\u2019re first on the board.' : 'Nobody on this board yet.');
       $('board').innerHTML = tabs + ctl + f5 + (rows.length ? '<div class="tw"><table class="board">' + head + body + foot + '</table></div>' : '<p class="muted small">' + empty + '</p>');
-      var bAll = $('boardAll'); bAll.style.display = rows.length > st.n ? '' : 'none'; bAll.textContent = 'Show more (' + fmt(rows.length - st.n) + ' left)';
+      var bAll = $('boardAll'), tot = c0.total || rows.length; bAll.style.display = tot > st.n ? '' : 'none'; bAll.textContent = 'Show more (' + fmt(tot - st.n) + ' left)';
       dressCanvases($('board'), w);
       wireBoards();
       $('board').querySelectorAll('[data-mode]').forEach(function (x) { x.onclick = function () { st.mode = x.dataset.mode; st.n = STEP; st.hits = null; st.all = null; render(); }; });
       $('board').querySelectorAll('[data-span]').forEach(function (x) { x.onclick = function () { st.span = x.dataset.span; st.n = STEP; st.hits = null; st.all = null; render(); }; });
-      if ($('rkFind')) $('rkFind').onclick = function () { if (mineRank < 0) { $('rkFind').textContent = '📍 Not on this board yet'; return; } if (mineRank >= st.n) { st.n = mineRank + 1; render(); } var e = $('rk' + mineRank); if (e) { e.scrollIntoView({ block: 'center' }); e.classList.add('flash'); } };
+      if ($('rkFind')) $('rkFind').onclick = function () { if (mineRank < 0 && quick()) { needFull().then(function () { var f = $('rkFind'); if (f) f.click(); }); return; } if (mineRank < 0) { $('rkFind').textContent = '📍 Not on this board yet'; return; } if (mineRank >= st.n) { st.n = mineRank + 1; render(); } var e = $('rk' + mineRank); if (e) { e.scrollIntoView({ block: 'center' }); e.classList.add('flash'); } };
       var tail = md === 'pets' ? (st.sp ? crewOne(st.sp) + ' pet' : 'pet') : 'player';
       var extra = md === 'players' && st.sp ? ' with a living ' + crewOne(st.sp) : '';
-      $('status').textContent = fmt(rows.length) + ' ' + tail + (rows.length === 1 ? '' : 's') + extra + ' on this board.'; /* owner Oct 28 2026: plain words, no burn count */
+      var cnt = c0.total || rows.length; $('status').textContent = fmt(cnt) + ' ' + tail + (cnt === 1 ? '' : 's') + extra + ' on this board.'; /* owner Oct 28 2026: plain words, no burn count */
     }
     $('boardAll').onclick = more;
     /* content-fixes 2026-10-19: Find my pet searches EVERY row of the current board (not only the loaded ones), loads up to the first hit and highlights it.
      * q = { id: N } | { text: 'name' } | { owner: address }. Returns the number of matches. Used by js/ux-polish.js rankingFind(). */
     /* bigfix 2026-10-20: every match is highlighted; matches beyond the first 50 load with 'Show more matches (N left)' */
     function mark() { (st.hits || []).forEach(function (i) { var e = $('rk' + i); if (e) e.classList.add('uxp-hit'); }); var b = $('rkMoreHits'); if (b) b.onclick = function () { st.hits = st.all.slice(0, st.hits.length + 50); render(); mark(); }; }
-    window.V2Ranking = { find: function (q) { if (board().trait) return V2TraitRank.find ? V2TraitRank.find(q) : 0; var c = cur(), hits = [];
+    window.V2Ranking = { find: function (q) { if (quick()) return needFull().then(function () { return window.V2Ranking.find(q); }); /* lead-1123: Find searches every pet */ if (board().trait) return V2TraitRank.find ? V2TraitRank.find(q) : 0; var c = cur(), hits = [];
       c.rows.forEach(function (r, i) { var p = r.p, own = r.owner || (p && p.owner) || '';
         if (q.id != null ? p && p.id === q.id : q.owner ? own === q.owner : q.text ? (p && String(p.name).toLowerCase().indexOf(String(q.text).toLowerCase()) >= 0) || own.toLowerCase() === String(q.text).toLowerCase() : false) hits.push(i); });
       st.all = hits; st.hits = hits.slice(0, 50); render(); if (!hits.length) return 0; mark(); var e0 = $('rk' + hits[0]); if (e0) { e0.scrollIntoView({ block: 'center' }); e0.classList.add('flash'); } return hits.length; } };
@@ -552,7 +581,7 @@
     /* wagmi-daily (owner, Oct 22 2026): the NGMI panel (#nearDeath) used to list the 10 living pets closest to starving. It now lists wallets that own
      * living pets but have NOT said WAGMI in the current chain day ("didn't make it today"). Display only, from the replay (w.wagmi via streakOf).
      * Order: biggest live streak at risk first, then best streak ever, then most pets, then address. Starve warnings stay on Play and pet pages. */
-    function paintNgmi() { if (!$('nearDeath')) return; var tipB = w.tip, npets = {}; w.pets.forEach(function (p) { if (!p.dead && !p.released && !p.community && p.owner) npets[p.owner] = (npets[p.owner] || 0) + 1; });
+    function paintNgmi() { if (!$('nearDeath')) return; var tipB = w.tip, npets = {}; if (quick()) Object.keys(Q.own).forEach(function (o) { if (o) npets[o] = Q.own[o]; }); else w.pets.forEach(function (p) { if (!p.dead && !p.released && !p.community && p.owner) npets[p.owner] = (npets[p.owner] || 0) + 1; });
       var miss = Object.keys(npets).map(function (o) { return { o: o, n: npets[o], s: V.streakOf(w, o, tipB) }; }).filter(function (x) { return !x.s.today; })
         .sort(function (a, b) { return b.s.current - a.s.current || b.s.best - a.s.best || b.n - a.n || (a.o < b.o ? -1 : 1); });
       var NG = { n: STEP }, ngRow = function (x, i) { var s = x.s, risk = s.current ? '🔥 ' + s.current + '-day streak ends if no WAGMI today' : s.days ? '💀 NGMI · best ' + s.best + '-day streak' : '💤 never said WAGMI';
@@ -568,7 +597,9 @@
     var refreshing = false, lastRows = (M.state().rows || []).length;
     /* rank-speed-1123: the view-world poll calls back every 60 s even when nothing changed (same world copy, same tip); redoing every board
      * over ~160,000 pets then froze the page for seconds (Jake tapped Home mid-refresh). Same copy = nothing to redo. */
-    function refreshWorld() { var nw = M.world(); if (nw && nw === w && (nw.tip || 0) === (w.tip || 0) && (M.state().rows || []).length === lastRows) return; if (refreshing) return; refreshing = true; lastRows = (M.state().rows || []).length; try { capture(); tally(); icoMemo = {}; paintNgmi(); render(); } catch (e) { try { console.warn('[v2] ranking refresh', e); } catch (x) { } } refreshing = false; }
+    function refreshWorld(force) { var nw = M.world();
+      if (Q && nw && !nw._ranked && Q.pets[0] && nw.byId && !nw.byId[Q.pets[0].id] && V2Split.remergeLead) { V2Split.remergeLead(); return; } /* lead-1123: a rebuilt view world gets the lead pets back (and comes here again) */
+      if (!force && nw && nw === w && (nw.tip || 0) === (w.tip || 0) && (M.state().rows || []).length === lastRows) return; if (refreshing) return; refreshing = true; lastRows = (M.state().rows || []).length; try { capture(); tally(); icoMemo = {}; paintNgmi(); render(); } catch (e) { try { console.warn('[v2] ranking refresh', e); } catch (x) { } } refreshing = false; }
     if (M.onFresh) M.onFresh(refreshWorld);
     var lastPoll = Date.now();
     function poll() { if (!M.refresh || document.hidden) return; lastPoll = Date.now(); M.refresh(refreshWorld); }
