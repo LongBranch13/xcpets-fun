@@ -26,7 +26,7 @@ jobs:
       - run: npm install --no-save --no-package-lock playwright-core@1
       - name: Fast network
         env: { WALLETS: '${{ github.event.inputs.wallets }}', PAGES: '${{ github.event.inputs.pages }}', BRANCH_FLAG: "${{ github.ref != 'refs/heads/main' && '--branch' || '' }}" }
-        run: node tools/loadprobe/run.js --profile --scroll ${BRANCH_FLAG} ${WALLETS:+--wallets "$WALLETS"} --pages "${PAGES:-play.html,breed.html}"
+        run: node tools/loadprobe/run.js --verify --profile --scroll ${BRANCH_FLAG} ${WALLETS:+--wallets "$WALLETS"} --pages "${PAGES:-play.html,breed.html}"
       - name: Server world blocked (in-browser rebuild)
         if: always() && (github.event_name == 'push' || github.event.inputs.noworld == 'true')
         env: { WALLETS: '${{ github.event.inputs.wallets }}', BRANCH_FLAG: "${{ github.ref != 'refs/heads/main' && '--branch' || '' }}" }
@@ -34,4 +34,4 @@ jobs:
       - name: Phone network, slower CPU
         if: always() && (github.event_name == 'push' || github.event.inputs.slow == 'true')
         env: { WALLETS: '${{ github.event.inputs.wallets }}', BRANCH_FLAG: "${{ github.ref != 'refs/heads/main' && '--branch' || '' }}" }
-        run: node tools/loadprobe/run.js --slow --profile --scroll ${BRANCH_FLAG} --pages play.html --wallets "${WALLETS:-bc1pfvkpmllr7mtn5uazqxumwp39h2ny3c8l6fmrgvjv2cqn5wlpt7hssf3gqd}"
+        run: node tools/loadprobe/run.js --verify --slow --profile --scroll ${BRANCH_FLAG} --pages play.html --wallets "${WALLETS:-bc1pfvkpmllr7mtn5uazqxumwp39h2ny3c8l6fmrgvjv2cqn5wlpt7hssf3gqd}"

@@ -11,6 +11,8 @@
  * --no-world: the server's ready-made world is made unreachable (node.xcpets.fun/xp/v1/world/*), so the page rebuilds the game in the browser, the
  *   situation of the Nov 22 2026 'Page Unresponsive' report. --scroll: after loading, scroll My Pets to the bottom and count blank pet pictures.
  *   Every run also records main-thread freezes (long tasks: count, total, longest) and, with --profile, the functions that used the main thread most.
+ * --verify: after the load, start the background chain check (what a burn or the Verify button starts: 'Applying the newest blocks…')
+ *   and time each of its steps (the worker's own timings) until burns would open.
  * Writes loadprobe.md (also to the GitHub step summary when GITHUB_STEP_SUMMARY is set). Read-only. */
 'use strict';
 const fs = require('fs');
@@ -18,6 +20,7 @@ const A = process.argv.slice(2), opt = (k, d) => { const i = A.indexOf(k); retur
 const SITE = opt('--site', 'https://xcpets.fun').replace(/\/$/, ''), MAX_WAIT = +opt('--max-wait', 180) * 1000, SLOW = A.includes('--slow');
 const EMPTY_S = +opt('--empty-after', 90);
 const NO_WORLD = A.includes('--no-world'), SCROLL = A.includes('--scroll'), PROFILE = A.includes('--profile');
+const VERIFY = A.includes('--verify');
 const BRANCH = A.includes('--branch'), ROOT = require('path').resolve(__dirname, '../..');
 const WALLETS = (opt('--wallets', '') || [
   'bc1pfvkpmllr7mtn5uazqxumwp39h2ny3c8l6fmrgvjv2cqn5wlpt7hssf3gqd', /* Evan */
@@ -71,12 +74,30 @@ async function probe(browser, page, addr, branch) {
   let blank = null, scroll = null, lt = [], top = null;
   try { blank = await pg.evaluate(BLANK_SRC); } catch (e) {}
   if (SCROLL) try { scroll = await scrollTest(pg); } catch (e) { errors.push('scroll: ' + String(e.message || e).slice(0, 120)); }
+  let verify = null;
+  if (VERIFY) try { verify = await verifyTest(pg); } catch (e) { errors.push('verify: ' + String(e.message || e).slice(0, 120)); }
   try { lt = await pg.evaluate(() => window.__probeLT || []); } catch (e) {}
   if (prof) try { const { profile } = await prof.send('Profiler.stop'); top = topFns(profile); top.tasks = taskFns(profile, prof.t0Page, lt); } catch (e) { errors.push('profile: ' + String(e.message || e).slice(0, 120)); }
   await cx.close();
   const by = {}; let total = 0; reqs.forEach(r => { const k = kind(r.u); by[k] = by[k] || { n: 0, b: 0 }; by[k].n++; by[k].b += r.b; total += r.b; });
   return { branch: !!branch, page, addr, tWorld, tDraw, tFull, st, errors, total, n: reqs.length, by, big: reqs.sort((a, b) => b.b - a.b).slice(0, 8), secs: (Date.now() - t0) / 1000,
-    blank, scroll, lt, top };
+    blank, scroll, lt, top, verify };
+}
+/* Start the check worker (V2Split.startVerify) and note when each bar text first shows, plus the worker's own step timings. */
+async function verifyTest(pg) {
+  const has = await pg.evaluate(() => !!(window.V2Split && V2Split.startVerify && window.V2Mock && V2Mock.state && V2Mock.state().view));
+  if (!has) return { skipped: 'page did not paint from the published world' };
+  const t0 = Date.now(), seen = [];
+  await pg.evaluate(() => { window.__probeVerify = null; V2Split.startVerify().then(m => { window.__probeVerify = m || { ok: false }; }, () => { window.__probeVerify = { ok: false }; }); });
+  let done = null, last = '';
+  while (Date.now() - t0 < 300000) {
+    await pg.waitForTimeout(200);
+    const r = await pg.evaluate(() => { const b = document.getElementById('splitViewBar'), sl = document.getElementById('statusLine');
+      return { bar: b ? b.textContent.replace(/\s+/g, ' ').replace(/[0-9]+ \/ [0-9]+ files/, 'N files').slice(0, 80) : '', line: sl ? sl.textContent.slice(0, 80) : '', done: window.__probeVerify, t: window.__xcpVerifyT || null }; });
+    if (r.bar !== last) { seen.push([((Date.now() - t0) / 1000).toFixed(1), r.bar]); last = r.bar; }
+    if (r.done) { done = r; break; }
+  }
+  return { secs: (Date.now() - t0) / 1000, ok: !!(done && done.done && done.done.ok), t: done && done.t, seen, line: done && done.line };
 }
 /* Pet pictures on screen that are still one flat colour (black square / empty) = not drawn yet. Runs in the page. */
 const BLANK_SRC = `(() => { const out = { onScreen: 0, blank: 0, cards: document.querySelectorAll('#pets .pet.card').length };
@@ -154,6 +175,13 @@ const MB = b => (b / 1e6).toFixed(2) + ' MB', S = s => s == null ? '–' : s.toF
   if (PROFILE) { md += '\n## Where the main thread went (CPU profile, self time)\n\n';
     for (const r of detail) if (r.top) md += `**${r.page}${r.branch ? ' (branch)' : ''} · ${r.addr.slice(0, 8)}…** files: ` + r.top.files.map(([k, v]) => k + ' ' + v + ' ms').join(' · ') + '\n\n' + r.top.fns.map(([k, v]) => '- ' + v + ' ms ' + k.replace(/\|/g, '/')).join('\n') + '\n\n' +
       (r.top.tasks && r.top.tasks.length ? 'Longest tasks:\n' + r.top.tasks.map(x => `- ${x.ms} ms at ${(x.at / 1000).toFixed(1)} s: inside ${x.self} | started by ${x.from}`).join('\n') + '\n\n' : ''); }
+  if (VERIFY) { md += '\n## Background chain check (burns wait for this)\n\nWorker step times are cumulative seconds from the start.\n\n';
+    for (const r of detail) { const v = r.verify; if (!v) continue;
+      md += `**${r.page}${r.branch ? ' (branch)' : ''} · ${r.addr.slice(0, 8)}…** ` + (v.skipped ? v.skipped : `${v.ok ? 'done' : 'NOT done'} in ${v.secs.toFixed(1)} s`) + '\n\n';
+      if (v.t) md += '- worker: ' + Object.entries(v.t).filter(([k]) => k !== 't0').map(([k, x]) => k + ' ' + (/^(rows|nFiles|from|to|bytes)$/.test(k) ? x : (x / 1000).toFixed(1) + ' s')).join(' · ') + '\n';
+      if (v.seen) md += '- bar: ' + v.seen.map(([s1, b]) => s1 + ' s "' + b.replace(/\|/g, '/') + '"').join(' → ') + '\n';
+      if (v.line) md += '- status line after: ' + v.line.replace(/\|/g, '/') + '\n';
+      md += '\n'; } }
   md += '\n## Where the bytes go\n\n';
   for (const r of detail) {
     md += `**${r.page}${r.branch ? ' (branch)' : ''} · ${r.addr.slice(0, 8)}…** ` + Object.entries(r.by).sort((a, b) => b[1].b - a[1].b).map(([k, v]) => `${k} ${MB(v.b)} (${v.n})`).join(' · ') + '\n\nBiggest: ' + r.big.map(b => b.u.replace(/\?.*/, '').split('/').slice(-2).join('/') + ' ' + MB(b.b)).join(' · ') + '\n\n';
