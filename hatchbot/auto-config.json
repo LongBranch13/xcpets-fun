@@ -22,5 +22,5 @@
   },
   "recap": true,
   "recap_hour_ct": 8,
-  "commands": { "rate": true }
+  "commands": { "rate": false }
 }

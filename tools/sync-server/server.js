@@ -1,5 +1,6 @@
 'use strict';
-/* HTTP surface for xcpets-sync. GET, HEAD and OPTIONS only. POST, PUT and DELETE are 405. */
+/* HTTP surface for xcpets-sync. GET, HEAD and OPTIONS, plus POST for /xp/v1/check only (the burn check, Nov 23 2026). Other POSTs, PUT
+ * and DELETE are 405. */
 const http = require('http'), fs = require('fs'), path = require('path'), zlib = require('zlib'), { URL } = require('url');
 const { buildAnswer } = require('./answer');
 const { hostKind } = require('./client');
@@ -7,7 +8,7 @@ const { clientIp } = require('./net');
 const { answer: graveAnswer } = require('./graves');
 function rateLimit(max) { const hits = new Map(); return function (ip) { const now = Date.now(), slot = hits.get(ip) || { t: now, n: 0 };
   if (now - slot.t > 10000) { slot.t = now; slot.n = 0; } slot.n++; hits.set(ip, slot); return slot.n <= max; }; }
-function cors(res) { res.setHeader('Access-Control-Allow-Origin', '*'); res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS'); res.setHeader('Access-Control-Expose-Headers', 'ETag'); res.setHeader('Vary', 'Accept-Encoding'); }
+function cors(res) { res.setHeader('Access-Control-Allow-Origin', '*'); res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, POST, OPTIONS'); res.setHeader('Access-Control-Expose-Headers', 'ETag'); res.setHeader('Vary', 'Accept-Encoding'); }
 function send(req, res, status, body, headers) {
   cors(res); Object.keys(headers || {}).forEach(k => res.setHeader(k, headers[k]));
   if (req.method === 'HEAD') { res.writeHead(status); res.end(); return; }
@@ -43,6 +44,22 @@ function worldFile(dataDir, parts) {
   if (!p.startsWith(root + path.sep)) return null;
   return p;
 }
+/* POST /xp/v1/check body: { plans: [{ tag, amount?, anchor?, ... }], me, pending: [tag] }, sent as text/plain (no CORS preflight).
+ * Only plain values are passed on, at most 100 plans of 16 fields; the answer is never cached. */
+function cleanPlan(p) {
+  if (!p || typeof p !== 'object' || Array.isArray(p)) return null;
+  const o = {}; let n = 0;
+  for (const k of Object.keys(p)) { const v = p[k]; if (++n > 16) break; if (typeof v === 'string' ? v.length <= 400 : (typeof v === 'number' && isFinite(v)) || typeof v === 'boolean' || v === null) o[k] = v; }
+  return typeof o.tag === 'string' && o.tag ? o : null;
+}
+function checkBody(raw) {
+  let j; try { j = JSON.parse(raw); } catch (e) { return null; }
+  if (!j || !Array.isArray(j.plans) || !j.plans.length || j.plans.length > 100) return null;
+  const plans = j.plans.map(cleanPlan); if (plans.some(p => !p)) return null;
+  const me = typeof j.me === 'string' && j.me.length <= 100 ? j.me : '';
+  const pending = Array.isArray(j.pending) ? j.pending.filter(t => typeof t === 'string' && t.length <= 400).slice(0, 200) : [];
+  return { plans, me, pending };
+}
 function createServer(opts) {
   const getState = opts.getState, dataDir = opts.dataDir || path.join(require('os').tmpdir(), 'xcpets-sync');
   const allow = rateLimit(opts.ratePer10s || +(process.env.XP_RATE_PER_10S || 60));
@@ -53,6 +70,22 @@ function createServer(opts) {
     const limited = !/^\/xp\/v1\/world\/r[0-9a-f]{32}\/\d+\//.test(pathOnly);
     if (limited && !allow(ip)) { send(req, res, 429, { v: 1, error: 'slow down' }, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); return; }
     if (req.method === 'OPTIONS') { cors(res); res.setHeader('Access-Control-Max-Age', '86400'); res.writeHead(204); res.end(); return; }
+    if (req.method === 'POST' && pathOnly.replace(/\/+$/, '') === '/xp/v1/check') {
+      const H = { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' };
+      if (typeof opts.check !== 'function') { send(req, res, 503, { v: 1, ok: false, error: 'off' }, H); return; }
+      let raw = '', big = false;
+      req.setEncoding('utf8');
+      req.on('data', d => { if (big) return; raw += d; if (raw.length > 65536) { big = true; send(req, res, 413, { v: 1, ok: false, error: 'too big' }, H); } });
+      req.on('end', () => {
+        if (big) return;
+        const body = checkBody(raw); if (!body) { send(req, res, 400, { v: 1, ok: false, error: 'bad request' }, H); return; }
+        Promise.resolve(opts.check(body)).then(a => {
+          const out = a && a.ok ? { v: 1, ok: true, tip: a.tip, plans: a.plans || [], skip: a.skip || [] } : { v: 1, ok: false, error: (a && a.error) || 'not ready' };
+          send(req, res, 200, out, H);
+        }, () => send(req, res, 200, { v: 1, ok: false, error: 'failed' }, H));
+      });
+      return;
+    }
     if (req.method !== 'GET' && req.method !== 'HEAD') { cors(res); res.setHeader('Allow', 'GET, HEAD, OPTIONS'); res.writeHead(405); res.end(); return; }
     let u; try { u = new URL(req.url, 'http://127.0.0.1'); } catch (e) { send(req, res, 400, { v: 1, error: 'bad url' }); return; }
     const p = u.pathname.replace(/\/+$/, '') || '/';
@@ -62,6 +95,8 @@ function createServer(opts) {
       try { if (typeof s.snap === 'function') body.builder = s.snap(); } catch (e) { } /* numbers and short codes only, no paths */
       try { if (typeof s.rules === 'function') body.rules = s.rules(); } catch (e) { } /* main commit and rsig the builder follows (public) */
       if (s.world && s.world.rsig) body.worldRsig = s.world.rsig;
+      try { if (typeof s.check === 'function') body.check = s.check(); } catch (e) { } /* burn check service: state, tip, load time, memory (numbers only) */
+      try { if (typeof s.mem === 'function') body.mem = s.mem(); } catch (e) { }
       send(req, res, 200, body, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'public, max-age=5' }); return;
     }
     if (p === '/xp/v1/sync') {
