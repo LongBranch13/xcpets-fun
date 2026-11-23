@@ -11,8 +11,8 @@ import { autoTick, preview as autoPreview } from './auto.js';
 const TOKEN_IDS = TOKENS.map(m => m.id); /* every pet with a 512x512 picture (hatchbot/build-memes.js) */
 
 var SITE = "https://xcpets.fun";
-var HELP = "\u{1F438} HatchBot commands\n/pet \xB7 a random pet (/pet 123, /pet <name>, /pet <species>)\n/burns \xB7 community burns and community pet progress\n/whosthat \xB7 guess the pet from its silhouette (reply to the photo)\n/breed \xB7 a real breed from the chain (/breed <pet>)\n/battle \xB7 a real arena battle (/battle <pet>)\n/meme \xB7 a random XCPETS meme\n/chainday \xB7 the current 144-block game day and blocks left\n/season \xB7 the current XCPETS season and its countdown\n/bug <what happened> \xB7 report a bug to the XCPETS team (pet numbers help!)\n/help \xB7 this list\n\nPlay at xcpets.fun";
-var BOT_COMMANDS = [["pet", "Pet card: /pet, /pet 123, /pet <name>, /pet <species>"], ["burns", "Community burns and community pet progress"], ["whosthat", "Guess the pet from its silhouette"], ["breed", "A real breed from the chain (/breed <pet>)"], ["battle", "A real arena battle (/battle <pet>)"], ["meme", "A random XCPETS meme"], ["chainday", "Current 144-block game day and blocks left"], ["bug", "Report a bug to the XCPETS team"], ["help", "List HatchBot commands"]];
+var HELP = "\u{1F438} HatchBot commands\n/pet \xB7 a random pet (/pet 123, /pet <name>, /pet <species>)\n/burns \xB7 community burns and community pet progress\n/whosthat \xB7 guess the pet from its silhouette (reply to the photo)\n/breed \xB7 a real breed from the chain (/breed <pet>)\n/battle \xB7 a real arena battle (/battle <pet>)\n/meme \xB7 a random XCPETS meme\n/chainday \xB7 the current 144-block game day and blocks left\n/season \xB7 the current XCPETS season and its countdown\n/bug <what happened> \xB7 report a bug to the XCPETS team (pet numbers help!)\n/play \xB7 open the XCPETS app right here in Telegram (your pets + live feed)\n/help \xB7 this list\n\nPlay at xcpets.fun";
+var BOT_COMMANDS = [["play", "Open the XCPETS app inside Telegram"], ["pet", "Pet card: /pet, /pet 123, /pet <name>, /pet <species>"], ["burns", "Community burns and community pet progress"], ["whosthat", "Guess the pet from its silhouette"], ["breed", "A real breed from the chain (/breed <pet>)"], ["battle", "A real arena battle (/battle <pet>)"], ["meme", "A random XCPETS meme"], ["chainday", "Current 144-block game day and blocks left"], ["bug", "Report a bug to the XCPETS team"], ["help", "List HatchBot commands"]];
 var RATE_ON = !!(AUTO.commands && AUTO.commands.rate === true);
 if (RATE_ON) { HELP = HELP.replace("\n/meme ", "\n/rate \xB7 HatchBot rates a pet (/rate 42, /rate <name>)\n/meme "); BOT_COMMANDS.splice(5, 0, ["rate", "HatchBot rates a pet (/rate <pet>)"]); }
 /* /rate, ported from the old VPS HatchBot (commands.js). Sabo #1765 stays alive through view(). */
@@ -460,21 +460,39 @@ async function checkGuess(env, msg) {
   return true;
 }
 
+/* XCPETS mini app (tg/) inside Telegram. Telegram only allows a web_app button in a private chat, so in the group /play
+ * sends a link that opens HatchBot's private chat (t.me/<bot>?start=app), where /start app answers with the real button.
+ * The private chat also has the "Play" menu button next to the text box (setChatMenuButton in .github/workflows/hatchbot-worker.yml).
+ * View only: the app never signs. Signing opens xcpets.fun in the player's own browser or wallet app. */
+var APP_URL = SITE + "/tg/";
+async function playButton(env, msg, extra) {
+  const chat = msg.chat.id, lead = "\u{1F3AE} XCPETS, right inside Telegram: your pets, who needs food, the live feed and quick links to play. View only, nothing is signed in Telegram.";
+  if (msg.chat.type === "private") {
+    return tg(env, "sendMessage", { chat_id: chat, text: capText(lead + (extra ? "\n\n" + extra : ""), 4e3), disable_web_page_preview: true,
+      reply_markup: { inline_keyboard: [[{ text: "\u{1F3AE} Open XCPETS", web_app: { url: APP_URL } }]] } });
+  }
+  const me = await botUsername(env), url = me ? "https://t.me/" + me + "?start=app" : APP_URL;
+  return tg(env, "sendMessage", { chat_id: chat, text: lead + "\nTap below, then press Start in my chat.", reply_to_message_id: msg.message_id, disable_web_page_preview: true,
+    reply_markup: { inline_keyboard: [[{ text: "\u{1F3AE} Open XCPETS", url }]] } });
+}
+
 async function command(env, msg) {
   const chat = msg.chat.id, text = String(msg.text || "").trim();
   const m = /^\/([a-z]+)(?:@([A-Za-z0-9_]+))?(?:\s+([\s\S]*))?$/i.exec(text);
   if (!m) return null;
   if (m[2]) { const me = await botUsername(env); if (me && m[2].toLowerCase() !== me.toLowerCase()) return null; }
   const cmd = "/" + m[1].toLowerCase(), args = (m[3] || "").trim().slice(0, 60), name = cmd.slice(1);
-  const KNOWN = ["/help", "/start", "/chatid", "/chainday", "/season", "/meme", "/pet", "/burns", "/whosthat", "/breed", "/battle", "/bug"].concat(RATE_ON ? ["/rate"] : []);
+  const KNOWN = ["/help", "/start", "/play", "/app", "/chatid", "/chainday", "/season", "/meme", "/pet", "/burns", "/whosthat", "/breed", "/battle", "/bug"].concat(RATE_ON ? ["/rate"] : []);
   if (!KNOWN.includes(cmd)) return null;
   const now = Date.now(), age = msg.date ? Math.floor(now / 1e3) - msg.date : 0, late = age > LIMITS.lateS;
-  if (late && (age > LIMITS.lateMaxS || ["/meme", "/chainday", "/season", "/whosthat"].includes(cmd))) return null;
+  if (late && (age > LIMITS.lateMaxS || ["/meme", "/chainday", "/season", "/whosthat", "/play", "/app"].includes(cmd))) return null;
   const lim = await rateCheck(env, msg.from && msg.from.id || chat, chat, name, now);
   if (lim) { console.log("rate limited", lim, cmd); return null; }
   await rateHit(env, msg.from && msg.from.id || chat, chat, name, now);
   const pre = late ? SORRY + "\n" : "";
   const reply = (t) => tg(env, "sendMessage", { chat_id: chat, text: capText(pre + t, 4e3), reply_to_message_id: msg.message_id, disable_web_page_preview: true });
+  if (cmd === "/play" || cmd === "/app" || (cmd === "/start" && (msg.chat.type === "private" || /^app$/i.test(args))))
+    return playButton(env, msg, cmd === "/start" ? HELP : "");
   if (cmd === "/help" || cmd === "/start")
     return reply(HELP);
   if (cmd === "/chatid")
