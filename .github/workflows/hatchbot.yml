@@ -1,9 +1,15 @@
-# HatchBot announcer (Nov 22 2026). Every 10 minutes: replay the game from api/boot.json and post new cool events to Telegram.
+# HatchBot announcer (Nov 22 2026). Each time the game feed (api/boot.json) lands on main, replay the game and post new cool events to Telegram.
+# Why the push trigger: GitHub's own timer is best effort and on Nov 22 ran this every-10-minutes job only twice in 10 hours,
+# so the bot went quiet. The feed server pushes api/boot.json every ~20-25 min and new events can only appear then.
+# The timer stays as a backup.
 # Run it by hand with a message to post a game update ("Post update"): Actions > hatchbot > Run workflow > type the update.
 # Secrets: TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID. Until both are set this job does nothing.
 # Memory of what was posted lives on the hatchbot-state branch (not main), so it never triggers a site deploy.
 name: hatchbot
 on:
+  push:
+    branches: [main]
+    paths: ['api/boot.json']
   schedule:
     - cron: '7,17,27,37,47,57 * * * *'
   workflow_dispatch:
