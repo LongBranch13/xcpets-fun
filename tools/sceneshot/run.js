@@ -37,6 +37,7 @@ async function shot(browser, page, who) {
     await pg.waitForTimeout(400);
     await pg.screenshot({ path: path.join(OUT, base + '-2top.png') });
     await pg.screenshot({ path: path.join(OUT, base + '-3full.png'), fullPage: true });
+    if (process.env.SHOT_PROBE) { try { errs.push('probe: ' + await pg.evaluate(process.env.SHOT_PROBE)); } catch (e) { errs.push('probe failed: ' + String(e.message || e).slice(0, 160)); } }
   } catch (e) { errs.push('goto: ' + String(e.message || e).slice(0, 200)); }
   await cx.close();
   return { page, who: who === 'new' ? 'new visitor' : 'player', secs: (Date.now() - t0) / 1000, errs };
