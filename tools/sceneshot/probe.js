@@ -6,3 +6,4 @@ function step(){const w=window.V2Mock&&V2Mock.world&&V2Mock.world();const s=docu
  setTimeout(()=>{const cs=[...document.querySelectorAll('#pets canvas, #mpsBox canvas')];const card=[...document.querySelectorAll('#pets .pet.card, #mpsBox .pet.card')].find(c=>c.textContent.indexOf('#'+id)>=0);const o={cards:document.querySelectorAll('#pets .pet.card').length};if(card){card.scrollIntoView({block:'center'});}
   setTimeout(()=>{if(card){const c=card.querySelector('canvas');o.px=c?px(c):'nocanvas';o.fr=c&&c._fr?c._fr.length+(c._fr[0]&&c._fr[0].data?':'+c._fr[0].data.length:''):'none';o.still=c&&c._frStill;o.cls=c&&c.className;o.conn=c&&c.isConnected;}else o.card='none';res[id]=o;step();},4000);},5000);}
 step();})
+# rerun

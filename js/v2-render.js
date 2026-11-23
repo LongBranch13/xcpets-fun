@@ -74,6 +74,11 @@
   /* black eye fit (2026-10-15, Jake: on Dodo it sat on the back of the head): traced on the real eye pixels of this species/stage/frame (drawEyeGear 'shiner'),
    * a bruise ring around the viewer-right eye, like eyewear; the old fixed 'eyes'-anchor map is only the fallback when no eye can be found. */
   BonusGear.DEFS['v2-black-eye'].v2eye = { s: 'shiner' };
+  /* shadow-face-1123 (Jake Nov 23 2026: "this black spot is like a shadowed face... it could look way cooler"): Nakamoto's ★ Shadowed face
+   * was a flat grey-black block. Same size and slot, drawn here at render time only (the rule file v2-gear.js keeps its map, so no rsig change):
+   * a deep void under a dark rim, two glowing Bitcoin-orange eyes and two little stars. Who is Satoshi? Nobody knows. */
+  if (BonusGear.DEFS['sig-nakamoto-face'] && BonusGear.DEFS['sig-nakamoto-face'].map && BonusGear.DEFS['sig-nakamoto-face'].map.length === 8)
+    BonusGear.DEFS['sig-nakamoto-face'].map = ['.jjjjj.', 'jnnnnWj', 'jnnnnnj', 'jYEnYEj', 'jnnnnnj', 'jcnnnnj', 'jnnnnnj', '.jjjjj.'];
   BonusGear.DEFS['v2-rumble-crown'] = BonusGear.DEFS['v2-rumble-crown'] || { slot: 'head', tier: 3, label: 'Rumble crown', at: 'head', dy: -1, map: ['y.y.y', 'yyyyy', 'yQyQy'] };
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return '&#' + c.charCodeAt(0) + ';'; }); }
   /* Unfreeze hotfix (2026-10-14): with thousands of pets the old 300 ms tick repainted EVERY animated canvas (on screen or not, allocating a
@@ -989,12 +994,18 @@
       if (!c.isConnected) { lazyObs.observe(c); continue; } lazyQ.delete(c); try { j(); } catch (e) { if (window.console) console.error(e); } if (Date.now() - t0 > 12) break; }
     if (lazyRun.length && !lazyT) lazyT = setTimeout(lazyDrain, 0); }
   var lazyObs = typeof IntersectionObserver !== 'undefined' ? new IntersectionObserver(function (es) { es.forEach(function (e) { if (!e.isIntersecting || !lazyQ.has(e.target)) return; lazyObs.unobserve(e.target); lazyRun.push(e.target); }); if (lazyRun.length && !lazyT) lazyDrain(); }, { rootMargin: '300px' }) : null;
-  function lazy(c, make, still) { var run = function () { var fr = make(); if (still) { c._fr = fr; c._frStill = true; paint(c, fr[0]); } else animate(c, fr); }; if (!lazyObs) return run(); lazyQ.set(c, run); lazyObs.observe(c); }
+  function lazy(c, make, still) { if (!c) return; c._lazyMake = make; c._lazyStill = !!still; var run = function () { var fr = make(); if (still) { c._fr = fr; c._frStill = true; paint(c, fr[0]); } else animate(c, fr); }; if (!lazyObs) return run(); lazyQ.set(c, run); lazyObs.observe(c); }
+  /* blank-sprite-1123 (Jake Nov 23 2026: "missing sprite", a new Egg-stage hybrid on My Pets): a card canvas could stay empty for good when its
+   * observer callback never came (the card was built, moved or reused while the list was being rebuilt). Every 1.5 s, any queued canvas that is
+   * on the page and near the screen is painted anyway. Same frames, same queue; it only catches the ones the observer missed. */
+  if (lazyObs) setInterval(function () { if (document.hidden || !lazyQ.size) return; var H = window.innerHeight || 800, add = 0;
+    lazyQ.forEach(function (j, c) { if (!c.isConnected || lazyRun.indexOf(c) >= 0) return; var r = c.getBoundingClientRect(); if (r.width > 0 && r.bottom > -300 && r.top < H + 300) { lazyObs.unobserve(c); lazyRun.push(c); add++; } });
+    if (add && !lazyT) lazyDrain(); }, 1500);
   /* mypets-first3-1103 (owner Nov 3 2026 [pt2760u] 'the first 3 here are buggy', display only): a grid card reused by the speed2 card cache (js/v2.js
    * mk/put) skips its repaint, but while it was off the page the 300 ms tick dropped its canvas from the animation list and mythTick removed its
    * Mythic electric outline, so it came back frozen and without the outline. revive(c) re-runs the same frames the canvas last got (same pixels,
    * same outline); it only does work when the animation or the outline is actually missing. */
-  function revive(c) { var fr = c && c._fr; if (!fr || !okFrames(fr) || !c.isConnected) return; var info = MYTH_INFO && MYTH_INFO.get(fr[0]);
+  function revive(c) { var fr = c && c._fr; if (c && !fr && c._lazyMake && !lazyQ.has(c)) { lazy(c, c._lazyMake, c._lazyStill); return; } /* blank-sprite-1123: a reused card whose sprite was never painted gets painted now */ if (!fr || !okFrames(fr) || !c.isConnected) return; var info = MYTH_INFO && MYTH_INFO.get(fr[0]);
     var lostAnim = !c._frStill && fr.length > 1 && !animated.has(c), lostMyth = !!(info && MYTH_MODE && !(c._mfx && c._mfx.isConnected));
     if (!lostAnim && !lostMyth) return; if (c._frStill || fr.length < 2) paint(c, fr[0]); else animate(c, fr); }
   /* wiz-black-fix 2026-10-21 (display only): a frame is drawable only if it is a full 32x32 RGBA buffer. */
