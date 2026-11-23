@@ -190,10 +190,13 @@
     } catch (e) {}
     return healthTipN;
   }
+  /* the server's burn check is up and current: the device check need not warm up in the background (it still runs if a burn needs it) */
+  var serverReady = false;
+  function noteCheck(h) { serverReady = !!(h && h.check && h.check.state === 'ready' && h.check.tip >= (h.tip || 0)); }
   function pingHealth() {
     var root = base();
     if (!root || typeof fetch !== 'function') return Promise.resolve(healthTipN);
-    return getJson(root + '/xp/v1/health', 8000, true).then(function (h) { return noteHealth(h && h.tip); }, function () { return healthTipN; });
+    return getJson(root + '/xp/v1/health', 8000, true).then(function (h) { noteCheck(h); return noteHealth(h && h.tip); }, function () { return healthTipN; });
   }
   /* The published manifest embeds a pet sample for the largest wallets and is many megabytes.
    * A slow phone sat on that download and never reached the 18 KB summary. First paint uses
@@ -238,7 +241,7 @@
     var sigP = pageRsig();
     getJson(root + '/xp/v1/health', 8000, true).then(function (h) {
       chainTip = h && h.tip || 0;
-      noteHealth(chainTip);
+      noteHealth(chainTip); noteCheck(h);
       return getJson(root + '/xp/v1/world/latest.json', 8000, true);
     }).then(function (latest) {
       /* Never go dark (Nov 22 2026): latest.json built with other rules than this page's? The server keeps the newest
@@ -319,7 +322,7 @@
     if (!last || !last.man) return Promise.resolve(false);
     return getJson(base() + '/xp/v1/health', 8000, true).then(function (h) {
       var tip = h && h.tip || 0;
-      noteHealth(tip);
+      noteHealth(tip); noteCheck(h);
       return !(tip && last.man.tip != null && tip - last.man.tip > STALE);
     }, function () { return false; });
   }
@@ -350,7 +353,7 @@
   }
   function connected() { try { return !!(window.V2Wallet && V2Wallet.current && V2Wallet.current()); } catch (e) { return false; } }
   function warm() {
-    if (readyP || warmT || !last || !last.man || !warmOk() || !connected()) return;
+    if (readyP || warmT || serverReady || !last || !last.man || !warmOk() || !connected()) return;
     warmT = setTimeout(function () {
       var go = function () { warmT = 0; if (!readyP && connected()) startVerify(true); };
       if (window.requestIdleCallback) requestIdleCallback(go, { timeout: 5000 }); else go();
@@ -748,7 +751,40 @@
     });
     return readyP;
   }
+  /* Server burn check (Nov 23 2026, Jake approved). The game server keeps the newest world in memory and answers the same question the
+   * check worker answers (V2Rules.sendBlock on every plan), in about a second instead of 13 s or more. Its answer is used only when it
+   * comes within 3 s and is at least as new as every tip this page knows; anything else (no answer, an error, an older world, ?servercheck=0)
+   * falls back to this device's own check, exactly as before. A finished device check is used directly. Nothing is signed here. */
+  var SERVER_MS = 3000, serverStat = { asked: 0, used: 0, last: '' };
+  function serverCheck(plans) {
+    if (ready || off() || !base() || q('servercheck') === '0' || typeof fetch !== 'function') return Promise.resolve(null);
+    var S = window.V2Mock && V2Mock.state && V2Mock.state(), need = Math.max(healthTipN || 0, (S && S.tip) || 0, (S && S.chainTip) || 0);
+    var plain = [], i, k, p, o;
+    for (i = 0; i < (plans || []).length; i++) {
+      p = plans[i]; if (!p || typeof p.tag !== 'string') return Promise.resolve(null);
+      o = {}; for (k in p) if (Object.prototype.hasOwnProperty.call(p, k) && (typeof p[k] === 'string' || typeof p[k] === 'number' || typeof p[k] === 'boolean')) o[k] = p[k];
+      plain.push(o);
+    }
+    if (!plain.length || plain.length > 100) return Promise.resolve(null);
+    var ctl = typeof AbortController === 'function' ? new AbortController() : null, t = ctl ? setTimeout(function () { try { ctl.abort(); } catch (e) {} }, SERVER_MS) : null;
+    serverStat.asked++;
+    return fetch(base() + '/xp/v1/check', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ plans: plain, me: pageWallet(), pending: [] }), cache: 'no-store', signal: ctl ? ctl.signal : undefined })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (j) {
+        if (t) clearTimeout(t);
+        if (!j || j.ok !== true || !Array.isArray(j.plans) || !Array.isArray(j.skip) || !(j.tip >= need)) { serverStat.last = (j && j.error) || 'not used'; return null; }
+        /* hand back this page's own plan objects, in order, for the plans the server kept */
+        var kept = [], n = 0;
+        for (i = 0; i < plans.length && n < j.plans.length; i++) if (j.plans[n] && j.plans[n].tag === plans[i].tag) { kept.push(plans[i]); n++; }
+        if (n !== j.plans.length) { serverStat.last = 'mismatch'; return null; }
+        serverStat.used++; serverStat.last = 'ok';
+        return { ok: true, plans: kept, skip: j.skip, server: j.tip };
+      }, function () { if (t) clearTimeout(t); serverStat.last = 'failed'; return null; });
+  }
   function checkPlans(plans) {
+    return serverCheck(plans).then(function (out) { return out || deviceCheck(plans); });
+  }
+  function deviceCheck(plans) {
     showProgress();
     if (!worker) startVerify();
     if (!worker) return Promise.resolve({ ok: false, plans: plans || [], skip: ['Press Verify to check this world. Nothing was burned.'] });
@@ -1111,5 +1147,5 @@
     zombieP = getJson(folder + 'view/zombies.json').then(function (z) { return applyZombies(z); }, function () { return scanZombies(folder, onProg); });
     return zombieP;
   }
-  window.V2Split = { STALE: STALE, SCREEN_PAGES: SCREEN_PAGES, AUTO_CAP: AUTO_CAP, prepare: prepare, recheck: recheck, install: install, assemble: assemble, startVerify: startVerify, checkPlans: checkPlans, rest: rest, more: more, loadBoard: loadBoard, loadZombies: loadZombies, dress: dress, boardBytes: function () { return { bytes: boardBytes, files: boardFiles }; }, ensureDead: ensureDead, ensurePet: ensurePet, ownerShard: function (addr, cb) { sha2(addr).then(function (h) { cb(h.slice(0, 2)); }); }, petSig: petSig, healthTip: function () { return healthTipN; }, noteHealth: noteHealth, pingHealth: pingHealth, ownersReady: ownersReady, ownersKnown: ownersKnown, adoptOwners: adoptOwners, openOwnerPets: openOwnerPets, openList: openList, notePets: notePets, ownerTable: ownerTable, pageWallet: pageWallet, resolveWorld: resolveWorld, newestPages: newestPages, rowsToLog: rowsToLog, loadNewest: loadNewest };
+  window.V2Split = { STALE: STALE, SCREEN_PAGES: SCREEN_PAGES, AUTO_CAP: AUTO_CAP, prepare: prepare, recheck: recheck, install: install, assemble: assemble, startVerify: startVerify, checkPlans: checkPlans, serverCheck: serverCheck, serverStat: function () { return serverStat; }, rest: rest, more: more, loadBoard: loadBoard, loadZombies: loadZombies, dress: dress, boardBytes: function () { return { bytes: boardBytes, files: boardFiles }; }, ensureDead: ensureDead, ensurePet: ensurePet, ownerShard: function (addr, cb) { sha2(addr).then(function (h) { cb(h.slice(0, 2)); }); }, petSig: petSig, healthTip: function () { return healthTipN; }, noteHealth: noteHealth, pingHealth: pingHealth, ownersReady: ownersReady, ownersKnown: ownersKnown, adoptOwners: adoptOwners, openOwnerPets: openOwnerPets, openList: openList, notePets: notePets, ownerTable: ownerTable, pageWallet: pageWallet, resolveWorld: resolveWorld, newestPages: newestPages, rowsToLog: rowsToLog, loadNewest: loadNewest };
 })();

@@ -29,7 +29,7 @@ ok(/function warm\(\)/.test(sp) && /startVerify\(true\)/.test(sp), 'the check st
 ok(/connected\(\)/.test(sp) && /V2Wallet\.current/.test(sp), 'only with a connected wallet (not view-only)');
 ok(/deviceMemory && navigator\.deviceMemory < 4/.test(sp) && /saveData/.test(sp), 'skipped on small-memory devices and Data Saver');
 ok(/wantBar && document\.getElementById\('splitViewBar'\)/.test(sp), 'progress reaches the bar only when someone waits on it');
-ok(/function checkPlans\(plans\) \{\s*showProgress\(\);/.test(sp), 'a burn waiting on the check shows its progress');
+ok(/function deviceCheck\(plans\) \{\s*showProgress\(\);/.test(sp), 'a burn waiting on the device check shows its progress');
 ok(/readyP = null/.test(sp), 'a failed check is retried by the next burn');
 const vw = R('js/v2-verify-worker.js');
 ok(/for \(L = 0; L < 4; L\+\+\) lanes\.push\(lane\(\)\)/.test(vw), 'the worker downloads four parts at a time');
