@@ -5,8 +5,8 @@
  * Bindings (set by .github/workflows/hatchbot-worker.yml): TELEGRAM_BOT_TOKEN, HB_TEST_KEY (secrets), BUGS (KV), DB (D1, hatchbot/schema.sql),
  * a cron every 2 minutes to reveal /whosthat rounds (D1 if the token may create it, otherwise KV). Read-only toward the game: it never signs, burns or touches wallets. */
 import MEMES from './memes.json';
-import CAPTIONS from './captions.json';
-const TOKEN_IDS = MEMES.map(m => m.id); /* every pet with a 512x512 picture (hatchbot/build-memes.js) */
+import TOKENS from './tokens.json';
+const TOKEN_IDS = TOKENS.map(m => m.id); /* every pet with a 512x512 picture (hatchbot/build-memes.js) */
 
 var SITE = "https://xcpets.fun";
 var HELP = "\u{1F438} HatchBot commands\n/pet \xB7 a random pet (/pet 123, /pet <name>, /pet <species>)\n/burns \xB7 community burns and community pet progress\n/whosthat \xB7 guess the pet from its silhouette (reply to the photo)\n/breed \xB7 a real breed from the chain (/breed <pet>)\n/battle \xB7 a real arena battle (/battle <pet>)\n/meme \xB7 a random XCPETS meme\n/chainday \xB7 the current 144-block game day and blocks left\n/season \xB7 the current XCPETS season and its countdown\n/bug <what happened> \xB7 report a bug to the XCPETS team (pet numbers help!)\n/help \xB7 this list\n\nPlay at xcpets.fun";
@@ -446,8 +446,8 @@ async function command(env, msg) {
     return reply("\u{1F41E} Thanks, got it! Your report is logged for the XCPETS team (it shows on GitHub with your first name only).");
   }
   if (cmd === "/meme") {
-    const p = pick(MEMES), cap = pick(CAPTIONS).replace(/\{name\}/g, p.name);
-    return tg(env, "sendPhoto", { chat_id: chat, photo: "https://xcpets.fun/t/" + p.id + ".png", caption: cap + "\n#" + p.id + " \xB7 xcpets.fun/pet.html?id=" + p.id, reply_to_message_id: msg.message_id });
+    const p = pick(MEMES);
+    return tg(env, "sendPhoto", { chat_id: chat, photo: p.url, caption: p.caption, reply_to_message_id: msg.message_id });
   }
   if (cmd === "/burns") { const r = await cmdBurns(env); return reply(r.text); }
   let S;
