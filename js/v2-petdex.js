@@ -117,7 +117,7 @@
   function draw(c) { var x = CELLS[+c.getAttribute('data-pdx')]; if (!x) return; var p = x.mine ? x.best || x.sample : x.sample, w = wNow; if (p && !p.art && w && w.byId && w.byId[p.id]) p = w.byId[p.id]; c.__sil = !x.mine; if (!p || !w || !p.art) return; if (!root.V2Render || !root.V2Render.petFrames) { if ((c.__try = (c.__try || 0) + 1) < 40) setTimeout(function () { draw(c); }, 500); return; }
     try { var kp = Object.assign({}, p, { art: Object.assign({}, p.art, { background: 'solid', bgColor: '#ff00fe', pattern: 'none' }) }), f = root.V2Render.petFrames(kp, w, { noHunger: true })[0];
       if (!f || !f.data || f.data.length !== 4096) return; c.width = c.height = 32; var g = c.getContext('2d'), id = g.createImageData(32, 32), s = f.data, o = id.data, sil = !!c.__sil;
-      for (var i = 0; i < 4096; i += 4) { var r = s[i], gg = s[i + 1], b = s[i + 2]; if (r > 240 && gg < 16 && b > 240) { o[i + 3] = 0; continue; }
+      for (var i = 0; i < 4096; i += 4) { var r = s[i], gg = s[i + 1], b = s[i + 2]; if (r > 200 && gg < 110 && b > 200 && r - gg > 120) { o[i + 3] = 0; continue; } /* magenta key, incl. the lighter backdrop texture */
         if (sil) { o[i] = 34; o[i + 1] = 30; o[i + 2] = 48; o[i + 3] = 255; } else { o[i] = r; o[i + 1] = gg; o[i + 2] = b; o[i + 3] = 255; } }
       g.putImageData(id, 0, 0); } catch (e) { } }
   /* board pets (view/rank.json) carry no art until V2Split.dress fetches it, the same way Rankings paints its sprites */
@@ -149,7 +149,7 @@
   var pKey = '', pTimer = 0, boardAsked = 0;
   function paint() { var w = world(), m = me(); if (!el) return; wNow = w; pKey = m + '|' + (w && w.tip) + '|' + (w && w.pets ? w.pets.length : 0) + '|' + (w && w._full ? 1 : 0) + (w && w._ranked ? 'r' : '');
     if (!pTimer) pTimer = setInterval(function () { if (!el || el.hidden) { clearInterval(pTimer); pTimer = 0; return; } var w2 = world(), k = me() + '|' + (w2 && w2.tip) + '|' + (w2 && w2.pets ? w2.pets.length : 0) + '|' + (w2 && w2._full ? 1 : 0) + (w2 && w2._ranked ? 'r' : ''); if (k !== pKey) paint(); }, 2000); /* the world keeps loading */
-    var box = el.querySelector('.pdx'); if (!w || !w.pets || !w.pets.length) { box.querySelector('.pdx-body').innerHTML = '<p class="pdx-note">Reading the chain… the Petdex opens once your pets have loaded.</p>'; return; }
+    var box = el.querySelector('.pdx'); if (!w || !w.pets || !w.pets.length) { box.querySelector('.pdx-body').innerHTML = '<p class="pdx-note">' + (m ? 'Reading the chain… the Petdex opens once your pets have loaded.' : 'Connect your wallet at the top (or view any wallet) to open your Petdex: every species, rarity, legend and hybrid on chain, and which ones you have caught.') + '</p>'; return; }
     /* a view-only / fast world carries only this wallet's pets: read every living pet once (view/rank.json, the same file Rankings uses) so
      * "how many exist" and the silhouettes are real. Until it lands the squares count only what this wallet has. */
     var B = root.V2Split; if (PAGE && w._view && !w._ranked && B && B.loadBoard && !boardAsked) { boardAsked = 1; B.loadBoard().then(function () { boardAsked = 2; sumKey = ''; if (el && !el.hidden) paint(); }, function () { boardAsked = 2; }); }
