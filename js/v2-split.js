@@ -11,7 +11,7 @@
   window.__xcpSplitHold = true;
   var STALE = 48;
   var SCREEN_PAGES = 7; /* first screen is 150 cards, and an owner page holds 24 pets */
-  var AUTO_CAP = 12000; /* wallets at or under this many living pets load the rest in the background (5,000 until Nov 22 2026;
+  var AUTO_CAP = 60000; /* Nov 23 2026: 12,000 left a 29,000-pet wallet showing ~200 pets for good ('missing pets', and feeds planned on the short list failed) */ var AUTO_CAP_OLD = 12000; /* wallets at or under this many living pets load the rest in the background (5,000 until Nov 22 2026;
                           * the background batches now grow, see drain(), so a 10,000-pet wallet no longer rebuilds its world 60 times) */
   function q(k) { try { return new URLSearchParams(location.search).get(k); } catch (e) { return null; } }
   function off() { return q('split') === '0' || q('split') === 'off'; }
@@ -621,7 +621,7 @@
   /* Every background batch ends in publishJob, which re-assembles the whole owner world and repaints My Pets. With a fixed
    * 7-page batch that is pages/7 full rebuilds, so a big wallet's cost grew with the square of its size. Each batch is now
    * twice the last (7, 14, 28, 56, then 64 pages at most), so a 10,000-pet wallet (417 pages) rebuilds about 10 times. */
-  var drainBatch = 0, DRAIN_MAX = 64;
+  var drainBatch = 0, DRAIN_MAX = 256; /* 64 until Nov 23 2026; a 1,200-page wallet now repaints about 10 times, not 25 */
   function drain() {
     if (!pageJob && restView) { adoptJob(restView); restView = null; }
     if (!pageJob || !pageJob.pages || verifiedTakeover) return;
