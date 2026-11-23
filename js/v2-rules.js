@@ -261,7 +261,7 @@
    * Hungriest first (oldest last meal, then pet number), at that block's meal price (halvings and sales included), while the balance covers
    * the meal; a pet the balance can't pay for waits. This runs before any burn of that block. No lucky drops (there is no burn to seed them).
    * Feeds count for the 7-day feeding streak like any feed. Records: w.pantry[addr] = { bal, paid, spent, meals, ids, last }, w.pantryLog. */
-  var ACTIVATE_PANTRY_BLOCK = null, PANTRY_FILL = 'pet:pantry', PANTRY_PREFIX = 'pet:pp:', PANTRY_DEL_PREFIX = 'pet:px:', PANTRY_CLEAR = 'pet:px', PANTRY_DUST = 1e-8;
+  var ACTIVATE_PANTRY_BLOCK = 977265, /* opens about 7 PM Central Mon Nov 23 2026 (Jake ok Nov 23) */  PANTRY_FILL = 'pet:pantry', PANTRY_PREFIX = 'pet:pp:', PANTRY_DEL_PREFIX = 'pet:px:', PANTRY_CLEAR = 'pet:px', PANTRY_DUST = 1e-8;
   function pantryOn(b) { return ACTIVATE_PANTRY_BLOCK != null && b != null && b >= ACTIVATE_PANTRY_BLOCK && feedRunsOn(b); }
   /** dayStart(d): the first block of game day d (clock(b) >= d * 144). */
   function dayStart(d) { return spanAt(0, d * BLOCKS_PER_DAY); }
