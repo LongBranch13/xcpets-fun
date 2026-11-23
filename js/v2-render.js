@@ -17,8 +17,9 @@
     var h = art && art.hybrid, parts = h && h.parts;
     if (!h || !parts || !parts.length || !fr || fr.length < 2 || !hybridFramesBare) return fr;
     var keep = {};
-    parts.forEach(function (q) { var d = V.partDef && V.partDef(q.sp, q.part); if (d && d.keep && d.kind === 'top') keep[q.sp + ':' + q.part] = 1; });
+    parts.forEach(function (q) { var d = V.partDef && V.partDef(q.sp, q.part); if (d && ((d.keep && d.kind === 'top') || (d.kind === 'arms' && h.shape === 'kek'))) keep[q.sp + ':' + q.part] = 1; }); /* kek-wings-1123: Snibby claws on Lord Kek erased his spread wings every other frame; the claws ride the body like a kept top */
     if (!Object.keys(keep).length) return fr;
+    var armsK = Object.keys(keep).filter(function (k2) { var d2 = V.partDef(k2.split(':')[0], k2.split(':')[1]); return d2 && d2.kind === 'arms'; });
     var rest = parts.filter(function (q) { return !keep[q.sp + ':' + q.part]; }), KEY = { background: 'solid', bgColor: '#ff00ff', pattern: 'none' };
     var hRest = Object.assign({}, h, { parts: rest });
     var bare = hybridFramesBare(Object.assign({}, art, { hybrid: hRest }), opts);
@@ -50,8 +51,9 @@
     for (f = 1; f < N; f++) { k = fit(Sb, f, 0, cl, cr); if (k[3] > Math.max(6, k[2] * 0.12)) rigid = false; } /* rigid = the same outline, moved (a blink or a mouth is fine) */
     var ref = 0;
     if (!rigid) { for (f = 1; f < N; f++) if (Sb[f].n > Sb[ref].n + 4) ref = f; }
+    if (armsK.length) { rigid = true; ref = 1; } /* Lord Kek flaps his wings (KekSprite: spread on frames 0/3, folded on 1/2): keep the flap, take the claws from a wings-folded frame, measure the bob on his middle */
     var L = layer(ref); if (L.n < 8) return fr;
-    cl = Math.max(0, L.l); cr = Math.min(31, L.r);
+    cl = Math.max(0, L.l); cr = Math.min(31, L.r); if (armsK.length) { cl = 12; cr = 19; }
     var shift = []; for (f = 0; f < N; f++) shift[f] = f === ref ? 0 : fit(rigid ? Sb : Sf, f, ref, cl, cr)[0];
     if (shift.every(function (s, i) { return i === ref || s === 0; }) && rigid) { /* the body does not bob: the frames are already right */
       var same = true; for (f = 0; f < N && same; f++) { var Lf = layer(f); for (var j0 = 0; j0 < 1024; j0++) if (Lf[j0] !== L[j0]) { same = false; break; } } if (same) return fr; }
@@ -62,15 +64,22 @@
         nb.forEach(function (dv) { var n = at(x + dv[0], y + dv[1]); if (n < 0 || hair[n] || !bg[n]) return; add.push(n); }); }
       add.forEach(function (n) { var q = n * 4; data[q] = INK[0]; data[q + 1] = INK[1]; data[q + 2] = INK[2]; data[q + 3] = 255; hair[n] = 1; bg[n] = 0; });
     }
-    var srcK = fullK[ref].data, src = fr[ref].data;
+    var srcK = fullK[ref].data, src = fr[ref].data, eraseK = srcK;
+    /* kek-wings-1123: the claws take nothing away (his wings stay behind them); only a kept top may take the old top off */
+    if (armsK.length) { var topOnly = hybridFramesBare(Object.assign({}, art, KEY, { hybrid: Object.assign({}, h, { parts: parts.filter(function (q) { return armsK.indexOf(q.sp + ':' + q.part) < 0; }) }) }), opts); eraseK = topOnly && topOnly[ref] ? topOnly[ref].data : null; }
+    var topK = armsK.length ? topOnly : fullK;
     var out = fr.map(function (F, f) {
       var s = shift[f], data, hair = new Uint8Array(1024), bg = new Uint8Array(1024), j, q, t, y, x;
       if (rigid) {
         /* this frame's own body (blink, flap) + the reference layer moved with it */
         data = new Uint8ClampedArray(bare[f].data);
         for (j = 0; j < 1024; j++) bg[j] = isKey(bareK[f].data, j * 4) ? 1 : 0;
+        /* what the kept top took away in THIS frame (Lord Kek's nemes ornament moves on its own) goes too */
+        if (topK && topK[f]) for (j = 0; j < LOW * 32; j++) { if (bg[j] || corner(j) || !isKey(topK[f].data, j * 4)) continue; var fk0 = fullK[f].data, rd = fr[f].data, bj = j;
+          if (!isKey(fk0, j * 4)) { for (var dd = 1; dd < 32 && bj === j; dd++) for (var sg0 = -1; sg0 <= 1 && bj === j; sg0 += 2) { var xx0 = (j & 31) + sg0 * dd; if (xx0 >= 0 && xx0 < 32 && isKey(fk0, ((j >> 5) * 32 + xx0) * 4)) bj = (j >> 5) * 32 + xx0; } }
+          data[j * 4] = rd[bj * 4]; data[j * 4 + 1] = rd[bj * 4 + 1]; data[j * 4 + 2] = rd[bj * 4 + 2]; data[j * 4 + 3] = 255; bg[j] = 1; }
         for (j = 0; j < 1024; j++) { if (!L[j]) continue; y = (j >> 5) + s; x = j & 31; if (y < 0 || y >= LOW) continue; t = y * 32 + x; if (corner(t)) continue; q = j * 4;
-          if (isKey(srcK, q)) { /* the layer took this pixel away (the old top came off): show the background here */
+          if (isKey(srcK, q)) { if (!eraseK || !isKey(eraseK, q)) continue; /* the layer took this pixel away (the old top came off): show the background here */
             var bq = isKey(fullK[f].data, t * 4) ? [fr[f].data, t * 4] : [src, q];
             data[t * 4] = bq[0][bq[1]]; data[t * 4 + 1] = bq[0][bq[1] + 1]; data[t * 4 + 2] = bq[0][bq[1] + 2]; data[t * 4 + 3] = 255; bg[t] = 1;
             continue; }
