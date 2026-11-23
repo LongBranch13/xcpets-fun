@@ -181,8 +181,11 @@ export function chainEvents(P, W, meta, st, C) {
   if (meta) {
     const step = L.burn_step || 1e6, a = Math.floor((st.burned || 0) / step), b = Math.floor((+meta.burnedXCPETS || 0) / step);
     if (st.burned != null && b > a && a > 0) ev.push({ type: "burn", key: "burn:" + b * step, block: meta.blockHeight, amount: b * step });
-    const cs = L.pet_count_step || 1e4, ka = Math.floor((st.pets || 0) / cs), kb = Math.floor((+meta.totalPets || 0) / cs);
-    if (st.pets != null && kb > ka && ka > 0) ev.push({ type: "count", key: "count:" + kb * cs, block: meta.blockHeight, milestone: kb * cs, pet: null }); /* pet ids skip numbers, so no "number N is" pet */
+    /* Pets hatched so far = the newest pet number (P.maxId), not meta.totalPets: totalPets only counts pets still in the
+       world (sacrificed, ground, eaten and discarded pets drop out), so it ran ~47k behind and posted 160,000 when the game
+       was past 206,000 (Nov 23 2026). st.hatched is new: the first look after this change only records it. */
+    const cs = L.pet_count_step || 1e4, ka = Math.floor((st.hatched || 0) / cs), kb = Math.floor(((P && P.maxId) || 0) / cs);
+    if (st.hatched != null && kb > ka && ka > 0) { const r = rowById(P, kb * cs); ev.push({ type: "count", key: "hatched:" + kb * cs, block: r ? r[18] : P.tip, milestone: kb * cs, pet: r ? "#" + r[0] + " " + r[1] : null }); }
   }
   const want = { hybrid: ch.hybrids, bred: ch.hybrids, nakamoto: ch.hatch_highlights, legendary: ch.hatch_highlights, mythic: ch.mythic, battle: ch.battles, cm: ch.community_stage, burn: ch.burn_milestone, count: ch.pet_count_milestone };
   return ev.filter((e) => C.__all || want[e.type] === true);
@@ -226,7 +229,7 @@ export function batch(events, st) {
   }
   for (const e of by("cm")) posts.push({ type: "community_stage", prio: e.stageName === "Mythic" ? 0 : 1, keys: [e.key], block: e.block, text: e.stageName === "Mythic" ? T.cmMythic[0](e.name) : choose(T.cmStage, e.key, st, "cm")(e.name, e.stageName) });
   const bu = by("burn"); if (bu.length) { const e = bu[bu.length - 1]; posts.push({ type: "burn_milestone", prio: 1, keys: bu.map((x) => x.key), block: e.block, text: choose(T.burn, e.key, st, "bu")(e.amount) }); }
-  const co = by("count"); if (co.length) { const e = co[co.length - 1]; posts.push({ type: "pet_count_milestone", prio: 1, keys: co.map((x) => x.key), block: e.block, text: T.count[0](e.milestone, null) }); }
+  const co = by("count"); if (co.length) { const e = co[co.length - 1]; posts.push({ type: "pet_count_milestone", prio: 1, keys: co.map((x) => x.key), block: e.block, text: T.count[1](e.milestone, e.pet) + (e.pet ? "\nxcpets.fun/pet.html?id=" + e.milestone : ""), photoId: e.pet ? e.milestone : undefined }); }
   return posts;
 }
 
@@ -507,7 +510,7 @@ export async function watch(st, C, nowMs, opt) {
     }
     st.maxId = Math.max(st.maxId || 0, P.maxId); st.pt = P.tip;
     if (W) { st.wt = Math.max(st.wt || 0, W.tip); st.cm = { current: W.cm.current, stage: W.cm.stage }; }
-    st.burned = +meta.burnedXCPETS || st.burned || 0; st.pets = +meta.totalPets || st.pets || 0;
+    st.burned = +meta.burnedXCPETS || st.burned || 0; st.pets = +meta.totalPets || st.pets || 0; st.hatched = Math.max(st.hatched || 0, P.maxId || 0);
   }
   if (C.ties === true || C.spamcity === true || C.__all) {
     const ties = await loadTies();
@@ -540,9 +543,9 @@ export async function preview(C, opts) {
   const add = (posts, note) => posts.forEach((p) => out.push({ type: p.type, note: note || "", photo: p.photo || (p.photoId ? SITE + "/t/" + p.photoId + ".png" : null), text: p.text, chars: p.text.length, violations: violations(p.text) }));
   const meta = await loadMeta(), W = await loadWorld(), P = await ((opts && opts.pets) || loadPets)(), ties = await loadTies(), Call = Object.assign({}, C, { __all: true });
   let maxId = 0; for (const r of P.rows) if (r[18] <= P.tip - back && r[0] > maxId) maxId = r[0];
-  const st = { maxId, pt: P.tip - back, wt: W.tip - back, cm: { current: W.cm.current, stage: W.cm.stage }, burned: +meta.burnedXCPETS, pets: +meta.totalPets };
+  const st = { maxId, pt: P.tip - back, wt: W.tip - back, cm: { current: W.cm.current, stage: W.cm.stage }, burned: +meta.burnedXCPETS, pets: +meta.totalPets, hatched: P.maxId };
   add(batch(holdLegendaries(chainEvents(P, W, meta, st, Call), st, now, 0), st), "real events in the last " + back + " blocks");
-  const st2 = { maxId: P.maxId, pt: P.tip, wt: W.tip, cm: { current: W.cm.current, stage: Math.max(0, W.cm.stage - 1) }, burned: +meta.burnedXCPETS - (C.limits.burn_step || 1e6), pets: +meta.totalPets - (C.limits.pet_count_step || 1e4) };
+  const st2 = { maxId: P.maxId, pt: P.tip, wt: W.tip, cm: { current: W.cm.current, stage: Math.max(0, W.cm.stage - 1) }, burned: +meta.burnedXCPETS - (C.limits.burn_step || 1e6), pets: +meta.totalPets - (C.limits.pet_count_step || 1e4), hatched: P.maxId - (C.limits.pet_count_step || 1e4) };
   add(batch(chainEvents(P, W, meta, st2, Call), st2), "sample: milestone/stage wording with live numbers");
   const lastF = W.fights.slice().sort((a, b) => b.block - a.block)[0];
   if (lastF) { const st3 = { maxId: P.maxId, pt: P.tip, wt: lastF.block - 1, cm: st.cm, burned: st.burned, pets: st.pets }; add(batch(chainEvents(P, W, meta, st3, Call).filter((e) => e.type === "battle"), st3), "sample: the latest real arena battle (block " + lastF.block + ")"); }
