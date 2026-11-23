@@ -76,7 +76,7 @@
   function world() { try { return (root.V2Mock && root.V2Mock.world && root.V2Mock.world()) || (root.V2UI && root.V2UI.world) || null; } catch (e) { return null; } }
   function me() { try { return (root.V2UI && root.V2UI.ME) || (root.V2Mock && root.V2Mock.ME) || localStorage.getItem('xcpets-v2-me') || ''; } catch (e) { return ''; } }
   function css() { if ($('pdxCss')) return; var s = d.createElement('style'); s.id = 'pdxCss'; s.textContent =
-    '#petdex{position:fixed;inset:0;z-index:9000;background:rgba(10,8,20,.82);display:flex;align-items:flex-start;justify-content:center;overflow:auto;-webkit-overflow-scrolling:touch;padding:14px 10px 40px}' +
+    '#petdex{position:fixed;inset:0;z-index:100009;background:rgba(10,8,20,.82);display:flex;align-items:flex-start;justify-content:center;overflow:auto;-webkit-overflow-scrolling:touch;padding:14px 10px 40px}' +
     '#petdex[hidden]{display:none}' +
     '#petdex .pdx{position:relative;width:100%;max-width:760px;background:#fff8dc;color:#2b2b2b;border:4px solid #2b2b2b;border-radius:14px;box-shadow:0 6px 0 #2b2b2b;padding:14px 12px 18px;font-family:"Comic Neue",var(--comic,sans-serif)}' +
     '#petdex h2{font:28px/1 Bangers,var(--meme,Impact),sans-serif;letter-spacing:1px;margin:0 40px 6px 0;color:#2b2b2b;text-shadow:2px 2px 0 #ffe27a}' +
@@ -141,8 +141,10 @@
     if (c.mine) return '✅ ' + what + ': you have <b>' + fmt(c.mine) + '</b>. ' + fmt(c.n) + ' exist' + (c.n === 1 ? 's' : '') + ' on chain' + (c.n === 1 ? '. The only one. Absolute flex.' : '.');
     var how = col && col.k === 'M' ? 'Raise one to Mythic (Road to Mythic on its pet page).' : isHyb(c.sp) ? 'Breed its parent species together, or find one for sale in Spam City.' : col ? 'Hatch eggs, breed, or find one for sale in Spam City.' : 'These are rare. Watch Spam City and the Telegram for one.';
     return '❓ ' + what + ': not yet. <b>' + fmt(c.n) + '</b> exist' + (c.n === 1 ? 's' : '') + ', held by ' + fmt(c.players) + ' player' + (c.players === 1 ? '' : 's') + '. ' + how; }
-  function paint() { var w = world(), m = me(); if (!el) return; wNow = w;
-    var box = el.querySelector('.pdx'); if (!w || !w.pets) { box.querySelector('.pdx-body').innerHTML = '<p class="pdx-note">Reading the chain… the Petdex opens once your pets have loaded.</p>'; return; }
+  var pKey = '', pTimer = 0;
+  function paint() { var w = world(), m = me(); if (!el) return; wNow = w; pKey = m + '|' + (w && w.tip) + '|' + (w && w.pets ? w.pets.length : 0) + '|' + (w && w._full ? 1 : 0);
+    if (!pTimer) pTimer = setInterval(function () { if (!el || el.hidden) { clearInterval(pTimer); pTimer = 0; return; } var w2 = world(), k = me() + '|' + (w2 && w2.tip) + '|' + (w2 && w2.pets ? w2.pets.length : 0) + '|' + (w2 && w2._full ? 1 : 0); if (k !== pKey) paint(); }, 2000); /* the world keeps loading */
+    var box = el.querySelector('.pdx'); if (!w || !w.pets || !w.pets.length) { box.querySelector('.pdx-body').innerHTML = '<p class="pdx-note">Reading the chain… the Petdex opens once your pets have loaded.</p>'; return; }
     dexNow = compute(w, m);
     box.querySelector('.pdx-score').innerHTML = '<b>' + dexNow.got + '</b>/' + dexNow.total + ' caught';
     box.querySelector('.pdx-rank').textContent = dexNow.rank;
@@ -163,6 +165,7 @@
         var c = e.target.closest('.pdx-c[data-i]'); if (c) { var x = CELLS[+c.getAttribute('data-i')]; if (x) { el.querySelector('.pdx-tip').innerHTML = tipFor(x); c.classList.remove('pop'); void c.offsetWidth; c.classList.add('pop'); if (root.V2Sfx && root.V2Sfx.blip) try { root.V2Sfx.blip(); } catch (er) { } } } });
       d.addEventListener('keydown', function (e) { if (e.key === 'Escape' && el && !el.hidden) close(); }); }
     el.hidden = false; d.body.classList.add('pdx-open'); paint(); void w;
+    try { root.dispatchEvent(new CustomEvent('xcpets:petdex-open')); } catch (e) { } /* daily loot tick (js/v2-daily-loot.js) */
     try { if (location.hash !== '#petdex') history.replaceState(null, '', '#petdex'); } catch (e) { } }
   function close() { if (!el) return; el.hidden = true; d.body.classList.remove('pdx-open'); try { if (location.hash === '#petdex') history.replaceState(null, '', location.pathname + location.search); } catch (e) { } }
   function share(b) { if (!dexNow) return; var t = shareText(dexNow), done = function () { var o = b.textContent; b.textContent = '✅ Copied!'; setTimeout(function () { b.textContent = o; }, 1600); };
@@ -174,7 +177,7 @@
   function todayHtml() { var x = summary(); if (!x) return ''; css();
     return '<button type="button" class="td-dex" data-td="dex">📖 <span>Petdex <b>' + x.got + '/' + x.total + '</b> · ' + esc(x.rank) + (x.mastered.length ? ' · ⭐ ' + x.mastered.length + ' mastered' : '') + '</span><span class="td-go">gotta burn em all ›</span></button>'; }
   function start() { if (!d) return; var q = /[?&]petdex=(\w+)/.exec(location.search); if (q && /^(species|legends|hybrids)$/.test(q[1])) tab = q[1]; /* ?petdex=1 (or =hybrids...) opens it: links from HatchBot */
-    var go = function () { if (location.hash === '#petdex' || q) { var n = 0, t = setInterval(function () { var w = world(); if ((w && w.pets) || ++n > 120) { clearInterval(t); open(); } }, 500); } };
+    var go = function () { if (location.hash === '#petdex' || q) { var n = 0, t = setInterval(function () { var w = world(); if ((w && w.pets && w.pets.length) || ++n > 120) { clearInterval(t); open(); } }, 500); } };
     if (d.readyState === 'loading') d.addEventListener('DOMContentLoaded', go); else go();
     root.addEventListener && root.addEventListener('hashchange', function () { if (location.hash === '#petdex') open(); }); }
   return { compute: compute, shareText: shareText, open: open, close: close, todayHtml: todayHtml, start: start, COLS: COLS, rankOf: rankOf };
