@@ -377,7 +377,10 @@
     var M = window.V2Mock, S = M.state(); ME = M.ME; W = M.world(); TIP = (W && W.tip) || S.tip || 0;
     if (W && W.listings && W.listings.length && !(W._view && !S.viewVerify)) { BOOK = (S.dex && S.dex.orders) || []; return Promise.resolve(); }
     if (S.dex && S.rows && S.rows.length && W && !W._view) { BOOK = S.dex.orders || []; return Promise.resolve(); }
-    return bookInputs().then(replayBook).then(applyBook); }
+    /* spam-city-fast (Nov 23 2026): the game server sends the order book from its checked world (about a second); the full replay in
+     * this browser (a minute or more on a phone) is the backup. */
+    var sv = window.V2Split && V2Split.serverShop ? V2Split.serverShop() : Promise.resolve(null);
+    return sv.then(function (pack) { if (pack) { window.__xcpShopSrc = 'server'; applyBook(pack); return; } window.__xcpShopSrc = 'device'; return bookInputs().then(replayBook).then(applyBook); }); }
   function on() { return PREVIEW || V.salesOn(TIP + 1); }
   function blk(n) { return Number(n).toLocaleString('en-US'); }
   function short(A) { A = String(A || ''); return A.length > 12 ? A.slice(0, 6) + '…' + A.slice(-4) : A; }
