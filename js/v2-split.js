@@ -307,7 +307,7 @@
         }
         viewHold = { deeds: view.deeds, mythicOwners: view.mythicOwners, roster: view._roster || null, cem: view.cem || null, stash: own.page.stash || null, owner: own.page.owner || who };
         viewFolder = folder;
-        view._pages = { n: separate ? own.page.alive : living0.length, pages: livingPages, total: own.page.pages, page: 0, got: 1, key: own.hex, folder: folder, raw: living0 };
+        view._pages = { n: separate ? own.page.alive : living0.length, pages: livingPages, total: own.page.pages, page: 0, got: 1, key: own.hex, folder: folder, raw: living0, rev: separate ? 1 : 0 };
         if (separate) noteGraves(view._pages, 0, true);
         else if (stop0) noteGraves(view._pages, 1, false);
         if (!(view._pages.pages > 1)) { view._full = 1; viewHold.roster = null; view._roster = null; }
@@ -543,10 +543,23 @@
     for (i = 0; i < cur.pets.length; i++) { p = cur.pets[i]; if (p && p.art) map[p.id] = p; }
     return map;
   }
+  /* Nov 23 2026 (Gooby's 'no such pet' on a breed request, pets that showed and then vanished): pets added from outside the owner list
+   * (the asker's pet in a breed request, a pet page's parents, graves, zombies, the Rankings lead file) went in through mergePets, but the
+   * next owner-page batch republished from the owner list alone and dropped them, and they were never fetched again. Keep them here and
+   * add them back on every publish; a fresher copy from the owner list or the device check wins. Display only. */
+  var keptExtra = {}, keptN = 0;
+  function keepExtra(list) { var i, p, who = me(); for (i = 0; i < (list || []).length; i++) { p = list[i]; if (p && p.id != null && (p.owner !== who || p.dead || p.released)) { /* my living pets come from my owner pages */ if (!keptExtra[p.id]) keptN++; keptExtra[p.id] = p; } } }
+  function withKept(pets) {
+    if (!keptN) return pets;
+    var have = {}, i, out = pets.slice();
+    for (i = 0; i < pets.length; i++) if (pets[i]) have[pets[i].id] = 1;
+    Object.keys(keptExtra).forEach(function (id) { if (!have[id]) out.push(keptExtra[id]); });
+    return out;
+  }
   function publishOwner(pets, pages, fights, done) {
     if (!lastSummary || !window.V2Mock || !V2Mock.setViewWorld) return;
     var who = me(), one = {};
-    one[who] = aliveFirst(pets.slice());
+    one[who] = aliveFirst(withKept(pets));
     var v = assemble(lastSummary, { owners: one, deeds: viewHold.deeds, mythicOwners: viewHold.mythicOwners, roster: done ? null : viewHold.roster, cem: viewHold.cem, keepArt: keepArt(), stash: viewHold.stash, owner: viewHold.owner, breedReqs: viewHold.breedReqs || null });
     v._pages = pages || null;
     v._full = done ? 1 : 0;
@@ -590,11 +603,7 @@
     if (!(nextPage < last)) { if (nextPage >= pg.pages) publishJob(true); return Promise.resolve(false); }
     for (i = nextPage; i < last; i++) nums.push(i);
     var stop = false;
-    paging = Promise.all(nums.map(function (ni) {
-      return getJson(pg.folder + 'view/own/' + pg.key + '.' + ni + '.json').then(function (page) {
-        return { n: ni, page: page };
-      }, function () { return { n: ni, page: null }; });
-    })).then(function (rows) {
+    paging = ownPages(pg, nums).then(function (rows) {
       rows.sort(function (a, b) { return a.n - b.n; });
       var chain = Promise.resolve();
       rows.forEach(function (row) {
@@ -617,6 +626,22 @@
     }, function () { paging = null; return false; });
     return paging;
   }
+  /* Nov 23 2026 (GMONEY, 31,000 pets: 'unable to see most pets hatched from #180,000 on'): owner pages run oldest to newest, so a big
+   * wallet's newest pets (Electric Egg Box hatches, fresh breeds) sat on the last of ~1,300 pages and showed last, or never if the phone
+   * gave up first. Pages with a separate living count (every current owner file) now load newest first: step n reads page pages - n.
+   * The fetches also went out up to 256 at once with a 12 s limit that counted the time spent waiting in the browser's queue, and a page
+   * that missed it dropped its 24 pets for good. Now 24 at a time, and a failed page is asked once more with a longer limit. Display only. */
+  function pageNo(pg, ni) { return pg && pg.rev ? pg.pages - ni : ni; }
+  function ownPages(pg, nums) {
+    var out = new Array(nums.length), next = 0, LANES = 24;
+    function one(k) {
+      var url = pg.folder + 'view/own/' + pg.key + '.' + pageNo(pg, nums[k]) + '.json';
+      return getJson(url, 20000).then(null, function () { return getJson(url, 45000); }).then(function (page) { out[k] = { n: nums[k], page: page }; }, function () { out[k] = { n: nums[k], page: null }; });
+    }
+    function lane() { if (next >= nums.length) return Promise.resolve(); var k = next++; return one(k).then(lane); }
+    var lanes = [], i; for (i = 0; i < Math.min(LANES, nums.length); i++) lanes.push(lane());
+    return Promise.all(lanes).then(function () { return out; });
+  }
   function underCap(pg) { return !!pg && (pg.n || 0) > 0 && (pg.n || 0) <= AUTO_CAP; }
   /* Every background batch ends in publishJob, which re-assembles the whole owner world and repaints My Pets. With a fixed
    * 7-page batch that is pages/7 full rebuilds, so a big wallet's cost grew with the square of its size. Each batch is now
@@ -635,7 +660,7 @@
   }
   function loadNewest(pg) {
     var nums, i;
-    if (!pg || !(pg.pages > 1) || !pg.folder || !pg.key) return Promise.resolve(0);
+    if (!pg || !(pg.pages > 1) || !pg.folder || !pg.key || pg.rev) return Promise.resolve(0); /* newest-first paging reads these pages first anyway */
     nums = newestPages(pg.pages, pg.got);
     if (!nums.length) return Promise.resolve(0);
     return Promise.all(nums.map(function (ni) {
@@ -871,7 +896,7 @@
     if (!extra || !extra.length || !window.V2Mock || !V2Mock.world || !V2Mock.setViewWorld) return;
     var cur = V2Mock.world(), have = {}, pets = (cur.pets || []).slice(), i, p;
     for (i = 0; i < pets.length; i++) have[pets[i].id] = 1;
-    for (i = 0; i < extra.length; i++) { p = extra[i]; if (!p || have[p.id] || (p.id === 1765 && p.dead)) continue; pets.push(p); have[p.id] = 1; }
+    for (i = 0; i < extra.length; i++) { p = extra[i]; if (!p || (p.id === 1765 && p.dead)) continue; keepExtra([p]); if (have[p.id]) continue; pets.push(p); have[p.id] = 1; }
     var pg = cur._pages, done = !pg || !!cur._full || (pg.got || 1) >= (pg.pages || 1);
     publishOwner(pets, pg, cur.fights || [], done);
   }
@@ -1153,7 +1178,7 @@
       if (!w || !w.byId || !me0) return;
       (w.breedReqs || []).forEach(function (r) {
         var B = w.byId[r.b], A = w.byId[r.a];
-        [[B, r.b], [A, r.a]].forEach(function (x) { if (!x[0] && !reqAsked[x[1]] && (r.owner === me0 || (B && B.owner === me0) || !B)) { reqAsked[x[1]] = 1; ensurePet(x[1]); } });
+        [[B, r.b], [A, r.a]].forEach(function (x) { if (!x[0] && !reqAsked[x[1]] && (r.owner === me0 || (B && B.owner === me0) || !B)) { var id = x[1]; reqAsked[id] = 1; ensurePet(id).then(function (p) { if (!p) delete reqAsked[id]; }, function () { delete reqAsked[id]; }); } }); /* a failed fetch is tried again on the next publish */
       });
     }, 1200);
   }
@@ -1165,7 +1190,7 @@
     var folder = viewFolder || (gravePlan && gravePlan.folder) || (pageJob && pageJob.pages && pageJob.pages.folder) || '';
     if (!folder) return Promise.resolve(null);
     var shard = ('00000' + Math.floor(id / 2000)).slice(-5);
-    return getJson(folder + 'view/p/' + shard + '.json').then(function (pack) {
+    return idShard(folder + 'view/p/' + shard + '.json').then(function (pack) { /* memoized, 30 s + 45 s retry (a ~1.5 MB shard missed the old 12 s limit on phones) */
       function use(p) {
         if (!p || (p.id === 1765 && p.dead)) return null;
         mergePets([p]);
