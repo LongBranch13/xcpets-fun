@@ -1063,7 +1063,19 @@
     if (!cur || !cur.length) return; var drop = {}; cur.forEach(function (id) { var p = w.byId[id]; if (p && p.owner === ME && !p.hd) drop[id] = 1; });
     var hid = hiddenIds(), next = hid.filter(function (id) { return !drop[Number(id)]; }); if (next.length !== hid.length) setHidden(next);
     try { sessionStorage.setItem(huKey(), JSON.stringify(cur.filter(function (id) { return !drop[id]; }))); } catch (e) {} }
+  /* clear-pile (Nov 23 2026): a discard tag names pets by their place in the owner's WHOLE living list (class filters and runs).
+   * While the pet list is still arriving in pages that list is short here, so a run would point at different pets on chain.
+   * Wait until every page is in (asking for the rest), then build the burn. Until then the pets are only hidden in this browser. */
+  var hdWait = null;
+  function hdSettleThen(ids, restore) { var w = world(), pg = w && w._pages; if (hatchListSettled(w)) return false;
+    hdWait = { ids: (hdWait && hdWait.restore === !!restore ? hdWait.ids : []).concat(ids), restore: !!restore, until: Date.now() + 10 * 60e3 };
+    var pull = function () { var w2 = world(), p2 = w2 && w2._pages; if (p2 && window.V2Split && V2Split.more) try { V2Split.more(Math.min(40, Math.max(1, (p2.pages || 1) - (p2.got || 1)))); } catch (e) { } }; pull();
+    toast('⏳ Loading the rest of your pets first, so the permanent burn names exactly these pets. It is offered as soon as they are in. Until then they are hidden in this browser only.', 9000);
+    if (!hdSettleThen.t) hdSettleThen.t = setInterval(function () { if (!hdWait) { clearInterval(hdSettleThen.t); hdSettleThen.t = null; return; }
+      if (Date.now() > hdWait.until) { hdWait = null; return; } if (!hatchListSettled(world())) return pull(); var job = hdWait; hdWait = null; chainDiscardIds(job.ids, job.restore); }, 3000);
+    return true; }
   function chainDiscardIds(ids, restore) { var w = world(), b = (S.tip || 0) + 1; if (!V.hdOn(b)) return toast('On-chain discard opens at block ' + fmt(V.ACTIVATE_ONCHAIN_DISCARD_BLOCK) + '. Until then, Discard only hides pets in this browser.');
+    if (hdSettleThen(ids, restore)) return;
     var plan = V.hdPlan(w, ME, ids, b, { restore: !!restore }); if (!plan || !plan.ok) return toast((plan && plan.why) || 'No exact burn for that selection.');
     var n = plan.plans.reduce(function (a, q) { return a + ((q.petIds && q.petIds.length) || 0); }, 0);
     var title = (restore ? 'Add ' + fmt(n) + ' pets back to My Pets' : 'Discard ' + fmt(n) + ' pet' + (n === 1 ? '' : 's') + ' permanently (every device)');

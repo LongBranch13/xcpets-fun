@@ -30,7 +30,7 @@
   function build() { var nav = d.querySelector('header nav'); if (!nav || nav.querySelector('.xc-snav')) return;
     var w = d.createElement('span'); w.className = 'xc-snav'; var P = onPlay ? '' : 'play.html';
     w.appendChild(link(onPlay ? '#top' : 'play.html', '🥚 Play', 'navplay-s')); w.appendChild(link(P + '#petsPanel', 'My Pets')); w.appendChild(link(P + '#petsPanel', 'Feed'));
-    w.appendChild(link(P + '#hatchPanel', 'Hatch')); w.appendChild(link('live.html', 'Live Feed'));
+    w.appendChild(link(P + '#hatchPanel', 'Hatch')); w.appendChild(link('live.html', 'Live'));
     var b = d.createElement('button'); b.type = 'button'; b.className = 'xc-sm';
     b.onclick = function () { var m = d.documentElement.classList.contains('xc-simple') ? 'all' : 'simple'; set(KEY, m); apply(m); }; w.appendChild(b);
     nav.insertBefore(w, nav.firstChild); apply(mode()); }
