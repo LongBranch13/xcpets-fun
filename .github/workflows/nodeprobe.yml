@@ -18,10 +18,20 @@ jobs:
               const get = u => fetch(u + '?cb=' + Date.now(), { cache: 'no-store' }).then(r => r.json());
               Promise.all([get('https://node.xcpets.fun/xp/v1/health'), get('https://node.xcpets.fun/xp/v1/world/latest.json'), get('https://xcpets.fun/api/meta.json').catch(() => ({}))]).then(([h, l, m]) => {
                 const pick = o => Object.fromEntries(Object.entries(o).filter(([k, v]) => typeof v === 'number' || typeof v === 'boolean' || v === null || /At$|^rsig$|^v$/.test(k)));
-                console.log(new Date().toISOString(), JSON.stringify({ health: pick(h), latest: pick(l), feedTip: m.blockHeight || m.tip || null }));
+                console.log(new Date().toISOString(), JSON.stringify({ health: pick(h), check: h.check || null, mem: h.mem || null, latest: pick(l), feedTip: m.blockHeight || m.tip || null }));
               }).catch(e => console.log('probe failed:', e.message));"
             sleep 20
           done
+      - name: Burn check and Spam City answers
+        run: |
+          node -e "
+            const B = 'https://node.xcpets.fun';
+            (async () => {
+              let t = Date.now(); const c = await fetch(B + '/xp/v1/check', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ plans: [{ tag: 'pet:feed:1' }], me: '', pending: [] }) }).then(r => r.json()).catch(e => ({ error: e.message }));
+              console.log('check', (Date.now() - t) + ' ms', JSON.stringify({ ok: c.ok, tip: c.tip, rsig: c.rsig, skip: c.skip, error: c.error }));
+              t = Date.now(); const s = await fetch(B + '/xp/v1/shop?cb=' + Date.now()).then(r => r.json()).catch(e => ({ error: e.message }));
+              console.log('shop', (Date.now() - t) + ' ms', JSON.stringify({ ok: s.ok, tip: s.tip, rsig: s.rsig, listings: (s.listings || []).length, pets: (s.pets || []).length, orders: (s.orders || []).length, open: s.open, error: s.error }));
+            })();"
       - name: Raids in the slim view
         run: |
           node -e "
