@@ -228,9 +228,10 @@
     mumu: ['#d06311', '#33ae1f', '#f0d8b2'], snibby: ['#ffdf01', '#fba901', '#dd9604'], dodo: ['#4a4a56', '#c41a1a', '#6b6b78'], kevin: ['#bd8a75', '#84a1b6', '#b1806c'],
     peepo: ['#8cc63f', '#0649ff', '#9f4d37'], sarutobi: ['#7f4106', '#5a2c03', '#e9a63a'], doge: ['#ce9a41', '#bd8a3b', '#f0e6cc'], lenny: ['#f2b98a', '#3a3a44', '#ffdcc0'],
     nakamoto: ['#488101', '#555555', '#7f7f7f'], kek: ['#5aa83c', '#c8342c', '#ffd23f'], wizard: ['#2f6fe0', '#ffd23f', '#e6e6ee'], funtrump: ['#ff8a2a', '#c8342c', '#e6bd85'],
-    homer: ['#5aa83c', '#e0582e', '#f4f4ee'], viking: ['#3580a8', '#cc5a1e', '#9aa6b4'] };
+    homer: ['#5aa83c', '#e0582e', '#f4f4ee'], viking: ['#3580a8', '#cc5a1e', '#9aa6b4'],
+    starlordkek: ['#5aa83c', '#2a1650', '#f0f0ea'] }; /* SPECIAL PAIR (Nov 23 2026): Star-Lord Kek's green skin, cosmic cloak purple, white fur stole */
   var CROSS_LABEL = { pepe: 'Pepe', wojak: 'Wojak', chud: 'Chud', bobo: 'Bobo', mumu: 'Mumu', snibby: 'Snibby', dodo: 'Dodo', kevin: 'Kevin', peepo: 'Peepo', sarutobi: 'Sarutobi', doge: 'Doge',
-    lenny: 'Lenny', nakamoto: 'Nakamoto', kek: 'Kek', wizard: 'Wizard', funtrump: 'FUNTRUMP', homer: 'Homer', viking: 'Viking', kekamozard: 'Kekamozard', don: 'Don' };
+    lenny: 'Lenny', nakamoto: 'Nakamoto', kek: 'Kek', wizard: 'Wizard', funtrump: 'FUNTRUMP', homer: 'Homer', viking: 'Viking', kekamozard: 'Kekamozard', don: 'Don', starlordkek: 'Star-Lord' };
   function cxRgb(h) { return hexRgb(h); }
   function cxHex(r) { return '#' + r.map(function (n) { n = Math.max(0, Math.min(255, Math.round(n))); return (n < 16 ? '0' : '') + n.toString(16); }).join(''); }
   function cxMix(a, b, t) { var A = cxRgb(a), B = cxRgb(b); return cxHex(A.map(function (n, i) { return n + (B[i] - n) * t; })); }
@@ -242,6 +243,7 @@
     else { var lightBelly = cxLum(be) > cxLum(bd) + 20; if (st === 0) { P.d = cxLt(bd, 0.22); P.g = ac; P.f = cxDk(ac, 0.2); }
       else { P.b = bd; P.c = cxDk(bd, 0.16); P.d = lightBelly ? be : cxLt(bd, 0.3); P.e = cxDk(bd, 0.45); P.m = cxDk(bd, 0.34); P.g = cxLt(ac, 0.2); P.f = ac; P.h = cxDk(ac, 0.3);
         if (st === 5) { P.o = cxDk(ac, 0.25); P.n = cxLt(ac, 0.35); } } } /* the pigeon's Mythic rim takes the partner's accent: never gold */
+    if (col === 'starlordkek' && body !== 'bojackson' && st > 0) { P.g = '#5a34a8'; if (st === 5) { P.o = '#3fb8e8'; P.n = '#4fd8ff'; } } /* Star-Lord: brighter cosmic collar, his cyan glow on the Mythic rim */
     return P; }
   /* head anchors read off the baked grid of THIS frame (so the idle bob is already in): head box, crown row, eye, chin, and the front foot */
   function crossHead(g, body) { var y, x, t = 99, b = -1, l = 99, r = -1, ex = -1, ey = -1, top = 99, foot = null, hk = body === 'bojackson' ? /[fiAB]/ : /b/;
@@ -299,6 +301,12 @@
       beardB({ b: CXI.beard, B: CXI.beardD, d: CXI.beardD }); } /* horned helmet + braided beard */
     else if (tell === 'kekamozard') { hat({ m: CXI.blue, l: CXI.blueL, d: CXI.blueD, s: CXI.star }); glasses(CXI.wire, '#e8f4ff'); }
     else if (tell === 'don') { swoop({ h: CXI.ft, H: CXI.ftL, d: CXI.ftD }); glasses(CXI.wire, '#e8f4ff'); }
+    else if (tell === 'starlordkek') { /* SPECIAL PAIR (Jake Nov 23 2026 "Id like them to hybridize"): Star-Lord Kek's black face mask with glowing red eyes, and his spiked silver helm */
+      var mk = '#1c1c24', ml = big ? ex - 4 : ex - 3, mr = Math.min(H.r + 1, ex + 1), my, sk;
+      for (my = ey - (big ? 1 : 0); my <= ey + (big ? 1 : 0); my++) for (var mx = ml; mx <= mr; mx++) p(mx, my, mk);
+      p(ex, ey, '#ff3030'); p(ex - 2, ey, '#ff3030'); if (big) { p(ex, ey - 1, '#ffd08a'); p(ex - 2, ey - 1, '#ffd08a'); }
+      sk = big ? 3 : mid ? 2 : 0; if (sk) [cx - (big ? 3 : 2), cx + (big ? 2 : 1)].forEach(function (x0) { for (var i = 1; i <= sk; i++) p(x0, t - i, i === sk ? '#f0f0ea' : '#c8d0da'); p(x0 + 1, t - 1, '#8f96a3'); });
+      if (big) for (var hx = cx - 3; hx <= cx + 3; hx++) p(hx, t, hx < cx ? '#c8d0da' : '#8f96a3'); }
     return put; }
   function crossOutline(g, put, ink) { var o = {}; put.forEach(function (q) { o[q[0] + ',' + q[1]] = 1; });
     put.forEach(function (q) { [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(function (d) { var X = q[0] + d[0], Y = q[1] + d[1]; if (X >= 0 && Y >= 0 && X < N && Y < N && !g[Y][X] && !o[X + ',' + Y]) g[Y][X] = ink; }); }); }

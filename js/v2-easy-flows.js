@@ -52,6 +52,22 @@
       '<div class="ez-rc egg">' + sp(asker) + '<div class="ez-rt"><span class="ez-rb">🥚 GETS THE EGG</span>' + nm(asker) + '<small>' + (mode === 'ask' ? 'You asked first, so the egg lands in <b>your</b> wallet.' : 'They asked first, so the egg goes to <b>their</b> wallet.') + '</small></div></div>' +
       '<div class="ez-rc car">' + sp(carrier) + '<div class="ez-rt"><span class="ez-rb">🧬 BECOMES A CARRIER</span>' + nm(carrier) + '<small>' + (mode === 'ask' ? 'Their pet' : 'Your pet') + ' learns <b>' + esc(st + v) + '</b> from #' + asker.id + '. Every future egg of #' + carrier.id + ' gets at least ' + esc(st + v) + '.</small></div></div>' +
       '</div></div>'; }
+  /* special-baby note (Nov 23 2026, a player bred Rarepigeon x Star-Lord Kek and got a Snibby: "is this a bug?"). Display only, before the burn.
+   * Mirrors js/v2-rules.js contestParents(): a special 1 of 1 pet (V2Rules.isContestSp: Rarepigeon, Bo Jackson, Bo Pigeon, Star-Lord Kek ...) never passes on
+   * its own species. With a normal partner the baby is the partner's species; two special parents roll ONE random normal species (never a hybrid, never Nakamoto).
+   * Looks: V2Rules.crossOf (1 of 1 cross body) and, once that rules change is live, V2Rules.specialPairOf (special x special mix) say what the baby looks like. */
+  function specialNote(A, B, b) { var V = window.V2Rules || {}; if (!A || !B || !V.isContestSp) return '';
+    var sa = V.isContestSp(A.species), sb = V.isContestSp(B.species); if (!sa && !sb) return '';
+    var lab = function (p) { return esc(V.speciesLabel ? V.speciesLabel(p.species) : p.species); }, look = null;
+    try { if (V.specialPairOf && V.specialPairOn && V.specialPairOn(b)) look = V.specialPairOf(A, B); if (!look && V.crossOf && V.crossOn && V.crossOn(b)) { var x = V.crossOf(A, B); if (x && x.body) look = x; } } catch (e) { look = null; }
+    var lk = look && V.crossLabel ? esc(V.crossLabel(look)) : '', head, body;
+    if (sa && sb) {
+      if (lk) { head = '✨ SPECIAL MIX: ' + lk.toUpperCase(); body = lab(A) + ' and ' + lab(B) + ' are both special one-of-a-kind pets, so the baby is a mix of the two: a <b>' + lk + '</b>. Underneath it is a random normal species (Pepe, Snibby, Dodo ...) and it breeds like one.'; }
+      else if (A.species === B.species && V.isContestSp(A.species)) { head = '🎲 SURPRISE BABY'; body = 'Two ' + lab(A) + 's make a <b>random normal species</b> (Pepe, Snibby, Dodo ...), not another ' + lab(A) + '. Special pets never pass on their own species.'; }
+      else { head = '🎲 SURPRISE BABY'; body = lab(A) + ' and ' + lab(B) + ' are both special one-of-a-kind pets, and special pets never pass on their own species. Together they make a <b>random normal species</b> (Pepe, Snibby, Dodo ...). It is <b>not</b> a hybrid.'; }
+    } else { var S = sa ? A : B, O = sa ? B : A; head = '🧬 BABY SPECIES: ' + lab(O).toUpperCase();
+      body = lab(S) + ' is a special one-of-a-kind pet and never passes on its own species, so the baby is a <b>' + lab(O) + '</b>' + (lk ? ' with the <b>' + lk + '</b> look.' : '.'); }
+    return '<div class="ez-roles ez-spx" role="note"><div class="ez-rh">' + head + '</div><div class="ez-spt">' + body + '</div></div>'; }
   function pairCard(P1, P2, b) { var e = eggOf(P1, P2, b); if (!e) return ''; var SL = { vigor: 'Vigor', spark: 'Spark', grit: 'Grit', zoom: 'Zoom', luck: 'Luck' };
     var rows = EggPower.KEYS.map(function (k) { var x = e.stats[k], mk = (x.keep ? ' <i title="hybrid egg keeps this best stat">kept</i>' : '') + (x.floor != null ? ' <i title="carried stat floor">≥' + x.floor + '</i>' : '');
       return '<tr><th>' + SL[k] + '</th><td>' + x.a + '</td><td class="eg">' + x.lo + ' to ' + x.hi + ' <small>~' + (Math.round(x.exp * 10) / 10) + '</small>' + mk + '</td><td>' + x.b + '</td></tr>'; }).join('');
@@ -334,7 +350,7 @@
     var od = '';
     if (P1 && P2 && M && M.odds) { try { var o2 = M.odds(Vr, P1, P2); od = '<div class="ez-odds"><b>ODDS</b> ' + o2.sp.map(function (x) { return esc(x[0]) + ' ' + x[1].toFixed(x[1] === 100 ? 0 : 1) + '%'; }).join(' · ') + ' · ' + TL[o2.hiT] + ' ' + o2.tier.hi.toFixed(1) + '%' + (o2.tier.up ? ' · ⬆ ' + TL[Math.min(3, o2.hiT + 1)] + ' ' + o2.tier.up.toFixed(1) + '%' : '') + (o2.tier.lo ? ' · ' + TL[o2.loT] + ' ' + o2.tier.lo.toFixed(1) + '%' : '') + '</div>'; } catch (e) { od = ''; }
       od += pairCard(P1, P2, T + 1); od = '<details class="pk2-dt"><summary>🔬 Egg details: odds and stats</summary>' + od + '</details>'; }
-    if (P1 && P2) { try { od = rolesBox(P1, P2, rmode, T + 1) + od; } catch (e) { } }
+    if (P1 && P2) { try { od = rolesBox(P1, P2, rmode, T + 1) + od; } catch (e) { } try { od = specialNote(P1, P2, T + 1) + od; } catch (e) { } }
     placeCheck('<div class="ez-checkin" role="region" aria-label="Check in">' + od + (flip ? UI.breedFlipNote(flip) : '') + '<div class="ez-acts"><button type="button" class="btn ico-egg ez-go" id="ezBGo"' + (ok ? '' : ' disabled') + '>' + esc(label) + '</button></div><div class="ez-hint">' + (flip ? '' : esc(hint)) + (view ? ' 👀 View only: connect the wallet that owns these pets to burn. Nothing is signed from this page until you confirm.' : (flip ? '' : ' Motel check-in (pet:breed), not the daily WAGMI check-in.')) + '</div></div>');
     if ($('ezCheck')) sprites($('ezCheck'), w);
     ['A', 'B'].forEach(function (k) { var so = $('ezBs' + k); if (so) so.onchange = function () { s['s' + k.toLowerCase()] = this.value; if (k === 'A') s.shA = 'best'; else s.shB = 'best'; redraw(); }; });
@@ -346,11 +362,12 @@
     $('ezBGo').onclick = function () { if (s.req) { var acc = document.querySelector('#motelReqs [data-bracc="' + s.req + '"]'); if (acc) acc.click(); return; } var bell = $('bGo'); if (bell && !bell.disabled) bell.click(); }; }
 
   /* hooks: repaint after the existing face-off / motel renders (their state stays the single source of truth) */
-  window.V2Easy = { rolesBox: rolesBox, carryOf: carryOf, fight: function (w) { try { fight(w); } catch (e) { console.warn('easy fight', e); } }, breed: function (w) { try { breed(w); } catch (e) { console.warn('easy breed', e); } } };
+  window.V2Easy = { rolesBox: rolesBox, specialNote: specialNote, carryOf: carryOf, fight: function (w) { try { fight(w); } catch (e) { console.warn('easy fight', e); } }, breed: function (w) { try { breed(w); } catch (e) { console.warn('easy breed', e); } } };
   if (window.V2Motel && V2Motel.render) { var mr = V2Motel.render; V2Motel.render = function (w) { var r = mr.apply(this, arguments); V2Easy.breed(w); return r; }; }
   if (!document.getElementById('ezCss')) { var cs = document.createElement('style'); cs.id = 'ezCss';
     cs.textContent = 'body.pk2-motel #lfDock{display:none}.ez-ffoot{margin-top:10px}.ez-ffoot .pk2-dt{margin:0 0 8px}.pk2-fx,.pk2-dt{margin:8px 0 0;border:2px solid #4b3f7a;background:#120e22}.pk2-fx>summary,.pk2-dt>summary{cursor:pointer;padding:8px;font-weight:bold;color:#ffd84d;min-height:28px}.pk2-fx>*:not(summary){margin:4px 8px 8px}.pk2-dt>*:not(summary){margin:4px 6px 6px}.pk2-look{margin:0 0 8px}' +
       '.ez-on>#faceoff,.ez-on>.ar-h{display:none}#breedPanel.ez-on .motel-bell,#breedPanel.ez-on #motelDesk .mt-guests,#breedPanel.ez-on #motelDesk .mt-browse,#breedPanel.ez-on #motelDesk #motelPick,#breedPanel.ez-on #motelDesk .mt-odds,#breedPanel.ez-on #motelDesk .mt-hint,#breedPanel.ez-on #motelDesk .brv-flip{display:none}' +
+      '.ez-roles.ez-spx{background:#3a1d12}.ez-roles.ez-spx .ez-rh{color:#ffb84d}.ez-spt{font-size:13px;line-height:1.4;color:#fff3e6}' +
       '.ez-roles{margin:6px 0 8px;border:3px solid #000;background:#2b1946;box-shadow:3px 3px 0 #000;padding:6px 8px;color:#fff}.ez-rh{font-family:"Press Start 2P",monospace;font-size:10px;color:#ffd166;margin:0 0 6px;letter-spacing:1px}' +
       '.ez-rr{display:grid;grid-template-columns:1fr 1fr;gap:8px}.ez-roles.same .ez-rr{grid-template-columns:1fr}.ez-rc{display:flex;gap:8px;align-items:flex-start;border:2px solid #000;padding:6px;min-width:0}.ez-rc.egg{background:#1e3a2a}.ez-rc.car{background:#22284a}' +
       '.ez-rsp canvas{width:48px;height:48px;image-rendering:pixelated;display:block}.ez-rt{min-width:0;font-size:13px;line-height:1.35}.ez-rt small{display:block;color:#e6e0ff;font-size:12px;margin-top:2px}.ez-rb{display:block;font-family:Bangers,Impact,sans-serif;font-size:17px;letter-spacing:.5px;color:#3ddc84}.ez-rc.car .ez-rb{color:#7ad7ff}' +
