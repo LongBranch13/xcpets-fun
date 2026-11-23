@@ -413,7 +413,9 @@ function write(dir, world, meta) {
     /* Seasons (gated by ACTIVATE_SEASONS_BLOCK): eggs sold, points and tiers per wallet. Small; the season bar and the catch-up sweep need it. */
     seasons: copy(world.seasons) || {},
     /* Pantry (prepaid meals; gated by ACTIVATE_PANTRY_BLOCK): each player's balance and pet list, so the slim Play page shows it */
-    pantry: copy(world.pantry) || null, pantryDay: world.pantryDay != null ? world.pantryDay : null
+    pantry: copy(world.pantry) || null, pantryDay: world.pantryDay != null ? world.pantryDay : null,
+    /* Meat Grinder (gated by ACTIVATE_GRIND_BLOCK): each wallet's meat meter and last grind, so the slim My Pets shows it */
+    grind: copy(world.grind) || null
   };
   const leadBurners = (world.community && world.community.leaderboard) || [];
   /* every pet that was ever tied to a token (a destroyed token too), so Proof Parade gives the same answer as from rank.json */
