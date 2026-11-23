@@ -6,17 +6,21 @@ const fs = require('fs'), vm = require('vm'), path = require('path');
 const R = f => fs.readFileSync(path.join(__dirname, '..', f), 'utf8');
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('ok  ', m); } else { fail++; console.log('FAIL', m); } };
 
-function statusLine(S, feedTip) {
+function statusLine(S, feedTip, health) {
   const el = { innerHTML: '', hidden: false, setAttribute() {} };
   const doc = { readyState: 'complete', head: { appendChild() {} }, body: { insertBefore() {}, firstChild: null }, getElementById: id => id === 'statusLine' ? el : null,
     querySelector: () => null, createElement: () => el, addEventListener() {} };
-  const win = { location: { pathname: '/play.html' }, document: doc, V2Mock: { state: () => S }, V2Sales: { feed: { tip: feedTip || 0 } }, fetch: () => new Promise(() => {}), setInterval() {} };
+  const win = { location: { pathname: '/play.html' }, document: doc, V2Mock: { state: () => S }, V2Sales: { feed: { tip: feedTip || 0 } }, V2Split: { healthTip: () => health || 0 }, fetch: () => new Promise(() => {}), setInterval() {} };
   win.window = win; vm.createContext(win); vm.runInContext(R('js/v2-status.js'), win); return el.innerHTML;
 }
 ok(/Up to date/.test(statusLine({ tip: 977130, chainTip: 977131, view: true, verified: false })), 'published world 1 block behind: Up to date');
 ok(!/checking the chain/.test(statusLine({ tip: 977130, chainTip: 977131, view: true, verified: false })), 'no "checking the chain" for a current published world');
 ok(/Catching up/.test(statusLine({ tip: 977120, chainTip: 977131, view: true, verified: false })), 'published world 11 blocks behind: Catching up');
+ok(/Catching up/.test(statusLine({ tip: 977125, chainTip: 977131, view: false, verified: false })), 'a chain copy 6 behind: still Catching up (unchanged)');
 ok(/Saved copy/.test(statusLine({ tip: 977130, chainTip: 0, view: true, verified: false })), 'tip unknown: still Saved copy');
+ok(/Up to date<\/span> · block 977,131$/.test(statusLine({ tip: 977131, view: true, verified: false }, 0, 977132)), 'tip from the server health check: Up to date');
+ok(/Up to date.*6 newer blocks in the next update/.test(statusLine({ tip: 977131, view: true, verified: false }, 0, 977137)), '6 behind (normal between server builds): Up to date, names the coming blocks');
+ok(/Catching up/.test(statusLine({ tip: 977120, view: true, verified: false }, 0, 977137)), '17 behind: Catching up');
 ok(/Saved copy/.test(statusLine({ tip: 977130, chainTip: 977131, view: false, verified: false })), 'a stale chain copy (not the published world) is still Saved copy');
 ok(/Live/.test(statusLine({ tip: 977131, chainTip: 977131, view: true, verified: true })), 'checked: Live');
 
