@@ -54,3 +54,13 @@ body:has(.reveal.on) .ip-awaywrap{visibility:hidden}
   .ip-awayfix{left:max(8px, env(safe-area-inset-left));right:max(8px, env(safe-area-inset-right));bottom:max(10px, env(safe-area-inset-bottom));max-width:calc(100vw - 16px);box-sizing:border-box}
   .ip-awayfix .ip-away{overflow-wrap:anywhere;white-space:normal;max-width:100%}
 }
+
+/* Mythic road (Nov 23 2026) */
+.ip-mp{margin:8px 0}.ip-mp-st{padding:6px 8px;border:2px solid #000;font-size:13px;margin-bottom:8px}.ip-mp-st.on{background:#1f4a2a}.ip-mp-st.off{background:#3a2a10}
+.ip-mp-row{margin:4px 0 16px;opacity:.55}.ip-mp-row.on{opacity:1}.ip-mp-lab{font-size:12px;margin-bottom:3px}.ip-mp-row.on .ip-mp-lab{font-weight:700}
+.ip-mp-bar{position:relative;height:18px;border:2px solid #000;background:#14102a;margin-right:14px}.ip-mp-bar i{position:absolute;top:0;bottom:0;font:700 10px/18px sans-serif;font-style:normal;color:#000;text-align:center;overflow:hidden;white-space:nowrap}
+.ip-mp-end{position:absolute;top:50%;transform:translate(-50%,-50%);font-size:16px;line-height:1}
+.ip-mp-me{position:absolute;top:-7px;width:0;height:0;border:6px solid transparent;border-top:8px solid #ffd23f;transform:translateX(-50%)}
+.ip-mp-dot{position:relative;display:inline-block;top:4px;transform:none;margin-right:2px}
+.ip-mp-ticks{position:relative;height:13px;font-size:10px;color:#bbb;margin-right:14px}.ip-mp-ticks span{position:absolute;transform:translateX(-50%);white-space:nowrap}.ip-mp-ticks span:last-child{transform:translateX(-90%)}
+.ip-mp-tip{background:#251c40;border:2px dashed #ffd23f;padding:5px 7px}.ip-mp-chip{font-size:12px;margin-left:6px;vertical-align:middle}
