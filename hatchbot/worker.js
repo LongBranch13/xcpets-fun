@@ -1,16 +1,40 @@
 /* HatchBot (Cloudflare Worker). Telegram calls POST /tg for every message the bot can see.
- * Commands: /pet, /burns, /whosthat, /breed, /battle, /meme, /chainday, /season, /bug, /help (and /chatid). /rate stays removed (owner).
+ * Commands: /pet, /burns, /whosthat, /breed, /battle, /meme, /chainday, /season, /bug, /help (and /chatid). /rate only when auto-config.json commands.rate is true (default off).
  * The old HatchBot commands were ported by Grok Bot on Nov 22 2026 and brought into the repo (owner: "yes on commands").
  * Also POST /e: page error reports from every xcpets.fun page (see pageError). POST /selftest: dry run of a command (secret key).
  * Bindings (set by .github/workflows/hatchbot-worker.yml): TELEGRAM_BOT_TOKEN, HB_TEST_KEY (secrets), BUGS (KV), DB (D1, hatchbot/schema.sql),
  * a cron every 2 minutes to reveal /whosthat rounds (D1 if the token may create it, otherwise KV). Read-only toward the game: it never signs, burns or touches wallets. */
 import MEMES from './memes.json';
 import CAPTIONS from './captions.json';
+import AUTO from './auto-config.json'; /* automatic posts: every switch defaults to off */
+import { autoTick, preview as autoPreview } from './auto.js';
 const TOKEN_IDS = MEMES.map(m => m.id); /* every pet with a 512x512 picture (hatchbot/build-memes.js) */
 
 var SITE = "https://xcpets.fun";
 var HELP = "\u{1F438} HatchBot commands\n/pet \xB7 a random pet (/pet 123, /pet <name>, /pet <species>)\n/burns \xB7 community burns and community pet progress\n/whosthat \xB7 guess the pet from its silhouette (reply to the photo)\n/breed \xB7 a real breed from the chain (/breed <pet>)\n/battle \xB7 a real arena battle (/battle <pet>)\n/meme \xB7 a random XCPETS meme\n/chainday \xB7 the current 144-block game day and blocks left\n/season \xB7 the current XCPETS season and its countdown\n/bug <what happened> \xB7 report a bug to the XCPETS team (pet numbers help!)\n/help \xB7 this list\n\nPlay at xcpets.fun";
 var BOT_COMMANDS = [["pet", "Pet card: /pet, /pet 123, /pet <name>, /pet <species>"], ["burns", "Community burns and community pet progress"], ["whosthat", "Guess the pet from its silhouette"], ["breed", "A real breed from the chain (/breed <pet>)"], ["battle", "A real arena battle (/battle <pet>)"], ["meme", "A random XCPETS meme"], ["chainday", "Current 144-block game day and blocks left"], ["bug", "Report a bug to the XCPETS team"], ["help", "List HatchBot commands"]];
+var RATE_ON = !!(AUTO.commands && AUTO.commands.rate === true);
+if (RATE_ON) { HELP = HELP.replace("\n/meme ", "\n/rate \xB7 HatchBot rates a pet (/rate 42, /rate <name>)\n/meme "); BOT_COMMANDS.splice(5, 0, ["rate", "HatchBot rates a pet (/rate <pet>)"]); }
+/* /rate, ported from the old VPS HatchBot (commands.js). Sabo #1765 stays alive through view(). */
+function cmdRate(S, args) {
+  const q = String(args || "").trim();
+  let row;
+  if (!q) row = pick(S.rows.filter((r) => aliveRow(S, r)));
+  else { const f = findRows(S, q); if (!f.length) return { text: "I couldn't find that pet. Try /rate 42 or /rate Pori." }; row = f.length > 1 ? pick(f) : f[0]; }
+  const p = view(S, row), st = p.stats || {}, ks = Object.keys(st), pow = ks.reduce((a, k) => a + (st[k] || 0), 0);
+  const best = ks.slice().sort((a, b) => st[b] - st[a])[0], worst = ks.slice().sort((a, b) => st[a] - st[b])[0], L = [];
+  if (p.dead) L.push("Rest easy, legend. Gone but never unfed in our hearts. \u{1FAA6}");
+  else if (p.tier === "Legendary") L.push("LEGENDARY. Other pets ask for this one's autograph. \u{1F451}");
+  else if (p.tier === "Common") L.push("Common? More like Common-ly underrated. \u{1F4AA}");
+  else L.push(p.tier + " and knows it. \u{1F60E}");
+  if (p.stage === "Mythic") L.push("Mythic status: never goes hungry, never stops flexing.");
+  else if (p.stage === "Egg") L.push("Still an egg. Big things coming. Probably.");
+  if (best) L.push("Best stat: " + best + " " + st[best] + ". Worst stat: " + worst + " " + st[worst] + " (we don't talk about that).");
+  if (p.wins || p.losses) L.push("Arena record " + p.wins + "-" + p.losses + (p.wins > p.losses ? ". Certified menace. \u{1F94A}" : ". Heart of a champion, record of a participant."));
+  if (p.gear.length >= 3) L.push("Drip level: " + p.gear.length + " pieces. Fashion week called."); else if (!p.gear.length) L.push("Wearing nothing but confidence.");
+  const score = Math.min(10, Math.max(1, Math.round(pow / 12 + ["Common", "Uncommon", "Rare", "Legendary"].indexOf(p.tier))));
+  return { text: "\u{1F4CB} #" + p.id + " " + p.name + " (" + p.tier + " " + p.speciesLabel + ", " + p.stage + ")\n" + L.join("\n") + "\nHatchBot rating: " + score + "/10\n" + link(p.id), ids: [p.id] };
+}
 var LIMITS = { userCooldownMs: 5e3, maxPerHour: 30, memeChatMs: 15e3, roundMs: 60e3, lateS: 120, lateMaxS: 24 * 3600 };
 var SORRY = "Sorry for the slow reply, I was offline for a bit.";
 async function hookSecret(token) {
@@ -410,7 +434,7 @@ async function command(env, msg) {
   if (!m) return null;
   if (m[2]) { const me = await botUsername(env); if (me && m[2].toLowerCase() !== me.toLowerCase()) return null; }
   const cmd = "/" + m[1].toLowerCase(), args = (m[3] || "").trim().slice(0, 60), name = cmd.slice(1);
-  const KNOWN = ["/help", "/start", "/chatid", "/chainday", "/season", "/meme", "/pet", "/burns", "/whosthat", "/breed", "/battle", "/bug"];
+  const KNOWN = ["/help", "/start", "/chatid", "/chainday", "/season", "/meme", "/pet", "/burns", "/whosthat", "/breed", "/battle", "/bug"].concat(RATE_ON ? ["/rate"] : []);
   if (!KNOWN.includes(cmd)) return null;
   const now = Date.now(), age = msg.date ? Math.floor(now / 1e3) - msg.date : 0, late = age > LIMITS.lateS;
   if (late && (age > LIMITS.lateMaxS || ["/meme", "/chainday", "/season", "/whosthat"].includes(cmd))) return null;
@@ -455,6 +479,7 @@ async function command(env, msg) {
   let r;
   if (cmd === "/pet") r = await cmdPet(env, S, args);
   else if (cmd === "/breed") r = await cmdBreed(env, S, args);
+  else if (cmd === "/rate") r = cmdRate(S, args);
   else if (cmd === "/battle") {
     let W; try { W = await loadWorld(); } catch (e) { console.log("world load failed", e && e.message); return reply("I couldn't load the arena right now. Try again in a minute."); }
     r = await cmdBattle(env, S, W, args);
@@ -480,7 +505,10 @@ async function scheduled(env) {
       if (r.ok) await env.DB.prepare("INSERT OR REPLACE INTO kv(k, v) VALUES (?, ?)").bind(k, new Date().toISOString()).run();
     }
   } catch (e) { console.log("menu set failed", e && e.message); }
+  /* Automatic chain posts (hatchbot/auto.js). Does nothing unless auto-config.json has announce:true and a feature switched on. */
+  try { const r = await autoTick(env, AUTO, tg, Date.now(), { pets: autoPets }); if (r && !r.off && (r.sent || r.queued || r.error)) console.log("auto", JSON.stringify(r)); } catch (e) { console.log("auto failed", e && e.message); }
 }
+async function autoPets() { const S = await loadPets(); return { tip: S.tip, d: S.d, rows: S.rows, maxId: S.rows.length ? S.rows[S.rows.length - 1][0] : 0 }; }
 /* Page error reports (owner Nov 22 2026: "hatchbot worker"). Every xcpets.fun page carries a tiny reporter (tools/build-err-report.js)
  * that sends ONLY {k, m, f, l, c, b, p}: kind, message (addresses, long hex and emails already cut), script path, line, column,
  * build id, page path. No wallet, no query string, no IP is stored. Same error = one KV key per UTC day with a count, so the free
@@ -523,6 +551,11 @@ const worker = {
       const E = Object.create(env); E.__dry = [];
       const body = await req.json().catch(() => ({}));
       const t0 = Date.now(); let err = null;
+      /* {"auto":"preview","back":144}: what the automatic posts would say for the last N blocks. Sends nothing, writes no KV. */
+      if (body.auto === "preview") {
+        let out = null; try { out = await autoPreview(AUTO, { back: Math.min(+body.back || 144, 432), pets: autoPets }); } catch (e) { err = String(e && e.stack || e); }
+        return new Response(JSON.stringify({ ms: Date.now() - t0, err, config: AUTO, preview: out }), { headers: { "content-type": "application/json" } });
+      }
       try { await handleUpdate(E, { message: { message_id: 1, date: Math.floor(Date.now() / 1e3), chat: { id: body.chat || 0, type: "private" }, from: { id: 0, first_name: "Test" }, text: String(body.text || "/help"), reply_to_message: body.reply ? { from: { is_bot: true } } : void 0 } }); } catch (e) { err = String(e && e.stack || e); }
       return new Response(JSON.stringify({ ms: Date.now() - t0, err, out: E.__dry }), { headers: { "content-type": "application/json" } });
     }
