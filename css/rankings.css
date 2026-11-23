@@ -19,7 +19,7 @@ body.rk-finds #rkSpecies,body.rk-finds .uxp-find{display:none}
 /* rank-calm-1123 (Jake Nov 23 2026): the board is the hero. Podium + one calm toolbar (js/v2-rank-calm.js). */
 body.rkc .rksp-lead,body.rkc #rkSpecies .rksp{display:none}
 body.rkc .panel > p.muted:first-of-type{display:none}
-body.rkc #rkTabsHost .rktabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:thin;padding-bottom:6px;-webkit-overflow-scrolling:touch}
+body.rkc #rkTabsHost .rktabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding-bottom:6px;-webkit-overflow-scrolling:touch}
 body.rkc #rkTabsHost .rktabs .tab{flex:none;padding:6px 11px;font-size:13px}
 .rkcalm{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:4px 0 10px}
 .rkcalm .rkc-sp{display:inline-flex;align-items:center;gap:6px}.rkcalm .rkc-l{font-size:13px;opacity:.8}
@@ -41,3 +41,7 @@ body.rkc .rkctl #rkFind{display:none}
 .rkp-v{font-size:13px;color:#ffe68a;font-weight:700}
 @media (max-width:600px){html body .rkpod{gap:6px}html body .rkp{padding:8px 3px 10px}html body .rkp canvas{width:60px;height:60px}html body .rkp1 canvas{width:84px;height:84px}html body .rkp-n{font-size:13px}html body .rkp-s{display:none}html body .rkcalm select{max-width:150px}html body .rkcalm .rkc-l,html body .rkcalm .rkc-long{display:none}html body .rkcalm{gap:6px}html body .rkcalm .q{padding-left:10px;padding-right:10px}}
 body.rkc .wf5{padding:8px 10px}body.rkc .wf5 .small{display:block;margin:2px 0}body.rkc .wf5 ol{display:flex;flex-wrap:wrap;gap:4px 18px;margin:4px 0 0;padding-left:20px}
+
+/* no visible scrollbars on swipe rows (Jake Nov 23 2026); they still swipe */
+#rkSpecies .rksp,#rkTabsHost .rktabs,.cemv2bar .cv2-quick{scrollbar-width:none}
+#rkSpecies .rksp::-webkit-scrollbar,#rkTabsHost .rktabs::-webkit-scrollbar,.cemv2bar .cv2-quick::-webkit-scrollbar{display:none}

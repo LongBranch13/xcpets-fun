@@ -106,3 +106,7 @@ html.hw .tomb.gtomb::after{display:none}
 /* grave-sort-up-front (Nov 23 2026): Sort, Species and Rarity always visible, ⚡ Most powerful quick pick */
 .cemv2bar .cv2-main{justify-content:center;gap:8px 14px;padding:6px 0}.cemv2bar .cv2-main label{font-weight:bold;font-size:14px}.cemv2bar .cv2-main xc-select,.cemv2bar .cv2-main select{min-width:150px}
 @media (max-width:520px){.cemv2bar .cv2-quick{flex-wrap:nowrap;overflow-x:auto;justify-content:flex-start;padding-bottom:6px}.cemv2bar .cv2-quick .q{flex:0 0 auto}.cemv2bar .cv2-main label{flex:1 1 100%;justify-content:space-between}.cemv2bar .cv2-main xc-select,.cemv2bar .cv2-main select{flex:1;min-width:0;max-width:70%}}
+
+/* no visible scrollbars on swipe rows (Jake Nov 23 2026); they still swipe */
+#rkSpecies .rksp,#rkTabsHost .rktabs,.cemv2bar .cv2-quick{scrollbar-width:none}
+#rkSpecies .rksp::-webkit-scrollbar,#rkTabsHost .rktabs::-webkit-scrollbar,.cemv2bar .cv2-quick::-webkit-scrollbar{display:none}
