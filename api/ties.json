@@ -1,6 +1,6 @@
 {
- "lastBlock": 977128,
- "count": 438,
+ "lastBlock": 977129,
+ "count": 439,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -5258,6 +5258,18 @@
    "speciesLabel": "Peepo",
    "rarity": "Legendary",
    "stage": "Hatchling"
+  },
+  {
+   "id": 67059,
+   "asset": "A1147822652075432439",
+   "tiedBlock": 977129,
+   "tiedTx": "c2b8c92018ac10345d0138463b89a07e23b6f40889a94f21236b4412847a762a",
+   "kind": "deed",
+   "name": "Jenebit",
+   "species": "funtrump",
+   "speciesLabel": "FUNTRUMP",
+   "rarity": "Rare",
+   "stage": "Juvenile"
   }
  ]
 }

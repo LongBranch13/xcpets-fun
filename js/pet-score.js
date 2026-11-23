@@ -119,14 +119,37 @@
   function fmtN(n) { if (!(n >= 1)) return '1'; var u = [[1e12, 'T'], [1e9, 'B'], [1e6, 'M'], [1e3, 'K']]; for (var i = 0; i < u.length; i++) if (n >= u[i][0]) { var v = n / u[i][0]; return (v >= 100 ? Math.round(v) : Math.round(v * 10) / 10) + u[i][1]; } return String(Math.round(n)); }
   function rarityLine(w, p) { var r = rarity(w, p); return r ? '💎 Rarity ' + r.bits.toFixed(1) + ' · 1 in ' + fmtN(r.oneIn) : ''; }
   function rarityChip(w, p) { if (!p || isComm(p)) return ''; var s0 = peek(w, p), r = s0 ? { bits: s0.rarityBits, oneIn: s0.rarityOneIn } : null; if (!r) return '';
-    return '<span class="chip prar" title="Trait rarity: how unusual this pet\'s species, eyes, pattern, background, cheeks, mutation and throwback trait are across every pet (display only, not the hatch tier)">💎 Rarity ' + r.bits.toFixed(1) + ' · 1 in ' + fmtN(r.oneIn) + '</span>'; }
+    return '<span class="chip prar" title="Trait rarity: how unusual this pet\'s species, eyes, pattern, background, cheeks, mutation and throwback trait are across every pet. It shifts a little as new pets hatch, because it compares with every pet (display only, not the hatch tier)">💎 Rarity ' + r.bits.toFixed(1) + ' · 1 in ' + fmtN(r.oneIn) + '</span>'; }
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function label(s) { return s.score + ' · top ' + s.top + '%'; }
-  function badge(w, p) { if (!p || isComm(p)) return ''; var s = peek(w, p); if (!s) return ''; var b = s.breakdown;
+  /* score-why (Nov 23 2026, owner "whatever best"; display only, score math unchanged). The score is graded on a curve against every pet, so it
+   * moves when other pets hatch, grow or fight even if this one doesn't ("rarity score went down on my pets"). This browser keeps one line per
+   * pet it has shown (localStorage, newest 4,000): the score, the number of pets scored and the pet's own inputs, per chain day. The chip gets
+   * a small arrow and the breakdown says how much it moved and whether this pet changed or only the others did. */
+  var HK = 'xcpets-ps-hist', HMAX = 4000, hist = null, hT = 0;
+  function ls() { try { return root.localStorage || null; } catch (e) { return null; } }
+  function hLoad() { if (hist) return hist; hist = {}; var L = ls(); try { var v = L && JSON.parse(L.getItem(HK) || '{}'); if (v && typeof v === 'object' && !Array.isArray(v)) hist = v; } catch (e) { } return hist; }
+  function hSave() { if (hT || typeof setTimeout !== 'function') return; hT = setTimeout(function () { hT = 0; var L = ls(); if (!L) return; try { var k = Object.keys(hist);
+      if (k.length > HMAX) k.sort(function (a, b) { return hist[a].d - hist[b].d; }).slice(0, k.length - HMAX).forEach(function (x) { delete hist[x]; }); L.setItem(HK, JSON.stringify(hist)); } catch (e) { } }, 1500); }
+  function selfKey(s) { var b = s.breakdown || {}; return [b.stats && b.stats.total, b.growth && b.growth.mythicPct, b.growth && b.growth.streak, b.gear && b.gear.won, b.battles && b.battles.fights, b.battles && b.battles.wins].join(','); }
+  /** moved(w, p, s, n) -> null | { delta, days, self, newPets }: change since the last chain day this browser showed the pet. */
+  function moved(w, p, s, n) { if (!ls() || !w || w.tip == null || !s || !n) return null; var H = hLoad(), d = Math.floor(w.tip / BPD), r = H[p.id], k = selfKey(s);
+    if (!r || typeof r !== 'object') { H[p.id] = { d: d, s: s.score, n: n, k: k }; hSave(); return null; }
+    if (r.d < d) { r = H[p.id] = { d: d, s: s.score, n: n, k: k, pd: r.d, ps: r.s, pn: r.n, pk: r.k }; hSave(); }
+    else if (r.d === d && (r.s !== s.score || r.n !== n || r.k !== k)) { r.s = s.score; r.n = n; r.k = k; hSave(); }
+    if (r.pd == null || r.d !== d) return null; return { delta: s.score - r.ps, days: d - r.pd, self: k !== r.pk, newPets: n - r.pn }; }
+  function nOf(w) { var r = peekAll(w); return r ? r.n : 0; }
+  function fmtI(n) { return Number(n || 0).toLocaleString('en-US'); }
+  function arrow(m) { return m && m.delta ? '<span class="psmv ' + (m.delta > 0 ? 'up' : 'dn') + '">' + (m.delta > 0 ? '▲' : '▼') + Math.abs(m.delta) + '</span>' : ''; }
+  function whyHtml(m, n) { var when = m && m.days === 1 ? 'since yesterday' : m ? 'since you last saw it ' + m.days + ' days ago' : '';
+    var h = m ? (m.delta === 0 ? '<b>No change</b> ' + when + '.' : '<b>' + (m.delta > 0 ? '▲ Up ' : '▼ Down ') + Math.abs(m.delta) + '</b> ' + when + '. ' +
+      (m.self ? 'This pet changed (it grew, fought or won gear) and the other pets moved too.' : 'This pet didn\'t change: ' + (m.newPets > 0 ? fmtI(m.newPets) + ' new pets hatched and others grew, fought or won gear' : 'other pets grew, fought or won gear') + ', so the curve moved.')) : '';
+    return '<span class="pswhy">' + (h ? h + '<br>' : '') + '<b>Why it moves:</b> the score is graded on a curve against all ' + fmtI(n) + ' pets. It can go up or down when other pets hatch, grow or fight, even if yours doesn\'t.</span>'; }
+  function badge(w, p) { if (!p || isComm(p)) return ''; var s = peek(w, p); if (!s) return ''; var b = s.breakdown, n = nOf(w), mv = null; try { mv = moved(w, p, s, n); } catch (e) { mv = null; }
     var rows = Object.keys(W).map(function (k) { return '<tr><td>' + LABEL[k] + '</td><td>' + Math.round(W[k] * 100) + '%</td><td>' + b[k].points + '</td></tr>'; }).join('');
     var tip = Object.keys(W).map(function (k) { return LABEL[k] + ' ' + b[k].points + '/' + Math.round(W[k] * 1000); }).join(' · ');
-    return '<span class="psw" tabindex="0" role="button" aria-label="Pet Score ' + s.score + ', rank ' + s.rank + '. Tap for breakdown" title="' + esc('Pet Score (rank #' + s.rank + '): ' + tip) + '"><span class="chip pscore' + (s.dead ? ' psdead' : '') + '">⭐ ' + esc(label(s)) + (s.dead ? ' · 🪦' : '') + '</span>' +
-      '<span class="psbd"><b>Pet Score ' + s.score + '/1000</b> · rank #' + s.rank + (s.dead ? ' · 🪦 dead' : '') + '<table>' + rows + '</table><span class="muted">Display only, from the chain replay. Not the hatch tier.</span></span></span>'; }
+    return '<span class="psw" tabindex="0" role="button" aria-label="Pet Score ' + s.score + ', rank ' + s.rank + '. Tap for breakdown" title="' + esc('Pet Score (rank #' + s.rank + '): ' + tip) + '"><span class="chip pscore' + (s.dead ? ' psdead' : '') + '">⭐ ' + esc(label(s)) + (s.dead ? ' · 🪦' : '') + arrow(mv) + '</span>' +
+      '<span class="psbd"><b>Pet Score ' + s.score + '/1000</b> · rank #' + s.rank + (s.dead ? ' · 🪦 dead' : '') + '<table>' + rows + '</table>' + whyHtml(mv, n) + '<span class="muted">Display only, from the chain replay. Not the hatch tier.</span></span></span>'; }
   /* score-popup (display only): the breakdown used to be position:absolute under the chip, so a card edge could cut it off.
    * The owner's phone shot is a My Pets card (mint hover border, ~6px corner, care bar): the chip sits on that bottom edge,
    * and hover/focus applies a transform (css/game.css .pet.card:hover) which mobile browsers clip to the rounded border.
@@ -136,6 +159,7 @@
   var CSS = '.chip.prar{background:#1d2b53;border-color:#7fd3ff;color:#bfe9ff;white-space:nowrap}.psw{position:relative;display:inline-block;cursor:pointer;outline:none}.chip.pscore{background:#2b2350;border-color:#ffd166;color:#ffd166;white-space:nowrap}.chip.pscore.psdead{opacity:.75}' +
     '.psbd{display:none;position:fixed;z-index:240;left:0;top:0;min-width:190px;max-width:min(260px,calc(100vw - 16px));background:#14122b;color:#eee;border:2px solid #ffd166;border-radius:10px;padding:8px 10px;font-size:12px;line-height:1.35;text-align:left;box-shadow:0 6px 18px rgba(0,0,0,.5);white-space:normal}' +
     '.psbd table{width:100%;border-collapse:collapse;margin:4px 0}.psbd td{padding:1px 4px}.psbd td:nth-child(n+2){text-align:right}.psbd .muted{font-size:11px}' +
+    '.psmv{margin-left:4px;font-size:10px}.psmv.up{color:#7dff6a}.psmv.dn{color:#ff8a8a}.pswhy{display:block;margin:4px 0;padding:5px 0 0;border-top:1px dashed #6b5a2a}' +
     '.psbd.on{display:block}.psw.open,.psw:hover,.psw:focus{z-index:90}';
 
   /* player-qol 2026-10-24 (display only): everything a player needs to decide Keep or Discard, inline on the egg review / Discard pile card,
@@ -196,7 +220,7 @@
     doc.addEventListener('scroll', repos, true);
     if (view) { view.addEventListener('resize', repos); if (view.visualViewport) { view.visualViewport.addEventListener('resize', repos); view.visualViewport.addEventListener('scroll', repos); } }
   }
-  var api = { discardInfo: discardInfo, rarityChip: rarityChip, rarityAll: rarityAll, rarity: rarity, bitsOf: bitsOf, rarityLine: rarityLine, fmtN: fmtN, compute: compute, computeAsync: computeAsync, get: get, of: of, peek: peek, badge: badge, label: label, WEIGHTS: W, LABELS: LABEL, install: install };
+  var api = { moved: moved, whyHtml: whyHtml, discardInfo: discardInfo, rarityChip: rarityChip, rarityAll: rarityAll, rarity: rarity, bitsOf: bitsOf, rarityLine: rarityLine, fmtN: fmtN, compute: compute, computeAsync: computeAsync, get: get, of: of, peek: peek, badge: badge, label: label, WEIGHTS: W, LABELS: LABEL, install: install };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   if (typeof window !== 'undefined') { window.PetScore = api; if (window.document && document.createElement && document.head) try { install(document); } catch (e) {} }
 })(typeof window !== 'undefined' ? window : globalThis);
