@@ -250,8 +250,8 @@
   var TL = ['Common', 'Uncommon', 'Rare', 'Legendary'], TID = ['common', 'uncommon', 'rare', 'legendary'];
   /* grave finder: sort and filter run on the compact index (one page painted). Opening a grave loads V.cemView for that pet.
    * cemetery-rarity-1103: each sort does what its label says. Rarity score is filled in when that grave is opened.
-   * "Most power at death" is the power sort. */
-  var SORTS = [['rarest', 'Rarest first'], ['newest', 'Newest graves'], ['oldest', 'Longest dead'], ['easiest', 'Easiest to raise'], ['strongest', 'Most power at death'], ['gear', 'Most gear'], ['lived', 'Longest lived'], ['id', 'Pet number']];
+   * "⚡ Most powerful" (was "Most power at death") is the power sort. */
+  var SORTS = [['rarest', '💎 Rarest first'], ['newest', 'Newest graves'], ['oldest', 'Longest dead'], ['easiest', 'Easiest to raise'], ['strongest', '⚡ Most powerful'], ['gear', 'Most gear'], ['lived', 'Longest lived'], ['id', 'Pet number']];
   /* rarity rank, same tier logic as the hatch review (js/pet-sort.js, hatch-review-tiers-1103): Mythic (a stage, shown above every tier), then
    * Legendary, Rare, Uncommon, Common (the hatch tier, art.tierIndex). The game has no Epic tier. Inside a rank: 💎 Rarity score, then power. */
   var RK_LABEL = { 4: 'Mythic', 3: 'Legendary', 2: 'Rare', 1: 'Uncommon', 0: 'Common' }, RK_ID = { 4: 'mythic', 3: 'legendary', 2: 'rare', 1: 'uncommon', 0: 'common' };
@@ -288,13 +288,16 @@
     var bar = document.createElement('div'); bar.className = 'uxp-find cemfind cemv2bar'; bar.id = 'cemFinder';
     var opt = function (L, cur) { return L.map(function (s) { return '<option value="' + s[0] + '"' + (s[0] === cur ? ' selected' : '') + '>' + s[1] + '</option>'; }).join(''); };
     bar.innerHTML = '<h3 class="cv2-fh">🔎 Find a grave to raise</h3><p class="small muted cv2-fhint">Any grave can be raised, even another player\u2019s. The zombie is yours. Each grave says what sacrifice it needs.</p><div class="cv2-row"><label class="small" for="cemFind">Find a grave</label><input id="cemFind" type="search" placeholder="Pet #, name, species or owner" autocomplete="off"><button type="button" class="btn" id="cemGo">Find</button>' + (ME ? '<button type="button" class="btn ghost" id="cemMine" aria-pressed="false">My graves</button>' : '') + '</div>' +
-      '<div class="cv2-row cv2-quick" role="group" aria-label="Quick picks"><button type="button" class="q" id="cemRarest" aria-pressed="false">💎 Rarest first</button><button type="button" class="q" id="cemEasiest" aria-pressed="false">' + art('easy', 12) + ' Easiest to raise</button><button type="button" class="q" id="cemFresh" aria-pressed="false">🪦 Freshest graves</button><button type="button" class="q" id="cemOpen" aria-pressed="false">' + art('candle', 12) + ' Open altars</button><button type="button" class="q" id="cemClear">↺ Clear filters</button></div>' +
-      '<details class="cv2-more"><summary>⚙️ More filters: sort, rarity, stage, days dead, difficulty, species, meals</summary><div class="cv2-row cv2-sel"><label class="small">Sort <xc-select id="cemSort">' + opt(SORTS, st.sort) + '</xc-select></label>' +
-      '<label class="small">Rarity <xc-select id="cemTier"><option value="">All rarities</option>' + TL.map(function (t, i) { return '<option value="' + i + '">' + t + '</option>'; }).join('') + '</xc-select></label>' +
+      /* grave-sort-up-front (owner Nov 23 2026: "needs better sorting", "people want the most powerful and certain species", "it has a bunch of sorts just wasnt obvius"):
+       * Sort, Species and Rarity sit in their own always-visible row (same ids and handlers, moved out of More filters); ⚡ Most powerful is a quick pick. Display only. */
+      '<div class="cv2-row cv2-sel cv2-main" role="group" aria-label="Sort and filter graves"><label class="small">↕️ Sort <xc-select id="cemSort">' + opt(SORTS, st.sort) + '</xc-select></label>' +
+      '<label class="small">🐾 Species <xc-select id="cemSp"><option value="">All species</option></xc-select></label>' +
+      '<label class="small">💎 Rarity <xc-select id="cemTier"><option value="">All rarities</option>' + TL.map(function (t, i) { return '<option value="' + i + '">' + t + '</option>'; }).join('') + '</xc-select></label></div>' +
+      '<div class="cv2-row cv2-quick" role="group" aria-label="Quick picks"><button type="button" class="q" id="cemPower" aria-pressed="false">⚡ Most powerful</button><button type="button" class="q" id="cemRarest" aria-pressed="false">💎 Rarest first</button><button type="button" class="q" id="cemEasiest" aria-pressed="false">' + art('easy', 12) + ' Easiest to raise</button><button type="button" class="q" id="cemFresh" aria-pressed="false">🪦 Freshest graves</button><button type="button" class="q" id="cemOpen" aria-pressed="false">' + art('candle', 12) + ' Open altars</button><button type="button" class="q" id="cemClear">↺ Clear filters</button></div>' +
+      '<details class="cv2-more"><summary>⚙️ More filters: stage, days dead, difficulty, meals, raisable only</summary><div class="cv2-row cv2-sel">' +
       '<label class="small">Stage <xc-select id="cemStage"><option value="">All stages</option></xc-select></label>' +
       '<label class="small">Days dead <xc-select id="cemDays">' + opt(DAYS, '') + '</xc-select></label>' +
       '<label class="small">Difficulty <xc-select id="cemDiff"><option value="">Any</option><option value="easy">Easy (Common+ offering)</option><option value="medium">Medium (Uncommon+)</option><option value="hard">Hard (Rare+)</option><option value="closed">Closed graves</option></xc-select></label>' +
-      '<label class="small">Species <xc-select id="cemSp"><option value="">All species</option></xc-select></label>' +
       '<label class="small">Meals <xc-select id="cemMeals"><option value="">All graves</option><option value="fed">Fed at least once</option><option value="nf">Never fed</option></xc-select></label>' +
       '<label class="small cv2-chk"><input type="checkbox" id="cemRaisable"> Raisable only</label></div></details>' +
       '<p class="small muted" id="cemMsg" aria-live="polite"></p>';
@@ -432,7 +435,7 @@
     function ask() { var dd = st.days ? st.days.split('-') : null, q = { page: st.page, per: PER, sort: st.sort, tier: st.tier, stage: st.stage, diff: st.diff, raisable: !!st.raisable, open: !!st.open, mine: !!st.mine, owner: ME || '', sp: st.sp, meals: st.q.trim() ? '' : st.meals, text: st.q };
       if (dd) { q.minDays = +dd[0]; if (dd[1] !== '') q.maxDays = +dd[1]; } return q; }
     function showPage(out) { st.list = out.rows || []; st.matched = out.matched || 0; if (out.page != null) st.page = out.page; if (out.total != null) st.total = out.total; S.total = st.total || st.matched;
-      var q = st.q.trim(); $('cemMsg').innerHTML = fmt(st.matched) + ' grave' + (st.matched === 1 ? '' : 's') + ' shown' + (q ? ' for "' + esc(q) + '"' : '') + ' · page ' + fmt(st.page + 1) + ' · ' + PER + ' at a time · sorted ' + esc((SORTS.filter(function (s) { return s[0] === st.sort; })[0] || SORTS[0])[1].toLowerCase());
+      var q = st.q.trim(); $('cemMsg').innerHTML = fmt(st.matched) + ' grave' + (st.matched === 1 ? '' : 's') + ' shown' + (q ? ' for "' + esc(q) + '"' : '') + ' · page ' + fmt(st.page + 1) + ' · ' + PER + ' at a time · sorted ' + esc((SORTS.filter(function (s) { return s[0] === st.sort; })[0] || SORTS[0])[1].replace(/^[^A-Za-z]+/, '').toLowerCase());
       quick(); paint(); }
     function apply(keepPage, done) { if (!keepPage) st.page = 0; var q = ask();
       function finish(out) { showPage(out); if (done) done(); }
@@ -440,7 +443,7 @@
       if (!st.index || !GI) return; finish(GI.query(st.index, q)); }
     function quick() { var set = function (id, v) { var e = $(id); if (e) e.setAttribute('aria-pressed', !!v); };
       var base = !st.tier && !st.stage && !st.days && !st.sp && !st.meals && !st.q;
-      set('cemRarest', st.sort === 'rarest' && st.raisable && base && !st.diff); set('cemEasiest', st.sort === 'easiest' && st.raisable); set('cemFresh', st.sort === 'newest' && st.days === '0-1'); set('cemOpen', !!st.open); }
+      set('cemPower', st.sort === 'strongest' && base && !st.diff && !st.open); set('cemRarest', st.sort === 'rarest' && st.raisable && base && !st.diff); set('cemEasiest', st.sort === 'easiest' && st.raisable); set('cemFresh', st.sort === 'newest' && st.days === '0-1'); set('cemOpen', !!st.open); }
     function sync() { $('cemSort').value = st.sort; $('cemTier').value = st.tier; $('cemStage').value = st.stage; $('cemDays').value = st.days; $('cemDiff').value = st.diff; $('cemRaisable').checked = st.raisable; $('cemSp').value = st.sp; $('cemMeals').value = st.meals; $('cemFind').value = st.q; }
     function reset() { st.tier = st.stage = st.days = st.diff = st.sp = st.meals = st.q = ''; st.raisable = false; st.open = false; }
     function onPager(e) { var t = e.target.closest('[data-pg]'); if (!t) return; var pages = Math.ceil((st.matched || 0) / PER) || 1, k = t.getAttribute('data-pg'); st.page = k === 'first' ? 0 : k === 'last' ? pages - 1 : k === 'prev' ? st.page - 1 : st.page + 1; apply(true); if (this === pBot) pTop.scrollIntoView({ block: 'start' }); }
@@ -463,6 +466,7 @@
     inp.onkeydown = function (e) { if (e.key === 'Enter') { clearTimeout(tmr); st.q = inp.value; apply(); } };
     $('cemGo').onclick = function () { clearTimeout(tmr); st.q = inp.value; apply(); };
     if ($('cemMine')) $('cemMine').onclick = function () { st.mine = !st.mine; this.setAttribute('aria-pressed', st.mine); this.classList.toggle('on', st.mine); this.textContent = st.mine ? 'All graves' : 'My graves'; apply(); };
+    $('cemPower').onclick = function () { reset(); st.sort = 'strongest'; sync(); apply(); };
     $('cemRarest').onclick = function () { reset(); st.sort = 'rarest'; st.raisable = true; sync(); apply(); };
     $('cemEasiest').onclick = function () { reset(); st.sort = 'easiest'; st.raisable = true; sync(); apply(); };
     $('cemFresh').onclick = function () { reset(); st.sort = 'newest'; st.days = '0-1'; sync(); apply(); };

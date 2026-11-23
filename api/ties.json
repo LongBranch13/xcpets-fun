@@ -1,6 +1,6 @@
 {
- "lastBlock": 977129,
- "count": 439,
+ "lastBlock": 977130,
+ "count": 440,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -5270,6 +5270,18 @@
    "speciesLabel": "FUNTRUMP",
    "rarity": "Rare",
    "stage": "Juvenile"
+  },
+  {
+   "id": 8440,
+   "asset": "A16556693359537712310",
+   "tiedBlock": 977130,
+   "tiedTx": "fccc3f90defc2b4bd408fb21a5c844abe16111d708517bfc03b210e05b997e41",
+   "kind": "deed",
+   "name": "Luzuto",
+   "species": "pepe",
+   "speciesLabel": "Pepe",
+   "rarity": "Rare",
+   "stage": "Mythic"
   }
  ]
 }

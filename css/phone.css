@@ -70,4 +70,8 @@
   html body main{overflow-wrap:break-word}
   html body main :is(img,video){max-width:100%}
   html body main pre{max-width:100%;overflow-x:auto}
+  /* sweep-1123: the pet page's burn history table scrolls sideways instead of pushing the page wider than the phone */
+  html body table#hist{display:block;max-width:100%;overflow-x:auto}
+  /* sweep-1123: the pet count pill on the My Pets button no longer sits on top of the word */
+  html body .tb-pets .pill{margin-left:6px}
 }
