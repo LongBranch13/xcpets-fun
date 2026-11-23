@@ -1,5 +1,6 @@
 /* 🧹 Clear the pile (Nov 23 2026, owner: "i want it all" from the plan doc: "Clear the pile in one go"). UI only: no rule, tag or replay change.
  * One sheet on My Pets sweeps out thousands of unwanted pets in one go:
+ * The button lives in ⚙️ More → Care (owner: new My Pets controls go in More, not above the cards).
  *   1. a quick pick (Never-fed Commons + Uncommons / Every never-fed pet / Everything but my keepers) or the filters
  *      (Never fed only, rarity, species, search),
  *   2. the count and the first pets as thumbnails (tap one to spare it),
@@ -81,7 +82,7 @@
       '.cp-poof b{font-family:Bangers,Impact,sans-serif;font-weight:400;font-size:64px;color:#ffd166;text-shadow:4px 4px 0 #000;transform:rotate(-4deg);animation:cpPop .45s cubic-bezier(.2,1.8,.4,1)}.cp-poof span{font-size:18px;font-weight:700;margin-top:6px;text-align:center;padding:0 12px}' +
       '@keyframes cpIn{from{opacity:0}}@keyframes cpPop{from{transform:scale(.2) rotate(-20deg)}}' +
       '.cp-dust{position:absolute;width:10px;height:10px;background:#c9b98f;border:2px solid #000;animation:cpDust .8s ease-out forwards}@keyframes cpDust{to{transform:translate(var(--dx),var(--dy)) scale(.2);opacity:0}}' +
-      '#cpOpen,#cpNudge{white-space:nowrap}#cpNudge{font-size:13px;padding:4px 10px;min-height:32px}' +
+      '#cpOpen{white-space:nowrap}' +
       '@media (prefers-reduced-motion:reduce){.cp-pet.fly,.cp.shake,.cp-go.sure,.cp-poof b,.cp-dust{animation:none!important}}' +
       '@media (max-width:480px){.cp{padding:10px 10px 8px}.cp h3{font-size:28px}.cp .cp-sub{font-size:13px;margin:2px 0 6px}.cp h4{margin:8px 0 4px}.cp-chip{font-size:13px;padding:5px 8px}.cp-n{font-size:44px}.cp-big{margin:8px 0 2px}.cp-grid{max-height:30vh}.cp-b{margin:8px -10px 0;padding:8px 10px 10px}.cp-b button{padding:9px 10px}.cp-go{font-size:22px!important}.cp-fine{font-size:11px}}';
     document.head.appendChild(s); }
@@ -141,8 +142,8 @@
       box.insertAdjacentHTML('beforeend', '<div class="cp-poof"><b>POOF!</b><span>' + fmt(ids.length) + ' pet' + (ids.length === 1 ? '' : 's') + ' swept out. Sign the tiny burn to make it stick.</span></div>');
       setTimeout(done, 1100); }, 800); }
 
-  /* The button lives in ⚙️ More → Care (mypets-calm), else next to the bulk discard buttons. A small nudge shows in the header when
-   * there are at least NUDGE_AT never-fed pets to sweep. */
+  /* The button lives in ⚙️ More → Care (mypets-calm), else next to the bulk discard buttons. With at least NUDGE_AT never-fed pets
+   * to sweep, the button shows that count. */
   function place() { var d = D(); if (!d || !d.world) return; var w; try { w = d.world(); } catch (e) { return; } if (!w || !w.pets) return;
     var b = $('cpOpen'); if (!b) { b = document.createElement('button'); b.type = 'button'; b.className = 'q'; b.id = 'cpOpen'; b.textContent = '🧹 Clear the pile'; b.title = 'Discard hundreds or thousands of unwanted pets in one go'; b.onclick = function () { open(); }; }
     var care = $('mpcCare'), anc = $('bulkAnchor');
@@ -150,10 +151,8 @@
     else if (anc && anc.parentNode && b.parentNode !== anc.parentNode) anc.parentNode.insertBefore(b, anc.nextSibling);
     var sig = (w.tip || 0) + '|' + w.pets.length + '|' + ((window.V2UI && V2UI.hiddenIds && V2UI.hiddenIds().length) || 0), nf = place.nf || 0;
     if (place.sig !== sig) { place.sig = sig; var stars = starSet(); nf = 0; pool(w).forEach(function (p) { if (neverFed(p) && !keepWhy(w, p, stars)) nf++; }); place.nf = nf; }
-    var head = document.querySelector('#petsPanel .mpc-head') || ($('mptStat') && $('mptStat').parentNode), nb = $('cpNudge');
-    if (nf >= NUDGE_AT && head) { if (!nb) { nb = document.createElement('button'); nb.type = 'button'; nb.className = 'q'; nb.id = 'cpNudge'; nb.onclick = function () { open('nf'); }; }
-      if (nb.parentNode !== head) head.appendChild(nb); nb.textContent = '🧹 ' + fmt(nf) + ' never fed: clear them'; nb.title = 'Sweep out every never-fed pet in one go'; }
-    else if (nb) nb.remove(); }
+    /* owner (Nov 23 2026, mypets-calm): no new controls above the cards. The count rides on the button in More instead. */
+    b.textContent = '🧹 Clear the pile' + (nf >= NUDGE_AT ? ' (' + fmt(nf) + ' never fed)' : ''); }
   var placeT = null; function soon() { clearTimeout(placeT); placeT = setTimeout(place, 400); }
   function init() { if (!$('bulkAnchor') && !$('petsPanel')) return; place(); setInterval(place, 4000); document.addEventListener('xcpets-sel', soon); }
   window.V2ClearPile = { open: open, sweep: sweep, keepWhy: keepWhy, state: ST, place: place };
