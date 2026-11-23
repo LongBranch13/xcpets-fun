@@ -49,54 +49,85 @@
       (p && s.buddy ? '<span class="pk2-bud" title="Your buddy: the last pet you used. It comes with you to every place.">BUDDY</span>' : '') +
       (p && s.clear && !s.locked ? '<span class="pk2-x" data-pk2clear="' + esc(s.key) + '" role="button" tabindex="0" aria-label="Empty ' + esc(s.label) + '">✕</span>' : '') + '</button>';
   }
-  function card(c, sel) {
+  /* goobys-lost (Nov 23 2026, players: "much more functional before"): optional view modes for a place that hands in c.lines (extra info lines).
+   * 'detail' = big cards plus every info line (default), 'cards' = big cards, one line (the Nov 22 look), 'list' = compact rows, 48 a page.
+   * A place opts in with cfg.views; the choice is remembered per device (localStorage xcpets-pick-view). Display only. */
+  var KV = 'xcpets-pick-view', VIEWS = [['detail', '🔍 Detailed'], ['cards', '🧩 Simple'], ['list', '📋 List']];
+  function viewMode() { var v = get(KV); return v === 'cards' || v === 'list' ? v : 'detail'; }
+  function perOf(mode) { return mode === 'list' ? PER * 2 : PER; }
+  function attrs(c, sel, cls) { var p = c.p, why = c.why || '';
+    return '<button type="button" class="pk2-c' + (cls || '') + ' t' + (p.tier | 0) + (sel ? ' on' : '') + (why ? ' no' : '') + '" data-pk2="' + esc(c.key || p.id) + '" data-pk2id="' + p.id + '"' + (why ? ' aria-disabled="true"' : '') +
+      ' aria-pressed="' + !!sel + '" title="' + esc('#' + p.id + ' ' + (p.name || '') + (why ? ' · ' + why : '')) + '">'; }
+  function star(c) { var p = c.p; return c.noStar || !canFav() ? '' : '<button type="button" class="pk2-star' + (isFav(p.id) ? ' on' : '') + '" data-pk2star="' + p.id + '" aria-pressed="' + isFav(p.id) + '" aria-label="' + (isFav(p.id) ? 'Unstar' : 'Star') + ' #' + p.id + ' as a favorite">' + (isFav(p.id) ? '★' : '☆') + '</button>'; }
+  function card(c, sel, mode) {
     var p = c.p, why = c.why || '';
-    return '<div class="pk2-cw"><button type="button" class="pk2-c t' + (p.tier | 0) + (sel ? ' on' : '') + (why ? ' no' : '') + '" data-pk2="' + esc(c.key || p.id) + '" data-pk2id="' + p.id + '"' + (why ? ' aria-disabled="true"' : '') +
-      ' aria-pressed="' + !!sel + '" title="' + esc('#' + p.id + ' ' + (p.name || '') + (why ? ' · ' + why : '')) + '">' +
+    if (mode === 'list') return '<div class="pk2-cw">' + attrs(c, sel, ' pk2-row') + '<span class="pk2-sp" data-pk2sp="' + p.id + '"></span><span class="pk2-rt">' +
+      '<span class="pk2-r1"><b class="pk2-nm">' + esc(p.name || 'Pet') + '</b> <span class="pk2-id">#' + p.id + (p.blackEye ? ' 🤕' : '') + '</span> ' + (c.stat ? '<span class="pk2-st">' + c.stat + '</span>' : pill(p)) + '</span>' +
+      (c.tag ? '<span class="pk2-tag' + (c.tagMe ? ' me' : '') + '">' + c.tag + '</span>' : '') +
+      ([c.line].concat(c.lines || []).filter(Boolean).length ? '<span class="pk2-ln">' + [c.line].concat(c.lines || []).filter(Boolean).join(' · ') + '</span>' : '') +
+      (why ? '<span class="pk2-why">✋ ' + esc(why) + '</span>' : sel ? '<span class="pk2-ok">✔ PICKED</span>' : '') + '</span></button>' + star(c) + '</div>';
+    return '<div class="pk2-cw">' + attrs(c, sel, '') +
       (c.tag ? '<span class="pk2-tag' + (c.tagMe ? ' me' : '') + '">' + c.tag + '</span>' : '') +
       '<span class="pk2-sp" data-pk2sp="' + p.id + '"></span><b class="pk2-nm">' + esc(p.name || 'Pet') + '</b><span class="pk2-id">#' + p.id + (p.blackEye ? ' 🤕' : '') + '</span>' +
       (c.stat ? '<span class="pk2-st">' + c.stat + '</span>' : pill(p)) + (c.line ? '<span class="pk2-ln">' + c.line + '</span>' : '') +
-      (why ? '<span class="pk2-why">✋ ' + esc(why) + '</span>' : sel ? '<span class="pk2-ok">✔ PICKED</span>' : '') + '</button>' +
-      (c.noStar || !canFav() ? '' : '<button type="button" class="pk2-star' + (isFav(p.id) ? ' on' : '') + '" data-pk2star="' + p.id + '" aria-pressed="' + isFav(p.id) + '" aria-label="' + (isFav(p.id) ? 'Unstar' : 'Star') + ' #' + p.id + ' as a favorite">' + (isFav(p.id) ? '★' : '☆') + '</button>') + '</div>';
+      (mode === 'detail' && c.lines ? c.lines.filter(Boolean).map(function (l) { return '<span class="pk2-ln pk2-dl">' + l + '</span>'; }).join('') : '') +
+      (why ? '<span class="pk2-why">✋ ' + esc(why) + '</span>' : sel ? '<span class="pk2-ok">✔ PICKED</span>' : '') + '</button>' + star(c) + '</div>';
   }
 
   /** render(el, cfg, st): paints the whole picker into el.
    * cfg = { id, w, slots: [{key,label,pet,empty,buddy,locked,clear,sub,art}], mid, active, verdict: {big, small, tone: good|meh|bad|wait},
-   *         prompt, shelves: [{id,label,hot,list:[{p,why,stat,line,tag,tagMe,key}],why,empty,top}], shelf, searchList, searchPh, selected,
-   *         extra (html after the cards), onSlot(key), onClear(key), onShelf(id), onPick(item, slotKey), drop: [elements that take a dragged card] }
+   *         prompt, shelves: [{id,label,hot,list:[{p,why,stat,line,lines,tag,tagMe,key}],why,empty,top}], shelf, searchList, searchPh, selected,
+   *         extra (html after the cards), onSlot(key), onClear(key), onShelf(id, side), onPick(item, slotKey), drop: [elements that take a dragged card],
+   *         views (true = show the Detailed / Simple / List switch), sorts: [[key, label]] + sortOn + onSort(key, side) (sort chips, always in view),
+   *         alert: {html} + onAlert() (a big button on top, e.g. "breed requests for you"),
+   *         dual: { A: side cfg, B: side cfg } (both sides side by side; a side cfg holds prompt, shelves, shelf, searchList, searchPh, selected, sorts, sortOn, st) }
    * st = the caller's state object for this side (q, n); kept between paints. */
   function render(el, cfg, st) {
-    if (!el) return; st = st || {}; if (!(st.n > 0)) st.n = PER;
+    if (!el) return;
+    var mode = cfg.views ? viewMode() : 'cards', per = perOf(mode);
     var spL = root.V2Rules && V2Rules.speciesLabel ? function (s) { return V2Rules.speciesLabel(s); } : null;
-    var sh = cfg.shelves.filter(function (s) { return s.id === cfg.shelf; })[0] || cfg.shelves[0];
-    var q = String(st.q || '').trim(), list = q ? (cfg.searchList || sh.list).filter(function (x) { return match(x.p, q, spL); }) : sh.list;
-    var view = list.slice(0, st.n), selId = String(cfg.selected || '');
+    var sides = cfg.dual ? [['A', cfg.dual.A], ['B', cfg.dual.B]] : [['', { prompt: cfg.prompt, shelves: cfg.shelves, shelf: cfg.shelf, searchList: cfg.searchList, searchPh: cfg.searchPh, selected: cfg.selected, sorts: cfg.sorts, sortOn: cfg.sortOn, st: st }]];
+    sides.forEach(function (sd) { var x = sd[1]; x.st = x.st || {}; if (!(x.st.n > 0) || x.st.mode !== mode) { x.st.n = per; x.st.mode = mode; }
+      x.sh = x.shelves.filter(function (s) { return s.id === x.shelf; })[0] || x.shelves[0];
+      x.q = String(x.st.q || '').trim(); x.list = x.q ? (x.searchList || x.sh.list).filter(function (c) { return match(c.p, x.q, spL); }) : x.sh.list; x.view = x.list.slice(0, x.st.n); });
+    var pickHtml = function (side, x, first) { var sh = x.sh, q = x.q, list = x.list, view = x.view, selId = String(x.selected || '');
+      var sortable = x.sorts && x.sorts.length && !q && sh.sort !== false;
+      return '<div class="pk2-pick' + (side ? ' pk2-side' + (cfg.active === side ? ' live' : '') : '') + '" data-pk2side="' + side + '"><div class="pk2-pr">' + esc(x.prompt || '') + ' <span aria-hidden="true">⬇</span></div>' +
+        '<div class="pk2-tabs" role="tablist" aria-label="Suggestions">' + x.shelves.map(function (s) { var on = s.id === sh.id && !q;
+          return '<button type="button" role="tab" class="pk2-tab' + (on ? ' on' : '') + (s.hot ? ' hot' : '') + '" data-pk2shelf="' + esc(s.id) + '" aria-selected="' + on + '">' + s.label + '</button>'; }).join('') + '</div>' +
+        '<p class="pk2-why0">' + (q ? 'Search: ' + fmt(list.length) + ' match' + (list.length === 1 ? '' : 'es') + ' for "' + esc(q) + '"' : (sh.why || '')) + '</p>' +
+        (sortable ? '<div class="pk2-sorts" role="group" aria-label="Sort"><span class="pk2-sl2">Sort</span>' + x.sorts.map(function (o) { var on = String(x.sortOn || '') === o[0];
+          return '<button type="button" class="pk2-so' + (on ? ' on' : '') + '" data-pk2sort="' + esc(o[0]) + '" aria-pressed="' + on + '">' + o[1] + '</button>'; }).join('') + '</div>' : '') +
+        '<div class="pk2-qrow"><label class="pk2-q"><span class="pk2-mag" aria-hidden="true">🔎</span><span class="pk2-vh">Search</span><input type="search" data-pk2q autocomplete="off" value="' + esc(x.st.q || '') + '" placeholder="' + esc(x.searchPh || 'Name, #number or species') + '"></label>' +
+        (cfg.views && first ? '<div class="pk2-views" role="group" aria-label="How pets are shown">' + VIEWS.map(function (v) { return '<button type="button" class="pk2-vw' + (mode === v[0] ? ' on' : '') + '" data-pk2view="' + v[0] + '" aria-pressed="' + (mode === v[0]) + '">' + v[1] + '</button>'; }).join('') + '</div>' : '') + '</div>' +
+        (sh.top && !q ? sh.top : '') +
+        '<div class="pk2-grid' + (mode === 'list' ? ' pk2-list' : '') + '" role="list">' + (view.map(function (c) { return card(c, selId && String(c.key || c.p.id) === selId, mode); }).join('') ||
+          '<p class="pk2-empty">' + (q ? 'No pet matches. Try a name, a #number or a species.' : esc(sh.empty || 'No pets here yet.')) + '</p>') + '</div>' +
+        (list.length > view.length ? '<button type="button" class="pk2-more" data-pk2more="1">Show ' + fmt(Math.min(per, list.length - view.length)) + ' more · ' + fmt(list.length - view.length) + ' left</button>' : '') +
+        (side ? '' : (cfg.extra || '')) + '</div>'; };
     var v = cfg.verdict || {};
-    var h = '<div class="pk2" data-pk2id="' + esc(cfg.id) + '">' +
+    var h = '<div class="pk2' + (cfg.dual ? ' pk2-dual' : '') + '" data-pk2id="' + esc(cfg.id) + '">' +
+      (cfg.alert ? '<button type="button" class="pk2-alert" data-pk2alert="1">' + cfg.alert.html + '</button>' : '') +
       (cfg.slots && cfg.slots.length ? '<div class="pk2-stage">' + slotHtml(cfg.slots[0], cfg.active === cfg.slots[0].key) + '<span class="pk2-mid" aria-hidden="true">' + esc(cfg.mid || 'VS') + '</span>' +
       (cfg.slots[1] ? slotHtml(cfg.slots[1], cfg.active === cfg.slots[1].key) : '') + '</div>' : '') + /* no slots = shelves only (the Dressing Room has its own big preview) */
       (v.big ? '<div class="pk2-v ' + esc(v.tone || 'wait') + '" aria-live="polite"><b>' + v.big + '</b>' + (v.small ? '<span>' + v.small + '</span>' : '') + '</div>' : '') +
-      '<div class="pk2-pick"><div class="pk2-pr">' + esc(cfg.prompt || '') + ' <span aria-hidden="true">⬇</span></div>' +
-      '<div class="pk2-tabs" role="tablist" aria-label="Suggestions">' + cfg.shelves.map(function (s) { var on = s.id === sh.id && !q;
-        return '<button type="button" role="tab" class="pk2-tab' + (on ? ' on' : '') + (s.hot ? ' hot' : '') + '" data-pk2shelf="' + esc(s.id) + '" aria-selected="' + on + '">' + s.label + '</button>'; }).join('') + '</div>' +
-      '<p class="pk2-why0">' + (q ? 'Search: ' + fmt(list.length) + ' match' + (list.length === 1 ? '' : 'es') + ' for "' + esc(q) + '"' : (sh.why || '')) + '</p>' +
-      '<label class="pk2-q"><span class="pk2-mag" aria-hidden="true">🔎</span><span class="pk2-vh">Search</span><input type="search" data-pk2q autocomplete="off" value="' + esc(st.q || '') + '" placeholder="' + esc(cfg.searchPh || 'Name, #number or species') + '"></label>' +
-      (sh.top && !q ? sh.top : '') +
-      '<div class="pk2-grid" role="list">' + (view.map(function (c) { return card(c, selId && String(c.key || c.p.id) === selId); }).join('') ||
-        '<p class="pk2-empty">' + (q ? 'No pet matches. Try a name, a #number or a species.' : esc(sh.empty || 'No pets here yet.')) + '</p>') + '</div>' +
-      (list.length > view.length ? '<button type="button" class="pk2-more" data-pk2more="1">Show ' + fmt(Math.min(PER, list.length - view.length)) + ' more · ' + fmt(list.length - view.length) + ' left</button>' : '') +
-      (cfg.extra || '') + '</div></div>';
+      (cfg.dual ? '<div class="pk2-duo">' + pickHtml('A', cfg.dual.A, true) + pickHtml('B', cfg.dual.B, false) + '</div>' + (cfg.extra ? '<div class="pk2-pick pk2-xtra">' + cfg.extra + '</div>' : '') : pickHtml('', sides[0][1], true)) + '</div>';
     el.innerHTML = h;
     sprites(el, cfg.w);
-    var byKey = {}; list.slice(0, st.n).forEach(function (c) { byKey[String(c.key || c.p.id)] = c; });
+    var redraw = function () { if (cfg.onRedraw) cfg.onRedraw(); };
+    var al = el.querySelector('[data-pk2alert]'); if (al) al.onclick = function () { if (cfg.onAlert) cfg.onAlert(); };
     el.querySelectorAll('[data-pk2slot]').forEach(function (b) { b.onclick = function (e) { if (e.target.closest('[data-pk2clear]')) return; if (b.getAttribute('aria-disabled')) return; if (cfg.onSlot) cfg.onSlot(b.dataset.pk2slot); }; });
     el.querySelectorAll('[data-pk2clear]').forEach(function (b) { var go = function (e) { e.stopPropagation(); e.preventDefault(); if (cfg.onClear) cfg.onClear(b.dataset.pk2clear); }; b.onclick = go; b.onkeydown = function (e) { if (e.key === 'Enter' || e.key === ' ') go(e); }; });
-    el.querySelectorAll('[data-pk2shelf]').forEach(function (b) { b.onclick = function () { st.q = ''; st.n = PER; if (cfg.onShelf) cfg.onShelf(b.dataset.pk2shelf); }; });
     el.querySelectorAll('[data-pk2star]').forEach(function (b) { b.onclick = function () { toggleFav(+b.dataset.pk2star); var on = isFav(+b.dataset.pk2star); b.classList.toggle('on', on); b.textContent = on ? '★' : '☆'; b.setAttribute('aria-pressed', String(on)); }; });
-    var more = el.querySelector('[data-pk2more]'); if (more) more.onclick = function () { st.n += PER; if (cfg.onRedraw) cfg.onRedraw(); };
-    var qi = el.querySelector('[data-pk2q]'); if (qi) qi.oninput = function () { st.q = qi.value; st.n = PER; var pos = qi.selectionStart; if (cfg.onRedraw) cfg.onRedraw(); var j = document.querySelector('.pk2[data-pk2id="' + cfg.id + '"] [data-pk2q]'); if (j && j !== qi) /* the caller may rebuild the box: find the new one */ { j.focus(); try { j.setSelectionRange(pos, pos); } catch (e) { } } };
-    var tap = function (b, slotKey) { var c = byKey[b.dataset.pk2]; if (!c) return; if (c.why) { var u = U(); if (u && u.toast) u.toast('#' + c.p.id + ' can’t go yet: ' + c.why); return; } if (cfg.onPick) cfg.onPick(c, slotKey || null); };
-    el.querySelectorAll('[data-pk2]').forEach(function (b) { b.onclick = function () { if (DR.moved) { DR.moved = false; return; } tap(b); }; b.addEventListener('pointerdown', function (e) { dragStart(e, b, el, cfg, tap); }); });
+    el.querySelectorAll('[data-pk2view]').forEach(function (b) { b.onclick = function () { set(KV, b.dataset.pk2view); redraw(); }; });
+    sides.forEach(function (sd) { var side = sd[0], x = sd[1], box = el.querySelector('.pk2-pick[data-pk2side="' + side + '"]'); if (!box) return;
+      box.querySelectorAll('[data-pk2shelf]').forEach(function (b) { b.onclick = function () { x.st.q = ''; x.st.n = per; if (cfg.onShelf) cfg.onShelf(b.dataset.pk2shelf, side || null); }; });
+      box.querySelectorAll('[data-pk2sort]').forEach(function (b) { b.onclick = function () { x.st.n = per; if (cfg.onSort) cfg.onSort(b.dataset.pk2sort, side || null); }; });
+      var more = box.querySelector('[data-pk2more]'); if (more) more.onclick = function () { x.st.n += per; redraw(); };
+      var qi = box.querySelector('[data-pk2q]'); if (qi) qi.oninput = function () { x.st.q = qi.value; x.st.n = per; var pos = qi.selectionStart; redraw(); var j = document.querySelector('.pk2[data-pk2id="' + cfg.id + '"] .pk2-pick[data-pk2side="' + side + '"] [data-pk2q]'); if (j && j !== qi) /* the caller may rebuild the box: find the new one */ { j.focus(); try { j.setSelectionRange(pos, pos); } catch (e) { } } };
+      var byKey = {}; x.view.forEach(function (c) { byKey[String(c.key || c.p.id)] = c; });
+      var tap = function (b, slotKey) { var c = byKey[b.dataset.pk2]; if (!c) return; if (c.why) { var u = U(); if (u && u.toast) u.toast('#' + c.p.id + ' can’t go yet: ' + c.why); return; } if (cfg.onPick) cfg.onPick(c, slotKey || side || null); };
+      box.querySelectorAll('[data-pk2]').forEach(function (b) { b.onclick = function () { if (DR.moved) { DR.moved = false; return; } tap(b); }; b.addEventListener('pointerdown', function (e) { dragStart(e, b, el, cfg, tap); }); }); });
   }
   function sprites(el, w) { var R = root.V2Render; if (!R || !w) return; el.querySelectorAll('[data-pk2sp]').forEach(function (s) { if (s.firstChild) return; var p = w.byId && w.byId[s.getAttribute('data-pk2sp')]; if (!p) return;
     var c = document.createElement('canvas'); c.width = c.height = 32; c.className = 'sprite'; s.appendChild(c); if (R.lazy && R.petFrames) R.lazy(c, function () { return R.petFrames(p, w); }, true); }); }
@@ -168,7 +199,23 @@
     '.pk2 button:focus-visible,.pk2 input:focus-visible,.pk2-x:focus-visible{outline:3px solid #9fe8ff;outline-offset:2px}' +
     '@media (max-width:520px){.pk2-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.pk2-sp canvas{width:64px;height:64px}.pk2-nm{font-size:13px}.pk2-big,.pk2-big canvas{width:88px;height:88px}.pk2-big img{max-width:88px;max-height:88px}.pk2-slot{min-height:160px}.pk2-mid{font-size:24px}.pk2-stage{grid-template-columns:minmax(0,1fr) 30px minmax(0,1fr)}}' +
     '@media (prefers-reduced-motion:reduce){.pk2-slot.live,.pk2-big canvas,.pk2-mid,.pk2-pr span{animation:none}}';
+  /* goobys-lost (Nov 23 2026): request alert, sort chips, view switch, compact list rows, two columns side by side on wide screens */
+  CSS += '.pk2-alert{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;width:100%;max-width:720px;margin:0 auto 8px;padding:10px 12px;border:3px solid #000;box-shadow:4px 4px 0 #000;background:#ff9ad5;color:#2a1530;font:inherit;font-weight:700;font-size:15px;text-align:left;cursor:pointer;animation:pk2ping 1.4s ease-in-out infinite}' +
+    '.pk2-alert b{font-family:Bangers,Impact,sans-serif;font-weight:400;font-size:22px;letter-spacing:1px}.pk2-alert .pk2-ago{flex:1 1 220px;font-size:13px}.pk2-alert .pk2-go{font-family:"Press Start 2P",monospace;font-size:9px;background:#2a1530;color:#ffd1ec;padding:8px;border:2px solid #000}' +
+    '@keyframes pk2ping{50%{box-shadow:4px 4px 0 #000,0 0 0 4px #ff4fd8}}.pk2-alert:hover{filter:brightness(1.06)}' +
+    '.pk2-sorts{display:flex;align-items:center;gap:5px;overflow-x:auto;padding:0 2px 6px;-webkit-overflow-scrolling:touch}.pk2-sl2{flex:none;font-size:12px;color:#c9bff0}' +
+    '.pk2-so{flex:none;min-height:34px;padding:3px 10px;font:inherit;font-size:13px;font-weight:700;border:2px solid #000;background:#120e22;color:#f3eefe;cursor:pointer;white-space:nowrap}.pk2-so.on{background:#ffd166;color:#140f24}' +
+    '.pk2-qrow{display:flex;flex-wrap:wrap;gap:6px;align-items:flex-start}.pk2-qrow .pk2-q{flex:1 1 220px}.pk2-views{display:flex;flex:none;margin-bottom:8px}' +
+    '.pk2-vw{min-height:44px;padding:4px 8px;font:inherit;font-size:12px;font-weight:700;border:2px solid #000;background:#2b2350;color:#f3eefe;cursor:pointer;white-space:nowrap}.pk2-vw+.pk2-vw{border-left:0}.pk2-vw.on{background:#9fe8ff;color:#140f24}' +
+    '.pk2-c.on .hs-g{color:#0a5a2a}.pk2-dl{color:#c9e8ff;font-size:11px}.pk2-dl small{font-size:10px}' +
+    '.pk2-grid.pk2-list{grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:4px}' +
+    '.pk2-c.pk2-row{flex-direction:row;align-items:center;gap:8px;padding:4px 34px 4px 4px;text-align:left;box-shadow:2px 2px 0 #000;border-width:2px}.pk2-row .pk2-sp canvas{width:40px;height:40px}.pk2-row:hover{transform:none}' +
+    '.pk2-rt{display:flex;flex-direction:column;gap:1px;min-width:0;flex:1}.pk2-r1{display:flex;flex-wrap:wrap;align-items:baseline;gap:0 6px}.pk2-row .pk2-nm{font-size:13px;max-width:12em}.pk2-row .pk2-ln{font-size:11px}.pk2-row .pk2-tag{align-self:flex-start}' +
+    '.pk2-duo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;align-items:start}.pk2-side{opacity:.92}.pk2-side.live{opacity:1;border-color:#ffd166;box-shadow:4px 4px 0 #000,0 0 0 2px #ffd166}' +
+    '.pk2-dual .pk2-grid:not(.pk2-list){grid-template-columns:repeat(auto-fill,minmax(118px,1fr))}.pk2-dual .pk2-grid.pk2-list{grid-template-columns:1fr}.pk2-xtra{padding-top:0}' +
+    '@media (max-width:520px){.pk2-views{width:100%}.pk2-vw{flex:1}.pk2-grid.pk2-list{grid-template-columns:1fr}.pk2-alert b{font-size:19px}}' +
+    '@media (prefers-reduced-motion:reduce){.pk2-alert{animation:none}}';
   function css() { if (typeof document === 'undefined' || document.getElementById('pk2Css')) return; var s = document.createElement('style'); s.id = 'pk2Css'; s.textContent = CSS; (document.head || document.documentElement).appendChild(s); }
   css();
-  root.V2Pick = { canFav: canFav, render: render, winChance: winChance, used: used, buddy: buddy, recent: recent, favOf: favOf, recentOf: recentOf, isFav: isFav, match: match, short: short, fmt: fmt, esc: esc, PER: PER };
+  root.V2Pick = { canFav: canFav, render: render, winChance: winChance, used: used, buddy: buddy, recent: recent, favOf: favOf, recentOf: recentOf, isFav: isFav, match: match, short: short, fmt: fmt, esc: esc, PER: PER, viewMode: viewMode, perOf: perOf };
 })(typeof window !== 'undefined' ? window : this);
