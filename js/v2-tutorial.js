@@ -333,11 +333,22 @@
     var nav = el('div', 'tut-nav'); (buttons || [['Got it', null, 'btn']]).forEach(function (b) { var x = el(b[3] ? 'a' : 'button', b[2] || 'q', b[0]); if (b[3]) x.href = b[3]; else x.type = 'button'; x.onclick = function () { t.remove(); if (key) { var s = jget(TIPS); s[key] = 1; ls(TIPS, JSON.stringify(s)); } if (b[1]) b[1](); }; nav.appendChild(x); });
     t.appendChild(nav); document.body.appendChild(t); return t;
   }
+  /* front-v3 (Jake Nov 23 2026: "a smaller Coach Peepo that shows once and points at the one button that matters"): on Home, Peepo is a
+   * small sticker beside the big Hatch button instead of a pop-up over the page. Once only (SEEN), gone on ✕, on any tap, or after 14 s. */
+  function pointAt(btn) {
+    var t = el('div', 'tut-point'); t.setAttribute('role', 'status'); t.appendChild(sprite('peepo', 3));
+    t.appendChild(el('div', 'tut-bubble', '<b>Start here, keeper!</b> One tap hatches your first pet. Free.'));
+    var x = el('button', 'tut-point-x', '✕'); x.type = 'button'; x.setAttribute('aria-label', 'Hide Coach Peepo'); t.appendChild(x);
+    function bye() { if (t.isConnected) { t.classList.add('out'); setTimeout(function () { t.remove(); }, 260); } }
+    x.onclick = bye; btn.addEventListener('click', bye); setTimeout(bye, 14000);
+    btn.parentNode.insertBefore(t, btn.nextSibling);
+  }
   function welcome(onPlay) {
     ls(SEEN, '1');
+    var hb = document.getElementById('heroHatch'); if (hb) { pointAt(hb); return; }
     /* Place pages (Circus, Motel, Raid): a small chip instead of the big card, so the place's scene stays in view. Tap to open the full welcome. */
     var sp = document.body && document.body.dataset.split;
-    if (!onPlay && /^(fight|breed|raid)$/.test(sp || '')) {
+    if (!onPlay) { /* front-v3: every page but Play gets the small chip (was Circus, Motel and Raid only) */
       var c = el('button', 'tut-tip tut-chip', '🐸 New here? 2-min tour'); c.type = 'button'; c.setAttribute('aria-label', 'Coach Peepo: new here? Open the 2-minute tour');
       var x = el('span', 'tut-chip-x', '✕'); x.setAttribute('aria-label', 'Dismiss'); x.onclick = function (e) { e.stopPropagation(); c.remove(); }; c.appendChild(x);
       c.onclick = function () { c.remove(); full(); }; document.body.appendChild(c); return;
