@@ -156,13 +156,16 @@ function startSnapshot(state, dataDir, codeDir) {
  * Memory: a loaded world is about 0.9 GB (1.1 GB while loading), so it never runs during a world build (stopped first, started
  * again after) and only starts when the machine and this service's memory limit both have XP_CHECK_NEED MB to spare. */
 function memInfo() {
-  const out = { availMB: null, svcMB: null, limitMB: null };
+  const out = { availMB: null, svcMB: null, anonMB: null, limitMB: null };
   try { const m = /MemAvailable:\s+(\d+)/.exec(fs.readFileSync('/proc/meminfo', 'utf8')); if (m) out.availMB = Math.floor(+m[1] / 1024); } catch (e) { out.availMB = Math.floor(os.freemem() / 1048576); }
   try {
     const cg = (/^0::(.*)$/m.exec(fs.readFileSync('/proc/self/cgroup', 'utf8')) || [])[1];
     if (cg) {
       const dir = path.join('/sys/fs/cgroup', cg);
       const cur = +fs.readFileSync(path.join(dir, 'memory.current'), 'utf8'); if (cur > 0) out.svcMB = Math.floor(cur / 1048576);
+      /* memory.current also counts the file cache (world files just written or served), which the kernel drops first when the service
+       * nears its limit. The room the check service needs is measured against the memory the processes really hold (anon). */
+      try { const a = /^anon (\d+)$/m.exec(fs.readFileSync(path.join(dir, 'memory.stat'), 'utf8')); if (a) out.anonMB = Math.floor(+a[1] / 1048576); } catch (e) { }
       for (const f of ['memory.max', 'memory.high']) { const v = fs.readFileSync(path.join(dir, f), 'utf8').trim(); if (/^\d+$/.test(v)) { const mb = Math.floor(+v / 1048576); out.limitMB = out.limitMB == null ? mb : Math.min(out.limitMB, mb); } }
     }
   } catch (e) { }
@@ -200,8 +203,8 @@ function ckTick(state, dataDir, codeDir) {
   if ((CK.state === 'failed' || CK.state === 'crashed') && Date.now() - CK.restAt < rest) return;
   if (!CK.proc) {
     const need = +(process.env.XP_CHECK_NEED || 1200), m = memInfo();
-    const roomSvc = m.limitMB != null && m.svcMB != null ? m.limitMB - m.svcMB : Infinity;
-    if ((m.availMB != null && m.availMB < need) || roomSvc < need) { CK.state = 'low-memory'; CK.why = 'free ' + m.availMB + ' MB, service room ' + (roomSvc === Infinity ? '-' : roomSvc) + ' MB'; return; }
+    const held = m.anonMB != null ? m.anonMB : m.svcMB, roomSvc = m.limitMB != null && held != null ? m.limitMB - held : Infinity;
+    if ((m.availMB != null && m.availMB < need) || roomSvc < need) { CK.state = 'low-memory'; CK.why = 'free ' + m.availMB + ' MB, held ' + held + ' MB, service room ' + (roomSvc === Infinity ? '-' : roomSvc) + ' MB'; return; }
     ckStart();
   }
   if (CK.busy) return;
