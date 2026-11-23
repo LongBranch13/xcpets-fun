@@ -1,0 +1,1097 @@
+[
+  {
+    "id": "d1025-change-my-mind",
+    "file": "d1025-change-my-mind.png",
+    "caption": "Pets belong on-chain®. Change my mind®."
+  },
+  {
+    "id": "d1025-high-availability-tenement",
+    "file": "d1025-high-availability-tenement.png",
+    "caption": "High Availability®. Chain length: exactly enough."
+  },
+  {
+    "id": "d1025-is-this-a-leash",
+    "file": "d1025-is-this-a-leash.png",
+    "caption": "Is this a leash®? No. That is Layer 1®."
+  },
+  {
+    "id": "d1025-onchain-starter-pack",
+    "file": "d1025-onchain-starter-pack.png",
+    "caption": "On-Chain Pet Starter Pack®: stake, chain, collar, burn, yard."
+  },
+  {
+    "id": "d1025-sovereign-yard-desert",
+    "file": "d1025-sovereign-yard-desert.png",
+    "caption": "Sovereign Yard®. No landlord. No server. One stake."
+  },
+  {
+    "id": "d1025-uptime-rubble",
+    "file": "d1025-uptime-rubble.png",
+    "caption": "Uptime® 100%. The node did not go offline."
+  },
+  {
+    "id": "d1026-garage-node-garages",
+    "file": "d1026-garage-node-garages.png",
+    "caption": "Full Node Garage®. Concrete walls. Concrete ledger."
+  },
+  {
+    "id": "d1026-hard-fork-tireshop",
+    "file": "d1026-hard-fork-tireshop.png",
+    "caption": "Hard Fork Resistant®. Same stake since genesis."
+  },
+  {
+    "id": "d1026-haunted-house-but",
+    "file": "d1026-haunted-house-but.png",
+    "caption": "A Haunted House®, but your pet lives on a company server."
+  },
+  {
+    "id": "d1026-off-shore-on-chain-stilts",
+    "file": "d1026-off-shore-on-chain-stilts.png",
+    "caption": "Off-Shore®? No. On-Chain®. The stake holds."
+  },
+  {
+    "id": "d1026-tuxedo-lenny",
+    "file": "d1026-tuxedo-lenny.png",
+    "caption": "Pet in an app. Pet, Fully On-Chain®, settled on Bitcoin®."
+  },
+  {
+    "id": "d1026-while-they-were-out-partying",
+    "file": "d1026-while-they-were-out-partying.png",
+    "caption": "While they were out partying®, I fed my pet every 144 blocks."
+  },
+  {
+    "id": "d1027-air-gapped-laundry",
+    "file": "d1027-air-gapped-laundry.png",
+    "caption": "Air-Gapped®. Laundry dries. Pet stays on-chain."
+  },
+  {
+    "id": "d1027-container-yard-port",
+    "file": "d1027-container-yard-port.png",
+    "caption": "Containerized®. Shipped on-chain. Never leaves the dock."
+  },
+  {
+    "id": "d1027-making-sense-now",
+    "file": "d1027-making-sense-now.png",
+    "caption": "It's making sense now®. The burn is the game. The chain is the yard."
+  },
+  {
+    "id": "d1027-panik-kalm-panik-feed-all",
+    "file": "d1027-panik-kalm-panik-feed-all.png",
+    "caption": "Panik. Kalm: Feed All® feeds every hungry pet in one burn. Panik."
+  },
+  {
+    "id": "d1027-scientists-reveal-the-hi",
+    "file": "d1027-scientists-reveal-the-hi.png",
+    "caption": "Scientists reveal the hi®. It was on-chain the whole time."
+  },
+  {
+    "id": "d1027-under-construction-rebar",
+    "file": "d1027-under-construction-rebar.png",
+    "caption": "Under Construction®. The roof is a roadmap. The ledger is already finished."
+  },
+  {
+    "id": "d1029-dockside-custody-pier",
+    "file": "d1029-dockside-custody-pier.png",
+    "caption": "Dockside Custody®. The tide goes out. The chain does not."
+  },
+  {
+    "id": "d1029-mirror-node",
+    "file": "d1029-mirror-node.png",
+    "caption": "Mirror Node®: you're on-chain. No, you're on-chain. Same ledger."
+  },
+  {
+    "id": "d1029-proof-of-stone-quarry",
+    "file": "d1029-proof-of-stone-quarry.png",
+    "caption": "Proof of Stone®. Mined by hand. Settled by block."
+  },
+  {
+    "id": "d1029-surprised-pet",
+    "file": "d1029-surprised-pet.png",
+    "caption": "Surprised Pet®: the app got sunset, the pet went with it. Should have been on-chain."
+  },
+  {
+    "id": "d1029-trade-offer",
+    "file": "d1029-trade-offer.png",
+    "caption": "Trade Offer®: I receive one burn. You receive a pet on Bitcoin, forever."
+  },
+  {
+    "id": "d1029-trick-or-treasury-pumpkin",
+    "file": "d1029-trick-or-treasury-pumpkin.png",
+    "caption": "Trick or Treasury®. No candy. Just finality."
+  },
+  {
+    "id": "d1030-change-my-mind-burn",
+    "file": "d1030-change-my-mind-burn.png",
+    "caption": "You can't drain a burn. Change My Mind®."
+  },
+  {
+    "id": "d1030-cold-storage-guard",
+    "file": "d1030-cold-storage-guard.png",
+    "caption": "Cold Storage® Security. One guard. Zero hot wallets. Nothing to sweep."
+  },
+  {
+    "id": "d1030-drake-burned-not-hot",
+    "file": "d1030-drake-burned-not-hot.png",
+    "caption": "Burned forever® > kept in a hot wallet. Nothing left to drain."
+  },
+  {
+    "id": "d1030-is-this-a-hot-wallet",
+    "file": "d1030-is-this-a-hot-wallet.png",
+    "caption": "Is This A Hot Wallet®? No. It's a burn. There's nothing in it."
+  },
+  {
+    "id": "d1030-not-your-keys-dacha",
+    "file": "d1030-not-your-keys-dacha.png",
+    "caption": "Not Your Keys®, Not Your Pet®. Your wallet signs. Bitcoin remembers."
+  },
+  {
+    "id": "d1030-panik-kalm-panik",
+    "file": "d1030-panik-kalm-panik.png",
+    "caption": "Panik Kalm Panik®: hot wallets drained, pet safe in burn history, pet unfed for 7 days."
+  },
+  {
+    "id": "d1030b-chad-no-hot-wallet",
+    "file": "d1030b-chad-no-hot-wallet.png",
+    "caption": "\"Where is your hot wallet?\" \"Never had one. My pet is a burn.\""
+  },
+  {
+    "id": "d1030b-every-day-is-burn-day",
+    "file": "d1030b-every-day-is-burn-day.png",
+    "caption": "Every Day Is Burn Day®. Zero day? Zero hot wallets. Nothing to sweep."
+  },
+  {
+    "id": "d1030b-galaxy-brain-drain",
+    "file": "d1030b-galaxy-brain-drain.png",
+    "caption": "Galaxy Brain Security®: hackers drain, someday AI agents drain, nobody drains a burn."
+  },
+  {
+    "id": "d1030b-not-your-laptop",
+    "file": "d1030b-not-your-laptop.png",
+    "caption": "Not Your Laptop®, Not Your Keys®. Do not open the attachment."
+  },
+  {
+    "id": "d1030b-one-word-reaction",
+    "file": "d1030b-one-word-reaction.png",
+    "caption": "One-Word Reaction®: hot wallets drained, pet laughs. Mine was never in there."
+  },
+  {
+    "id": "d1030b-this-is-fine-11-chains",
+    "file": "d1030b-this-is-fine-11-chains.png",
+    "caption": "This Is Fine®, 11 chains edition: everything on fire, my pet was burned on purpose."
+  },
+  {
+    "id": "d1030c-feed-em-daily-mort",
+    "file": "d1030c-feed-em-daily-mort.png",
+    "caption": "Feed 'Em Daily®. Mort's only advice: seven chain days unfed and he gets the shovel out."
+  },
+  {
+    "id": "d1030c-happy-18th-white-paper",
+    "file": "d1030c-happy-18th-white-paper.png",
+    "caption": "Happy 18th, White Paper®. Oct 31, 2008 to Oct 31, 2026. Even the zombies came back for cake."
+  },
+  {
+    "id": "d1030c-peer-to-peer-electronic-pet-system",
+    "file": "d1030c-peer-to-peer-electronic-pet-system.png",
+    "caption": "18 Years Later®: Petcoin, A Peer-to-Peer Electronic Pet System. Figure 1 is a frog."
+  },
+  {
+    "id": "d1030c-scariest-costume-hot-wallet",
+    "file": "d1030c-scariest-costume-hot-wallet.png",
+    "caption": "Scariest Costume®: ghost, witch, and the winner, a hot wallet. Judges still screaming."
+  },
+  {
+    "id": "d1030c-trick-or-treat-burns-only",
+    "file": "d1030c-trick-or-treat-burns-only.png",
+    "caption": "Trick or Treat®, Burns Only. The candy corn stays in the bowl."
+  },
+  {
+    "id": "d1030d-halloween-eve-trailer",
+    "file": "d1030d-halloween-eve-trailer.png",
+    "caption": "Halloween Eve®: chained in the trailer park, already undead. Fully on-chain."
+  },
+  {
+    "id": "d1030d-leverage-1-times",
+    "file": "d1030d-leverage-1-times.png",
+    "caption": "Leverage Check®: liquidations everywhere. My pet runs at 1 times. It just eats."
+  },
+  {
+    "id": "d1030d-withdrawals-paused-junkyard",
+    "file": "d1030d-withdrawals-paused-junkyard.png",
+    "caption": "Withdrawals Paused®. Back in 45 hours, they say. My pet was never deposited."
+  },
+  {
+    "id": "d1031-cemetery-open-to-everyone",
+    "file": "d1031-cemetery-open-to-everyone.png",
+    "caption": "Open To Everyone®: the Pet Cemetery is open to every player this Halloween. Bring your own chain."
+  },
+  {
+    "id": "d1031-nine-pages-eighteen-years",
+    "file": "d1031-nine-pages-eighteen-years.png",
+    "caption": "Nine Pages. Eighteen Years.®: born on Halloween, still no bank in the yard."
+  },
+  {
+    "id": "d1031-not-your-keys-drake",
+    "file": "d1031-not-your-keys-drake.png",
+    "caption": "Not Your Keys®: hack week on the exchanges. My burns get signed in my own wallet."
+  },
+  {
+    "id": "d1031-proof-of-reserves-junkyard",
+    "file": "d1031-proof-of-reserves-junkyard.png",
+    "caption": "Proof of Reserves®: exchanges promise it by Monday. My pet shows it every block, chained on-chain."
+  },
+  {
+    "id": "d1031-untouched-dacha",
+    "file": "d1031-untouched-dacha.png",
+    "caption": "Untouched®: Satoshi's coins have not moved in years. Neither has my pet."
+  },
+  {
+    "id": "d1031-white-paper-or-halloween",
+    "file": "d1031-white-paper-or-halloween.png",
+    "caption": "Two Buttons®: party for the white paper or party for Halloween? Same day. Satoshi planned it."
+  },
+  {
+    "id": "d1101-extra-hour-galaxy-brain",
+    "file": "d1101-extra-hour-galaxy-brain.png",
+    "caption": "Extra Hour®: everyone got sixty more minutes. My pet got about six more blocks."
+  },
+  {
+    "id": "d1101-fall-back-motel",
+    "file": "d1101-fall-back-motel.png",
+    "caption": "Fall Back®: the clocks went back an hour last night. The blocks did not."
+  },
+  {
+    "id": "d1101-first-frost-balcony",
+    "file": "d1101-first-frost-balcony.png",
+    "caption": "First Frost®: November came to the block. Chain a little colder, pet still fully on-chain."
+  },
+  {
+    "id": "d1101-phase-one-trainyard",
+    "file": "d1101-phase-one-trainyard.png",
+    "caption": "Phase One®: withdrawals come back one network at a time, Bitcoin first. My pet never left the yard."
+  },
+  {
+    "id": "d1101-seasonal-rotation-trailer",
+    "file": "d1101-seasonal-rotation-trailer.png",
+    "caption": "Seasonal Rotation®: Halloween came down this morning and the lights went up. The chain stays all year."
+  },
+  {
+    "id": "d1102-back-when-i-had-aura",
+    "file": "d1102-back-when-i-had-aura.png",
+    "caption": "Back When I Had Aura®: then, a pet in an app. Now, Fully On-Chain® in the yard. The aura was the chain."
+  },
+  {
+    "id": "d1102-i-dont-want-to-overreact",
+    "file": "d1102-i-dont-want-to-overreact.png",
+    "caption": "I Don't Want To Overreact®, But: my pet is two chain days unfed and the zombies are stretching. Feed All®."
+  },
+  {
+    "id": "d1102-its-time-defrosted",
+    "file": "d1102-its-time-defrosted.png",
+    "caption": "It's Time®: the holiday songs have defrosted. My pet was never frozen, just chained to Bitcoin."
+  },
+  {
+    "id": "d1102-meme-wars-distracted",
+    "file": "d1102-meme-wars-distracted.png",
+    "caption": "Meme Wars®: Christmas or Thanksgiving first? My pet only celebrates the next block."
+  },
+  {
+    "id": "d1102-moving-day-rowhouse",
+    "file": "d1102-moving-day-rowhouse.png",
+    "caption": "Moving Day®: everyone is hauling coins this week. My pet never moved out of the yard."
+  },
+  {
+    "id": "d1102-withdrawal-line-containers",
+    "file": "d1102-withdrawal-line-containers.png",
+    "caption": "Withdrawal Line®: the doors reopened and everyone carried coins out in one day. My pet was already in the yard, chained on-chain."
+  },
+  {
+    "id": "d1103-clapping-pet",
+    "file": "d1103-clapping-pet.png",
+    "caption": "Clapping Pet®: fed once and it will not stop clapping. Please keep it down, the Pet Cemetery is trying to sleep."
+  },
+  {
+    "id": "d1103-elder-scrolls-desert",
+    "file": "d1103-elder-scrolls-desert.png",
+    "caption": "The Elder Scrolls®: some fans waited years for the next Elder. My pet reached Elder in about a week of meals, chained in the desert yard."
+  },
+  {
+    "id": "d1103-four-red-weeks-doomer",
+    "file": "d1103-four-red-weeks-doomer.png",
+    "caption": "Four Red Weeks®: the doomer says it's so over. The candles had four red weeks, the bowl had seven empty days, and now there is a grave."
+  },
+  {
+    "id": "d1103-honest-work-holler",
+    "file": "d1103-honest-work-holler.png",
+    "caption": "It's Not Much But It's Honest Work®: some keep 150,000 coins. I keep one pet, one bowl and one meal a chain day, chained in the holler."
+  },
+  {
+    "id": "d1103-proof-pending-gas",
+    "file": "d1103-proof-pending-gas.png",
+    "caption": "Proof Pending®: the big reserve proof takes 40 to 50 hours to compute. My pet is on-chain in the yard, check any block."
+  },
+  {
+    "id": "d1103-the-head-turn",
+    "file": "d1103-the-head-turn.png",
+    "caption": "The Head Turn®: when a friend says his pet app shut down its servers. Mine is Fully On-Chain® and never had one."
+  },
+  {
+    "id": "d1105-bitcoin-amsterdam-rowhouse",
+    "file": "d1105-bitcoin-amsterdam-rowhouse.png",
+    "caption": "Bitcoin Amsterdam®: two days of keynotes on adoption at the Sugar Factory. My pet skipped the panels, it was busy being Fully On-Chain® in the rowhouse yard."
+  },
+  {
+    "id": "d1105-faster-blocks-drake",
+    "file": "d1105-faster-blocks-drake.png",
+    "caption": "Faster Blocks®: another chain is cutting its block time to 25 seconds. My pet still eats once every 144 Bitcoin blocks and is in no hurry."
+  },
+  {
+    "id": "d1105-remember-remember-commie",
+    "file": "d1105-remember-remember-commie.png",
+    "caption": "Remember, Remember®: the fifth of November. Fireworks over the block tonight, and every meal my pet ever ate is on-chain to remember."
+  },
+  {
+    "id": "d1105-round-trip-doomer",
+    "file": "d1105-round-trip-doomer.png",
+    "caption": "Round Trip®: the candles went up and came right back down. The doomer said it's so over, skipped seven chain days of meals, and his pet took a one-way trip to the Pet Cemetery."
+  },
+  {
+    "id": "d1105-skull-cap-glow-up",
+    "file": "d1105-skull-cap-glow-up.png",
+    "caption": "Skull Cap®: how my pet acts 0.1 seconds after putting on a skull cap. Same pet, same chain, completely different aura."
+  },
+  {
+    "id": "d1105-three-weeks-out-dodo",
+    "file": "d1105-three-weeks-out-dodo.png",
+    "caption": "Three Weeks Out®: Thanksgiving is coming, and the Dodo keeps reminding the trailer park it is Legendary-only, not dinner. Fully On-Chain®, fully not a turkey."
+  },
+  {
+    "id": "d1110-extreme-fear-doomer",
+    "file": "d1110-extreme-fear-doomer.png",
+    "caption": "Extreme Fear®: the fear gauge sank to 25 and the doomer said it's so over. He stopped feeding on day one, and seven chain days later his pet was in the Pet Cemetery. It was always over."
+  },
+  {
+    "id": "d1110-five-years-later",
+    "file": "d1110-five-years-later.png",
+    "caption": "Five Years Later®: November 10, 2021, Bitcoin first hit 69k and we were so early. November 10, 2026, everyone is sad at 74k. My pet is five years older, still fed, still on-chain."
+  },
+  {
+    "id": "d1110-grand-theft-bowl-gas",
+    "file": "d1110-grand-theft-bowl-gas.png",
+    "caption": "Grand Theft Bowl®: nine days until GTA VI. My pet behind the gas station already has five stars, a chain and a clean bowl."
+  },
+  {
+    "id": "d1110-hot-cpi-favela",
+    "file": "d1110-hot-cpi-favela.png",
+    "caption": "Hot CPI®: October inflation came in hotter than expected and groceries went up again. My pet eats Fully On-Chain® in the favela yard, same menu every chain day."
+  },
+  {
+    "id": "d1110-seven-straight-days-junkyard",
+    "file": "d1110-seven-straight-days-junkyard.png",
+    "caption": "Seven Straight Days®: the big Bitcoin funds logged seven sessions of outflows in a row. My pet in the junkyard logged seven chain days of meals in a row."
+  },
+  {
+    "id": "d1110-w-chews-drake",
+    "file": "d1110-w-chews-drake.png",
+    "caption": "W Chews®: skipping a chain day is L nibbles. One on-chain meal every 144 blocks is W chews."
+  },
+  {
+    "id": "fafo1030-fafo-fire-sale-fomo",
+    "file": "fafo1030-fafo-fire-sale-fomo.png",
+    "caption": "Fire Sale FOMO®. FAFO: snooze through Captain Dan's warning. A Fire Sale lasts 36 blocks, about 6 hours, then it's ash."
+  },
+  {
+    "id": "fafo1030-fafo-funtrump-ambush",
+    "file": "fafo1030-fafo-funtrump-ambush.png",
+    "caption": "FUNTRUMP Ambush®. FAFO: send your Mythic questing. 1 in 69 homecomings get ambushed: bonus Jackpot Egg plus the FUNTRUMP badge."
+  },
+  {
+    "id": "fafo1030-fafo-ill-feed-it-tomorrow",
+    "file": "fafo1030-fafo-ill-feed-it-tomorrow.png",
+    "caption": "I'll Feed It Tomorrow®, said seven days running. Seven chain days unfed and your pet moves to the Pet Cemetery. Mort showed up on time."
+  },
+  {
+    "id": "fafo1030-fafo-pick-a-fight",
+    "file": "fafo1030-fafo-pick-a-fight.png",
+    "caption": "Pick A Fight®. FAFO: lose and you get a black eye for 72 blocks, a head bandage, and one worn piece walks off. Today it was the crown."
+  },
+  {
+    "id": "fafo1030-fafo-poke-the-zombie",
+    "file": "fafo1030-fafo-poke-the-zombie.png",
+    "caption": "Poke The Zombie®. Fool around: poke the sleeping zombie with a stick. Find out why they call it feral."
+  },
+  {
+    "id": "fafo1030-fafo-skip-meals-ripe",
+    "file": "fafo1030-fafo-skip-meals-ripe.png",
+    "caption": "FAFO: Skip Meals®. Three chain days unfed and your pet is neglected: no fights, no breeding. The zombies call it ripe."
+  },
+  {
+    "id": "mc1024-001-yard-hodl-the-leash",
+    "file": "001-yard-hodl-the-leash.png",
+    "caption": "Hodl The Leash® Diamond paws. Steel chain."
+  },
+  {
+    "id": "mc1024-002-yard-node-sweet-node",
+    "file": "002-yard-node-sweet-node.png",
+    "caption": "Node Sweet Node® Runs a full node in the doghouse."
+  },
+  {
+    "id": "mc1024-003-yard-low-fee-zone",
+    "file": "003-yard-low-fee-zone.png",
+    "caption": "Low Fee Zone® He waited for a cheap block to bark."
+  },
+  {
+    "id": "mc1024-004-yard-unconfirmed-bark",
+    "file": "004-yard-unconfirmed-bark.png",
+    "caption": "Unconfirmed Bark® Woof is still in the mempool."
+  },
+  {
+    "id": "mc1024-006-yard-stacking-blocks",
+    "file": "006-yard-stacking-blocks.png",
+    "caption": "Stacking Blocks® One yard at a time."
+  },
+  {
+    "id": "mc1024-007-yard-no-server-no-problem",
+    "file": "007-yard-no-server-no-problem.png",
+    "caption": "No Server. No Problem.® The yard is the blockchain."
+  },
+  {
+    "id": "mc1024-008-yard-tick-tock-next-block",
+    "file": "008-yard-tick-tock-next-block.png",
+    "caption": "Tick Tock Next Block® Dinner is every 144 blocks."
+  },
+  {
+    "id": "mc1024-009-yard-fed-on-chain",
+    "file": "009-yard-fed-on-chain.png",
+    "caption": "Fed On-Chain® One meal a chain day. Recorded forever."
+  },
+  {
+    "id": "mc1024-010-yard-verify-do-not-trust",
+    "file": "010-yard-verify-do-not-trust.png",
+    "caption": "Verify, Do Not Trust® He sniffs every block."
+  },
+  {
+    "id": "mc1024-011-yard-good-boy-good-block",
+    "file": "011-yard-good-boy-good-block.png",
+    "caption": "Good Boy, Good Block® Six confirmations of pats."
+  },
+  {
+    "id": "mc1024-012-yard-yard-sale",
+    "file": "012-yard-yard-sale.png",
+    "caption": "Yard Sale®? Never. This pet is not going anywhere."
+  },
+  {
+    "id": "mc1024-013-yard-doghouse-node",
+    "file": "013-yard-doghouse-node.png",
+    "caption": "Doghouse Node® Fully synced since breakfast."
+  },
+  {
+    "id": "mc1024-014-yard-permissionless-pet",
+    "file": "014-yard-permissionless-pet.png",
+    "caption": "Permissionless Pet® Nobody can unplug this yard."
+  },
+  {
+    "id": "mc1024-015-yard-final-answer",
+    "file": "015-yard-final-answer.png",
+    "caption": "Final Answer® Settled on Bitcoin. Next question."
+  },
+  {
+    "id": "mc1024-016-yard-genesis-yard",
+    "file": "016-yard-genesis-yard.png",
+    "caption": "Genesis Yard® Every pet starts somewhere."
+  },
+  {
+    "id": "mc1024-017-yard-block-by-block",
+    "file": "017-yard-block-by-block.png",
+    "caption": "Block By Block® He counts them out loud."
+  },
+  {
+    "id": "mc1024-018-yard-hash-and-chill",
+    "file": "018-yard-hash-and-chill.png",
+    "caption": "Hash And Chill® Proof of nap."
+  },
+  {
+    "id": "mc1024-019-yard-leash-confirmed",
+    "file": "019-yard-leash-confirmed.png",
+    "caption": "Leash Confirmed® Your pet. Your keys. Your yard."
+  },
+  {
+    "id": "mc1024-020-yard-sats-for-snacks",
+    "file": "020-yard-sats-for-snacks.png",
+    "caption": "Sats For Snacks®? No. He eats burns, not sats."
+  },
+  {
+    "id": "mc1024-021-yard-mempool-watch",
+    "file": "021-yard-mempool-watch.png",
+    "caption": "Mempool Watch® Neighborhood watch, but for blocks."
+  },
+  {
+    "id": "mc1024-022-yard-cant-be-rolled-back",
+    "file": "022-yard-cant-be-rolled-back.png",
+    "caption": "Cant Be Rolled Back® Neither can his bad haircut."
+  },
+  {
+    "id": "mc1024-023-yard-100-year-yard",
+    "file": "023-yard-100-year-yard.png",
+    "caption": "100 Year Yard® Built to outlast the fence."
+  },
+  {
+    "id": "mc1024-024-yard-off-grid-on-chain",
+    "file": "024-yard-off-grid-on-chain.png",
+    "caption": "Off-Grid, On-Chain® No wifi. Still recorded."
+  },
+  {
+    "id": "mc1024-025-yard-long-block-energy",
+    "file": "025-yard-long-block-energy.png",
+    "caption": "Long Block Energy® Ten minutes is a lifestyle."
+  },
+  {
+    "id": "mc1024-026-yard-pixel-perfect",
+    "file": "026-yard-pixel-perfect.png",
+    "caption": "Pixel Perfect® Every pixel paid in burns."
+  },
+  {
+    "id": "mc1024-027-yard-8-bit-but-based",
+    "file": "027-yard-8-bit-but-based.png",
+    "caption": "8-Bit But Based® Low res. High conviction."
+  },
+  {
+    "id": "mc1024-028-yard-the-chain-is-the-leash",
+    "file": "028-yard-the-chain-is-the-leash.png",
+    "caption": "The Chain Is The Leash® And the leash is the chain."
+  },
+  {
+    "id": "mc1024-029-yard-never-offline",
+    "file": "029-yard-never-offline.png",
+    "caption": "Never Offline® The yard never closes."
+  },
+  {
+    "id": "mc1024-030-yard-bitcoin-backyard",
+    "file": "030-yard-bitcoin-backyard.png",
+    "caption": "Bitcoin Backyard® Rated five stars by one crab."
+  },
+  {
+    "id": "mc1024-031-burn-00",
+    "file": "031-burn-00.png",
+    "caption": "Burn To Play® Every move is a burn. Every burn is forever."
+  },
+  {
+    "id": "mc1024-032-burn-01",
+    "file": "032-burn-01.png",
+    "caption": "69 To Hatch® The cheapest way to make a friend."
+  },
+  {
+    "id": "mc1024-033-burn-02",
+    "file": "033-burn-02.png",
+    "caption": "Destroy To Create® The circle of pet life."
+  },
+  {
+    "id": "mc1024-034-burn-03",
+    "file": "034-burn-03.png",
+    "caption": "Feed By Fire® One meal a chain day."
+  },
+  {
+    "id": "mc1024-035-burn-04",
+    "file": "035-burn-04.png",
+    "caption": "Hot Wallet® Literally on fire."
+  },
+  {
+    "id": "mc1024-036-burn-05",
+    "file": "036-burn-05.png",
+    "caption": "Burn Notice® Your egg is ready."
+  },
+  {
+    "id": "mc1024-037-burn-06",
+    "file": "037-burn-06.png",
+    "caption": "Supply Goes Down® Pets go up."
+  },
+  {
+    "id": "mc1024-038-burn-07",
+    "file": "038-burn-07.png",
+    "caption": "Gone Forever® The burn. Not the pet."
+  },
+  {
+    "id": "mc1024-039-burn-08",
+    "file": "039-burn-08.png",
+    "caption": "A Dozen Eggs® 690 burned. Twelve new friends."
+  },
+  {
+    "id": "mc1024-040-burn-09",
+    "file": "040-burn-09.png",
+    "caption": "Roll The Gear® 345 burned. Fresh fit."
+  },
+  {
+    "id": "mc1024-041-burn-10",
+    "file": "041-burn-10.png",
+    "caption": "Fire Drill® Burn, hatch, repeat."
+  },
+  {
+    "id": "mc1024-042-burn-11",
+    "file": "042-burn-11.png",
+    "caption": "Community Cookout® Every burn feeds the community pet."
+  },
+  {
+    "id": "mc1024-043-spam-00",
+    "file": "043-spam-00.png",
+    "caption": "Welcome To Spam City® Population: your pets."
+  },
+  {
+    "id": "mc1024-044-spam-01",
+    "file": "044-spam-01.png",
+    "caption": "Spam City Hall® Gifts are token sends only."
+  },
+  {
+    "id": "mc1024-045-spam-02",
+    "file": "045-spam-02.png",
+    "caption": "Main Street Market® Pets for trade, tokens in hand."
+  },
+  {
+    "id": "mc1024-046-spam-03",
+    "file": "046-spam-03.png",
+    "caption": "Token Holder = Owner® Hold the token, hold the pet."
+  },
+  {
+    "id": "mc1024-047-spam-04",
+    "file": "047-spam-04.png",
+    "caption": "Papers Please® Every pet has its own token."
+  },
+  {
+    "id": "mc1024-048-spam-05",
+    "file": "048-spam-05.png",
+    "caption": "Spam City Nightlife® Everyone is a tokenized pet."
+  },
+  {
+    "id": "mc1024-049-spam-06",
+    "file": "049-spam-06.png",
+    "caption": "One Tie Per Pet® One pet. One token. One owner."
+  },
+  {
+    "id": "mc1024-050-spam-07",
+    "file": "050-spam-07.png",
+    "caption": "Proof Of Pet® Real papers for real pets."
+  },
+  {
+    "id": "mc1024-051-spam-08",
+    "file": "051-spam-08.png",
+    "caption": "Token Check® Genuine or not real. No in between."
+  },
+  {
+    "id": "mc1024-052-spam-09",
+    "file": "052-spam-09.png",
+    "caption": "Spam City Limits® No copycats past this sign."
+  },
+  {
+    "id": "mc1024-053-raid-00",
+    "file": "053-raid-00.png",
+    "caption": "Raid Boss Incoming® Bring your whole yard."
+  },
+  {
+    "id": "mc1024-054-raid-01",
+    "file": "054-raid-01.png",
+    "caption": "Crit Times Three® The boss felt that one."
+  },
+  {
+    "id": "mc1024-055-raid-02",
+    "file": "055-raid-02.png",
+    "caption": "The Boss Has A Black Eye® Teamwork makes the dream work."
+  },
+  {
+    "id": "mc1024-056-raid-03",
+    "file": "056-raid-03.png",
+    "caption": "One Hp Left® Who gets the last hit?"
+  },
+  {
+    "id": "mc1024-057-raid-04",
+    "file": "057-raid-04.png",
+    "caption": "Raid Night® Every burn is damage."
+  },
+  {
+    "id": "mc1024-058-raid-05",
+    "file": "058-raid-05.png",
+    "caption": "Lucky Drop® A relic and three spins."
+  },
+  {
+    "id": "mc1024-059-raid-06",
+    "file": "059-raid-06.png",
+    "caption": "No Escape® Raids do not do refunds."
+  },
+  {
+    "id": "mc1024-060-raid-07",
+    "file": "060-raid-07.png",
+    "caption": "Top Three® Damage dealers get the badge."
+  },
+  {
+    "id": "mc1024-061-raid-08",
+    "file": "061-raid-08.png",
+    "caption": "Big Boss Energy® Small pets. Big damage."
+  },
+  {
+    "id": "mc1024-062-raid-09",
+    "file": "062-raid-09.png",
+    "caption": "Raid Team Assemble® Six pets. One boss."
+  },
+  {
+    "id": "mc1024-063-lords-00",
+    "file": "063-lords-00.png",
+    "caption": "Burn Lords® Three crowns. One leaderboard."
+  },
+  {
+    "id": "mc1024-064-lords-01",
+    "file": "064-lords-01.png",
+    "caption": "Long Live The Lords® They burned the most."
+  },
+  {
+    "id": "mc1024-065-lords-02",
+    "file": "065-lords-02.png",
+    "caption": "The Podium® Gold, silver, bronze, all burned."
+  },
+  {
+    "id": "mc1024-066-lords-03",
+    "file": "066-lords-03.png",
+    "caption": "Crowned By Fire® Earned, not bought."
+  },
+  {
+    "id": "mc1024-067-lords-04",
+    "file": "067-lords-04.png",
+    "caption": "Kneel Before The Burn® Respect the top three."
+  },
+  {
+    "id": "mc1024-068-lords-05",
+    "file": "068-lords-05.png",
+    "caption": "Lord Of The Yard® Biggest burner on the block."
+  },
+  {
+    "id": "mc1024-069-lords-06",
+    "file": "069-lords-06.png",
+    "caption": "Throne Room® Heavy is the pixel crown."
+  },
+  {
+    "id": "mc1024-070-lords-07",
+    "file": "070-lords-07.png",
+    "caption": "Who Will Be Lord® The snapshot remembers."
+  },
+  {
+    "id": "mc1024-071-looks-00",
+    "file": "071-looks-00.png",
+    "caption": "Mythic Electric Aura® Never hungry. Always glowing."
+  },
+  {
+    "id": "mc1024-072-looks-01",
+    "file": "072-looks-01.png",
+    "caption": "Gold Rim® Earned, not drawn."
+  },
+  {
+    "id": "mc1024-073-looks-02",
+    "file": "073-looks-02.png",
+    "caption": "Halo Mode® Fed every day. Saint behavior."
+  },
+  {
+    "id": "mc1024-074-looks-03",
+    "file": "074-looks-03.png",
+    "caption": "Flame Aura® Too hot for the yard."
+  },
+  {
+    "id": "mc1024-075-looks-04",
+    "file": "075-looks-04.png",
+    "caption": "Holo Foil® Shiny papers for real pets."
+  },
+  {
+    "id": "mc1024-076-looks-05",
+    "file": "076-looks-05.png",
+    "caption": "Laurels® Won the arena. Won the look."
+  },
+  {
+    "id": "mc1024-077-looks-06",
+    "file": "077-looks-06.png",
+    "caption": "Wings Unlocked® Still chained. Just fancier."
+  },
+  {
+    "id": "mc1024-078-looks-07",
+    "file": "078-looks-07.png",
+    "caption": "Glow Up® From egg to Mythic."
+  },
+  {
+    "id": "mc1024-079-looks-08",
+    "file": "079-looks-08.png",
+    "caption": "Earned Looks® You cannot fake the shine."
+  },
+  {
+    "id": "mc1024-080-looks-09",
+    "file": "080-looks-09.png",
+    "caption": "Drip Check® Six slots. Full fit."
+  },
+  {
+    "id": "mc1024-081-stages-pepe",
+    "file": "081-stages-pepe.png",
+    "caption": "Pepe glow up: Egg to Mythic® in about nine days of meals."
+  },
+  {
+    "id": "mc1024-082-stages-wojak",
+    "file": "082-stages-wojak.png",
+    "caption": "Wojak glow up: Egg to Mythic® in about nine days of meals."
+  },
+  {
+    "id": "mc1024-083-stages-chud",
+    "file": "083-stages-chud.png",
+    "caption": "Chud glow up: Egg to Mythic® in about nine days of meals."
+  },
+  {
+    "id": "mc1024-084-stages-peepo",
+    "file": "084-stages-peepo.png",
+    "caption": "Peepo glow up: Egg to Mythic® in about nine days of meals."
+  },
+  {
+    "id": "mc1024-085-stages-doge",
+    "file": "085-stages-doge.png",
+    "caption": "Doge glow up: Egg to Mythic® in about nine days of meals."
+  },
+  {
+    "id": "mc1024-086-stages-bobo",
+    "file": "086-stages-bobo.png",
+    "caption": "Bobo glow up: Egg to Mythic® in about nine days of meals."
+  },
+  {
+    "id": "mc1024-087-stages-mumu",
+    "file": "087-stages-mumu.png",
+    "caption": "Mumu glow up: Egg to Mythic® in about nine days of meals."
+  },
+  {
+    "id": "mc1024-088-stages-sarutobi",
+    "file": "088-stages-sarutobi.png",
+    "caption": "Sarutobi glow up: Egg to Mythic® in about nine days of meals."
+  },
+  {
+    "id": "mc1024-089-stages-lenny",
+    "file": "089-stages-lenny.png",
+    "caption": "Lenny glow up: Egg to Mythic® in about nine days of meals."
+  },
+  {
+    "id": "mc1024-090-stages-snibby",
+    "file": "090-stages-snibby.png",
+    "caption": "Snibby glow up: Egg to Mythic® in about nine days of meals."
+  },
+  {
+    "id": "mc1024-091-stages-kevin",
+    "file": "091-stages-kevin.png",
+    "caption": "Kevin glow up: Egg to Mythic® in about nine days of meals."
+  },
+  {
+    "id": "mc1024-092-stages-dodo",
+    "file": "092-stages-dodo.png",
+    "caption": "Dodo glow up: Egg to Mythic® in about nine days of meals."
+  },
+  {
+    "id": "mc1024-093-lineup-00",
+    "file": "093-lineup-00.png",
+    "caption": "The Whole Yard® Twelve species. One chain."
+  },
+  {
+    "id": "mc1024-094-lineup-01",
+    "file": "094-lineup-01.png",
+    "caption": "Squad Goals® All fed. All recorded."
+  },
+  {
+    "id": "mc1024-095-lineup-02",
+    "file": "095-lineup-02.png",
+    "caption": "Roll Call® Everybody is on-chain."
+  },
+  {
+    "id": "mc1024-096-lineup-03",
+    "file": "096-lineup-03.png",
+    "caption": "Arena Day® Winner keeps the gear."
+  },
+  {
+    "id": "mc1024-097-lineup-04",
+    "file": "097-lineup-04.png",
+    "caption": "Breed Day® 68.4773435 percent hybrid odds."
+  },
+  {
+    "id": "mc1024-098-lineup-05",
+    "file": "098-lineup-05.png",
+    "caption": "Family Tree® Every parent on-chain."
+  },
+  {
+    "id": "mc1024-099-lineup-06",
+    "file": "099-lineup-06.png",
+    "caption": "Hatch Party® Eggs everywhere."
+  },
+  {
+    "id": "mc1024-100-lineup-07",
+    "file": "100-lineup-07.png",
+    "caption": "Neighborhood Watch® Six pets. Zero servers."
+  },
+  {
+    "id": "oy1024-block-housing-block-height",
+    "file": "oy1024-block-housing-block-height.png",
+    "caption": "Block Housing®. Block Height®."
+  },
+  {
+    "id": "oy1024-burn-to-play-chain-to-stay",
+    "file": "oy1024-burn-to-play-chain-to-stay.png",
+    "caption": "Burn To Play®. Chain To Stay®."
+  },
+  {
+    "id": "oy1024-chain-of-custody-bayou",
+    "file": "oy1024-chain-of-custody-bayou.png",
+    "caption": "Chain Of Custody®"
+  },
+  {
+    "id": "oy1024-chained-to-the-chain-rooftop",
+    "file": "oy1024-chained-to-the-chain-rooftop.png",
+    "caption": "Chained To The Chain®"
+  },
+  {
+    "id": "oy1024-cold-wallet-junkyard",
+    "file": "oy1024-cold-wallet-junkyard.png",
+    "caption": "Cold Wallet®? He lives outside."
+  },
+  {
+    "id": "oy1024-counterparty-risk-town",
+    "file": "oy1024-counterparty-risk-town.png",
+    "caption": "Counterparty Risk®? He is the Counterparty."
+  },
+  {
+    "id": "oy1024-distracted-pet",
+    "file": "oy1024-distracted-pet.png",
+    "caption": "Distracted Pet®: he saw the chain and never looked back."
+  },
+  {
+    "id": "oy1024-drake-onchain",
+    "file": "oy1024-drake-onchain.png",
+    "caption": "Pets chained to Bitcoin® > pets on a company server"
+  },
+  {
+    "id": "oy1024-every-link-verified",
+    "file": "oy1024-every-link-verified.png",
+    "caption": "Every Link Verified®"
+  },
+  {
+    "id": "oy1024-fully-onchain-trailer",
+    "file": "oy1024-fully-onchain-trailer.png",
+    "caption": "Fully On-Chain®. Your pet. Your yard. Your block height."
+  },
+  {
+    "id": "oy1024-galaxy-brain-chained",
+    "file": "oy1024-galaxy-brain-chained.png",
+    "caption": "Galaxy Brain®: pet is chained to Bitcoin."
+  },
+  {
+    "id": "oy1024-gigachad-bobo",
+    "file": "oy1024-gigachad-bobo.png",
+    "caption": "\"Is your pet on a server?\" \"No. It is chained to the chain.\""
+  },
+  {
+    "id": "oy1024-immutable-holler",
+    "file": "oy1024-immutable-holler.png",
+    "caption": "Immutable®. Like the truck on blocks."
+  },
+  {
+    "id": "oy1024-layer-1-dacha",
+    "file": "oy1024-layer-1-dacha.png",
+    "caption": "Layer 1® Garden. Layer 2® is the tomato patch."
+  },
+  {
+    "id": "oy1024-not-your-chain-favela",
+    "file": "oy1024-not-your-chain-favela.png",
+    "caption": "Not Your Chain, Not Your Pet®"
+  },
+  {
+    "id": "oy1024-npc-mode",
+    "file": "oy1024-npc-mode.png",
+    "caption": "NPC Mode®: \"Fully on-chain.\" (It is true.)"
+  },
+  {
+    "id": "oy1024-onchain-yard-collection",
+    "file": "oy1024-onchain-yard-collection.png",
+    "caption": "The On-Chain Yard Collection®. Nine yards. One chain."
+  },
+  {
+    "id": "oy1024-proof-of-yard-rowhouse",
+    "file": "oy1024-proof-of-yard-rowhouse.png",
+    "caption": "Proof Of Yard®"
+  },
+  {
+    "id": "oy1024-self-custody-alley",
+    "file": "oy1024-self-custody-alley.png",
+    "caption": "Self-Custody®. Literally tied to your own yard."
+  },
+  {
+    "id": "oy1024-settlement-finality-town",
+    "file": "oy1024-settlement-finality-town.png",
+    "caption": "Settlement Finality®. Six Confirmations®."
+  },
+  {
+    "id": "oy1024-still-onchain-rubble",
+    "file": "oy1024-still-onchain-rubble.png",
+    "caption": "Still On-Chain®. The ledger did not move."
+  },
+  {
+    "id": "oy1024-they-dont-know",
+    "file": "oy1024-they-dont-know.png",
+    "caption": "They don't know my yard is a blockchain. Block Party®."
+  },
+  {
+    "id": "oy1024-this-is-fine",
+    "file": "oy1024-this-is-fine.png",
+    "caption": "This Is Fine®. Pet still on-chain."
+  },
+  {
+    "id": "oy1024-two-buttons",
+    "file": "oy1024-two-buttons.png",
+    "caption": "Off-leash freedom or 100% on-chain? Daily struggle®."
+  },
+  {
+    "id": "oy1024-zero-off-leash",
+    "file": "oy1024-zero-off-leash.png",
+    "caption": "100% On-Chain. 0% Off-Leash.®"
+  },
+  {
+    "id": "sw1025-abstract-vs-physical",
+    "file": "sw1025-abstract-vs-physical.png",
+    "caption": "Abstract power: trust me. Physical power: check the burn."
+  },
+  {
+    "id": "sw1025-bits-with-weight",
+    "file": "sw1025-bits-with-weight.png",
+    "caption": "Softwar® in one line: give your bits some physical weight."
+  },
+  {
+    "id": "sw1025-cannot-fake-burn",
+    "file": "sw1025-cannot-fake-burn.png",
+    "caption": "You can fake a screenshot. You cannot fake a burn."
+  },
+  {
+    "id": "sw1025-cost-to-attack",
+    "file": "sw1025-cost-to-attack.png",
+    "caption": "Want to fight my pet? That will be 690 XCPETS. Burned."
+  },
+  {
+    "id": "sw1025-dodo-honest-footnote",
+    "file": "sw1025-dodo-honest-footnote.png",
+    "caption": "Honest footnote®: our burns ride on Bitcoin proof-of-work. We do not mine."
+  },
+  {
+    "id": "sw1025-dozen-eggs-power",
+    "file": "sw1025-dozen-eggs-power.png",
+    "caption": "Projecting power: 690 burned, 12 eggs hatched."
+  },
+  {
+    "id": "sw1025-mythic-proven-cost",
+    "file": "sw1025-mythic-proven-cost.png",
+    "caption": "Mythic®: 69,069 care, burned meal by meal."
+  },
+  {
+    "id": "sw1025-non-lethal-battle",
+    "file": "sw1025-non-lethal-battle.png",
+    "caption": "Non-lethal warfare®. Worst case: a black eye."
+  },
+  {
+    "id": "sw1025-softwar-pets",
+    "file": "sw1025-softwar-pets.png",
+    "caption": "Softwar®. Pets secured by real burns."
+  },
+  {
+    "id": "sw1025-wolf-snarl",
+    "file": "sw1025-wolf-snarl.png",
+    "caption": "Proof-of-Power® is proof of ownership. Ask the Doge."
+  }
+]
