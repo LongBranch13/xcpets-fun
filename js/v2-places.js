@@ -16,7 +16,7 @@
     { id: 'cemetery', ico: '🪦', name: 'Pet Cemetery', url: 'cemetery.html', line: 'rest in pixels', pages: ['cemetery.html'] },
     /* pantheon-nav: The Pantheon is a place, same header menu and home card as the cemetery (display only) */
     { id: 'pantheon', ico: '🌕', name: 'The Pantheon', url: 'pantheon.html', line: '21 seats, 21 gods', pages: ['pantheon.html'] },
-    { id: 'tokens', ico: '🎖️', name: 'Proof Parade', url: 'tokens.html', line: 'every token in order', pages: ['tokens.html'] },
+    /* merge-pages-1123: Proof Parade now sits under 🏆 Leaderboards (BOARD_PAGES below), not in the Places menu */
     /* live-activity (owner Nov 1 2026): the Live Feed, what just happened, newest first (display only, no wallet) */
     { id: 'live', ico: '📡', name: 'Live', url: 'live.html', line: 'what just happened', pages: ['live.html', 'watch.html'] } /* live-merge-1123: Live Feed + Watch are one page (📺 Big screen switch) */
   ];
@@ -25,10 +25,19 @@
   var TUTORIAL = { ico: '🎓', name: 'Tutorial', title: 'The Big Beautiful Tutorial', url: 'tutorial.html' };
   /* fewer-pages (owner Nov 22 2026): the how-to pages, under the header "Learn" menu next to the tutorial (old URLs unchanged) */
   var LEARN = [['🐸', 'The cast', 'index.html#cast'], ['📖', 'Pet Guide', 'pets.html'], ['📜', 'Rules', 'rules.html'], ['📝', 'Short rules', 'rules-short.html'], ['⚙️', 'How It Works', 'how-it-works.html']];
+  /* merge-pages-1123 (Jake Nov 23 2026, "merge the duplicates"): ONE Leaderboards place. The list pages share one tab strip (written between
+   * <!--boards--> and <!--/boards--> by tools/build-places.js) and the header has one "🏆 Leaderboards" link. Hall of Fame is the Rankings
+   * 'hof' board (hall-of-fame.html forwards there). Old URLs keep working. Display only. */
+  var BOARD_PAGES = [['🏆', 'Rankings', 'ranking.html'], ['🌕', 'Pantheon', 'pantheon.html'], ['🧊', 'Cold Storage', 'archive.html'], ['🎖️', 'Proof Parade', 'tokens.html']];
+  function boardsBar(file) { return '<style>.lbbar{max-width:1100px;margin:0 auto 10px;display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:6px 8px;border:3px solid #000;background:#14101f;box-shadow:3px 3px 0 #000}' +
+    '.lbbar b{font-family:"Press Start 2P",monospace;font-size:10px;color:#E8B33A;margin-right:4px}.lbbar a{display:inline-flex;align-items:center;gap:4px;padding:7px 10px;border:2px solid #000;background:#1d1530;color:#FAFAF5;text-decoration:none;font-weight:700;font-size:14px;box-shadow:2px 2px 0 #000}' +
+    '.lbbar a:hover,.lbbar a:focus-visible{outline:2px solid #E8B33A}.lbbar a[aria-current]{background:#E8B33A;color:#100E14}' +
+    '@media (max-width:600px){html body .lbbar{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:0 8px 8px;padding:6px}html body .lbbar b{display:none}html body .lbbar a{justify-content:center;font-size:13px;padding:8px 6px;white-space:nowrap}}</style>' +
+    '<nav class="lbbar" id="lbBar" aria-label="Leaderboards"><b>🏆 Leaderboards</b>' + BOARD_PAGES.map(function (b) { return '<a href="' + b[2] + '"' + (b[2] === file ? ' aria-current="page"' : '') + '><span aria-hidden="true">' + b[0] + '</span> ' + esc(b[1]) + '</a>'; }).join('') + '</nav>'; }
   function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return '&#' + c.charCodeAt(0) + ';'; }); }
   /** header menu markup (tools/build-places.js writes it between <!--places--> and <!--/places--> on every page) */
   function menu() { return '<details class="navplaces"><summary>🗺️ Places</summary><div class="np-menu" role="menu">' +
-    PLACES.map(function (p) { return '<a role="menuitem" class="np-' + p.id + '" href="' + p.url + '"><span aria-hidden="true">' + p.ico + '</span> ' + esc(p.name) + '</a>'; }).join('') + '</div></details><!-- the site\'s existing Ranking link (all boards, Hall of Fame included) --><a class="navrank" href="ranking.html">Ranking</a>' +
+    PLACES.map(function (p) { return '<a role="menuitem" class="np-' + p.id + '" href="' + p.url + '"><span aria-hidden="true">' + p.ico + '</span> ' + esc(p.name) + '</a>'; }).join('') + '</div></details><!-- merge-pages-1123: one Leaderboards link (Rankings, Hall of Fame, Pantheon, Cold Storage, Proof Parade) --><a class="navrank" href="ranking.html">🏆 Leaderboards</a>' +
     '<!-- fewer-pages (owner Nov 22 2026): the tutorial and every how-to page in one "Learn" menu (the tutorial is still not a place) -->' +
     '<details class="navplaces navlearn"><summary>📚 Learn</summary><div class="np-menu" role="menu">' +
     '<a role="menuitem" class="navtut" href="' + TUTORIAL.url + '" title="' + esc(TUTORIAL.title) + '"><span aria-hidden="true">' + TUTORIAL.ico + '</span> ' + esc(TUTORIAL.name) + '</a>' +
@@ -49,7 +58,7 @@
     var href = pass !== false && id >= 1 ? 'rare-room.html#rare-room-' + id : 'rare-room.html';
     document.querySelectorAll('a.np-rare').forEach(function (a) { if (a.getAttribute('href') !== href) a.setAttribute('href', href); });
   }
-  var api = { PLACES: PLACES, TUTORIAL: TUTORIAL, LEARN: LEARN, menu: menu, petPageId: petPageId, stampRare: stampRare };
+  var api = { PLACES: PLACES, TUTORIAL: TUTORIAL, LEARN: LEARN, BOARD_PAGES: BOARD_PAGES, boardsBar: boardsBar, menu: menu, petPageId: petPageId, stampRare: stampRare };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   if (typeof document === 'undefined') return;
   root.V2Places = api;
@@ -62,6 +71,8 @@
       document.addEventListener('click', function (e) { if (d.open && !d.contains(e.target)) d.open = false; });
       document.addEventListener('keydown', function (e) { if (e.key === 'Escape') d.open = false; }); });
     if (document.body && document.body.getAttribute('data-v2page') === 'pet') stampRare(petPageId(), true);
+    /* merge-pages-1123: every Leaderboards page lights the one header link */
+    if (BOARD_PAGES.some(function (b) { return b[2] === file; })) document.querySelectorAll('header.nav nav a.navrank').forEach(function (a) { a.setAttribute('aria-current', 'page'); });
     /* banner tutorial link: mark it on tutorial.html */
     if (file === TUTORIAL.url) document.querySelectorAll('header.nav nav a.navtut').forEach(function (a) { a.setAttribute('aria-current', 'page'); });
     /* place pages: Town bar + stations */
