@@ -93,11 +93,11 @@ async function verifyTest(pg) {
   while (Date.now() - t0 < 300000) {
     await pg.waitForTimeout(200);
     const r = await pg.evaluate(() => { const b = document.getElementById('splitViewBar'), sl = document.getElementById('statusLine');
-      return { bar: b ? b.textContent.replace(/\s+/g, ' ').replace(/[0-9]+ \/ [0-9]+ files/, 'N files').slice(0, 80) : '', line: sl ? sl.textContent.slice(0, 80) : '', done: window.__probeVerify, t: window.__xcpVerifyT || null }; });
+      return { bar: b ? b.textContent.replace(/\s+/g, ' ').replace(/[0-9]+ \/ [0-9]+ files/, 'N files').slice(0, 80) : '', line: sl ? sl.textContent.slice(0, 80) : '', done: window.__probeVerify, t: window.__xcpVerifyT || null, err: window.__xcpVerifyErr || null }; });
     if (r.bar !== last) { seen.push([((Date.now() - t0) / 1000).toFixed(1), r.bar]); last = r.bar; }
     if (r.done) { done = r; break; }
   }
-  return { secs: (Date.now() - t0) / 1000, ok: !!(done && done.done && done.done.ok), t: done && done.t, seen, line: done && done.line };
+  return { secs: (Date.now() - t0) / 1000, ok: !!(done && done.done && done.done.ok), t: done && done.t, seen, line: done && done.line, err: done && done.err };
 }
 /* Pet pictures on screen that are still one flat colour (black square / empty) = not drawn yet. Runs in the page. */
 const BLANK_SRC = `(() => { const out = { onScreen: 0, blank: 0, cards: document.querySelectorAll('#pets .pet.card').length };
@@ -180,6 +180,7 @@ const MB = b => (b / 1e6).toFixed(2) + ' MB', S = s => s == null ? '–' : s.toF
       md += `**${r.page}${r.branch ? ' (branch)' : ''} · ${r.addr.slice(0, 8)}…** ` + (v.skipped ? v.skipped : `${v.ok ? 'done' : 'NOT done'} in ${v.secs.toFixed(1)} s`) + '\n\n';
       if (v.t) md += '- worker: ' + Object.entries(v.t).filter(([k]) => k !== 't0').map(([k, x]) => k + ' ' + (/^(rows|nFiles|from|to|bytes)$/.test(k) ? x : (x / 1000).toFixed(1) + ' s')).join(' · ') + '\n';
       if (v.seen) md += '- bar: ' + v.seen.map(([s1, b]) => s1 + ' s "' + b.replace(/\|/g, '/') + '"').join(' → ') + '\n';
+      if (v.err) md += '- error: ' + String(v.err).replace(/\|/g, '/') + '\n';
       if (v.line) md += '- status line after: ' + v.line.replace(/\|/g, '/') + '\n';
       md += '\n'; } }
   md += '\n## Where the bytes go\n\n';

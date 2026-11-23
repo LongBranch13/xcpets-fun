@@ -735,9 +735,9 @@
         if (m.cmd === 'progress') { lastProg = m; var note = wantBar && document.getElementById('splitViewBar'); if (note) note.textContent = progressText(m); return; }
         if (m.cmd === 'check') { var fn = pending[m.id]; if (fn) { delete pending[m.id]; fn(m); } return; }
         if (m.cmd === 'mine') { takeMine(m); return; }
-        if (m.cmd === 'ready') { if (m.t) window.__xcpVerifyT = m.t; if (m.ok) { unlock(m); requestSync(); } else failed(); res(m); }
+        if (m.cmd === 'ready') { if (m.t) window.__xcpVerifyT = m.t; if (m.ok) { unlock(m); requestSync(); } else { window.__xcpVerifyErr = String(m.error || ''); failed(); } res(m); }
       };
-      worker.onerror = function () { failed(); res({ ok: false }); };
+      worker.onerror = function (ev) { window.__xcpVerifyErr = 'worker: ' + String(ev && ev.message || ''); failed(); res({ ok: false }); };
       /* a failed check (network, bad hash) must not stick: the next burn or Verify starts a fresh one */
       function failed() {
         var b = wantBar && document.getElementById('splitViewBar'); if (b) b.textContent = 'The check did not finish. The published world is still on screen.';
