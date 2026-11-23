@@ -6,15 +6,17 @@
  * It decides nothing on chain: a wrong answer can only let a player send a burn the replay then ignores, as a stale page can today.
  * Messages from the parent (process.send IPC):
  *   { cmd: 'load', codeDir, worldDir, rsig, rows, hashes, tip, dex }  drop the old world, load worldDir's checkpoint, replay to tip
- *   { cmd: 'check', id, plans, me, pending }                       answer { id, ok, tip, plans, skip }
+ *   { cmd: 'check', id, plans, me, pending }                       answer { id, ok, tip, rsig, plans, skip }
+ *   { cmd: 'shop', id }                                            answer { id, ok, tip, rsig, listings, pets, deeds, orders, open }
+ *     Spam City's order book (Nov 23 2026): the same pack js/v2-orderbook-worker.js makes after a full replay in the browser.
  * It runs only between world builds (the parent stops it before a build starts), so the two never hold a world at once. */
 const fs = require('fs'), path = require('path'), vm = require('vm');
-let world = null, ownerTable = null, ctx = null, Art = null, loaded = { tip: 0, rsig: '', ms: 0 };
+let world = null, ownerTable = null, ctx = null, Art = null, orders = [], shopPack = null, loaded = { tip: 0, rsig: '', ms: 0 };
 function send(m) { try { if (process.send) process.send(m); } catch (e) { } }
 function mem() { const u = process.memoryUsage(); return { rssMB: u.rss >> 20, heapMB: u.heapUsed >> 20 }; }
 function load(m) {
   const t0 = Date.now();
-  world = null; ownerTable = null; ctx = null; if (global.gc) global.gc();
+  world = null; ownerTable = null; ctx = null; orders = []; shopPack = null; if (global.gc) global.gc();
   const code = m.codeDir && fs.existsSync(path.join(m.codeDir, 'tools', 'sync-server', 'snapshot.js')) ? m.codeDir : path.resolve(__dirname, '..', '..');
   const S = require(path.join(code, 'tools', 'sync-server', 'snapshot.js'));
   const C = require(path.join(code, 'tools', 'sync-server', 'client.js')).bootSync();
@@ -37,6 +39,7 @@ function load(m) {
   ctx.__res = { w: w, seen: seen, dexPos: meta.dexPos || 0, grand: meta.grand ? 1 : 0, tip: meta.tip };
   vm.runInContext('if (__dex && self.V2Sales && self.V2Sales.normalizeDex) __dex = self.V2Sales.normalizeDex(__dex);' +
     '__world = self.V2Rules.replay(__rows, __hashes, [], { tip: __tip, live: self.LiveEngine.RealCore, dex: __dex, _resume: __res });', ctx);
+  orders = (m.dex && m.dex.orders) || [];
   world = ctx.__world; ctx.__world = null; ctx.__rows = null; ctx.__hashes = null; ctx.__dex = null; ctx.__res = null;
   loaded = { tip: world.tip, rsig: rsig, ms: Date.now() - t0 };
   if (global.gc) global.gc();
@@ -61,7 +64,33 @@ function check(m) {
     const why = ctx.V2Rules.sendBlock(world, plan, world.tip, { me: m.me || '', pending: pending });
     if (why) skip.push(why); else { kept.push(plan); if (plan && plan.tag) pending.push(plan.tag); }
   }
-  return { id: m.id, ok: true, tip: world.tip, plans: kept, skip: skip };
+  return { id: m.id, ok: true, tip: world.tip, rsig: loaded.rsig, plans: kept, skip: skip };
+}
+/* Same as plainPet in js/v2-orderbook-worker.js: a pet's plain fields, gear as a count-sized empty list. */
+function plainPet(p) {
+  const o = {};
+  for (const k of Object.keys(p)) {
+    const v = p[k];
+    if (v == null || typeof v === 'number' || typeof v === 'string' || typeof v === 'boolean') { o[k] = v; continue; }
+    if (k === 'gear') { o.gear = new Array((v && v.length) || 0); continue; }
+    if (Array.isArray(v)) { if (v.every(x => !(x && typeof x === 'object'))) o[k] = v.slice(); continue; }
+    if (typeof v === 'object') { const c = {}; let ok = true; for (const kk of Object.keys(v)) { const vv = v[kk]; if (vv && typeof vv === 'object') { ok = false; break; } c[kk] = vv; } if (ok) o[k] = c; }
+  }
+  return o;
+}
+/* Spam City's pack, the same fields js/v2-orderbook-worker.js posts. Built once per loaded world (the world only changes on a load). */
+function shop(m) {
+  if (!world || !ctx || !ctx.V2Rules) return { id: m.id, ok: false, error: 'not ready' };
+  if (!shopPack) {
+    const w = world, V = ctx.V2Rules, listings = w.listings || [], ids = {}, pets = [], deeds = {};
+    listings.forEach(S => { if (S && S.petId != null) ids[S.petId] = 1; });
+    Object.keys(ids).forEach(id => { const p = w.byId[id]; if (p) pets.push(plainPet(p)); });
+    pets.forEach(pet => { if (pet.deed && w.deeds && w.deeds[pet.deed]) deeds[pet.deed] = w.deeds[pet.deed]; });
+    listings.forEach(S => { if (S && S.give && w.deeds && w.deeds[S.give]) deeds[S.give] = w.deeds[S.give]; });
+    let open = 0; listings.forEach(S => { try { if (V.saleState(w, S, (w.tip || 0) + 1) === 'open') open++; } catch (e) { } });
+    shopPack = JSON.parse(JSON.stringify({ tip: w.tip, rsig: loaded.rsig, listings: listings, pets: pets, deeds: deeds, orders: orders, n: (w.pets || []).length, open: open }));
+  }
+  return Object.assign({ id: m.id, ok: true }, shopPack);
 }
 process.on('message', m => {
   if (!m || typeof m !== 'object') return;
@@ -70,7 +99,8 @@ process.on('message', m => {
     let out; try { out = Object.assign({ cmd: 'loaded', ok: true }, load(m)); } catch (e) { world = null; out = Object.assign({ cmd: 'loaded', ok: false, error: String(e && (e.code || e.message) || e).replace(/[\/][^ ]*/g, '[path]').slice(0, 80) }, mem()); }
     send(out); return;
   }
+  if (m.cmd === 'shop') { let out; try { out = shop(m); } catch (e) { out = { id: m.id, ok: false, error: 'shop failed' }; } send(Object.assign({ cmd: 'shopped' }, out)); return; }
   if (m.cmd === 'mem') send(Object.assign({ cmd: 'mem', tip: world ? world.tip : 0 }, mem()));
 });
 process.on('disconnect', () => process.exit(0));
-module.exports = { load, check };
+module.exports = { load, check, shop };
