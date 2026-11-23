@@ -46,5 +46,10 @@
       btn: ME ? 'ATTACK' : 'HOW RAIDS WORK', on: function () { go('#raidBox'); } }); }
   function render(w) { if (!w || !window.V2Rules) return; var sp = document.body && document.body.getAttribute('data-split'), U = window.V2UI, ME = U && U.ME, tip = (U && U.S && U.S().tip) || w.tip || 0, b = tip + 1; css();
     try { if (sp === 'fight') fight(w, ME, b); else if (sp === 'breed') breed(w, ME, b); else if (sp === 'raid') raid(w, ME, b); } catch (e) { if (window.console) console.warn('placebar', e); } }
+  /* also keep itself fresh (some place pages paint their panels outside js/v2.js render): every 2 s while visible, only when the world, tip or wallet changed */
+  var last = { w: null, k: '' }; function tick() { if (document.hidden) return; var U = window.V2UI, w = null; try { w = U && U.world && U.world(); } catch (e) { } if (!w) return;
+    var k = ((U.S && U.S().tip) || w.tip || 0) + '|' + (U.ME || '') + '|' + !!document.getElementById('pbFight') + !!document.getElementById('pbBreed') + !!document.getElementById('pbRaid');
+    if (w === last.w && k === last.k) return; last.w = w; last.k = k; render(w); }
+  if (typeof setInterval === 'function') setInterval(tick, 2000);
   window.V2PlaceBar = { render: render };
 })();
