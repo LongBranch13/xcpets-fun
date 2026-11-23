@@ -208,29 +208,29 @@ export function batch(events, st) {
     const lead = es.find((e) => e.firstForPlayer) || es[0], rest = es.filter((e) => e !== lead);
     const extra = rest.length ? " And " + (rest.length === 1 ? nm(rest[0].pet) : list(rest.map((e) => nm(e.pet)), 4)) + " went Mythic right along with it!" : "";
     const tpl = lead.firstForPlayer ? T.firstPlayerMythic : T.mythic;
-    posts.push({ type: lead.firstForPlayer ? "mythic_first_player" : "mythic", prio: 0, keys: es.map((e) => e.key), block: lead.block, text: choose(tpl, seedOf(es), st, lead.firstForPlayer ? "fpm" : "my")(nmHy(lead.pet), extra) + plink(lead.pet) });
+    posts.push({ type: lead.firstForPlayer ? "mythic_first_player" : "mythic", prio: 0, keys: es.map((e) => e.key), block: lead.block, photoId: lead.pet.id, text: choose(tpl, seedOf(es), st, lead.firstForPlayer ? "fpm" : "my")(nmHy(lead.pet), extra) + plink(lead.pet) });
   }
   const hy = by("hybrid");
   if (hy.length) {
     const bred = by("bred").length, more = bred ? ` (Plus ${bred} more bred ${bred === 1 ? "baby" : "babies"}.)` : "";
-    posts.push({ type: "hybrids", prio: 1, keys: hy.concat(by("bred")).map((e) => e.key), block: Math.max(...hy.map((e) => e.block)), text: choose(T.hybrid, seedOf(hy), st, "hy")(list(hy.map((e) => nmHy(e.pet)), 4), hy.length, more) + (hy.length === 1 ? (hy[0].par || "") + plink(hy[0].pet) : "") });
+    posts.push({ type: "hybrids", prio: 1, keys: hy.concat(by("bred")).map((e) => e.key), block: Math.max(...hy.map((e) => e.block)), photoId: hy[0].pet.id, photoWait: true, text: choose(T.hybrid, seedOf(hy), st, "hy")(list(hy.map((e) => nmHy(e.pet)), 4), hy.length, more) + (hy.length === 1 ? (hy[0].par || "") + plink(hy[0].pet) : "") });
   }
   const nk = by("nakamoto"), lg = by("legendary");
   if (nk.length || lg.length) {
     const parts = [];
     if (nk.length) parts.push((nk.length === 1 ? "a Nakamoto, " : nk.length + " Nakamotos, ") + list(nk.map((e) => nm(e.pet)), 3) + " (that's 1 in 777)");
     if (lg.length) parts.push(lg.length === 1 ? "a Legendary " + lg[0].pet.label + ", " + nm(lg[0].pet) : lg.length + " Legendaries" + (lg.length > 4 ? " including " : " (") + list(lg.slice(0, 4).map((e) => nm(e.pet) + " the " + e.pet.label), 4) + (lg.length > 4 ? "" : ")"));
-    posts.push({ type: "hatch_highlights", prio: 1, keys: nk.concat(lg).map((e) => e.key), block: Math.max(...nk.concat(lg).map((e) => e.block)), text: choose(T.hatch, seedOf(nk.concat(lg)), st, "ht")(parts.join(" and ")) });
+    posts.push({ type: "hatch_highlights", prio: 1, keys: nk.concat(lg).map((e) => e.key), block: Math.max(...nk.concat(lg).map((e) => e.block)), photoId: nk.concat(lg)[0].pet.id, photoWait: true, text: choose(T.hatch, seedOf(nk.concat(lg)), st, "ht")(parts.join(" and ")) });
   }
   const bt = by("battle");
-  if (bt.length > 2) posts.push({ type: "battles", prio: 1, keys: bt.map((e) => e.key), block: Math.max(...bt.map((e) => e.block)), text: "\u2694\uFE0F Busy arena! " + list(bt.map((e) => nm(e.winner) + " beat " + nm(e.loser)), 4) + ". GG all round \u{1F94A}" });
+  if (bt.length > 2) posts.push({ type: "battles", prio: 1, keys: bt.map((e) => e.key), block: Math.max(...bt.map((e) => e.block)), photoId: bt[bt.length - 1].winner.id, text: "\u2694\uFE0F Busy arena! " + list(bt.map((e) => nm(e.winner) + " beat " + nm(e.loser)), 4) + ". GG all round \u{1F94A}" });
   else for (const e of bt) {
     const w = nm(e.winner), l = nm(e.loser), sp = e.spoil && !violations(e.spoil).length ? e.spoil : null;
-    posts.push({ type: e.streak >= 3 ? "win_streak" : "battle", prio: 1, keys: [e.key], block: e.block, text: e.streak >= 3 ? choose(T.streak, e.key, st, "stk")(w, e.streak, l) : choose(T.battle, e.key, st, "bt")(w, l, sp) });
+    posts.push({ type: e.streak >= 3 ? "win_streak" : "battle", prio: 1, keys: [e.key], block: e.block, photoId: e.winner.id, text: e.streak >= 3 ? choose(T.streak, e.key, st, "stk")(w, e.streak, l) : choose(T.battle, e.key, st, "bt")(w, l, sp) });
   }
   for (const e of by("cm")) posts.push({ type: "community_stage", prio: e.stageName === "Mythic" ? 0 : 1, keys: [e.key], block: e.block, text: e.stageName === "Mythic" ? T.cmMythic[0](e.name) : choose(T.cmStage, e.key, st, "cm")(e.name, e.stageName) });
   const bu = by("burn"); if (bu.length) { const e = bu[bu.length - 1]; posts.push({ type: "burn_milestone", prio: 1, keys: bu.map((x) => x.key), block: e.block, text: choose(T.burn, e.key, st, "bu")(e.amount) }); }
-  const co = by("count"); if (co.length) { const e = co[co.length - 1]; posts.push({ type: "pet_count_milestone", prio: 1, keys: co.map((x) => x.key), block: e.block, text: T.count[1](e.milestone, e.pet) + (e.pet ? "\nxcpets.fun/pet.html?id=" + e.milestone : ""), photoId: e.pet ? e.milestone : undefined }); }
+  const co = by("count"); if (co.length) { const e = co[co.length - 1]; posts.push({ type: "pet_count_milestone", prio: 1, keys: co.map((x) => x.key), block: e.block, photoWait: !!e.pet, text: T.count[1](e.milestone, e.pet) + (e.pet ? "\nxcpets.fun/pet.html?id=" + e.milestone : ""), photoId: e.pet ? e.milestone : undefined }); }
   return posts;
 }
 
@@ -342,21 +342,21 @@ export function routinePosts(P, W, st, C, nowMs, force) {
     if (c.min_gap_min && st.rt.last[name] && nowMs - st.rt.last[name] < c.min_gap_min * 60e3) return false;
     return true;
   };
-  const push = (name, key, text, photoId) => { if (st.rt.sent[key] && !force) return; out.push({ type: name, prio: 2, keys: [key], routine: name, block: P ? P.tip : 0, text, photoId }); };
+  const push = (name, key, text, photoId, photoWait) => { if (st.rt.sent[key] && !force) return; out.push({ type: name, prio: 2, keys: [key], routine: name, block: P ? P.tip : 0, text, photoId, photoWait }); };
   if (P && ok("pet_of_day")) {
     const top = topPets(P, 50), recent = new Set(st.rt.potd || []), pool = top.filter((p) => !recent.has(p.id)), p = (pool.length ? pool : top)[h32(t.date) % (pool.length || top.length || 1)];
     if (p) push("pet_of_day", "potd:" + t.date, "\u{1F31F} Pet of the Day: " + p.name + " #" + p.id + ", " + an(TIER[p.tier]) + " " + TIER[p.tier] + " " + p.label + " with a Rarity Score of " + p.score + " (rank #" + fmt(p.rank) + "). Give it a wave!\nxcpets.fun/pet.html?id=" + p.id, p.id);
   }
   if (P && W && ok("fight_night")) {
     const fs24 = W.fights.filter((x) => x.block > W.tip - 144);
-    if (fs24.length) push("fight_night", "fn:" + t.date, "\u{1F94A} Fight Night at X Circus Kekimus: " + fs24.length + " fight" + (fs24.length > 1 ? "s" : "") + " today.\n" + fs24.slice(-8).map((x) => "#" + x.winner + " beat #" + x.loser).join("\n") + "\nLosers wear a black eye for 72 blocks.");
+    if (fs24.length) push("fight_night", "fn:" + t.date, "\u{1F94A} Fight Night at X Circus Kekimus: " + fs24.length + " fight" + (fs24.length > 1 ? "s" : "") + " today.\n" + fs24.slice(-8).map((x) => "#" + x.winner + " beat #" + x.loser).join("\n") + "\nLosers wear a black eye for 72 blocks.", fs24[fs24.length - 1].winner);
   }
   if (P && ok("motel_alert")) {
     const b = []; for (let i = P.rows.length - 1; i >= 0 && P.rows[i][18] > P.tip - 36; i--) { const p = petOf(P, P.rows[i]); if (p.parents && p.id > (st.rt.motelMax || 0) && !(p.hy && (C.chain || {}).hybrids === true)) b.push(p); } /* hybrid eggs already get the Breeding pen post */
     if (b.length) {
       const c = b[0], ps = c.parents.filter((x) => x != null), pn = (id) => { const r = rowById(P, id); return (r ? r[1] + " " : "") + "#" + id; };
       const from = ps.length >= 2 ? ", from " + pn(ps[0]) + " \u00D7 " + pn(ps[1]) : ps.length === 1 ? ", from " + pn(ps[0]) : "";
-      push("motel_alert", "motel:" + c.id, "\u{1F95A} New arrival at the No-Tail Motel: " + c.name + " #" + c.id + " (" + c.label + ")" + from + (b.length > 1 ? ". Plus " + (b.length - 1) + " more egg" + (b.length > 2 ? "s" : "") + " checked out." : "."), c.id);
+      push("motel_alert", "motel:" + c.id, "\u{1F95A} New arrival at the No-Tail Motel: " + c.name + " #" + c.id + " (" + c.label + ")" + from + (b.length > 1 ? ". Plus " + (b.length - 1) + " more egg" + (b.length > 2 ? "s" : "") + " checked out." : "."), c.id, true);
       if (!force) st.rt.motelMax = c.id;
     }
   }
@@ -380,7 +380,17 @@ export function prevDay(nowMs) { const end = ctDayStart(nowMs); return [ctDaySta
 /* Recap kinds: the 2nd part of each burn tag, grouped into the fun lines below. */
 const RECAP_GRAVE = { alt: "altar", ar: "altar", altg: "altar", seance: "seance", sr: "seance", resurrect: "rise", raise: "rise", rpl: "zmeal", rr: "zmeal", rplg: "zmeal", zfeed: "zmeal", zr: "zmeal", zfm: "zmeal" };
 const RECAP_VIBES = ["Absolute cinema \u{1F3AC}", "The chain never sleeps \u{1F440}", "Certified degen activity \u{1F9EA}", "The pets were NOT quiet \u{1F4E3}", "Another day in pet paradise \u{1F334}", "Somebody check on the cemetery \u{1F47B}", "Peak pet behavior \u{1F525}"];
-async function hasThumb(id) { try { const r = await fetch(SITE + "/t/" + id + ".png", { method: "HEAD", cf: { cacheTtl: 300 } }); return r.ok; } catch (e) { return false; } }
+/* Pet pictures (Nov 23 2026): t/<id>.png on the site exists only for tokenized pets, so most posts went out as text.
+   The GitHub Actions announcer now also draws every pet the bot may post about (top pets, new eggs, Mythics, fighters)
+   into the public branch hatchbot-art (p/<id>.png). picUrl returns the first picture that exists, or null. */
+const ART_RAW = "https://raw.githubusercontent.com/LongBranch13/xcpets-fun/hatchbot-art/p/";
+async function urlOk(u) { try { const r = await fetch(u, { method: "HEAD", cf: { cacheTtl: 120 } }); return r.ok; } catch (e) { return false; } }
+export async function picUrl(id) {
+  if (id == null) return null;
+  for (const u of [SITE + "/t/" + id + ".png", ART_RAW + id + ".png"]) if (await urlOk(u)) return u;
+  return null;
+}
+async function hasThumb(id) { return !!(await picUrl(id)); }
 export async function recapFor(day, P, W, meta, boot) {
   const dayStartMs = day[0], hStart = await blockAtTime(day[0] / 1000), hEnd = await blockAtTime(day[1] / 1000);
   if (P.tip < hEnd || +boot.tip < hEnd) return { wait: "feed behind the end of the day (feed " + Math.min(P.tip, +boot.tip) + ", day ends " + hEnd + ")" };
@@ -468,7 +478,7 @@ export async function claimPost(env, it) {
 async function sendOne(env, it, tg) {
   const chat = env.TELEGRAM_CHAT_ID; if (!chat) throw new Error("no TELEGRAM_CHAT_ID");
   if (it.photo) { const r = await tg(env, "sendPhoto", { chat_id: chat, photo: it.photo, caption: it.text }); if (r.ok) return r; }
-  if (it.photoId) { const r = await tg(env, "sendPhoto", { chat_id: chat, photo: SITE + "/t/" + it.photoId + ".png", caption: it.text }); if (r.ok) return r; }
+  if (it.photoId) { const u = it.photoUrl || await picUrl(it.photoId); if (u) { const r = await tg(env, "sendPhoto", { chat_id: chat, photo: u + (u.startsWith(ART_RAW) ? "?v=" + Math.floor(Date.now() / 36e5) : ""), caption: it.text }); if (r.ok) return r; } }
   return tg(env, "sendMessage", { chat_id: chat, text: it.text, disable_web_page_preview: true });
 }
 async function drain(env, st, C, nowMs, tg) {
@@ -478,7 +488,15 @@ async function drain(env, st, C, nowMs, tg) {
   if (st.sent.length >= L.max_per_day) return 0;
   if (st.sent.filter((t) => nowMs - t < 3600e3).length >= L.max_per_hour) return 0;
   if (st.sent.length && nowMs - Math.max(...st.sent) < (L.min_gap_s || 30) * 1000) return 0;
-  const it = st.q.shift(); st.sent.push(nowMs); /* at most once: counted before sending */
+  /* a brand-new pet's picture is drawn by the next announcer run (a minute or two after the feed): wait up to 20 min for it */
+  let pick = -1;
+  for (let i = 0; i < st.q.length && i < 6; i++) {
+    const x = st.q[i];
+    if (!(x.photoId && x.photoWait && !x.photo) || nowMs - x.at >= 20 * 60e3) { pick = i; break; }
+    x.photoUrl = await picUrl(x.photoId); if (x.photoUrl) { pick = i; break; }
+  }
+  if (pick < 0) return 0;
+  const it = st.q.splice(pick, 1)[0]; st.sent.push(nowMs); /* at most once: counted before sending */
   /* KV (the queue's home) is only eventually consistent, so two cron runs a minute apart can both see an item as new
      (Breeding pen news posted twice, Nov 23 2026). D1 is consistent: claim the post's key there first, skip it if taken. */
   if (!(await claimPost(env, it))) { await saveState(env, st); return 0; }
