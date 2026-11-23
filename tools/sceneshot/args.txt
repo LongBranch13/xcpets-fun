@@ -1,1 +1,1 @@
---pages play.html,breed.html,ranking.html,cemetery.html --wallet bc1pfvkpmllr7mtn5uazqxumwp39h2ny3c8l6fmrgvjv2cqn5wlpt7hssf3gqd
+--pages play.html,breed.html --wallet bc1qtke38j72qv4d8eljn7pccaykypw8luytfwdn7q
