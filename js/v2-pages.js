@@ -363,8 +363,10 @@
       /* rankings-together (owner 4:55 PM CT Oct 24 2026): the Hall of Fame lives here with the other boards (hall-of-fame.html -> ranking.html?board=hof) */
       { id: 'hof', label: '🏛️ Hall of Fame', note: '', pets: true, hof: true },
       /* trait-rank-1101 (owner 8:14 PM CT Nov 1 2026, display only): every pet by its 💎 trait rarity '1 in N' (js/v2-trait-rank.js) */
-      { id: 'trait', label: '💎 Trait rarity', note: '', pets: true, trait: true }
-    ].filter(function (x) { return !x.trait || (window.V2TraitRank && window.PetScore); });
+      { id: 'trait', label: '💎 Trait rarity', note: '', pets: true, trait: true },
+      /* rankings-finds (Jake Nov 23 2026): the Hall of Rare Finds (Legends, God pets, weird hatches) moved here from the Hatch page (js/v2-rare-hall.js) */
+      { id: 'finds', label: '🏆 Rare finds', note: '', finds: true }
+    ].filter(function (x) { return (!x.trait || (window.V2TraitRank && window.PetScore)) && (!x.finds || (window.V2RareHall && V2RareHall.mount)); });
     var STEP = window.matchMedia && matchMedia('(max-width: 640px)').matches ? 25 : 100; /* content-fixes 2026-10-19: one Show more button, 25 rows a page on phones */
     var q = new URLSearchParams(location.search), st = { board: q.get('board') || 'wagmi', mode: q.get('mode') || null, span: q.get('span') === 'week' ? 'week' : 'all', n: STEP, sp: (q.get('species') || (/^#[a-z0-9:_-]+$/i.test(location.hash) ? location.hash.slice(1) : '')).toLowerCase(), base: 'wagmi' };
     if (!BOARDS.some(function (x) { return x.id === st.board; })) st.board = 'wagmi';
@@ -414,7 +416,7 @@
     var MED = ['🥇', '🥈', '🥉'], TCOL = ['#9aa3b5', '#4fd18b', '#4f9dff', '#ffc93c'];
     function short(a) { return a ? a.slice(0, 6) + '…' + a.slice(-4) : ''; }
     function cur() { var B = board(), md = mode(B), wk = !!B.week && st.span === 'week'; return { B: B, md: md, wk: wk, rows: md === 'pets' ? petRows(B, wk) : playerRows(B, wk) }; }
-    function wireBoards() { $('board').querySelectorAll('[data-board]').forEach(function (x) { x.onclick = function () { st.board = x.dataset.board; if (st.board !== 'hof') st.base = st.board; st.n = STEP; st.hits = null; st.all = null; $('boardAll').onclick = more; try { var u = new URL(location.href); ['pets', 'alive', 'page', 'pet'].forEach(function (k) { u.searchParams.delete(k); }); history.replaceState(null, '', u); } catch (e) { } /* trait-rank-1101: the Trait rarity board's own params do not follow to other boards */ render(); }; }); }
+    function wireBoards() { $('board').querySelectorAll('[data-board]').forEach(function (x) { x.onclick = function () { st.board = x.dataset.board; if (st.board !== 'hof') st.base = st.board; if (st.board !== 'hof' && st.hofAuto) { st.sp = ''; st.hofAuto = false; } /* rankings-tidy: the species the Hall of Fame picked by itself does not follow you to other boards */ st.n = STEP; st.hits = null; st.all = null; $('boardAll').onclick = more; try { var u = new URL(location.href); ['pets', 'alive', 'page', 'pet'].forEach(function (k) { u.searchParams.delete(k); }); history.replaceState(null, '', u); } catch (e) { } /* trait-rank-1101: the Trait rarity board's own params do not follow to other boards */ render(); }; }); }
     function tabsHtml(on) { return '<div class="pettabs rktabs" role="tablist">' + BOARDS.map(function (x) { var sel = x.id === on; return '<button type="button" role="tab" class="tab' + (sel ? ' on' : '') + '" data-board="' + x.id + '" aria-selected="' + sel + '">' + esc(x.label) + '</button>'; }).join('') + '</div>'; }
     function syncUrl() { try { var u = new URL(location.href), B = board(); u.searchParams.set('board', B.id);
       if (B.trait) { if (st.sp) u.searchParams.set('species', st.sp); else u.searchParams.delete('species'); history.replaceState(null, '', u); return; }
@@ -443,12 +445,22 @@
       host.innerHTML = '<p class="small muted rksp-lead" id="rkSpLabel">Whole board, or one species.</p><div class="rksp" role="tablist" aria-labelledby="rkSpLabel">' +
         '<button type="button" role="tab" class="rksp-btn rkall' + (!st.sp ? ' on' : '') + '" data-species="" aria-selected="' + (!st.sp) + '"><span class="rksp-mark" aria-hidden="true">★</span><span class="rksp-nm">All pets</span></button>' +
         ids.map(function (id) { var on = st.sp === id; return '<button type="button" role="tab" class="rksp-btn' + (on ? ' on' : '') + '" data-species="' + esc(id) + '" aria-selected="' + on + '"><canvas width="32" height="32" data-spico="' + esc(id) + '" aria-hidden="true"></canvas><span class="rksp-nm">' + esc(crewName(id)) + '</span></button>'; }).join('') + '</div>';
-      host.querySelectorAll('[data-species]').forEach(function (b) { b.onclick = function () { var id = b.getAttribute('data-species') || ''; if (id === st.sp && !(id === '' && board().hof)) return; st.sp = id; st.n = STEP; st.hits = null; st.all = null;
+      host.querySelectorAll('[data-species]').forEach(function (b) { b.onclick = function () { var id = b.getAttribute('data-species') || ''; if (id === st.sp && !(id === '' && board().hof)) return; st.sp = id; st.hofAuto = false; st.n = STEP; st.hits = null; st.all = null;
         if (!st.sp && board().hof) st.board = st.base || 'wagmi'; try { var u = new URL(location.href); ['page', 'pet'].forEach(function (k) { u.searchParams.delete(k); }); history.replaceState(null, '', u); } catch (e) { } render(); }; });
       paintSpecies(host); if (focus != null) { var back = host.querySelector('[data-species="' + focus.replace(/"/g, '') + '"]'); if (back) back.focus(); } }
     function more() { st.n += STEP; render(); mark(); }
+    /* rankings-tidy (Jake Nov 23 2026, display only): the board tabs sit at the top, above the species filter, instead of under it.
+     * Every board still draws its tabs into #board (render, Hall of Fame, Trait rarity); this lifts them into #rkTabsHost once drawn. */
+    function liftTabs() { var t = $('board') && $('board').querySelector('.rktabs'); if (!t) return; var h = $('rkTabsHost');
+      if (!h) { h = document.createElement('div'); h.id = 'rkTabsHost'; var a = $('status'); a.parentNode.insertBefore(h, a); }
+      h.innerHTML = ''; h.appendChild(t); var on = t.querySelector('.on'); if (on && t.scrollWidth > t.clientWidth) t.scrollLeft = Math.max(0, on.offsetLeft - t.offsetLeft - 16); }
+    if (window.MutationObserver && !ranking.mo) { ranking.mo = new MutationObserver(liftTabs); ranking.mo.observe($('board'), { childList: true }); }
     function render() {
-      if (board().hof) { var groups = hofRank(w), order = hofOrder(groups); if (order.indexOf(st.sp) < 0) st.sp = order[0] || '';
+      document.body.classList.toggle('rk-finds', !!board().finds);
+      if (board().finds) { syncUrl(); var sh = $('rkSpecies'); if (sh) sh.innerHTML = '';
+        $('status').textContent = '';
+        $('board').innerHTML = tabsHtml('finds') + '<div id="rkFinds"></div>'; $('boardAll').style.display = 'none'; wireBoards(); V2RareHall.mount($('rkFinds')); return; }
+      if (board().hof) { var groups = hofRank(w), order = hofOrder(groups); if (order.indexOf(st.sp) < 0) { st.sp = order[0] || ''; st.hofAuto = true; }
         syncUrl(); paintBar(); hallOfFame({ top: tabsHtml('hof'), wire: wireBoards, noTabs: true, sp: st.sp }); return; }
       if (board().trait) { syncUrl(); paintBar();
         V2TraitRank.page({ top: tabsHtml('trait'), wire: wireBoards, w: w, ME: ME, esc: esc, fmt: fmt, spLabel: spLabel, TL: TL, R: R, V: V, status: function (t) { $('status').textContent = t; } }); return; }
@@ -462,7 +474,7 @@
       var rowHtml = function (r, i) { var p = r.p, own = r.owner || (p && p.owner), me = !!ME && own === ME, col = p ? TCOL[p.tier] : '#666';
         var who = md === 'pets' ? '<a href="pet.html?id=' + p.id + '"><b>' + esc(p.name) + '</b></a> <span class="muted">#' + p.id + ' · ' + esc(spLabel(p.species)) + ' · ' + (p && p.resurrected ? 'God' : TL[p.tier]) + ' · ' + (V.stageLabelOf ? V.stageLabelOf(p) : p.stageName) + '</span><div class="small muted">owner ' + esc(short(own)) + (me ? ' (you)' : '') + '</div>'
           : '<b title="' + esc(own) + '">' + esc(short(own)) + '</b>' + (me ? ' <span class="chip">you</span>' : '') + (p ? '<div class="small muted">top pet <a href="pet.html?id=' + p.id + '">#' + p.id + ' ' + esc(p.name) + '</a> · ' + TL[p.tier] + '</div>' : '');
-        if (p && R.eraChip) who += '<div>' + R.eraChip(w, p) + '</div>';
+        if (p && R.eraChip) who += ' ' + R.eraChip(w, p); /* rankings-tidy: era/rare chips inline, not on a line of their own */
         return '<tr id="rk' + i + '"' + (me ? ' class="me"' : '') + '><td class="rk">' + (i < 3 ? MED[i] + ' ' : '') + '#' + (i + 1) + '</td><td>' + (p ? '<canvas width="32" height="32" data-id="' + p.id + '" style="width:48px;height:48px;image-rendering:pixelated;border:2px solid ' + col + ';border-radius:4px"></canvas>' : '') + '</td><td>' + who + '</td><td class="num"><b>' + r.score + '</b>' + (r.sub ? '<div class="small muted">' + esc(r.sub) + (r.subQ || '') + '</div>' : '') + '</td></tr>'; };
       var hl = st.all ? st.all.length : 0, hn = st.hits ? st.hits.length : 0, hmore = hl > hn ? '<tr class="end"><td colspan="4"><span class="small">Showing ' + fmt(hn) + ' of ' + fmt(hl) + ' matches</span> <button type="button" class="q" id="rkMoreHits">Show more matches (' + fmt(hl - hn) + ' left)</button></td></tr>' : '';
       var body = show.map(rowHtml).join('') + (extra.length ? '<tr class="end"><td colspan="4">⋯ found further down</td></tr>' + extra.map(function (i) { return rowHtml(rows[i], i); }).join('') : '') + hmore;
