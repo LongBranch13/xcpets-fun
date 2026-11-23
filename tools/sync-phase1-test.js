@@ -28,7 +28,7 @@ function gitBuf(f) { return cp.execFileSync('git', ['show', 'origin/main:' + f],
 function listen(server) { return new Promise(res => server.listen(0, '127.0.0.1', () => res(server.address().port))); }
 const RULE7 = ['js/v2-rules.js', 'js/pet-core.js', 'rjs/pet-core.js', 'rjs/game-core.js', 'rjs/real-core.js', 'rjs/burn-core.js', 'rjs/config.js'];
 const RULE11 = ['rjs/config.js', 'rjs/pet-core.js', 'rjs/game-core.js', 'rjs/bonus-gear.js', 'rjs/real-core.js', 'rjs/chain.js', 'js/pet-core.js', 'js/bonus-gear.js', 'js/v2-gear.js', 'js/v2-fit.js', 'js/v2-rules.js'];
-const CHAIN_PAGES = ['index.html', 'play.html', 'fight.html', 'breed.html', 'rare-room.html', 'raid.html', 'pet.html', 'shop.html', 'cemetery.html', 'ranking.html', 'hall-of-fame.html', 'pantheon.html', 'tokens.html', 'live.html', 'watch.html', 'archive.html', 'verify-pet.html', 'hybrids.html', 'inscriptions.html', 'templates/game.html'];
+const CHAIN_PAGES = ['index.html', 'play.html', 'fight.html', 'breed.html', 'rare-room.html', 'raid.html', 'pet.html', 'shop.html', 'cemetery.html', 'ranking.html', 'pantheon.html', 'tokens.html', 'live.html', 'archive.html', 'verify-pet.html', 'hybrids.html', 'inscriptions.html', 'templates/game.html'];
 const PRACTICE = ['practice.html', 'practice-fight.html', 'practice-rare.html', 'practice-breed.html', 'practice-pet.html'];
 
 function fixtureState() {

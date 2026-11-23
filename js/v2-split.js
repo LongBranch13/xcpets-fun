@@ -190,10 +190,13 @@
     } catch (e) {}
     return healthTipN;
   }
+  /* the server's burn check is up and current: the device check need not warm up in the background (it still runs if a burn needs it) */
+  var serverReady = false;
+  function noteCheck(h) { serverReady = !!(h && h.check && h.check.state === 'ready' && h.check.tip >= (h.tip || 0)); }
   function pingHealth() {
     var root = base();
     if (!root || typeof fetch !== 'function') return Promise.resolve(healthTipN);
-    return getJson(root + '/xp/v1/health', 8000, true).then(function (h) { return noteHealth(h && h.tip); }, function () { return healthTipN; });
+    return getJson(root + '/xp/v1/health', 8000, true).then(function (h) { noteCheck(h); return noteHealth(h && h.tip); }, function () { return healthTipN; });
   }
   /* The published manifest embeds a pet sample for the largest wallets and is many megabytes.
    * A slow phone sat on that download and never reached the 18 KB summary. First paint uses
@@ -238,7 +241,7 @@
     var sigP = pageRsig();
     getJson(root + '/xp/v1/health', 8000, true).then(function (h) {
       chainTip = h && h.tip || 0;
-      noteHealth(chainTip);
+      noteHealth(chainTip); noteCheck(h);
       return getJson(root + '/xp/v1/world/latest.json', 8000, true);
     }).then(function (latest) {
       /* Never go dark (Nov 22 2026): latest.json built with other rules than this page's? The server keeps the newest
@@ -319,16 +322,46 @@
     if (!last || !last.man) return Promise.resolve(false);
     return getJson(base() + '/xp/v1/health', 8000, true).then(function (h) {
       var tip = h && h.tip || 0;
-      noteHealth(tip);
+      noteHealth(tip); noteCheck(h);
       return !(tip && last.man.tip != null && tip - last.man.tip > STALE);
     }, function () { return false; });
   }
   function progressText(m) {
-    if (!m) return 'Checking every burn…';
-    if (m.phase === 'files') return 'Checking the published world… ' + (m.got || 0) + ' / ' + (m.total || 0) + ' files';
-    if (m.phase === 'rules') return 'Checking the rules…';
-    if (m.phase === 'replay') return 'Applying the newest blocks…';
-    return 'Checking every burn…';
+    if (!m) return 'Getting burns ready…';
+    if (m.phase === 'files') return 'Getting burns ready… ' + Math.round(100 * (m.got || 0) / Math.max(1, m.total || 1) * 0.6) + '%';
+    if (m.phase === 'rules') return 'Getting burns ready… 60%';
+    if (m.phase === 'replay') return 'Getting burns ready… 75%';
+    return 'Getting burns ready…';
+  }
+  /* Nov 23 2026 (faster burns): the full check used to start only when a burn or Verify asked for it, so the first burn waited for the whole
+   * world to download and decode ('Applying the newest blocks…'). With a wallet connected it now starts by itself a few seconds after the page
+   * is idle, without touching the bar; the bar only shows progress when someone is waiting on it (a burn, Verify, or a stale view). Skipped on
+   * small-memory devices and with Data Saver. Nothing is signed here: burns still go through checkPlans exactly as before. */
+  var wantBar = false, lastProg = null, warmT = 0;
+  function showProgress() {
+    wantBar = true;
+    if (ready) return;
+    var note = document.getElementById('splitViewBar');
+    if (note) note.textContent = progressText(lastProg);
+  }
+  function warmOk() {
+    try {
+      if (navigator.connection && navigator.connection.saveData) return false;
+      if (navigator.deviceMemory && navigator.deviceMemory < 4) return false;
+    } catch (e) {}
+    return true;
+  }
+  function connected() { try { return !!(window.V2Wallet && V2Wallet.current && V2Wallet.current()); } catch (e) { return false; } }
+  function warm() {
+    if (readyP || warmT || serverReady || !last || !last.man || !warmOk() || !connected()) return;
+    warmT = setTimeout(function () {
+      var go = function () { warmT = 0; if (!readyP && connected()) startVerify(true); };
+      if (window.requestIdleCallback) requestIdleCallback(go, { timeout: 5000 }); else go();
+    }, 3000);
+  }
+  if (window.addEventListener) {
+    window.addEventListener('xcpets:connected', function () { warm(); });
+    window.addEventListener('xcpets:wallet', function (e) { var d = e && e.detail; if (d && d.status === 'on') warm(); });
   }
   var worker = null, seq = 0, pending = {}, readyP = null, ready = false;
   function scriptList() {
@@ -690,29 +723,69 @@
     if (note) note.textContent = 'Checked at block ' + (m.tip || '') + '. ' + (m.n || 0) + ' pets. Burns are open.';
     try { window.dispatchEvent(new Event('xcpets-verified')); } catch (e) {}
   }
-  function startVerify() {
+  function startVerify(quiet) {
     if (window.XCPETS_MAINTENANCE) return Promise.resolve(null);
+    if (quiet !== true) showProgress();
     if (readyP) return readyP;
     if (off() || !base() || !last) return Promise.resolve(null);
     var scripts = scriptList();
     if (!scripts || typeof Worker === 'undefined') return Promise.resolve(null);
     readyP = new Promise(function (res) {
-      try { worker = new Worker(new URL('js/v2-verify-worker.js?v=faa2d522b6', location.href).href); }
+      try { worker = new Worker(new URL('js/v2-verify-worker.js?v=br1123a', location.href).href); }
       catch (e) { res(null); return; }
       worker.onmessage = function (ev) {
         var m = ev.data || {};
-        if (m.cmd === 'progress') { var note = document.getElementById('splitViewBar'); if (note) note.textContent = progressText(m); return; }
+        if (m.cmd === 'progress') { lastProg = m; var note = wantBar && document.getElementById('splitViewBar'); if (note) note.textContent = progressText(m); return; }
         if (m.cmd === 'check') { var fn = pending[m.id]; if (fn) { delete pending[m.id]; fn(m); } return; }
         if (m.cmd === 'mine') { takeMine(m); return; }
-        if (m.cmd === 'ready') { if (m.ok) { unlock(m); requestSync(); } else { var b = document.getElementById('splitViewBar'); if (b) b.textContent = 'The check did not finish. The published world is still on screen.'; } res(m); }
+        if (m.cmd === 'ready') { if (m.t) window.__xcpVerifyT = m.t; if (m.ok) { unlock(m); requestSync(); } else { window.__xcpVerifyErr = String(m.error || ''); failed(); } res(m); }
       };
-      worker.onerror = function () { var b = document.getElementById('splitViewBar'); if (b) b.textContent = 'The check did not finish. The published world is still on screen.'; res({ ok: false }); };
+      worker.onerror = function (ev) { window.__xcpVerifyErr = 'worker: ' + String(ev && ev.message || ''); failed(); res({ ok: false }); };
+      /* a failed check (network, bad hash) must not stick: the next burn or Verify starts a fresh one */
+      function failed() {
+        var b = wantBar && document.getElementById('splitViewBar'); if (b) b.textContent = 'The check did not finish. The published world is still on screen.';
+        var w0 = worker; setTimeout(function () { if (worker === w0 && !ready) { try { w0.terminate(); } catch (e) {} worker = null; readyP = null; lastProg = null; } }, 0);
+      }
       /* the same world the page painted from (it may be this page's rules' world rather than latest.json) */
       worker.postMessage({ cmd: 'start', base: base(), manifest: last && last.url || '', scripts: scripts, me: pageWallet() });
     });
     return readyP;
   }
+  /* Server burn check (Nov 23 2026, Jake approved). The game server keeps the newest world in memory and answers the same question the
+   * check worker answers (V2Rules.sendBlock on every plan), in about a second instead of 13 s or more. Its answer is used only when it
+   * comes within 3 s and is at least as new as every tip this page knows; anything else (no answer, an error, an older world, ?servercheck=0)
+   * falls back to this device's own check, exactly as before. A finished device check is used directly. Nothing is signed here. */
+  var SERVER_MS = 3000, serverStat = { asked: 0, used: 0, last: '' };
+  function serverCheck(plans) {
+    if (ready || off() || !base() || q('servercheck') === '0' || typeof fetch !== 'function') return Promise.resolve(null);
+    var S = window.V2Mock && V2Mock.state && V2Mock.state(), need = Math.max(healthTipN || 0, (S && S.tip) || 0, (S && S.chainTip) || 0);
+    var plain = [], i, k, p, o;
+    for (i = 0; i < (plans || []).length; i++) {
+      p = plans[i]; if (!p || typeof p.tag !== 'string') return Promise.resolve(null);
+      o = {}; for (k in p) if (Object.prototype.hasOwnProperty.call(p, k) && (typeof p[k] === 'string' || typeof p[k] === 'number' || typeof p[k] === 'boolean')) o[k] = p[k];
+      plain.push(o);
+    }
+    if (!plain.length || plain.length > 100) return Promise.resolve(null);
+    var ctl = typeof AbortController === 'function' ? new AbortController() : null, t = ctl ? setTimeout(function () { try { ctl.abort(); } catch (e) {} }, SERVER_MS) : null;
+    serverStat.asked++;
+    return fetch(base() + '/xp/v1/check', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ plans: plain, me: pageWallet(), pending: [] }), cache: 'no-store', signal: ctl ? ctl.signal : undefined })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (j) {
+        if (t) clearTimeout(t);
+        if (!j || j.ok !== true || !Array.isArray(j.plans) || !Array.isArray(j.skip) || !(j.tip >= need)) { serverStat.last = (j && j.error) || 'not used'; return null; }
+        /* hand back this page's own plan objects, in order, for the plans the server kept */
+        var kept = [], n = 0;
+        for (i = 0; i < plans.length && n < j.plans.length; i++) if (j.plans[n] && j.plans[n].tag === plans[i].tag) { kept.push(plans[i]); n++; }
+        if (n !== j.plans.length) { serverStat.last = 'mismatch'; return null; }
+        serverStat.used++; serverStat.last = 'ok';
+        return { ok: true, plans: kept, skip: j.skip, server: j.tip };
+      }, function () { if (t) clearTimeout(t); serverStat.last = 'failed'; return null; });
+  }
   function checkPlans(plans) {
+    return serverCheck(plans).then(function (out) { return out || deviceCheck(plans); });
+  }
+  function deviceCheck(plans) {
+    showProgress();
     if (!worker) startVerify();
     if (!worker) return Promise.resolve({ ok: false, plans: plans || [], skip: ['Press Verify to check this world. Nothing was burned.'] });
     return (readyP || Promise.resolve(null)).then(function () {
@@ -742,6 +815,7 @@
     if (t) t.textContent = String(view && view.tip || '');
     document.getElementById('splitVerify').onclick = function () { var b = document.getElementById('splitVerify'); if (b) b.disabled = true; startVerify(); };
     trimStore();
+    warm();
   }
   function trimStore() {
     var i, k, v;
@@ -1073,5 +1147,5 @@
     zombieP = getJson(folder + 'view/zombies.json').then(function (z) { return applyZombies(z); }, function () { return scanZombies(folder, onProg); });
     return zombieP;
   }
-  window.V2Split = { STALE: STALE, SCREEN_PAGES: SCREEN_PAGES, AUTO_CAP: AUTO_CAP, prepare: prepare, recheck: recheck, install: install, assemble: assemble, startVerify: startVerify, checkPlans: checkPlans, rest: rest, more: more, loadBoard: loadBoard, loadZombies: loadZombies, dress: dress, boardBytes: function () { return { bytes: boardBytes, files: boardFiles }; }, ensureDead: ensureDead, ensurePet: ensurePet, ownerShard: function (addr, cb) { sha2(addr).then(function (h) { cb(h.slice(0, 2)); }); }, petSig: petSig, healthTip: function () { return healthTipN; }, noteHealth: noteHealth, pingHealth: pingHealth, ownersReady: ownersReady, ownersKnown: ownersKnown, adoptOwners: adoptOwners, openOwnerPets: openOwnerPets, openList: openList, notePets: notePets, ownerTable: ownerTable, pageWallet: pageWallet, resolveWorld: resolveWorld, newestPages: newestPages, rowsToLog: rowsToLog, loadNewest: loadNewest };
+  window.V2Split = { STALE: STALE, SCREEN_PAGES: SCREEN_PAGES, AUTO_CAP: AUTO_CAP, prepare: prepare, recheck: recheck, install: install, assemble: assemble, startVerify: startVerify, checkPlans: checkPlans, serverCheck: serverCheck, serverStat: function () { return serverStat; }, rest: rest, more: more, loadBoard: loadBoard, loadZombies: loadZombies, dress: dress, boardBytes: function () { return { bytes: boardBytes, files: boardFiles }; }, ensureDead: ensureDead, ensurePet: ensurePet, ownerShard: function (addr, cb) { sha2(addr).then(function (h) { cb(h.slice(0, 2)); }); }, petSig: petSig, healthTip: function () { return healthTipN; }, noteHealth: noteHealth, pingHealth: pingHealth, ownersReady: ownersReady, ownersKnown: ownersKnown, adoptOwners: adoptOwners, openOwnerPets: openOwnerPets, openList: openList, notePets: notePets, ownerTable: ownerTable, pageWallet: pageWallet, resolveWorld: resolveWorld, newestPages: newestPages, rowsToLog: rowsToLog, loadNewest: loadNewest };
 })();

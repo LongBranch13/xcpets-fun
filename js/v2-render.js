@@ -74,6 +74,10 @@
   /* black eye fit (2026-10-15, Jake: on Dodo it sat on the back of the head): traced on the real eye pixels of this species/stage/frame (drawEyeGear 'shiner'),
    * a bruise ring around the viewer-right eye, like eyewear; the old fixed 'eyes'-anchor map is only the fallback when no eye can be found. */
   BonusGear.DEFS['v2-black-eye'].v2eye = { s: 'shiner' };
+  /* gear-fit 2026-11-23 (Jake: "these glasses don't fit", Poyofu #23620 Wojak Mythic, Pope #4528 Nakamoto Mythic): Rabbit-hole shades and the Teardrop gem
+   * had no eye trace (v2-gear.js EYE_GEAR is a rule file, so it is set here, render only), so they were stamped as a fixed 9-px map at a guessed eye row:
+   * a black blob between/above the eyes on tall or off-centre faces. Now traced on the real eyes like every other pair of shades. The map stays the icon. */
+  [['wr-shades', { s: 'glasses', f: 'n', l: ['n', 'Z'], drop: 1, up: 1, wide: 1 }], ['v2-teardrop-gem', { s: 'tear' }]].forEach(function (e) { var d0 = BonusGear.DEFS[e[0]]; if (d0 && !d0.v2eye) BonusGear.DEFS[e[0]] = Object.assign({}, d0, { v2eye: e[1] }); });
   /* shadow-face-1123 (Jake Nov 23 2026: "this black spot is like a shadowed face... it could look way cooler"): Nakamoto's ★ Shadowed face
    * was a flat grey-black block. Same size and slot, drawn here at render time only (the rule file v2-gear.js keeps its map, so no rsig change):
    * a deep void under a dark rim, two glowing Bitcoin-orange eyes and two little stars. Who is Satoshi? Nobody knows. */

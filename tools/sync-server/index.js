@@ -15,8 +15,10 @@
  *   XP_RULES_BASE  optional http(s) prefix for rule-file bytes. Default: this repo.
  *   XP_RULES_FOLLOW=0  do not follow main (see rules-follow.js). By default the world builder runs from a copy of main's
  *                  files that this service downloads itself, so a rules change on main reaches the server without anyone logging in.
- *   XP_RULES_EVERY_S   how often to ask GitHub whether main moved (default 180) */
-const fs = require('fs'), path = require('path'), http = require('http'), { spawn } = require('child_process'), os = require('os');
+ *   XP_RULES_EVERY_S   how often to ask GitHub whether main moved (default 180)
+ *   XP_CHECK=0     do not run the burn check service (checker.js). XP_CHECK_HEAP (MB, default 1400) caps its heap;
+ *                  XP_CHECK_NEED (MB, default 1200) is the free memory it needs before it starts. */
+const fs = require('fs'), path = require('path'), http = require('http'), { spawn, fork } = require('child_process'), os = require('os');
 const { upstreams, hostKind, scrub, bootSync, PUBLIC, ROOT } = require('./client');
 const { blank, tick, singleFlight } = require('./follow');
 const { createServer } = require('./server');
@@ -150,6 +152,75 @@ function startSnapshot(state, dataDir, codeDir) {
     c2.stderr.on('data', d => { const s = String(d).trim(); if (s) console.error('snapshot: ' + s.split('\n')[0].slice(0, 180)); });
     c2.on('exit', (code, signal) => { snapDone(code, out, signal ? 'signal ' + signal : 'exit ' + code); }); });
 }
+/* Burn check service (checker.js, Nov 23 2026). It holds the newest world between builds and answers POST /xp/v1/check.
+ * Memory: a loaded world is about 0.9 GB (1.1 GB while loading), so it never runs during a world build (stopped first, started
+ * again after) and only starts when the machine and this service's memory limit both have XP_CHECK_NEED MB to spare. */
+function memInfo() {
+  const out = { availMB: null, svcMB: null, limitMB: null };
+  try { const m = /MemAvailable:\s+(\d+)/.exec(fs.readFileSync('/proc/meminfo', 'utf8')); if (m) out.availMB = Math.floor(+m[1] / 1024); } catch (e) { out.availMB = Math.floor(os.freemem() / 1048576); }
+  try {
+    const cg = (/^0::(.*)$/m.exec(fs.readFileSync('/proc/self/cgroup', 'utf8')) || [])[1];
+    if (cg) {
+      const dir = path.join('/sys/fs/cgroup', cg);
+      const cur = +fs.readFileSync(path.join(dir, 'memory.current'), 'utf8'); if (cur > 0) out.svcMB = Math.floor(cur / 1048576);
+      for (const f of ['memory.max', 'memory.high']) { const v = fs.readFileSync(path.join(dir, f), 'utf8').trim(); if (/^\d+$/.test(v)) { const mb = Math.floor(+v / 1048576); out.limitMB = out.limitMB == null ? mb : Math.min(out.limitMB, mb); } }
+    }
+  } catch (e) { }
+  return out;
+}
+const CK = { proc: null, state: process.env.XP_CHECK === '0' ? 'off' : 'idle', tip: 0, manifest: '', busy: false, loads: 0, fails: 0, crashes: 0, lastMs: 0, rssMB: 0, why: '', seq: 0, pend: new Map(), restAt: 0 };
+function ckInfo() { return { state: CK.state, tip: CK.tip, loads: CK.loads, fails: CK.fails, crashes: CK.crashes, loadSec: Math.round(CK.lastMs / 100) / 10, rssMB: CK.rssMB, why: CK.why || null }; }
+function ckStop(why) {
+  if (CK.proc) { try { CK.proc.kill('SIGKILL'); } catch (e) { } }
+  CK.proc = null; CK.busy = false; CK.tip = 0; CK.manifest = ''; CK.rssMB = 0; if (CK.state !== 'off') { CK.state = why || 'idle'; }
+  CK.pend.forEach(fn => fn({ ok: false, error: 'stopped' })); CK.pend.clear();
+}
+function ckStart() {
+  const heap = String(+(process.env.XP_CHECK_HEAP || 1400));
+  const child = fork(path.join(__dirname, 'checker.js'), [], { execArgv: ['--expose-gc', '--max-old-space-size=' + heap], stdio: ['ignore', 'ignore', 'pipe', 'ipc'] });
+  CK.proc = child; CK.state = 'starting';
+  child.stderr.on('data', d => { const s = String(d).trim(); if (s) console.error('check: ' + s.split('\n')[0].slice(0, 160)); });
+  child.on('message', m => {
+    if (!m || child !== CK.proc) return;
+    if (m.cmd === 'loaded') { CK.busy = false; CK.rssMB = m.rssMB || 0;
+      if (m.ok) { CK.tip = m.tip; CK.loads++; CK.crashes = 0; CK.lastMs = m.ms || 0; CK.state = 'ready'; CK.why = ''; } else { CK.fails++; CK.tip = 0; CK.manifest = ''; CK.state = 'failed'; CK.why = String(m.error || '').slice(0, 60); CK.restAt = Date.now(); } return; }
+    if (m.cmd === 'checked') { const fn = CK.pend.get(m.id); if (fn) { CK.pend.delete(m.id); fn(m); } }
+  });
+  child.on('exit', (code, sig) => { if (child !== CK.proc) return; CK.crashes++; CK.why = sig ? 'signal ' + sig : 'exit ' + code; CK.restAt = Date.now(); ckStop('crashed'); });
+  child.on('error', () => { if (child !== CK.proc) return; CK.crashes++; CK.restAt = Date.now(); ckStop('crashed'); });
+}
+/* every sync tick: keep the check service's world at the follower's tip, or keep it stopped */
+function ckTick(state, dataDir, codeDir) {
+  if (CK.state === 'off') return;
+  if (startSnapshot.running) { if (CK.proc) ckStop('paused'); else CK.state = 'paused'; return; }
+  const latest = readLatest(dataDir);
+  if (!latest || !latest.rsig || !latest.tip || !state.ready || state.lag >= 2) return;
+  /* after a failure or a crash, wait 10 minutes (and after 3 crashes in a row, an hour) before trying again */
+  const rest = CK.crashes >= 3 ? 3600e3 : 600e3;
+  if ((CK.state === 'failed' || CK.state === 'crashed') && Date.now() - CK.restAt < rest) return;
+  if (!CK.proc) {
+    const need = +(process.env.XP_CHECK_NEED || 1200), m = memInfo();
+    const roomSvc = m.limitMB != null && m.svcMB != null ? m.limitMB - m.svcMB : Infinity;
+    if ((m.availMB != null && m.availMB < need) || roomSvc < need) { CK.state = 'low-memory'; CK.why = 'free ' + m.availMB + ' MB, service room ' + (roomSvc === Infinity ? '-' : roomSvc) + ' MB'; return; }
+    ckStart();
+  }
+  if (CK.busy) return;
+  if (CK.manifest === latest.manifest && CK.tip === state.tip) return;
+  const view = pageInputs(state);
+  const worldDir = path.join(dataDir, 'world', latest.rsig, String(latest.tip));
+  CK.busy = true; CK.manifest = latest.manifest; if (CK.state !== 'ready') CK.state = 'loading';
+  try { CK.proc.send({ cmd: 'load', codeDir: codeDir || '', worldDir: worldDir, rsig: latest.rsig, rows: view.rows, hashes: view.hashes, tip: view.tip, dex: view.dex }); }
+  catch (e) { CK.busy = false; ckStop('crashed'); }
+}
+/* used by POST /xp/v1/check: answers only from a world at the follower's tip, within 2.5 s */
+function ckAsk(state, body) {
+  return new Promise(res => {
+    if (CK.state !== 'ready' || !CK.proc || CK.busy || CK.tip < (state.tip || 0)) { res({ ok: false, error: 'not ready', state: CK.state }); return; }
+    const id = ++CK.seq, t = setTimeout(() => { CK.pend.delete(id); res({ ok: false, error: 'slow' }); }, 2500);
+    CK.pend.set(id, m => { clearTimeout(t); res(m); });
+    try { CK.proc.send({ cmd: 'check', id: id, plans: body.plans, me: body.me, pending: body.pending }); } catch (e) { clearTimeout(t); CK.pend.delete(id); res({ ok: false, error: 'not ready' }); }
+  });
+}
 function main() {
   const bases = upstreams(); const dataDir = process.env.XP_DATA || path.join(os.tmpdir(), 'xcpets-sync');
   const boot = process.env.XP_BOOT_CACHE ? readBoot(process.env.XP_BOOT_CACHE) : null;
@@ -168,20 +239,22 @@ function main() {
    * Now the service restarts itself instead (systemd starts it again and it loads the new copy once), but never during a build. */
   let restartWanted = null;
   function adopt(r) { if (!r || !r.changed) return; restartWanted = r.rsig || 'new files'; console.log('rules: builder files changed (' + restartWanted + '); restarting the service once no build runs'); }
-  const httpd = createServer({ getState: () => state, dataDir: dataDir });
+  state.check = ckInfo; state.mem = memInfo;
+  const httpd = createServer({ getState: () => state, dataDir: dataDir, check: body => ckAsk(state, body) });
   const port = +(process.env.XP_PORT || 8787);
   httpd.server.listen(port, '127.0.0.1');
   let timer = null, held = false;
   const every = Math.max(1, +(process.env.XP_SNAPSHOT_EVERY || 6));
   const loop = singleFlight(async function () { try {
-    if (restartWanted && !startSnapshot.running) { console.log('rules: restarting to load ' + restartWanted); clearInterval(timer); setTimeout(() => process.exit(75), 200); return; }
+    if (restartWanted && !startSnapshot.running) { console.log('rules: restarting to load ' + restartWanted); clearInterval(timer); ckStop('off'); setTimeout(() => process.exit(75), 200); return; }
     if (!(process.env.XP_HOLD === '1' && held)) { io.upstream = io0.upstreamOf(); await tick(state, io); state.upstream = io.upstream === 'private' ? 'private' : 'public'; if (process.env.XP_HOLD === '1' && state.ready) held = true; }
     const latest = readLatest(dataDir); if (latest && latest.tip) state.world = { ready: true, rsig: latest.rsig, tip: latest.tip, manifest: latest.manifest };
     const behindSnap = state.world && state.world.tip ? state.tip - state.world.tip : state.tip;
     const cooled = !startSnapshot.failAt || Date.now() - startSnapshot.failAt > 10 * 60 * 1000;
     /* main's rules changed: build now with them instead of waiting for the next 6 blocks */
     const newRules = !!(rules.state.rsig && state.world && state.world.rsig && state.world.rsig !== rules.state.rsig && rules.dir());
-    if (process.env.XP_SNAPSHOT !== '0' && state.ready && state.lag < 2 && cooled && (!state.world || !state.world.tip || behindSnap >= every || newRules)) startSnapshot(state, dataDir, rules.dir());
+    if (process.env.XP_SNAPSHOT !== '0' && state.ready && state.lag < 2 && cooled && (!state.world || !state.world.tip || behindSnap >= every || newRules)) { ckStop('paused'); startSnapshot(state, dataDir, rules.dir()); }
+    ckTick(state, dataDir, rules.dir());
     rules.poll().then(adopt, () => {});
   } catch (e) { console.error('sync tick failed'); } });
   loop(); timer = setInterval(loop, 10000);
@@ -189,4 +262,4 @@ function main() {
   return { server: httpd.server, state, stop() { clearInterval(timer); httpd.server.close(); } };
 }
 if (require.main === module) main();
-module.exports = { main, chainFns, seedHashes, writeLatest, backfillRsigLatest, PUBLIC };
+module.exports = { main, chainFns, seedHashes, writeLatest, backfillRsigLatest, PUBLIC, memInfo, ckInfo, _CK: CK, ckTick, ckAsk, ckStop };

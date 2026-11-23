@@ -3,6 +3,8 @@
 # so the bot went quiet. The feed server pushes api/boot.json every ~20-25 min and new events can only appear then.
 # The timer stays as a backup.
 # Run it by hand with a message to post a game update ("Post update"): Actions > hatchbot > Run workflow > type the update.
+# Or fill 'update' with the name of a prepared series in hatchbot/updates/ to post it with its pet pictures.
+# Posts carry pet pictures and short GIFs drawn by hatchbot/art.js (the site's own renderer); any drawing problem falls back to text.
 # Secrets: TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID. Until both are set this job does nothing.
 # Memory of what was posted lives on the hatchbot-state branch (not main), so it never triggers a site deploy.
 name: hatchbot
@@ -18,6 +20,10 @@ on:
         description: 'Game update to post in Telegram (leave empty to just check for new events)'
         required: false
         default: ''
+      update:
+        description: 'Or post a prepared update series with pet pictures: the name of a file in hatchbot/updates (e.g. nov23-whats-new)'
+        required: false
+        default: ''
 permissions: { contents: write, issues: write }
 concurrency: { group: hatchbot, cancel-in-progress: false }
 jobs:
@@ -28,6 +34,7 @@ jobs:
       TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
       UPDATE: ${{ github.event.inputs.message }}
+      SERIES: ${{ github.event.inputs.update }}
     steps:
       - name: Check setup
         id: ready
@@ -40,7 +47,7 @@ jobs:
         if: steps.ready.outputs.go
         with: { node-version: '20' }
       - name: Bug reports to GitHub issues
-        if: steps.ready.outputs.go && env.UPDATE == ''
+        if: steps.ready.outputs.go && env.UPDATE == '' && env.SERIES == ''
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -49,16 +56,19 @@ jobs:
       - name: Post game update
         if: steps.ready.outputs.go && env.UPDATE != ''
         run: node hatchbot/announce.js --post "$UPDATE"
+      - name: Post prepared update series (with pet pictures)
+        if: steps.ready.outputs.go && env.UPDATE == '' && env.SERIES != ''
+        run: node --max-old-space-size=6000 hatchbot/announce.js --update "$SERIES"
       - name: Load memory
-        if: steps.ready.outputs.go && env.UPDATE == ''
+        if: steps.ready.outputs.go && env.UPDATE == '' && env.SERIES == ''
         run: |
           mkdir -p state
           if git fetch --depth 1 origin hatchbot-state 2>/dev/null; then git show FETCH_HEAD:state.json > state/state.json || rm -f state/state.json; fi
       - name: Announce new events
-        if: steps.ready.outputs.go && env.UPDATE == ''
+        if: steps.ready.outputs.go && env.UPDATE == '' && env.SERIES == ''
         run: node --max-old-space-size=6000 hatchbot/announce.js --state state/state.json
       - name: Save memory
-        if: steps.ready.outputs.go && env.UPDATE == ''
+        if: steps.ready.outputs.go && env.UPDATE == '' && env.SERIES == ''
         run: |
           [ -f state/state.json ] || exit 0
           cd state && git init -q && git checkout -q -b hatchbot-state

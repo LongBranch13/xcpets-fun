@@ -60,6 +60,11 @@
       '#todayCard .td-chores:active{transform:translateY(2px);box-shadow:0 1px 0 #2b2b2b}' +
       '#todayCard .td-ready{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;width:100%;margin-top:10px;text-align:left;font:inherit;font-size:13px;color:inherit;cursor:pointer;padding:10px 12px;border:2px dashed #2b2b2b;border-radius:10px;background:rgba(255,255,255,.04)}' +
       '#todayCard .td-ready b{font:12px "Press Start 2P",monospace}#todayCard .td-ready .td-go{margin-left:auto;opacity:.8;white-space:nowrap}' +
+      '#todayCard .td-next-btn{display:flex;align-items:center;gap:10px;width:100%;margin:4px 0 10px;padding:12px 14px;text-align:left;font:inherit;color:#2b2b2b;cursor:pointer;border:3px solid #2b2b2b;border-radius:12px;background:#ffe27a;box-shadow:0 4px 0 #2b2b2b;animation:tdGlow 1.4s steps(2) infinite}' +
+      '#todayCard .td-next-btn b{display:block;font:20px/1.1 Bangers,Impact,sans-serif;letter-spacing:.5px}#todayCard .td-next-btn small{display:block;font-size:12px;opacity:.8}' +
+      '#todayCard .td-next-btn .td-nx{font:9px "Press Start 2P",monospace;background:#2b2b2b;color:#ffe27a;padding:4px 6px;border-radius:6px}#todayCard .td-next-btn .td-ico{font-size:26px}#todayCard .td-next-btn .td-go{margin-left:auto;font-size:26px}' +
+      '#todayCard .td-next-btn.td-calm{background:#d8f5d0;animation:none}#todayCard .td-next-btn:active{transform:translateY(2px);box-shadow:0 2px 0 #2b2b2b}' +
+      '@keyframes tdGlow{50%{box-shadow:0 4px 0 #2b2b2b,0 0 0 5px rgba(255,201,60,.55),0 0 18px rgba(255,201,60,.8)}}@media (prefers-reduced-motion:reduce){#todayCard .td-next-btn{animation:none}}' +
       'body.has-today #ipNba{display:none}';
     d.head.appendChild(s);
   }
@@ -76,6 +81,9 @@
       else if (k === 'chores') { var db = $('dcBtn'); if (db && !db.disabled) db.click(); else if (db) db.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
       else if (k === 'ready') location.href = 'breed.html#myCooldowns';
       else if (k === 'pets') { var p2 = $('petsPanel'); if (p2) p2.scrollIntoView({ behavior: 'smooth' }); }
+      else if (k === 'dex' && window.V2Petdex) V2Petdex.open(); /* Petdex (Nov 23 2026, js/v2-petdex.js) */
+      else if (k === 'loot' && window.V2Loot) V2Loot.open();
+      else if (k === 'raid') location.href = 'raid.html';
     });
     return c;
   }
@@ -96,12 +104,24 @@
     if (quests && (nQ || nextQ < Infinity)) bits.push('<span>🗺️ <b>' + fmt(nQ) + '</b> can quest now' + (!nQ && nextQ < Infinity ? ' · next in ~' + left(nextQ) : '') + '</span>');
     return '<button type="button" class="td-ready" data-td="ready" title="Breed and quest timers for every pet: My cooldowns in the Motel">⏱️ ' + bits.join('') + '<span class="td-go">see every timer ›</span></button>';
   }
+  /* NEXT (Nov 23 2026, "who does it best" #3: one glowing "next thing" button). Exactly one suggestion, in this order: pets about to die (the one
+   * thing worth a burn, because it saves them), then the free daily loot steps, then the fun stuff. It never suggests spending for its own sake. */
+  function nextBtn(w, L, danger, soon, fight, LT) {
+    var n = null, R = window.V2Loot;
+    if (danger.length && soon <= 288) n = ['urgent', '🚑', 'Save ' + fmt(danger.length) + ' pet' + (danger.length === 1 ? '' : 's') + ' from the cemetery', 'first one dies in ~' + left(soon)];
+    else if (R && LT && R.ready(LT) && !LT.opened) n = ['loot', '🎁', 'Open today’s loot chest', 'you earned it'];
+    else if (window.V2Petdex && LT && !LT.t.dex) n = ['dex', '📖', 'Check your Petdex', 'see what you’re missing'];
+    else if (LT && !LT.t.place) n = fight ? ['fight', '⚔️', 'Visit X Circus Kekimus', fmt(fight) + ' pet' + (fight === 1 ? '' : 's') + ' can fight today'] : ['raid', '👹', 'Check on the Raid Boss', 'see who is hitting it'];
+    else if (danger.length) n = ['urgent', '🪦', 'Check ' + fmt(danger.length) + ' pet' + (danger.length === 1 ? '' : 's') + ' in danger', 'first one dies in ~' + left(soon)];
+    else n = ['pets', '😎', 'All done today. WAGMI.', 'go touch grass, your pets are fine'];
+    return '<button type="button" class="td-next-btn' + (n[0] === 'pets' ? ' td-calm' : '') + '" data-td="' + n[0] + '"><span class="td-nx">NEXT</span><span class="td-ico" aria-hidden="true">' + n[1] + '</span><span><b>' + n[2] + '</b><small>' + n[3] + '</small></span><span class="td-go">›</span></button>';
+  }
   var last = '';
   function paint() {
     var w = null; try { w = window.V2Mock && V2Mock.world && V2Mock.world(); } catch (e) { w = null; }
     var m = me(), c = $('todayCard');
     if (!w || !w.pets || !m) { if (c) c.hidden = true; d.body.classList.remove('has-today'); return; }
-    var dcb = $('dcBtn'), key = m + '|' + w.tip + '|' + w.pets.length + '|' + (w._full ? 1 : 0) + '|' + (dcb && !dcb.disabled ? 1 : 0); if (key === last && c && !c.hidden) return; last = key;
+    var dcb = $('dcBtn'), LT = window.V2Loot ? V2Loot.state() : null, key = m + '|' + w.tip + '|' + w.pets.length + '|' + (w._full ? 1 : 0) + '|' + (dcb && !dcb.disabled ? 1 : 0) + '|' + (LT ? JSON.stringify(LT.t) + LT.opened : ''); if (key === last && c && !c.hidden) return; last = key;
     var day = Math.floor((w.tip || 0) / BPD), L = w.pets.filter(function (p) { return p.owner === m && !p.dead && !p.released && !p.community; });
     if (!L.length) { if (c) c.hidden = true; d.body.classList.remove('has-today'); return; }
     c = card(); if (!c) return; c.hidden = false; d.body.classList.add('has-today');
@@ -114,11 +134,12 @@
     c.innerHTML = '<h2 class="sec" data-ico="flame">Today <span class="td-day">game day ' + fmt(day) + (partial ? ' · still loading your pets' : '') + '</span>' +
       '<span class="td-next" title="A new game day starts every 144 blocks. Pets fed today can eat again then.">🍽️ new feed day in ~' + left(nextIn) + ' (' + nextIn + ' block' + (nextIn === 1 ? '' : 's') + ')</span>' +
       '<span class="td-streak" title="Days in a row you opened XCPETS on this device. Best: ' + STREAK.best + '">🔥 ' + STREAK.n + '-day streak</span></h2>' +
+      nextBtn(w, L, danger, soon, fight, LT) +
       '<div class="td-grid">' +
       (hungry ? tile('feed', '🍖', fmt(hungry), 'hungry', pick(SAY.hungry, day), '') : tile('pets', '🍖', '0', 'hungry', pick(SAY.fed, day), 'td-ok')) +
       (danger.length ? tile('urgent', '🪦', fmt(danger.length), 'in danger', 'first one dies in ~' + left(soon) + ' · ' + pick(SAY.danger, day), 'td-hot') : tile('pets', '🪦', '0', 'in danger', pick(SAY.safe, day), 'td-ok')) +
       (fight ? tile('fight', '⚔️', fmt(fight), 'can fight', pick(SAY.fight, day), '') : tile('pets', '⚔️', '0', 'can fight', pick(SAY.rest, day), 'td-ok')) +
-      '</div>' + ready(w, L) +
+      '</div>' + ready(w, L) + (window.V2Loot ? V2Loot.html() : '') + (window.V2Petdex ? V2Petdex.todayHtml() : '') +
       /* one burn for the whole routine: the existing Daily chores (pet:dc, live since block 974,163); the wallet still signs it */
       (hungry && $('dcBtn') && !$('dcBtn').disabled ? '<button type="button" class="td-chores" data-td="chores">🧹 Do it all in one burn: feed everyone, WAGMI, use your spins</button>' : '');
   }

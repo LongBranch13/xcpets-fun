@@ -21,7 +21,12 @@ async function shot(browser, page, who) {
   const cx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
   if (BRANCH) await serveBranch(cx);
   if (who !== 'new') await cx.addInitScript(a => { try { localStorage.setItem('xcpets-v2-me', a); localStorage.setItem('xcpets-tut-coach-skip', '1'); localStorage.setItem('xcpets-tut-seen', '1'); } catch (e) {} }, who);
+  const PROF = A.includes('--profile');
+  /* --profile (Nov 23 2026, Rankings freeze): records main-thread stalls over 250 ms (with the page status at the time) and a CPU profile */
+  if (PROF) await cx.addInitScript(() => { window.__lag = []; let last = performance.now(); setInterval(() => { const n = performance.now(), g = n - last - 100; last = n;
+    if (g > 250 && window.__lag.length < 60) window.__lag.push(Math.round(n / 100) / 10 + 's:' + Math.round(g) + 'ms:' + ((document.getElementById('status') || {}).textContent || '').slice(0, 40)); }, 100); });
   const pg = await cx.newPage(), errs = [], t0 = Date.now();
+  let cdp = null; if (PROF) { cdp = await cx.newCDPSession(pg); await cdp.send('Profiler.enable'); await cdp.send('Profiler.setSamplingInterval', { interval: 1000 }); await cdp.send('Profiler.start'); }
   pg.on('pageerror', e => errs.push(String(e.message || e).slice(0, 200)));
   pg.on('console', m => { if ((m.type() === 'error' || m.type() === 'warning') && errs.length < 8 && !/Failed to load resource/.test(m.text())) errs.push(m.type() + ': ' + m.text().slice(0, 160)); });
   const base = page.replace(/\.html/, '').replace(/[^a-z0-9]+/gi, '-') + '-' + (who === 'new' ? 'new' : 'player');
@@ -38,6 +43,14 @@ async function shot(browser, page, who) {
     await pg.screenshot({ path: path.join(OUT, base + '-2top.png') });
     await pg.screenshot({ path: path.join(OUT, base + '-3full.png'), fullPage: true });
     if (process.env.SHOT_PROBE) { try { errs.push('probe: ' + await pg.evaluate(process.env.SHOT_PROBE)); } catch (e) { errs.push('probe failed: ' + String(e.message || e).slice(0, 160)); } }
+    if (PROF) {
+      errs.push('lag: ' + JSON.stringify(await pg.evaluate(() => window.__lag)));
+      const { profile } = await cdp.send('Profiler.stop'), self = {}, byId = {}, dt = profile.timeDeltas || [];
+      profile.nodes.forEach(n => { byId[n.id] = n; });
+      (profile.samples || []).forEach((id, i) => { const n = byId[id], f = n.callFrame, k = (f.functionName || '(anon)') + ' ' + (f.url || '').split('/').pop().split('?')[0] + ':' + (f.lineNumber + 1); self[k] = (self[k] || 0) + (dt[i] || 0) / 1000; });
+      errs.push('cpu: ' + Object.keys(self).filter(k => !/^\(idle\)|^\(program\)/.test(k)).sort((a, b) => self[b] - self[a]).slice(0, 25).map(k => k + '=' + Math.round(self[k]) + 'ms').join(', '));
+      const c0 = Date.now(); try { await Promise.all([pg.waitForURL(u => !/ranking|tokens/.test(String(u)), { timeout: 30000 }), pg.evaluate(() => { const a = document.querySelector('a[href="index.html"]'); if (a) a.click(); else location.href = 'index.html'; })]); errs.push('home click: ' + (Date.now() - c0) + 'ms'); } catch (e) { errs.push('home click failed after ' + (Date.now() - c0) + 'ms'); }
+    }
   } catch (e) { errs.push('goto: ' + String(e.message || e).slice(0, 200)); }
   await cx.close();
   return { page, who: who === 'new' ? 'new visitor' : 'player', secs: (Date.now() - t0) / 1000, errs };
