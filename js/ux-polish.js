@@ -51,6 +51,7 @@
     function rows() { return Array.prototype.slice.call(d.querySelectorAll('#board tr, #board li, #board .row, #boardAll tr, #boardAll li')); }
     /* content-fixes 2026-10-19: with V2Ranking (js/v2-pages.js) the search covers every row of the board, not only the loaded ones */
     function go(test, label, q) { if (window.V2Ranking && q) { d.querySelectorAll('.uxp-hit').forEach(function (x) { x.classList.remove('uxp-hit'); }); var nh = V2Ranking.find(q);
+        if (nh && typeof nh.then === 'function') { msg.textContent = 'Searching every pet…'; nh.then(function (n) { msg.textContent = n ? n + ' match' + (n > 1 ? 'es' : '') + (label ? ' for ' + label : '') : 'No pet found on this board' + (label ? ' for ' + label : '') + '.'; }); return; } /* lead-1123: Rankings reads every pet first */
         msg.textContent = nh ? nh + ' match' + (nh > 1 ? 'es' : '') + (label ? ' for ' + label : '') : 'No pet found on this board' + (label ? ' for ' + label : '') + '.'; return; }
       var all = d.getElementById('boardAll'); if (all && all.tagName === 'BUTTON' && !all._uxpOpen) { all._uxpOpen = 1; all.click(); } else if (all && all.querySelector && all.querySelector('button')) all.querySelector('button').click();
       showAll(); setTimeout(function () { d.querySelectorAll('.uxp-hit').forEach(function (x) { x.classList.remove('uxp-hit'); }); var hits = rows().filter(test); hits.forEach(function (x) { x.classList.add('uxp-hit'); });

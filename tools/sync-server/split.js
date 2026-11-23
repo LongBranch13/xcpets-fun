@@ -213,6 +213,64 @@ function streakAt(p, tip) {
   while (fd[d]) { n++; d--; }
   return { sk: n, td: fd[d0] ? 1 : 0 };
 }
+/* lead file (view/p/99900.json; the server already serves view/p/<5 digits>.json, so no server restart is needed, and pet shards
+ * stop far below it: id / 2000). Built from the rank rows, so every number matches what the page computes from rank.json:
+ *  - tops: for each pet board (WAGMI, power, wins, oldest) the ids of the best LEAD_TOP living pets, plus the board's size,
+ *  - players: for each player board (pets, rare, legendary, wins, power; all time and, where the board has it, this week) the
+ *    best LEAD_TOP wallets as [owner index, value, best pet id] and the number of wallets on it,
+ *  - best: each wallet's best pet by rarity then stage (WAGMI and burn boards) for the wallets those boards can show,
+ *  - pets: the rank rows of every pet named above and every tokenized pet (dead ones too, so Proof Parade can leave them out).
+ * The page shows the first rows from it and reads rank.json only when someone asks for more (species, Show more, Find, a week). */
+const LEAD_SHARD = '99900', LEAD_TOP = 300;
+function leadFile(rows, hashes, tip, rsig, who, deedIds) {
+  const RW = [1, 3, 10, 33], WEEK = 1008, live = rows.filter(r => !r.dead && !r.rel && (r.id | 0) !== 1765);
+  const want = new Set(), tops = {}, players = {}, counts = {};
+  const pw = r => (r.sg || []).reduce((a, v) => a + (v || 0), 0);
+  function top(id, list, cmp) { list.sort(cmp); counts[id] = list.length; tops[id] = list.slice(0, LEAD_TOP).map(r => r.id); tops[id].forEach(x => want.add(x)); }
+  top('wagmi', live.slice(), (a, b) => ((b.st * 1e7 + (b.sk || 0) * 1e5 + Math.min(b.care || 0, 99999)) - (a.st * 1e7 + (a.sk || 0) * 1e5 + Math.min(a.care || 0, 99999))) || a.id - b.id);
+  top('power', live.filter(r => pw(r) > 0), (a, b) => pw(b) - pw(a) || a.id - b.id);
+  top('wins', live.filter(r => (r.w || 0) > 0), (a, b) => (b.w || 0) - (a.w || 0) || a.id - b.id);
+  top('old', live.filter(r => r.hb != null), (a, b) => a.hb - b.hb || a.id - b.id);
+  /* players: same walk as the page (pets in id order; a better pet replaces the kept one only when strictly better) */
+  const better = (p, b) => !b || p.ti > b.ti || (p.ti === b.ti && p.st > b.st);
+  function agg(id, week) {
+    const m = new Map(), best = new Map();
+    for (const r of live) {
+      const o = r.o, fresh = !week || (r.hb != null && r.hb > tip - WEEK);
+      if (id === 'power') { const v = pw(r); if (!m.has(o) || v > m.get(o)) { m.set(o, v); best.set(o, r); } continue; }
+      let v = 0, add = false;
+      if (id === 'pets' && fresh) { v = 1; add = true; }
+      if (id === 'rare' && fresh) { v = RW[r.ti] || 0; add = true; }
+      if (id === 'leg' && fresh && r.ti === 3) { v = 1; add = true; }
+      if (id === 'wins') { v = r.w || 0; add = true; }
+      if (!add) continue;
+      m.set(o, (m.get(o) || 0) + v); if (better(r, best.get(o))) best.set(o, r);
+    }
+    const L = [...m.entries()].filter(e => e[1] > 0);
+    L.sort((a, b) => b[1] - a[1] || 0);
+    const key = id + (week ? ':week' : '');
+    counts['players:' + key] = L.length;
+    players[key] = L.slice(0, LEAD_TOP).map(e => { const b = best.get(e[0]); if (b) want.add(b.id); return [e[0], e[1], b ? b.id : 0]; });
+  }
+  ['pets', 'rare', 'leg', 'wins', 'power'].forEach(id => agg(id, false));
+  ['pets', 'rare', 'leg'].forEach(id => agg(id, true));
+  const best = {}, bestT = {};
+  for (const r of live) { if (better(r, best[r.o])) best[r.o] = r; if (!bestT[r.o] || r.ti > bestT[r.o].ti) bestT[r.o] = r; }
+  const bestOut = {};
+  /* only wallets the WAGMI and burn boards can list (who: owner indexes of WAGMI sayers and the biggest burners) */
+  Object.keys(best).forEach(o => { if (who && !who.has(+o)) return; bestOut[o] = [best[o].id, bestT[o].id]; want.add(best[o].id); want.add(bestT[o].id); });
+  const used = [], hmap = new Map(), pets = [];
+  for (const r of rows) {
+    if (!want.has(r.id) && !r.dd && !(deedIds && deedIds.has(r.id))) continue;
+    const c = Object.assign({}, r);
+    if (c._h != null) { const h = hashes[c._h]; let ix = hmap.get(h); if (ix == null) { ix = used.length; used.push(h); hmap.set(h, ix); } c._h = ix; }
+    pets.push(c);
+  }
+  /* living pets per wallet (community pets left out, as the NGMI list does) and the species on the boards */
+  const own = new Map(), sp = new Set();
+  for (const r of live) { if (r.sp) sp.add(r.sp); if (!r.cm) own.set(r.o, (own.get(r.o) || 0) + 1); }
+  return { v: 1, lead: 1, tip: tip, rsig: rsig, live: live.length, counts: counts, tops: tops, players: players, best: bestOut, own: [...own.entries()], species: [...sp].sort(), hashes: used, pets: pets };
+}
 function rankPet(p, rec, tip, hof, bits) {
   const s = p.stats || {}, st = streakAt(p, tip);
   const row = {
@@ -355,8 +413,13 @@ function write(dir, world, meta) {
     /* Seasons (gated by ACTIVATE_SEASONS_BLOCK): eggs sold, points and tiers per wallet. Small; the season bar and the catch-up sweep need it. */
     seasons: copy(world.seasons) || {},
     /* Pantry (prepaid meals; gated by ACTIVATE_PANTRY_BLOCK): each player's balance and pet list, so the slim Play page shows it */
-    pantry: copy(world.pantry) || null, pantryDay: world.pantryDay != null ? world.pantryDay : null
+    pantry: copy(world.pantry) || null, pantryDay: world.pantryDay != null ? world.pantryDay : null,
+    /* Meat Grinder (gated by ACTIVATE_GRIND_BLOCK): each wallet's meat meter and last grind, so the slim My Pets shows it */
+    grind: copy(world.grind) || null
   };
+  const leadBurners = (world.community && world.community.leaderboard) || [];
+  /* every pet that was ever tied to a token (a destroyed token too), so Proof Parade gives the same answer as from rank.json */
+  const leadDeeds = new Set(); Object.keys(world.deeds || {}).forEach(a => { const d = world.deeds[a]; if (d && d.petId != null) leadDeeds.add(d.petId | 0); });
   function end(stream) { return new Promise(res => { stream.on('finish', res); stream.end(); }); }
   return Promise.all(outs.map(end).concat([...petOut.values()].map(end), [end(zstream), end(rankOut)])).then(() => {
     let bytes = 0, files = 0, largestOwner = { bytes: 0, file: '', n: 0 }, largestPage = { bytes: 0, file: '' }, largestShard = { bytes: 0, file: '' };
@@ -456,7 +519,13 @@ function write(dir, world, meta) {
     const rankText = fs.readFileSync(path.join(tmp, 'rank.ndjson'), 'utf8');
     rankText.split('\n').forEach(line => { if (line) rankPets.push(JSON.parse(line)); });
     rankPets.sort((a, b) => a.id - b.id);
+    const leadWho = new Set();
+    Object.keys(summary.wagmi || {}).forEach(a => { const i = omap.get(a); if (i != null) leadWho.add(i); });
+    (leadBurners || []).slice(0, LEAD_TOP).forEach(e => { const i = omap.get(e && (e.address || e.addr || e.source)); if (i != null) leadWho.add(i); });
     bytes += writeJson(path.join(dir, 'rank.json'), { v: 3, tip: tip, rsig: rsig, owners: owners, hashes: hashes, pets: rankPets }); files++;
+    /* lead file (Nov 23 2026, Jake: Rankings and Proof Parade took ~15 s on a phone reading every pet in rank.json): a small
+     * file with the top of every board and every tokenized pet, so those pages paint in a second or two. See leadFile(). */
+    bytes += writeJson(path.join(dir, 'p', LEAD_SHARD + '.json'), leadFile(rankPets, hashes, tip, rsig, leadWho, leadDeeds)); files++;
     try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {}
     /* Counts and keys only. The old list put every pet of the largest wallets into the manifest,
      * and that file grew past 10 MB. A phone then sat on it and never painted. */
@@ -465,4 +534,4 @@ function write(dir, world, meta) {
   });
   });
 }
-module.exports = { PET_SHARD, PAGE, COLD_KEYS, ownerKey, ownerShard, petShard, fromWorld, write, itemRec, petRec, fieldsOf, isHybRec, deedRec, ownerSide };
+module.exports = { LEAD_SHARD, leadFile, PET_SHARD, PAGE, COLD_KEYS, ownerKey, ownerShard, petShard, fromWorld, write, itemRec, petRec, fieldsOf, isHybRec, deedRec, ownerSide };

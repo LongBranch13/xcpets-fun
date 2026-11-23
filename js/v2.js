@@ -1520,8 +1520,11 @@
   EGGS.forEach(function (e) { var b = $(e[0]); if (b) b.onclick = function () { var c = eggCost(e[3]); if (c == null) { eggButtons(); toast('Still loading the current egg cost… try again in a moment.'); return; } confirmPlans(e[1], [{ tag: e[2], amount: c }]); }; });
   eggButtons(); setInterval(eggButtons, 1000);
   /* ELECTRIC EGGS (preview): one pet:hatchzap burn = 1,000 eggs with boosted tier odds. The button stays locked until the chain tip reaches the gate block. */
-  if ($('zapBtn')) { var zapSync = function () { var g = V.electricGate && V.electricGate(), tip = (S && S.tip) || 0, on = g != null && tip + 1 >= g; $('zapBtn').disabled = !on; var zw = $('zapWhen'); if (zw) zw.textContent = g == null ? 'coming soon' : on ? 'live' : 'from block ' + fmt(g); };
-    zapSync(); setInterval(zapSync, 5000); $('zapBtn').onclick = function () { confirmPlans('⚡ Electric Shock Box · 1,000 eggs', [{ tag: 'pet:hatchzap', amount: V.ELECTRIC_COST }]); }; }
+  if ($('zapBtn')) { var zapSync = function () { var g = V.electricGate && V.electricGate(), tip = (S && S.tip) || 0, on = g != null && tip + 1 >= g; $('zapBtn').disabled = !on; var zw = $('zapWhen'); if (zw) zw.textContent = g == null ? 'coming soon' : on ? 'live' : 'from block ' + fmt(g);
+      /* shockbox-price-1123 (Jake Nov 23 2026: "wrong price on the shock box"): the label showed the base 100,000 on the fast load, where the
+       * halving label pass (v2-halving.js) does not run. Same source as the egg buttons: the current cost once the replayed world set it. */
+      var zc = eggCost('hatchzap'), zt = document.querySelector('#zapBtn .zap-t'), zs = zc == null ? null : '\u26a1 Electric Shock Box \u00b7 1,000 eggs (' + fmt(zc) + ')'; if (zt && zs && zt.textContent !== zs) zt.textContent = zs; };
+    zapSync(); setInterval(zapSync, 5000); $('zapBtn').onclick = function () { confirmPlans('⚡ Electric Shock Box · 1,000 eggs', [{ tag: 'pet:hatchzap', amount: eggCost('hatchzap') || V.ELECTRIC_COST }]); }; } /* shockbox-price-1123: the confirm shows the current cost (planAmount re-prices it at the next block either way) */
   if ($('wizEggBtn') && WIZARD_EGG_ON_SALE) { $('wizEggBtn').textContent = '🧙 Bitcoin Wizard egg (' + fmt(V.WIZ_EGG_COST) + ')'; $('wizEggBtn').onclick = function () { confirmPlans('Bitcoin Wizard egg', [{ tag: 'pet:hatchwiz', amount: V.WIZ_EGG_COST }]); }; }
   if ($('wizSignBtn') && WIZARD_SIGN_CLAIM_ON) $('wizSignBtn').onclick = function () { confirmPlans('"Join us" sign (free claim)', [{ tag: 'pet:sign', amount: V.WIZ_SIGN_MIN }]); };
   $('reload').onclick = function () { render(); toast('Reloaded from the chain'); };

@@ -10,7 +10,7 @@ const fixtures = require('./lib/fixtures');
 let fail = 0, pass = 0;
 const ok = (c, m) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (c) pass++; else fail++; };
 const rulesMd5 = crypto.createHash('md5').update(fs.readFileSync(path.join(__dirname, '..', 'js/v2-rules.js'))).digest('hex');
-ok(rulesMd5 === '97681cd6a38ac63fff0657549e56b49c', 'rules MD5 unchanged (Moloch upgrade at 977155)');
+ok(rulesMd5 === 'a5404a0fc0e1a1ffcd447f582734bac2', 'rules MD5 unchanged (Meat Grinder opens at 977220)');
 ok(/function bootFromView[\s\S]{0,700}readViewBalance\(/.test(fs.readFileSync(path.join(__dirname, '..', 'js/v2-chain.js'), 'utf8')), 'the published view reads the wallet balance');
 ok(/var ENABLED = true, START = 977136/.test(fs.readFileSync(path.join(__dirname, '..', 'js/doom-week.js'), 'utf8')), 'doom week 2 window is set (display only)');
 
@@ -121,6 +121,18 @@ async function prove(name) {
   ok(JSON.stringify(summary.seasons) === wantSeasons, name + ' summary carries the season records (eggs sold, points)');
   const first = JSON.parse(fs.readFileSync(path.join(out, 'own', meta.top[0].key + '.json'), 'utf8'));
   ok(first.pets.length <= split.PAGE && first.alive + first.dead === meta.top[0].n && first.pets.every(p => !p.dead && !p.released), name + ' first page is living pets only (' + first.pets.length + ' of ' + first.alive + ' alive, ' + first.dead + ' dead aside)');
+  /* lead file (Rankings / Proof Parade quick paint): same answers as the full rank.json */
+  const rank = JSON.parse(fs.readFileSync(path.join(out, 'rank.json'), 'utf8')), leadPath = path.join(out, 'p', split.LEAD_SHARD + '.json');
+  const lead = fs.existsSync(leadPath) && JSON.parse(fs.readFileSync(leadPath, 'utf8'));
+  const live = rank.pets.filter(r => !r.dead && !r.rel), pw = r => r.sg.reduce((a, v) => a + v, 0);
+  const pMax = live.reduce((b, r) => !b || pw(r) > pw(b) || (pw(r) === pw(b) && r.id < b.id) ? r : b, null);
+  const byO = {}; live.forEach(r => { byO[r.o] = (byO[r.o] || 0) + 1; }); const topO = Object.keys(byO).sort((a, b) => byO[b] - byO[a])[0];
+  const deeds = rank.pets.filter(r => r.dd).length, have = lead ? new Set(lead.pets.map(r => r.id)) : new Set();
+  ok(lead && lead.tops.power[0] === pMax.id && lead.counts.power === live.filter(r => pw(r) > 0).length, name + ' lead: strongest pet ' + pMax.id + ' first on the power board');
+  ok(lead && lead.players.pets[0][1] === byO[topO] && lead.counts['players:pets'] === Object.keys(byO).length, name + ' lead: most pets ' + byO[topO] + ', ' + Object.keys(byO).length + ' wallets');
+  ok(lead && lead.tops.power.concat(lead.tops.old, lead.tops.wins, lead.tops.wagmi).every(id => have.has(id)) && lead.pets.filter(r => r.dd).length === deeds, name + ' lead: carries every listed pet and all ' + deeds + ' tokenized pets');
+  const lb = fs.statSync(leadPath).size, rb = fs.statSync(path.join(out, 'rank.json')).size;
+  ok(lb < rb / 4 || lb < 400e3, name + ' lead file ' + Math.round(lb / 1024) + ' KB vs rank.json ' + Math.round(rb / 1024) + ' KB');
   return { ms: ms, n: petN, files: meta.files, bytes: meta.bytes, rss: process.memoryUsage().rss };
 }
 (async () => {

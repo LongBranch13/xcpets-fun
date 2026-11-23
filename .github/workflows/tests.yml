@@ -2,6 +2,10 @@
 name: tests
 on:
   pull_request:
+    # 'closed' is listed only so a merged or closed PR joins its concurrency group below and cancels the run still
+    # going for it (the job itself is skipped for 'closed'). Nov 23 2026: 16 runs for already-merged PRs filled every
+    # runner and the site's pages deploy sat queued for over half an hour.
+    types: [opened, synchronize, reopened, closed]
     paths-ignore: ['api/**']
   push:
     branches: [main]
@@ -17,6 +21,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   tests:
+    if: github.event.action != 'closed'
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:

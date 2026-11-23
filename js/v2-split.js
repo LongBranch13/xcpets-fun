@@ -165,6 +165,7 @@
       raids: summary.raids || [], /* raids ride in the summary (Nov 22 2026); older summaries have none */
       seasons: summary.seasons || {}, /* season eggs sold, points and tiers ride in the summary too; older summaries have none */
       pantry: summary.pantry || undefined, pantryDay: summary.pantryDay != null ? summary.pantryDay : undefined, /* Pantry (gated): balances and lists */
+      grind: summary.grind || undefined, /* Meat Grinder (gated): meat meters; older summaries have none */
       _view: 1, _counts: { n: summary.n, alive: summary.alive, dead: summary.dead, burned: summary.burned, burns: summary.burns }
     };
     if (pack && pack.roster) w._roster = pack.roster;
@@ -756,8 +757,14 @@
    * comes within 3 s and is at least as new as every tip this page knows; anything else (no answer, an error, an older world, ?servercheck=0)
    * falls back to this device's own check, exactly as before. A finished device check is used directly. Nothing is signed here. */
   var SERVER_MS = 3000, serverStat = { asked: 0, used: 0, last: '' };
+  /* The server's answers count only when its world was built from this page's exact rule files (same rsig). */
+  var RSIG_P = null;
+  function myRsig() { if (!RSIG_P) RSIG_P = pageRsig().then(function (r) { return r || null; }, function () { return null; }); return RSIG_P; }
   function serverCheck(plans) {
     if (ready || off() || !base() || q('servercheck') === '0' || typeof fetch !== 'function') return Promise.resolve(null);
+    return myRsig().then(function (rsig) { if (!rsig) { serverStat.last = 'no rules'; return null; } return serverCheck0(plans, rsig); });
+  }
+  function serverCheck0(plans, rsig) {
     var S = window.V2Mock && V2Mock.state && V2Mock.state(), need = Math.max(healthTipN || 0, (S && S.tip) || 0, (S && S.chainTip) || 0);
     var plain = [], i, k, p, o;
     for (i = 0; i < (plans || []).length; i++) {
@@ -772,7 +779,7 @@
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (j) {
         if (t) clearTimeout(t);
-        if (!j || j.ok !== true || !Array.isArray(j.plans) || !Array.isArray(j.skip) || !(j.tip >= need)) { serverStat.last = (j && j.error) || 'not used'; return null; }
+        if (!j || j.ok !== true || j.rsig !== rsig || !Array.isArray(j.plans) || !Array.isArray(j.skip) || !(j.tip >= need)) { serverStat.last = (j && j.error) || 'not used'; return null; }
         /* hand back this page's own plan objects, in order, for the plans the server kept */
         var kept = [], n = 0;
         for (i = 0; i < plans.length && n < j.plans.length; i++) if (j.plans[n] && j.plans[n].tag === plans[i].tag) { kept.push(plans[i]); n++; }
@@ -780,6 +787,21 @@
         serverStat.used++; serverStat.last = 'ok';
         return { ok: true, plans: kept, skip: j.skip, server: j.tip };
       }, function () { if (t) clearTimeout(t); serverStat.last = 'failed'; return null; });
+  }
+  /* Spam City (Nov 23 2026): the order book (listings, listed pets, pet tokens, dex orders) from the server's checked world, instead of
+   * a full replay in the browser. Used only when it is from this page's rules and at least as new as every tip the page knows. */
+  function serverShop() {
+    if (off() || !base() || q('servershop') === '0' || typeof fetch !== 'function') return Promise.resolve(null);
+    var S = window.V2Mock && V2Mock.state && V2Mock.state(), need = Math.max(healthTipN || 0, (S && S.tip) || 0, (S && S.chainTip) || 0);
+    return myRsig().then(function (rsig) {
+      if (!rsig) return null;
+      var ctl = typeof AbortController === 'function' ? new AbortController() : null, t = ctl ? setTimeout(function () { try { ctl.abort(); } catch (e) {} }, 8000) : null;
+      return fetch(base() + '/xp/v1/shop', { signal: ctl ? ctl.signal : undefined }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
+        if (t) clearTimeout(t);
+        if (!j || j.ok !== true || j.rsig !== rsig || !(j.tip >= need) || !Array.isArray(j.listings) || !Array.isArray(j.pets) || !Array.isArray(j.orders)) return null;
+        return { ok: true, tip: j.tip, listings: j.listings, pets: j.pets, deeds: j.deeds || {}, orders: j.orders, n: j.n, open: j.open, server: true };
+      }, function () { if (t) clearTimeout(t); return null; });
+    });
   }
   function checkPlans(plans) {
     return serverCheck(plans).then(function (out) { return out || deviceCheck(plans); });
@@ -1013,6 +1035,30 @@
     }, function () { boardP = null; return null; });
     return boardP;
   }
+  /* lead-1123 (Jake Nov 23 2026: Rankings / Proof Parade took ~15 s on a phone): the server writes view/p/99900.json beside rank.json,
+   * a small file with the top of every board, each listed wallet's best pets and every tokenized pet (tools/sync-server/split.js leadFile).
+   * loadLead() adds those pets to the view world (marked _lead; their block hashes are the file's own list) and returns the boards with
+   * owner addresses in place of indexes. null when the file is missing (an older server build), so pages fall back to loadBoard(). */
+  var leadP = null, leadHashes = null, leadPets = null;
+  function remergeLead() { if (leadPets) mergePets(leadPets); }
+  function loadLead() {
+    if (leadP) return leadP;
+    var folder = viewFolder;
+    if (!folder || !lastSummary || lastSummary.v !== 3) return Promise.resolve(null);
+    leadP = Promise.all([getJson(folder + 'view/p/99900.json', 15000, false), ownersReady()]).then(function (r) {
+      var L = r[0], own = viewOwners || [], tip = (L && L.tip) || lastSummary.tip || 0, pets = [], byId = {}, i, p;
+      if (!L || !L.lead || !L.pets || !own.length) return null;
+      leadHashes = L.hashes || [];
+      for (i = 0; i < L.pets.length; i++) { if ((L.pets[i].id | 0) === 1765) continue; p = expandRank(L.pets[i], tip); p._lead = 1; pets.push(p); byId[p.id] = p; }
+      var addr = function (o) { return own[o] || ''; }, players = {}, best = {}, ownN = {};
+      Object.keys(L.players || {}).forEach(function (k) { players[k] = L.players[k].map(function (e) { return { o: addr(e[0]), v: e[1], id: e[2] }; }); });
+      Object.keys(L.best || {}).forEach(function (o) { best[addr(o)] = L.best[o]; });
+      (L.own || []).forEach(function (e) { ownN[addr(e[0])] = e[1]; });
+      leadPets = pets; mergePets(pets);
+      return { tip: tip, live: L.live, counts: L.counts || {}, tops: L.tops || {}, players: players, best: best, own: ownN, species: L.species || [], pets: pets, byId: byId };
+    }, function () { return null; });
+    return leadP;
+  }
   function loadBoard(onProg) {
     if (boardP) return boardP;
     if (lastSummary && lastSummary.v === 3 && lastSummary.rank) return loadRank(onProg);
@@ -1054,8 +1100,9 @@
     for (i = 0; i < ids.length; i++) {
       id = ids[i] | 0; p = w.byId[id];
       if (!p || (p.art && p.art.dna)) continue;
-      if (window.XcpArt && window.PetCore && rankHashes && p._h != null) {
-        try { p.art = XcpArt.buildArt(p, rankHashes, PetCore, opt); n++; } catch (e) {}
+      var hs = p._lead ? leadHashes : rankHashes;
+      if (window.XcpArt && window.PetCore && hs && p._h != null) {
+        try { opt.hashes = hs; p.art = XcpArt.buildArt(p, hs, PetCore, opt); n++; } catch (e) {}
         continue;
       }
       name = ('00000' + Math.floor(id / 2000)).slice(-5);
@@ -1147,5 +1194,5 @@
     zombieP = getJson(folder + 'view/zombies.json').then(function (z) { return applyZombies(z); }, function () { return scanZombies(folder, onProg); });
     return zombieP;
   }
-  window.V2Split = { STALE: STALE, SCREEN_PAGES: SCREEN_PAGES, AUTO_CAP: AUTO_CAP, prepare: prepare, recheck: recheck, install: install, assemble: assemble, startVerify: startVerify, checkPlans: checkPlans, serverCheck: serverCheck, serverStat: function () { return serverStat; }, rest: rest, more: more, loadBoard: loadBoard, loadZombies: loadZombies, dress: dress, boardBytes: function () { return { bytes: boardBytes, files: boardFiles }; }, ensureDead: ensureDead, ensurePet: ensurePet, ownerShard: function (addr, cb) { sha2(addr).then(function (h) { cb(h.slice(0, 2)); }); }, petSig: petSig, healthTip: function () { return healthTipN; }, noteHealth: noteHealth, pingHealth: pingHealth, ownersReady: ownersReady, ownersKnown: ownersKnown, adoptOwners: adoptOwners, openOwnerPets: openOwnerPets, openList: openList, notePets: notePets, ownerTable: ownerTable, pageWallet: pageWallet, resolveWorld: resolveWorld, newestPages: newestPages, rowsToLog: rowsToLog, loadNewest: loadNewest };
+  window.V2Split = { loadLead: loadLead, remergeLead: remergeLead, STALE: STALE, SCREEN_PAGES: SCREEN_PAGES, AUTO_CAP: AUTO_CAP, prepare: prepare, recheck: recheck, install: install, assemble: assemble, startVerify: startVerify, checkPlans: checkPlans, serverCheck: serverCheck, serverShop: serverShop, serverStat: function () { return serverStat; }, rest: rest, more: more, loadBoard: loadBoard, loadZombies: loadZombies, dress: dress, boardBytes: function () { return { bytes: boardBytes, files: boardFiles }; }, ensureDead: ensureDead, ensurePet: ensurePet, ownerShard: function (addr, cb) { sha2(addr).then(function (h) { cb(h.slice(0, 2)); }); }, petSig: petSig, healthTip: function () { return healthTipN; }, noteHealth: noteHealth, pingHealth: pingHealth, ownersReady: ownersReady, ownersKnown: ownersKnown, adoptOwners: adoptOwners, openOwnerPets: openOwnerPets, openList: openList, notePets: notePets, ownerTable: ownerTable, pageWallet: pageWallet, resolveWorld: resolveWorld, newestPages: newestPages, rowsToLog: rowsToLog, loadNewest: loadNewest };
 })();
