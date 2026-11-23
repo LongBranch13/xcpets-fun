@@ -183,8 +183,11 @@
       h += '<i class="dw-pennant dw-cempen"><b>DOOM</b></i><i class="dw-pchart dw-cemch"></i><i class="dw-parrow dw-cemar"></i>';
       fx.innerHTML = h;
     }
+    /* Nov 23 2026 (players: 'the cemetery keeps timing out'): this ran from a watcher on #cemScene and moved the layer every time, even when
+     * it already sat in place. Each move woke the watcher again, so the page froze for good. Move it only when it is not where it belongs. */
     var c = box.querySelector('canvas');
-    if (c) c.insertAdjacentElement('afterend', fx); else box.appendChild(fx);
+    if (c) { if (c.nextElementSibling !== fx) c.insertAdjacentElement('afterend', fx); }
+    else if (fx.parentNode !== box) box.appendChild(fx);
   }
   function watchCem() {
     var box = document.getElementById('cemScene'); if (!box) return; cemFx();
