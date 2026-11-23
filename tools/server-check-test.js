@@ -56,18 +56,30 @@ const tagText = h => /^[0-9a-f]+$/i.test(h || '') && (h.length % 2 === 0) ? Buff
   const two = await I.ckAsk(state, { plans: [{ tag: 'pet:feed' }, { tag: 'not a tag' }], me: later[0].source, pending: [] });
   ok(two.ok && two.tip === B && Array.isArray(two.plans) && Array.isArray(two.skip), 'a batch answer carries the tip, kept plans and reasons');
   ok((await I.ckAsk(Object.assign({}, state, { tip: B + 1 }), { plans: [{ tag: 'pet:feed' }], me: '', pending: [] })).ok === false, 'a checker behind the follower does not answer');
+  ok(two.rsig === rsig, 'a check answer names the rules signature it was made with');
+  /* Spam City's pack: the same fields js/v2-orderbook-worker.js posts after a full replay */
+  const sh = await I.ckShop(state);
+  const fwl = fw.listings || [], wids = {}; fwl.forEach(S => { if (S && S.petId != null) wids[S.petId] = 1; });
+  ok(sh.ok && sh.tip === B && sh.rsig === rsig && JSON.stringify(sh.listings) === JSON.stringify(JSON.parse(JSON.stringify(fwl))) && sh.pets.length === Object.keys(wids).filter(id => fw.byId[id]).length &&
+    sh.pets.every(p => fw.byId[p.id] && fw.byId[p.id].owner === p.owner) && JSON.stringify(sh.orders) === JSON.stringify((view.dex && view.dex.orders) || []),
+    'the shop pack matches a full replay (' + sh.listings.length + ' listings, ' + sh.pets.length + ' pets, ' + sh.orders.length + ' orders)');
+  ok((await I.ckShop(state)) === sh, 'the shop pack is built once per checker world');
+  ok((await I.ckShop(Object.assign({}, state, { tip: B + 1 }))).ok === false, 'a checker behind the follower sends no shop pack');
   I.ckStop('off'); ok(I._CK.proc === null, 'stopping the checker (before a world build) ends its process');
 
   /* POST /xp/v1/check */
   const { createServer } = require('./sync-server/server');
   let seen = null;
-  const srv = createServer({ getState: () => ({ tip: B, check: () => ({ state: 'ready' }) }), dataDir: data, check: b => { seen = b; return { ok: true, tip: B, plans: b.plans.slice(0, 1), skip: ['x'] }; } });
+  const srv = createServer({ getState: () => ({ tip: B, check: () => ({ state: 'ready' }) }), dataDir: data, check: b => { seen = b; return { ok: true, tip: B, rsig: 'rX', plans: b.plans.slice(0, 1), skip: ['x'] }; },
+    shop: () => ({ ok: true, tip: B, rsig: 'rX', listings: [{ n: 1, petId: 7 }], pets: [{ id: 7 }], deeds: {}, orders: [], n: 9, open: 1 }) });
   await new Promise(r => srv.server.listen(0, '127.0.0.1', r));
   const base = 'http://127.0.0.1:' + srv.server.address().port;
   const post = (p, body, type) => fetch(base + p, { method: 'POST', headers: { 'Content-Type': type || 'text/plain' }, body });
   let r = await post('/xp/v1/check', JSON.stringify({ plans: [{ tag: 'pet:feed:1', amount: 5, junk: { a: 1 } }], me: 'bc1qabc', pending: ['pet:feed:2'] }));
   let j = await r.json();
-  ok(r.status === 200 && j.ok && j.tip === B && j.plans.length === 1 && j.skip[0] === 'x' && r.headers.get('cache-control') === 'no-store', 'POST /xp/v1/check answers, never cached');
+  ok(r.status === 200 && j.ok && j.tip === B && j.plans.length === 1 && j.skip[0] === 'x' && r.headers.get('cache-control') === 'no-store' && j.rsig === 'rX', 'POST /xp/v1/check answers with its rsig, never cached');
+  r = await fetch(base + '/xp/v1/shop'); j = await r.json();
+  ok(r.status === 200 && j.ok && j.tip === B && j.rsig === 'rX' && j.listings[0].petId === 7 && j.pets[0].id === 7 && /max-age=20/.test(r.headers.get('cache-control') || ''), 'GET /xp/v1/shop sends the order book, cached 20 s');
   ok(seen && seen.plans[0].tag === 'pet:feed:1' && seen.plans[0].amount === 5 && !('junk' in seen.plans[0]) && seen.me === 'bc1qabc' && seen.pending[0] === 'pet:feed:2', 'only plain plan values reach the checker');
   ok((await post('/xp/v1/check', '{"plans":[]}')).status === 400 && (await post('/xp/v1/check', 'nope')).status === 400 && (await post('/xp/v1/check', JSON.stringify({ plans: Array(101).fill({ tag: 'pet:feed' }) }))).status === 400, 'empty, broken or over-100 requests are 400');
   ok((await post('/xp/v1/check', 'x'.repeat(70000))).status === 413, 'a body over 64 KB is refused');
@@ -79,6 +91,9 @@ const tagText = h => /^[0-9a-f]+$/i.test(h || '') && (h.length % 2 === 0) ? Buff
   const sp = fs.readFileSync(path.join(ROOT, 'js/v2-split.js'), 'utf8'), wl = fs.readFileSync(path.join(ROOT, 'js/v2-wallet.js'), 'utf8');
   ok(/function checkPlans\(plans\) \{\s*return serverCheck\(plans\)\.then\(function \(out\) \{ return out \|\| deviceCheck\(plans\); \}\);/.test(sp), 'checkPlans asks the server, then falls back to the device check');
   ok(/!\(j\.tip >= need\)/.test(sp) && /SERVER_MS = 3000/.test(sp), 'a server answer is used only within 3 s and at least as new as every tip the page knows');
+  ok(/j\.rsig !== rsig/.test(sp) && /function serverShop\(\)/.test(sp) && (sp.match(/j\.rsig !== rsig/g) || []).length === 2, 'the page uses server answers and the shop pack only when they come from its own rule files');
+  const sa = fs.readFileSync(path.join(ROOT, 'js/v2-sales.js'), 'utf8');
+  ok(/V2Split\.serverShop\(\)/.test(sa) && /if \(pack\) \{ window\.__xcpShopSrc = 'server'; applyBook\(pack\); return; \}[^]*bookInputs\(\)\.then\(replayBook\)\.then\(applyBook\)/.test(sa), 'Spam City takes the server order book, and replays in the browser only without it');
   ok(/if \(ready \|\| off\(\)/.test(sp), 'a finished device check is used directly');
   ok(/serverReady \|\| !last/.test(sp), 'the device check does not warm up while the server check is ready');
   ok(/var viewGate = !!\(VS && VS\.view && !VS\.stale && window\.V2Split && V2Split\.checkPlans\);/.test(wl) && /!VS\.verified && !viewGate/.test(wl), 'the wallet lets the published view through to checkPlans');

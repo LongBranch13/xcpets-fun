@@ -1,5 +1,5 @@
 'use strict';
-/* HTTP surface for xcpets-sync. GET, HEAD and OPTIONS, plus POST for /xp/v1/check only (the burn check, Nov 23 2026). Other POSTs, PUT
+/* HTTP surface for xcpets-sync. GET (incl. /xp/v1/shop, Spam City's order book), HEAD and OPTIONS, plus POST for /xp/v1/check only (the burn check, Nov 23 2026). Other POSTs, PUT
  * and DELETE are 405. */
 const http = require('http'), fs = require('fs'), path = require('path'), zlib = require('zlib'), { URL } = require('url');
 const { buildAnswer } = require('./answer');
@@ -80,7 +80,7 @@ function createServer(opts) {
         if (big) return;
         const body = checkBody(raw); if (!body) { send(req, res, 400, { v: 1, ok: false, error: 'bad request' }, H); return; }
         Promise.resolve(opts.check(body)).then(a => {
-          const out = a && a.ok ? { v: 1, ok: true, tip: a.tip, plans: a.plans || [], skip: a.skip || [] } : { v: 1, ok: false, error: (a && a.error) || 'not ready' };
+          const out = a && a.ok ? { v: 1, ok: true, tip: a.tip, rsig: a.rsig || '', plans: a.plans || [], skip: a.skip || [] } : { v: 1, ok: false, error: (a && a.error) || 'not ready' };
           send(req, res, 200, out, H);
         }, () => send(req, res, 200, { v: 1, ok: false, error: 'failed' }, H));
       });
@@ -89,6 +89,17 @@ function createServer(opts) {
     if (req.method !== 'GET' && req.method !== 'HEAD') { cors(res); res.setHeader('Allow', 'GET, HEAD, OPTIONS'); res.writeHead(405); res.end(); return; }
     let u; try { u = new URL(req.url, 'http://127.0.0.1'); } catch (e) { send(req, res, 400, { v: 1, error: 'bad url' }); return; }
     const p = u.pathname.replace(/\/+$/, '') || '/';
+    /* Spam City's order book (Nov 23 2026): listings, the pets they name, pet tokens and dex orders from the check service's world,
+     * the same pack the shop page used to rebuild with a full replay in the browser. The page uses it only when its tip and rsig match. */
+    if (p === '/xp/v1/shop') {
+      const H = { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'public, max-age=20' };
+      if (typeof opts.shop !== 'function') { send(req, res, 200, { v: 1, ok: false, error: 'off' }, Object.assign({}, H, { 'Cache-Control': 'no-store' })); return; }
+      Promise.resolve(opts.shop()).then(a => {
+        if (!a || !a.ok) { send(req, res, 200, { v: 1, ok: false, error: (a && a.error) || 'not ready' }, Object.assign({}, H, { 'Cache-Control': 'no-store' })); return; }
+        send(req, res, 200, { v: 1, ok: true, tip: a.tip, rsig: a.rsig || '', listings: a.listings || [], pets: a.pets || [], deeds: a.deeds || {}, orders: a.orders || [], n: a.n || 0, open: a.open || 0 }, H);
+      }, () => send(req, res, 200, { v: 1, ok: false, error: 'failed' }, Object.assign({}, H, { 'Cache-Control': 'no-store' })));
+      return;
+    }
     if (p === '/xp/v1/health') {
       const s = getState() || {};
       const body = { tip: s.tip || 0, coreHeight: s.coreHeight || 0, lag: s.lag || 0, lastBlockAt: s.lastBlockAt || null, lastSnapshotTip: s.world && s.world.tip || 0, snapshotLag: s.ready ? Math.max(0, (s.tip || 0) - ((s.world && s.world.tip) || 0)) : null, upstream: s.upstream === 'private' ? 'private' : 'public' };
