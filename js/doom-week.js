@@ -221,8 +221,49 @@
   function clearPlaces() {
     document.querySelectorAll('.dw-place, .dw-cardfx').forEach(function (n) { if (n.parentNode) n.parentNode.removeChild(n); });
   }
+  /* Doom on every page (owner Nov 23 2026: "can we add doom to everyplace on the game"). One sign per page, under the Town bar.
+   * Display only: text and pixel art, nothing to click, no pet redrawn. Unknown pages get the generic sign. */
+  var SIGNS = {
+    'index.html': ['DOOM HAS ARRIVED', 'pets still hatch. candles still red.'],
+    'play.html': ['MY PETS OF DOOM', 'feed them before the candles do'],
+    'fight.html': ['X CIRCUS OF DOOM', 'sand, blood, red candles'],
+    'rare-room.html': ['RARE ROOM OF DOOM', 'try on the drip. ignore the chart.'],
+    'breed.html': ['NO-TAIL MOTEL OF DOOM', 'check in, panic out'],
+    'shop.html': ['SPAM CITY DOOM SALE', 'everything must go (down)'],
+    'raid.html': ['RAID BOSS OF DOOM', 'hit it before it dumps'],
+    'cemetery.html': ['PET CEMETERY OF DOOM', 'rekt in pixels'],
+    'pantheon.html': ['PANTHEON OF DOOM', '21 seats, 0 bids'],
+    'tokens.html': ['PROOF PARADE OF DOOM', 'every token, still burning'],
+    'live.html': ['LIVE FEED OF DOOM', 'what just dumped'],
+    'ranking.html': ['RANKINGS OF DOOM', 'who survived the dip'],
+    'hall-of-fame.html': ['HALL OF DOOM', 'legends never sell'],
+    'pet.html': ['DOOM WATCH', 'hodl this pet tight'],
+    'hybrids.html': ['HYBRIDS OF DOOM', 'two memes, one bad chart'],
+    'pets.html': ['PET GUIDE OF DOOM', 'know your pets before the dip'],
+    'tutorial.html': ['TUTORIAL OF DOOM', 'step one: do not panic sell'],
+    'archive.html': ['ARCHIVE OF DOOM', 'they saw the candles first'],
+    'inscriptions.html': ['INSCRIPTIONS OF DOOM', 'carved in red'],
+    'petcoin.html': ['PETCOIN OF DOOM', 'a peer-to-peer electronic dip'],
+    '': ['DOOM MODE', 'the candles are red. the pets are fine.']
+  };
+  function pageFile() { var f = (location.pathname || '').split('/').pop() || 'index.html'; return f; }
+  function signHtml(t) {
+    return '<img src="img/doom/doom-flag.png" alt="" width="32" height="32" class="dw-sflag"><span class="dw-stext"><b>' + t[0] + '</b><i>' + t[1] + '</i></span>' +
+      '<i class="dw-pchart dw-schart"></i><i class="dw-parrow dw-sarrow"></i>';
+  }
+  function paintSign() {
+    if (!on || document.querySelector('.dw-sign-page')) return;
+    var f = pageFile(); if (/practice/i.test(f)) return;
+    var t = SIGNS[f] || SIGNS[''], m = document.querySelector('main'); if (!m) return;
+    var box = el('div', 'dw-sign-page'); box.setAttribute('role', 'img'); box.setAttribute('aria-label', t[0] + ': ' + t[1]); box.innerHTML = signHtml(t);
+    var bar = document.getElementById('townBar');
+    if (bar && bar.parentNode) bar.insertAdjacentElement('afterend', box);
+    else if (countEl && countEl.parentNode === m) countEl.insertAdjacentElement('afterend', box);
+    else m.insertBefore(box, m.firstChild);
+  }
+  function clearSign() { document.querySelectorAll('.dw-sign-page').forEach(function (n) { if (n.parentNode) n.parentNode.removeChild(n); }); }
   function turnOn() {
-    if (on) return; on = true; loadCss(); root.classList.add('dw'); addLayer(); swapShowcase(true); watchShop(); watchCem(); watchPlaces();
+    if (on) return; on = true; loadCss(); root.classList.add('dw'); addLayer(); swapShowcase(true); watchShop(); watchCem(); watchPlaces(); paintSign();
     if (!btcQuote) Promise.all([loadBtc(), loadSupply()]).then(function (pair) {
       btcQuote = pair[0]; supplyLeft = pair[1];
       if (btcQuote && supplyLeft) drops = applyReading(btcQuote.usd, supplyLeft.tokens);
@@ -233,14 +274,14 @@
   function turnOff() {
     if (!on) return; on = false; badgeKey = 'x'; root.classList.remove('dw');
     if (layer && layer.parentNode) layer.parentNode.removeChild(layer); layer = null;
-    swapShowcase(false); clearShop(); clearCem(); clearPlaces();
+    swapShowcase(false); clearShop(); clearCem(); clearPlaces(); clearSign();
     if (countEl && countEl.parentNode) countEl.parentNode.removeChild(countEl); countEl = null;
     paintBadge();
     if (cssEl && cssEl.parentNode) cssEl.parentNode.removeChild(cssEl); cssEl = null;
   }
   function apply() { if (wanted()) turnOn(); else turnOff(); }
   document.addEventListener('visibilitychange', function () { if (!document.hidden) apply(); });
-  setInterval(function () { if (!on && flag() === null) apply(); if (on) { paintCount(); paintBadge(); watchPlaces(); watchCem(); } }, 2500);
+  setInterval(function () { if (!on && flag() === null) apply(); if (on) { paintCount(); paintBadge(); watchPlaces(); watchCem(); paintSign(); } }, 2500);
   function start() { apply(); }
   window.XCDoomWeek = {
     ENABLED: ENABLED, START: START, END: END, SABO_ID: SABO_ID, inWindow: inWindow, wanted: wanted, isOn: function () { return on; }, showcaseOn: function () { return on; },

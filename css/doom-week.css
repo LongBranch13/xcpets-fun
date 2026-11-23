@@ -106,3 +106,26 @@ html.dw #invPanel, html.dw #raidPanel, html.dw #pantheon, html.dw .tg8, html.dw 
   .dw-stick, .dw-ash, .dw-arrow, .dw-chart, .dw-sale, .dw-fog { animation: none; }
   .dw-stick, .dw-ash, .dw-arrow, .dw-chart { top: 12%; opacity: .4; }
 }
+
+/* Doom on every page (Nov 23 2026): a sign under the Town bar and red pennant bunting under the header. Display only. */
+.dw-sign-page { position: relative; display: flex; align-items: center; gap: 12px; max-width: 1100px; margin: 10px auto; padding: 8px 64px 8px 10px;
+  background: linear-gradient(#3a0a12, #1a0508); color: #f4e6ea; border: 3px solid #c8102e; box-shadow: 4px 4px 0 #000; overflow: hidden; pointer-events: none; }
+.dw-sign-page::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 3px;
+  background: repeating-linear-gradient(90deg, #ff2a2a 0 6px, transparent 6px 12px); animation: dw-crawl 2.4s steps(6) infinite; }
+.dw-sflag { width: 48px; height: 48px; flex: none; image-rendering: pixelated; image-rendering: crisp-edges; }
+.dw-stext { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.dw-stext b { font-family: "Press Start 2P", monospace; font-weight: normal; font-size: 14px; line-height: 1.3; color: #ff2a2a; text-shadow: 2px 2px 0 #000, 0 0 8px #c8102e; animation: dw-neon 1.8s steps(2) infinite; }
+.dw-stext i { font-style: normal; font-size: 13px; color: #f4c6cf; }
+.dw-schart { right: 12px; top: 50%; margin-top: -6px; transform: scale(2); transform-origin: right center; }
+.dw-sarrow { right: 52px; top: 50%; margin-top: -4px; transform: scale(2); animation: dw-bob 1s steps(2) infinite; }
+@keyframes dw-crawl { from { background-position: 0 0; } to { background-position: 12px 0; } }
+@keyframes dw-bob { 0%, 100% { margin-top: -4px; } 50% { margin-top: 0; } }
+html.dw header.nav::after { content: ''; position: absolute; left: 0; right: 0; top: 100%; height: 10px; pointer-events: none; z-index: 5;
+  background:
+    linear-gradient(#c8102e, #c8102e) 0 0 / 100% 2px no-repeat,
+    conic-gradient(from 135deg at 50% 0, #c8102e 0 90deg, transparent 90deg) 0 2px / 16px 8px repeat-x; }
+@media (max-width: 700px) {
+  .dw-sign-page { padding-right: 40px; gap: 8px; } .dw-sflag { width: 32px; height: 32px; }
+  .dw-stext b { font-size: 10px; } .dw-stext i { font-size: 12px; } .dw-sarrow { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { .dw-sign-page::after, .dw-stext b, .dw-sarrow { animation: none; } }
