@@ -46,4 +46,14 @@ if (tags.length) { const W2 = world(tags, bAt + 3), c2 = W2.c, w2 = W2.w, lg = w
     const want = c2.V2Rules.specialPairOn && c2.V2Rules.specialPairOn(bAt);
     ok(want ? !!(kid.art.cross && kid.art.cross.col === 'starlordkek' && kid.art.cross.body === 'rarepigeon') : !kid.art.cross, 'baby look matches the note (' + (kid.art.cross ? c2.V2Rules.crossLabel(kid.art.cross) : 'no cross') + ')'); } }
 else console.log('SKIP replay breed (Rarepigeon and a Star-Lord Kek are in different wallets)');
+// SPECIAL PAIR RETRO: #205414 Nedeweb (Rarepigeon x Star-Lord Kek, bred before the gate) gets the Star-Lord Pigeon look at ACTIVATE_SPECIAL_PAIR_RETRO_BLOCK, nothing else changes
+const ned = w.byId[205414], RG = V.ACTIVATE_SPECIAL_PAIR_RETRO_BLOCK;
+if (ned && RG != null && tip < RG) {
+  ok(!ned.art.cross, 'before the retro block Nedeweb has no cross look');
+  const bR = Math.max(RG + 1, tip + 2), W3 = world([row(bR, ned.owner, 0.00000001, 'pet:noop:retro')], bR + 1), n3 = W3.w.byId[205414], V3 = W3.c.V2Rules;
+  ok(!!(n3 && n3.art.cross && n3.art.cross.body === 'rarepigeon' && n3.art.cross.col === 'starlordkek'), 'after the retro block Nedeweb is a ' + (n3 && n3.art.cross ? V3.crossLabel(n3.art.cross) : 'no cross'));
+  ok(n3 && n3.species === ned.species && n3.tier === ned.tier && JSON.stringify(n3.stats) === JSON.stringify(ned.stats) && n3.name === ned.name, 'Nedeweb keeps species, tier, stats and name');
+  const changed = W3.w.pets.filter(p => p.art && p.art.cross && p.art.cross.col === 'starlordkek').map(p => p.id);
+  ok(changed.length === 1 && changed[0] === 205414, 'only Nedeweb gets the Star-Lord look (' + changed.join(',') + ')');
+} else console.log('SKIP retro check (Nedeweb not in this boot, or the tip is past the retro block)');
 console.log(fails ? fails + ' FAILED' : 'ALL PASS'); process.exit(fails ? 1 : 0);
