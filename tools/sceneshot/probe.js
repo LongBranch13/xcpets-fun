@@ -1,0 +1,3 @@
+(async () => { const t0 = Date.now(); while (Date.now() - t0 < 45000 && /Reading/.test((document.getElementById('status') || {}).textContent || '')) await new Promise(r => setTimeout(r, 1000));
+  const rs = performance.getEntriesByType('resource').filter(e => /rank\.json|summary\.json|owners\.json|latest\.json|view\/p\//.test(e.name)).map(e => e.name.split('/').slice(-2).join('/').split('?')[0] + ' start ' + Math.round(e.startTime) + ' dur ' + Math.round(e.duration) + ' kb ' + Math.round((e.encodedBodySize || e.transferSize || 0) / 1024) + '/' + Math.round((e.decodedBodySize || 0) / 1024));
+  return JSON.stringify({ status: (document.getElementById('status') || {}).textContent, res: rs, waited: Date.now() - t0 }); })()
