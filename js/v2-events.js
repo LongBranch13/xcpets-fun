@@ -22,6 +22,11 @@
   var practice = /practice/i.test(location.pathname || ''), df = flag('doom');
   if (!practice && df !== '0' && (df === '1' || DOOM_ENABLED)) add('js/doom-week.js');
 
+  /* Season 1 look, "Kekmas in Cold Storage" (block 979,058 for 4,032 blocks, about Dec 6 2026 to Jan 3 2027): fetched only around those dates;
+   * js/season-kekmas.js itself switches on only while the chain tip is inside the season's blocks. ?kekmas=1 previews it. */
+  var km0 = new Date(Date.UTC(2026, 11, 4)), km1 = new Date(Date.UTC(2027, 0, 8)), kf = flag('kekmas');
+  if (kf === '1' || (kf !== '0' && now >= km0 && now < km1)) add('js/season-kekmas.js');
+
   var kill = /[?&]sw=(0|off)(?:&|$)/.test(location.search);
   if (navigator.serviceWorker) {
     if (kill) {
