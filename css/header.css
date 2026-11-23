@@ -1,0 +1,48 @@
+/* front-v3 header (Nov 23 2026, display only): Places ▾ · Play · one wallet chip · ☰. Built by js/v2-header.js (html.hd3). */
+html.hd3 header.nav{gap:10px}
+html.hd3 header.nav nav{flex:1 1 auto;min-width:0;gap:8px}
+html.hd3 header.nav nav > a,html.hd3 header.nav nav > details{margin-left:0}
+html.hd3 .hd-right{display:flex;align-items:center;gap:6px;flex:0 0 auto;margin-left:auto}
+html.hd3 .hd-right #xc-music.hdr{position:static;margin:0}
+html.hd3 .hd-right .ip-tools{position:static;margin:0}
+.hd-wallet{font:700 13px/1 var(--comic,'Comic Neue',sans-serif);display:inline-flex;align-items:center;gap:4px;height:32px;padding:0 12px;border:2px solid #000;border-radius:999px;
+  box-shadow:2px 2px 0 #000;cursor:pointer;white-space:nowrap;max-width:46vw;overflow:hidden;text-overflow:ellipsis}
+.hd-wallet.hd-off{background:#ffd23f;color:#1a1200}
+.hd-wallet.hd-on{background:#16301f;color:#bff5d4;border-color:#3ddc84}
+.hd-wallet.hd-view{background:#1d1a33;color:#cfc6ff}
+.hd-wallet:hover{filter:brightness(1.1)}.hd-wallet:focus-visible{outline:2px solid #ffc93c;outline-offset:2px}
+.hd-menu{position:relative}
+.hd-menu>summary{list-style:none;cursor:pointer;width:34px;height:32px;display:flex;align-items:center;justify-content:center;font-size:18px;color:#e9fbe9;
+  background:#1d1530;border:2px solid #000;border-radius:4px;box-shadow:2px 2px 0 #000;box-sizing:border-box}
+.hd-menu>summary::-webkit-details-marker{display:none}
+.hd-menu[open]>summary{background:#2b2148}
+.hd-panel{position:absolute;right:0;top:40px;z-index:9002;min-width:230px;max-height:calc(100vh - 70px);overflow:auto;padding:8px;background:#14101f;border:3px solid #000;
+  border-radius:8px;box-shadow:4px 4px 0 #000;display:flex;flex-direction:column;gap:6px}
+.hd-grp{display:flex;flex-direction:column;gap:2px;padding-bottom:6px;border-bottom:1px dashed rgba(255,255,255,.12)}
+.hd-grp:last-child{border-bottom:0;padding-bottom:0}
+.hd-grp:empty{display:none}
+.hd-gt{font-family:var(--pixel,'Press Start 2P',monospace);font-size:8px;color:#ffd166;padding:4px 6px 2px;letter-spacing:.5px}
+html.hd3 .hd-panel a.hd-item,html.hd3 .hd-panel button.hd-item{display:flex!important;align-items:center;gap:6px;margin:0!important;padding:7px 8px;border-radius:4px;color:#e9fbe9;
+  text-decoration:none;font-size:14px;font-weight:700;background:none;border:0;box-shadow:none;width:auto;height:auto;min-height:0;text-align:left;white-space:nowrap}
+html.hd3 .hd-panel a.hd-item:hover,html.hd3 .hd-panel button.hd-item:hover{background:#231a38;color:#3ddc84}
+html.hd3 .hd-panel a.navrank::before{content:none!important}
+html.hd3 .hd-panel a.navrank{font-size:14px!important}
+html.hd3 .hd-panel .xc-sm{border:1px solid rgba(255,255,255,.35)!important;border-radius:999px!important;font-size:12px!important;align-self:flex-start}
+@media (max-width:600px){
+  html.hd3 body header.nav{flex-wrap:nowrap;gap:6px}
+  html.hd3 body header.nav .brand{font-size:0;gap:0;flex:0 0 auto}
+  html.hd3 body header.nav .brand img{width:30px;height:30px}
+  html.hd3 body header.nav nav{flex:0 0 auto;flex-wrap:nowrap;overflow:visible;gap:6px}
+  html.hd3 body .hd-right #xc-music{display:none} /* sound lives in the ☰ menu on phones */
+  html.hd3 body header.nav nav details.navplaces>summary{font-size:0;padding:6px 8px}
+  html.hd3 body header.nav nav details.navplaces>summary::after{font-size:12px}
+  html.hd3 body header.nav nav details.navplaces>summary::before{content:"🗺️";font-size:16px}
+  html.hd3 body .hd-right{gap:4px}
+  html.hd3 body .hd-right .ip-tools > :not(#ipRcpt){display:none} /* the glossary 📖 lives in the ☰ menu's Learn pages on phones; receipts stay */
+  html.hd3 body .hd-wallet{height:36px;padding:0 10px;font-size:12px;max-width:36vw}
+  html.hd3 body .hd-menu>summary{width:38px;height:36px}
+  html.hd3 body.cc-has #ccBar #ccBtn{display:none}
+  html.hd3 body #ccBar:has(.cc-t:empty){display:none}
+}
+html.hd3 .hd-panel button.hd-item.hd-sound{display:none!important}
+@media (max-width:600px){html.hd3 body .hd-panel button.hd-item.hd-sound{display:flex!important}}

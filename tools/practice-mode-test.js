@@ -32,8 +32,10 @@ PAGES.forEach(f => {
 });
 ok(/data-split="fight"/.test(rd('practice-fight.html')) && /data-split="breed"/.test(rd('practice-breed.html')) && /data-split="rare"/.test(rd('practice-rare.html')), 'game places keep their real layouts');
 const home = rd('index.html');
-ok(/id="pxNew"/.test(home) && />New here\?<\/a>/.test(home) && /href="tutorial\.html"/.test(home), 'home: one New here? button opens the tutorial');
-ok(!/Try a free practice pet|id="pxTry"|practice\.html/.test(home), 'home has no separate practice button');
+/* front-v3 (Jake Nov 23 2026, "New front page ... one big Hatch your first pet button"): the hero has ONE start button. For a new visitor it is
+ * the free practice egg (the welcome card's old big button); the tutorial stays one tap away in the header's Learn menu. */
+ok((home.match(/class="btn fv3-go"/g) || []).length === 1 && /id="heroHatch" href="practice\.html#hatchPanel"/.test(home) && /href="tutorial\.html"/.test(home), 'home: one big Hatch your first pet button; the tutorial is in Learn');
+ok(!/Try a free practice pet|id="pxTry"|id="pxNew"/.test(home), 'home has no second practice or New here? button');
 ok(home.indexOf('xcpets-practice') < 0 && home.indexOf('XcpPractice') < 0, 'home does not read the practice ledger');
 ok(/Keep a practice pet/.test(rd('js/v2-tutorial.js')) && /practice\.html\?keep=1/.test(rd('js/v2-tutorial.js')), 'tutorial final step keeps one practice pet');
 ok(/connect=1/.test(rd('js/v2-wallet.js')) && /data-need-wallet/.test(rd('js/v2-wallet.js')), 'a real hatch from practice connects the wallet first');
