@@ -21,4 +21,11 @@ ok(/html\.viewonly \.dressbtn/.test(src), 'buttons hidden in view-only mode');
 ok(/IntersectionObserver/.test(src) && !/\.pets\.forEach|w\.pets\.filter/.test(src), 'cards are filled only when on screen, no pass over every pet in the world');
 ok(/'pets', 'mpsBox'/.test(src), 'grid and the phone one-at-a-time card both get the button');
 try { new Function(src); ok(true, 'js/v2-dress.js parses'); } catch (e) { ok(false, 'js/v2-dress.js parses: ' + e.message); }
+const rr = rd('js/v2-rr-doors.js'), tok2 = md5(rr).slice(0, 10);
+['templates/game.html', 'rare-room.html', 'practice-rare.html'].forEach(f => ok(rd(f).indexOf('js/v2-rr-doors.js?v=' + tok2) > rd(f).indexOf('js/v2-dress.js'), f + ' loads js/v2-rr-doors.js?v=' + tok2 + ' after the drawer'));
+ok(/data-split'\) === 'rare'/.test(rr), 'the doors run only on the Rare Room page');
+ok(/'spin'/.test(rr) && /'closet'/.test(rr) && /'flex'/.test(rr) && /#lookStation/.test(rr) && /#pepeWheel/.test(rr), 'three doors: Spin = Pepe Wheel, Closet, Flex = Flex Forge');
+ok(/i \+ 400/.test(rr) && /setTimeout\(step, 0\)/.test(rr), 'Best upgrades is worked out 400 pets per slice');
+ok(!/pet:[a-z]/.test(rr) && !/ops\.push/.test(rr), 'the doors send nothing: every wear goes through the drawer');
+try { new Function(rr); ok(true, 'js/v2-rr-doors.js parses'); } catch (e) { ok(false, 'js/v2-rr-doors.js parses: ' + e.message); }
 console.log(pass + ' passed, ' + fail + ' failed'); process.exit(fail ? 1 : 0);

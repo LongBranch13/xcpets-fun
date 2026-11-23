@@ -61,8 +61,8 @@
 
   /* ---- the drawer */
   var DR = { pid: null, tryOn: {}, exp: null, undo: null, back: null };
-  function open(pid) { if (!ready()) return; var w = UI().world(), p = w && w.byId[pid]; if (!p || p.dead || p.released || p.owner !== UI().ME) { UI().toast('Only your own living pets can be dressed here.'); return; }
-    if (DR.pid !== +pid) { DR.tryOn = {}; DR.exp = null; DR.undo = null; } DR.pid = +pid; DR.back = d.activeElement; draw(true); }
+  function open(pid, opt) { if (!ready()) return; var w = UI().world(), p = w && w.byId[pid]; if (!p || p.dead || p.released || p.owner !== UI().ME) { UI().toast('Only your own living pets can be dressed here.'); return; }
+    if (DR.pid !== +pid) { DR.tryOn = {}; DR.exp = null; DR.undo = null; } DR.pid = +pid; if (opt && opt.slot) DR.exp = opt.slot; DR.back = d.activeElement; draw(true); }
   function close() { var m = $('dzModal'); if (m) m.remove(); d.documentElement.classList.remove('dz-open'); DR.pid = null; DR.tryOn = {}; DR.exp = null; var b = DR.back; DR.back = null; if (b && b.focus && d.contains(b)) try { b.focus({ preventScroll: true }); } catch (e) { } }
   function row(w, p, sl, worn, pl) {
     var on = slotsOf(p).indexOf(sl) >= 0, nm = esc(slotName(sl));
@@ -146,12 +146,13 @@
       slotsOf(p).forEach(function (sl) { var arr = ix.free[sl]; if (!arr || !arr.length) return; worn = worn || wornBySlot(w, p); var cur = worn[sl], floor = cur ? dmg(cur.item) : 0;
         for (var j = 0; j < arr.length; j++) { var x = arr[j]; if (x.d <= floor) break; if (used[x.g.gid] || (cur && x.g.item === cur.item) || !can(w, ix, p, x.g.item)) continue; used[x.g.gid] = 1; ops.push({ kind: 'equip', owner: U.ME, petId: p.id, slot: sl, gid: x.g.gid, block_index: St.tip }); break; } }); });
     return ops; }
+  function dressAll() { if (!ready() || blocked()) return; var U = UI(), w = U.world(), ops = allOps(); if (!ops.length) return U.toast('Every pet already wears the best spare gear you own.');
+    var gain = 0, pets = {}; ops.forEach(function (o) { var g = w.items[o.gid], cur = (wornBySlot(w, w.byId[o.petId]) || {})[o.slot]; gain += (g ? dmg(g.item) : 0) - (cur ? dmg(cur.item) : 0); pets[o.petId] = 1; });
+    var St = U.S(); ops.forEach(function (o) { St.ops.push(o); }); U.save(); IX = null; U.render();
+    U.toast('\u26a1 ' + Object.keys(pets).length + ' pets dressed: +' + gain + ' gear power (' + ops.length + ' pieces, free)'); }
   function hookMore() { var sec = $('mpcCare'); if (!sec || $('dzAllBtn') || !ready() || viewOnly()) return;
     var b = d.createElement('button'); b.type = 'button'; b.className = 'q'; b.id = 'dzAllBtn'; b.textContent = '👕 Dress every pet in its best gear'; b.title = 'Puts the strongest spare piece you own into every open slot it beats, on all your pets. Free, no burn.';
-    b.onclick = function () { if (blocked()) return; var U = UI(), w = U.world(), ops = allOps(); if (!ops.length) return U.toast('Every pet already wears the best spare gear you own.');
-      var gain = 0, pets = {}; ops.forEach(function (o) { var g = w.items[o.gid], cur = (wornBySlot(w, w.byId[o.petId]) || {})[o.slot]; gain += (g ? dmg(g.item) : 0) - (cur ? dmg(cur.item) : 0); pets[o.petId] = 1; });
-      var St = U.S(); ops.forEach(function (o) { St.ops.push(o); }); U.save(); IX = null; U.render();
-      U.toast('⚡ ' + Object.keys(pets).length + ' pets dressed: +' + gain + ' gear power (' + ops.length + ' pieces, free)'); };
+    b.onclick = dressAll;
     sec.insertBefore(b, sec.firstChild); }
 
   var CSS = '.dressbtn{display:block;width:100%;margin-top:6px;min-height:36px;font-family:"Press Start 2P",monospace;font-size:9px}.dressbtn.up{background:#ffd166;color:#2a1530;border-color:#000;box-shadow:2px 2px 0 #000}.dressbtn[hidden]{display:none}' +
@@ -177,5 +178,5 @@
   /* a fresh world (new block, fast-load page batch) or ops from another tab: rebuild the index, refresh the open drawer and the visible buttons */
   function tick() { try { boot(); var w = ready() && UI().world(); if (w && (!IX || IX.w !== w || IX.o !== opsN() || IX.mk !== wornMark(w.itemList || []))) { index(w); if (DR.pid != null && $('dzModal')) draw(); soon(); } } catch (e) { } }
   if (typeof window !== 'undefined') { boot(); setInterval(tick, 1500); }
-  window.V2Dress = { open: open, close: close, plan: function (w, p) { return plan(w, p); }, decorate: decorate, _reset: function () { IX = null; } };
+  window.V2Dress = { open: open, close: close, dressAll: dressAll, index: function (w) { return index(w); }, ready: ready, label: label, stars: stars, slotName: slotName, slotsOf: slotsOf, dmg: dmg, iconHtml: iconHtml, plan: function (w, p) { return plan(w, p); }, decorate: decorate, _reset: function () { IX = null; } };
 })();
