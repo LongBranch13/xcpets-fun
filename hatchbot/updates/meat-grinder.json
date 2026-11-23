@@ -1,9 +1,9 @@
 {
-  "_note": "Meat Grinder announcement (owner approved announcing it, Nov 23 2026). {OPEN} is replaced with the opening time before it is posted: Actions > hatchbot > Run workflow > update: meat-grinder.",
+  "_note": "Meat Grinder announcement (owner approved announcing it, Nov 23 2026). Opens at block 977,220. Post: Actions > hatchbot > Run workflow > update: meat-grinder.",
   "posts": [
     {
-      "art": { "kind": "grind", "id": 69 },
-      "text": "🥩 THE MEAT GRINDER IS OPEN {OPEN} 🥩\n\nGot pets you were going to discard anyway? Don't toss them. GRIND THEM. 🐸🔪\n\n🎰 69 XCPETS per grind. Drop your discarded pets in the hopper and crank.\n🍖 Meat per pet: Common 1, Uncommon 2, Rare 5, Legendary 20.\n🎡 Every 250 meat = a free Pepe Wheel spin.\n🌭 Every 1,000 meat = a Sausage Egg that never hatches Common.\n✨ Every grind has a small shot at a GOLDEN SAUSAGE: a sure Legendary.\n\n🚫 Gods, Mythics, Wizards and tokenized pets are too powerful for the hopper.\n\nFind it in My Pets > More > Care. Feed the machine. xcpets.fun"
+      "art": { "kind": "grind", "id": 69, "top": "GRIND TIME", "bottom": "GOLDEN SAUSAGE!" },
+      "text": "🥩 THE MEAT GRINDER IS COMING 🥩 SPLORCH!\n\nOpens at block 977,220 (about 11 AM Central today, Mon Nov 23).\n\nPets rotting in your Discard pile? Don't let them go to waste. GRIND THEM. 🐸🔪\n\n🎰 ONE burn of 69 XCPETS grinds up to 2,000 pets from your Discard pile.\n🍖 Meat per pet: Common 1, Uncommon 2, Rare 5, Legendary 20.\n🎡 Every 250 meat = a FREE Pepe Wheel spin.\n🌭 Every 1,000 meat = a Sausage Egg that is NEVER Common (60% Uncommon, 32% Rare, 8% Legendary).\n✨ Every grind rolls for a GOLDEN SAUSAGE: a sure Legendary! 1% per 200 pets ground, up to 10%.\n\n🚫 Too powerful for the hopper: Gods, Mythics, Bitcoin Wizards, tokenized pets, one of a kinds, and pets in the shop, on a quest or in Cold Storage.\n⚠️ Ground pets are gone for good.\n\nFind it in My Pets > More > Care > Meat Grinder. Feed the machine. xcpets.fun"
     }
   ]
 }
