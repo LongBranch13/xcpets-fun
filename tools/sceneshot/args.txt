@@ -1,1 +1,1 @@
---pages tokens.html,ranking.html
+--pages tokens.html --wallet bc1ps9av86ymmlzy9zj3a8pn6g94pz4j5e0kagv3td3wutaagfjvekjs26m3s4

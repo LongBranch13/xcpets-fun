@@ -338,7 +338,9 @@
     var w0 = M.world();
     if (w0 && w0._view && !w0._ranked && !ranking.gaveUp && window.V2Split && V2Split.loadBoard) {
       var st0 = $('status'); if (st0) st0.textContent = 'Reading every living pet for the boards…';
-      V2Split.loadBoard(function (i, n) { var s = $('status'); if (s) s.textContent = 'Reading every living pet… ' + i + ' files, ' + fmt(n) + ' pets'; }).then(function () { var nw = M.world(); if (!nw || !nw._ranked) ranking.gaveUp = 1; ranking(); }, function () { ranking.gaveUp = 1; ranking(); });
+      var rkGo = 0; function rkOnce(ok) { if (rkGo) return; rkGo = 1; var nw = M.world(); if (!ok || !nw || !nw._ranked) ranking.gaveUp = 1; ranking(); } /* board-stall-1123: a stalled board read falls back after 45 s instead of 'Reading…' forever */
+      V2Split.loadBoard(function (i, n) { var s = $('status'); if (s) s.textContent = 'Reading every living pet… ' + i + ' files, ' + fmt(n) + ' pets'; }).then(function () { rkOnce(true); }, function () { rkOnce(false); });
+      setTimeout(function () { rkOnce(false); }, 45000);
       return;
     }
     /* rankings-species-1107: the boards stay on the same replayed world as Play (V2Mock.world). capture() re-reads it when the fresh world lands
