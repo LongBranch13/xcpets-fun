@@ -86,11 +86,13 @@
     var b = $('tgOrder'); b.onclick = function () { st.newest = !st.newest; b.setAttribute('aria-pressed', String(st.newest)); b.textContent = st.newest ? '⬇️ Newest first' : '⬆️ Oldest first'; render(); };
   }
   load().then(function (feed) {
-    function go() { st.list = build(feed); wire(); render(); window.V2TokenGallery = { list: function () { return st.list; } }; }
+    var went = 0; /* board-stall-1123: go() runs once, from the board read or from the 45 s safety below, and a failure shows on screen instead of a frozen 'Reading…' */
+    function go() { if (went) return; went = 1; try { st.list = build(feed); wire(); render(); window.V2TokenGallery = { list: function () { return st.list; } }; } catch (e) { var s0 = $('status'); if (s0) s0.textContent = 'Proof Parade could not load. Refresh the page to try again.'; if (window.console) console.warn('[tokens]', e); } }
     var w = null; try { w = M && M.world(); } catch (e) {}
     if (w && w._view && !w._ranked && window.V2Split && V2Split.loadBoard) {
       var s = $('status'); if (s) s.textContent = 'Reading every living pet…';
       V2Split.loadBoard(function (i, n) { if (s) s.textContent = 'Reading every living pet… ' + i + ' files, ' + fmt(n) + ' pets'; }).then(go, go);
+      setTimeout(go, 45000);
       return;
     }
     go();
