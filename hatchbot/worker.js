@@ -11,8 +11,8 @@ import { autoTick, preview as autoPreview } from './auto.js';
 const TOKEN_IDS = TOKENS.map(m => m.id); /* every pet with a 512x512 picture (hatchbot/build-memes.js) */
 
 var SITE = "https://xcpets.fun";
-var HELP = "\u{1F438} HatchBot commands\n/pet \xB7 a random pet (/pet 123, /pet <name>, /pet <species>)\n/burns \xB7 community burns and community pet progress\n/whosthat \xB7 guess the pet from its silhouette (reply to the photo)\n/breed \xB7 a real breed from the chain (/breed <pet>)\n/battle \xB7 a real arena battle (/battle <pet>)\n/meme \xB7 a random XCPETS meme\n/chainday \xB7 the current 144-block game day and blocks left\n/season \xB7 the current XCPETS season and its countdown\n/bug <what happened> \xB7 report a bug to the XCPETS team (pet numbers help!)\n/help \xB7 this list\n\nPlay at xcpets.fun";
-var BOT_COMMANDS = [["pet", "Pet card: /pet, /pet 123, /pet <name>, /pet <species>"], ["burns", "Community burns and community pet progress"], ["whosthat", "Guess the pet from its silhouette"], ["breed", "A real breed from the chain (/breed <pet>)"], ["battle", "A real arena battle (/battle <pet>)"], ["meme", "A random XCPETS meme"], ["chainday", "Current 144-block game day and blocks left"], ["bug", "Report a bug to the XCPETS team"], ["help", "List HatchBot commands"]];
+var HELP = "\u{1F438} HatchBot commands\n/pet \xB7 a random pet (/pet 123, /pet <name>, /pet <species>)\n/burns \xB7 community burns and community pet progress\n/whosthat \xB7 guess the pet from its silhouette (reply to the photo)\n/breed \xB7 a real breed from the chain (/breed <pet>)\n/battle \xB7 a real arena battle (/battle <pet>)\n/meme \xB7 a random XCPETS meme\n/chainday \xB7 the current 144-block game day and blocks left\n/season \xB7 the current XCPETS season and its countdown\n/bug <what happened> \xB7 report a bug to the XCPETS team (pet numbers help!)\n/play \xB7 open the XCPETS app right here in Telegram (your pets + live feed)\n/help \xB7 this list\n\nPlay at xcpets.fun";
+var BOT_COMMANDS = [["play", "Open the XCPETS app inside Telegram"], ["pet", "Pet card: /pet, /pet 123, /pet <name>, /pet <species>"], ["burns", "Community burns and community pet progress"], ["whosthat", "Guess the pet from its silhouette"], ["breed", "A real breed from the chain (/breed <pet>)"], ["battle", "A real arena battle (/battle <pet>)"], ["meme", "A random XCPETS meme"], ["chainday", "Current 144-block game day and blocks left"], ["bug", "Report a bug to the XCPETS team"], ["help", "List HatchBot commands"]];
 var RATE_ON = !!(AUTO.commands && AUTO.commands.rate === true);
 if (RATE_ON) { HELP = HELP.replace("\n/meme ", "\n/rate \xB7 HatchBot rates a pet (/rate 42, /rate <name>)\n/meme "); BOT_COMMANDS.splice(5, 0, ["rate", "HatchBot rates a pet (/rate <pet>)"]); }
 /* /rate, ported from the old VPS HatchBot (commands.js). Sabo #1765 stays alive through view(). */
@@ -294,19 +294,50 @@ async function sendCard(env, chat, replyTo, text, ids) {
   return tg(env, "sendMessage", Object.assign({}, base, { text: capText(text), disable_web_page_preview: true }));
 }
 
+// Risen zombies (Nov 23 2026). pets.json has no zombie data and is up to ~25 min old, so a pet raised from the grave still read
+// "in the Pet Cemetery" with its old owner. The node's published world lists every risen zombie (view/zombies.json, rebuilt every
+// 6 blocks): when the pet is there, its card shows the raiser, the zombie power, its stage and the gear it wears now.
+var ZOMBIES = null;
+async function loadZombies() {
+  if (ZOMBIES && Date.now() - ZOMBIES.at < 3e5) return ZOMBIES;
+  const base = "https://node.xcpets.fun";
+  const latest = await (await fetch(base + "/xp/v1/world/latest.json", { cf: { cacheTtl: 60 } })).json();
+  const dir = String(latest.manifest || "").replace(/[^/]*$/, "");
+  const r = await fetch(base + dir + "view/zombies.json", { cf: { cacheTtl: 120, cacheEverything: true } });
+  if (!r.ok) throw new Error("zombies HTTP " + r.status);
+  const j = await r.json(), byId = new Map();
+  for (const z of j.pets || []) if (z && z.zombie) byId.set(Number(z.id), z);
+  ZOMBIES = { at: Date.now(), tip: j.tip, byId };
+  return ZOMBIES;
+}
+async function withZombie(p) {
+  let Z = null;
+  try { Z = await loadZombies(); } catch (e) { console.log("zombies load failed", e && e.message); return p; }
+  const z = Z.byId.get(p.id);
+  if (!z || !z.zombie || z.zombie.end) return p;
+  const st = z.stats || {}, stats = {};
+  STAT_NAMES.forEach(([k]) => { stats[k] = Math.round(st[k] || 0); });
+  p.zombie = { by: z.zombie.by || z.owner, at: z.zombie.raisedAt, gen: z.zombie.gen || 1, mythic: !!z.zombie.mythic, feral: !!z.feral };
+  p.dead = false; p.released = false; p.stats = stats; p.owner = z.owner || p.owner;
+  if (z.stageName) p.stage = z.stageName;
+  if (Array.isArray(z.worn)) p.gear = z.worn.filter(Boolean).map((g) => g.label || g.item);
+  return p;
+}
+
 // ---------- ported commands (old HatchBot, Oct-Nov 2026) ----------
 var STAT_NAMES = [["vigor", "Vigor"], ["spark", "Spark"], ["grit", "Grit"], ["zoom", "Zoom"], ["luck", "Luck"]];
 function petCard(S, p, lead) {
   const L = [];
   if (lead) L.push(lead);
-  L.push("#" + p.id + " " + p.name + (p.dead ? " (in the Pet Cemetery)" : p.released ? " (released)" : ""));
+  L.push("#" + p.id + " " + p.name + (p.zombie ? " \u{1F9DF} RISEN " + (p.zombie.mythic ? "MYTHIC " : "") + "ZOMBIE" + (p.zombie.feral ? " (FERAL)" : "") : p.dead ? " (in the Pet Cemetery)" : p.released ? " (released)" : ""));
+  if (p.zombie) L.push("Raised from the grave by " + short(p.zombie.by) + (p.zombie.at ? " at block " + fmt0(p.zombie.at) : "") + (p.zombie.gen > 1 ? " (rise #" + p.zombie.gen + ")" : ""));
   L.push("Species: " + p.speciesLabel);
   L.push("Stage: " + p.stage + " \xB7 Rarity: " + p.tier);
-  L.push(STAT_NAMES.map(([k, n]) => n + " " + (p.stats[k] || 0)).join(" \xB7 ") + " (power " + STAT_NAMES.reduce((a, [k]) => a + (p.stats[k] || 0), 0) + ")");
+  L.push(STAT_NAMES.map(([k, n]) => n + " " + (p.stats[k] || 0)).join(" \xB7 ") + " (" + (p.zombie ? "zombie power " : "power ") + STAT_NAMES.reduce((a, [k]) => a + (p.stats[k] || 0), 0) + ")");
   L.push("Gear (" + p.gear.length + "): " + (p.gear.length ? p.gear.join(", ") : "none worn"));
   if (p.parents && p.parents.length) L.push("Parents: " + p.parents.map((id) => "#" + id + " " + ((S.byId.get(id) || [])[1] || "?")).join(" \xD7 "));
   if (p.wins || p.losses) L.push("Arena record: " + p.wins + "-" + p.losses);
-  L.push("Owner: " + short(p.owner));
+  L.push((p.zombie ? "Zombie owner: " : "Owner: ") + short(p.owner));
   L.push(link(p.id));
   return capText(L.join("\n"));
 }
@@ -330,6 +361,7 @@ async function cmdPet(env, S, args) {
     if (pool.length > 1) lead = fmt0(pool.length) + " pets are named " + row[1] + ". Here's one (use /pet <number> for a specific one):";
   } else return { text: "I didn't get that. Try /pet, /pet 123, /pet Pori or /pet dodo. /pet help lists them all." };
   const p = view(S, row);
+  await withZombie(p);
   return { text: petCard(S, p, lead), ids: [p.id] };
 }
 async function cmdBreed(env, S, args) {
@@ -428,21 +460,39 @@ async function checkGuess(env, msg) {
   return true;
 }
 
+/* XCPETS mini app (tg/) inside Telegram. Telegram only allows a web_app button in a private chat, so in the group /play
+ * sends a link that opens HatchBot's private chat (t.me/<bot>?start=app), where /start app answers with the real button.
+ * The private chat also has the "Play" menu button next to the text box (setChatMenuButton in .github/workflows/hatchbot-worker.yml).
+ * View only: the app never signs. Signing opens xcpets.fun in the player's own browser or wallet app. */
+var APP_URL = SITE + "/tg/";
+async function playButton(env, msg, extra) {
+  const chat = msg.chat.id, lead = "\u{1F3AE} XCPETS, right inside Telegram: your pets, who needs food, the live feed and quick links to play. View only, nothing is signed in Telegram.";
+  if (msg.chat.type === "private") {
+    return tg(env, "sendMessage", { chat_id: chat, text: capText(lead + (extra ? "\n\n" + extra : ""), 4e3), disable_web_page_preview: true,
+      reply_markup: { inline_keyboard: [[{ text: "\u{1F3AE} Open XCPETS", web_app: { url: APP_URL } }]] } });
+  }
+  const me = await botUsername(env), url = me ? "https://t.me/" + me + "?start=app" : APP_URL;
+  return tg(env, "sendMessage", { chat_id: chat, text: lead + "\nTap below, then press Start in my chat.", reply_to_message_id: msg.message_id, disable_web_page_preview: true,
+    reply_markup: { inline_keyboard: [[{ text: "\u{1F3AE} Open XCPETS", url }]] } });
+}
+
 async function command(env, msg) {
   const chat = msg.chat.id, text = String(msg.text || "").trim();
   const m = /^\/([a-z]+)(?:@([A-Za-z0-9_]+))?(?:\s+([\s\S]*))?$/i.exec(text);
   if (!m) return null;
   if (m[2]) { const me = await botUsername(env); if (me && m[2].toLowerCase() !== me.toLowerCase()) return null; }
   const cmd = "/" + m[1].toLowerCase(), args = (m[3] || "").trim().slice(0, 60), name = cmd.slice(1);
-  const KNOWN = ["/help", "/start", "/chatid", "/chainday", "/season", "/meme", "/pet", "/burns", "/whosthat", "/breed", "/battle", "/bug"].concat(RATE_ON ? ["/rate"] : []);
+  const KNOWN = ["/help", "/start", "/play", "/app", "/chatid", "/chainday", "/season", "/meme", "/pet", "/burns", "/whosthat", "/breed", "/battle", "/bug"].concat(RATE_ON ? ["/rate"] : []);
   if (!KNOWN.includes(cmd)) return null;
   const now = Date.now(), age = msg.date ? Math.floor(now / 1e3) - msg.date : 0, late = age > LIMITS.lateS;
-  if (late && (age > LIMITS.lateMaxS || ["/meme", "/chainday", "/season", "/whosthat"].includes(cmd))) return null;
+  if (late && (age > LIMITS.lateMaxS || ["/meme", "/chainday", "/season", "/whosthat", "/play", "/app"].includes(cmd))) return null;
   const lim = await rateCheck(env, msg.from && msg.from.id || chat, chat, name, now);
   if (lim) { console.log("rate limited", lim, cmd); return null; }
   await rateHit(env, msg.from && msg.from.id || chat, chat, name, now);
   const pre = late ? SORRY + "\n" : "";
   const reply = (t) => tg(env, "sendMessage", { chat_id: chat, text: capText(pre + t, 4e3), reply_to_message_id: msg.message_id, disable_web_page_preview: true });
+  if (cmd === "/play" || cmd === "/app" || (cmd === "/start" && (msg.chat.type === "private" || /^app$/i.test(args))))
+    return playButton(env, msg, cmd === "/start" ? HELP : "");
   if (cmd === "/help" || cmd === "/start")
     return reply(HELP);
   if (cmd === "/chatid")
