@@ -1,4 +1,4 @@
-/* XCPETS watch mode (watch.html): a shareable, read-only live view for spectators. Owner Nov 1 2026 7:42 PM CT [pt2615u] "Do spectators link".
+/* XCPETS watch mode (live.html 📺 Big screen; watch.html redirects there): a shareable, read-only live view for spectators. Owner Nov 1 2026 7:42 PM CT [pt2615u] "Do spectators link".
  * DISPLAY ONLY. No wallet, no burns, no sign sheet. It reads the replayed world after V2Mock.boot and the same event list as the Live Feed
  * (V2Live.events in js/v2-live.js), and never touches rules, tags, costs or the replay.
  *  - the stage: the newest animated events play one after another on one inline 128x80 pixel canvas (V2LifeAnim / V2CemAnim .paint, whole-pixel
@@ -97,8 +97,8 @@
     el.innerHTML = '<span class="lv-dot" aria-hidden="true"></span> Block <b>' + fmt(W.tip) + '</b>' + (timeTxt(W.tip) ? ' (<span class="wt-time" data-b="' + W.tip + '">' + esc(timeTxt(W.tip)) + '</span>)' : '') + ' · <b>' + fmt(live) + '</b> pets alive' + (beh ? ' · catching up ' + fmt(beh) + ' block' + (beh === 1 ? '' : 's') : '') + ' · new blocks checked every minute'; needTime(W.tip); }
   function refresh() { try { var ch = build(); if (ch) { ticker(); petsPanel(); if (!cur || (Q.length && Q[0].wtNew && cur !== Q[0])) loadAnims().then(function () { if (Q.length) show(Q[0]); else idle(); kick(); }); } status(); } catch (e) { if (root.console) console.warn('[watch] refresh', e); } }
   /* ---- the share bar ---- */
-  function shareUrl() { return 'https://xcpets.fun/watch.html' + (ADDR ? '?addr=' + encodeURIComponent(ADDR) : ''); }
-  function setAddr(a) { ADDR = a; try { history.replaceState(null, '', location.pathname + (a ? '?addr=' + encodeURIComponent(a) : '')); } catch (e) {}
+  function shareUrl() { return 'https://xcpets.fun/live.html?view=big' + (ADDR ? '&addr=' + encodeURIComponent(ADDR) : ''); } /* live-merge-1123: Watch is now Live's 📺 Big screen */
+  function setAddr(a) { ADDR = a; try { history.replaceState(null, '', location.pathname + '?view=big' + (a ? '&addr=' + encodeURIComponent(a) : '')); } catch (e) {}
     $('wtWho').textContent = a ? 'Watching ' + short(a) + '\u2019s pets' : 'Watching everyone'; $('wtAll').hidden = !a; $('wtLink').value = shareUrl();
     W = null; EV = []; Q = []; cur = null; seen = {}; firstBuild = true; refresh(); }
   function wire() { $('wtPause').onclick = function () { setPaused(!paused); }; $('wtNext').onclick = function () { next(1); kick(); }; $('wtPrev').onclick = function () { next(-1); kick(); };
