@@ -5,8 +5,10 @@
 (function () {
   'use strict';
   if (window.__dwLoaded) return; window.__dwLoaded = 1;
-  /* Tip on Nov 13 2026 was 975,631. 1,008 blocks is about seven days. Set ENABLED to false to turn the week off. */
-  var ENABLED = false, START = 975630, END = 976648;
+  /* Doom 2 (owner Nov 23 2026: "Id like to bring doom back", "On until I say stop"). Starts at 977,136 with no end block.
+   * The first week (975,630 to 976,648) froze phones and swapped the token art; both are fixed below.
+   * To stop it: set ENABLED to false here AND DOOM_ENABLED to false in js/v2-events.js, then bump v2-events.js ?v=. */
+  var ENABLED = true, START = 977136, END = 99999999;
   var SABO_ID = 1765;
   var me = document.currentScript, ver = (me && /[?&]v=([\w.-]+)/.exec(me.src) || [])[1] || '';
   var root = document.documentElement, on = false, cssEl = null, layer = null, countEl = null, shopObs = null, cemObs = null, btcQuote = null, supplyLeft = null;
@@ -80,8 +82,10 @@
     var M = window.V2Mock, V = window.V2Rules; if (!M || !M.state || !V || !V.readBurns) return null;
     var st = M.state() || {}, rows = st.rows; if (!rows) return null;
     var key = rows.length + ':' + (st.tip || 0); if (burnMemo && burnMemo.key === key) return burnMemo.set;
-    var set = {};
-    V.readBurns(rows).forEach(function (r) {
+    var set = {}, inWeek = [], i, b;
+    /* Decode only the rows inside the week. Decoding every burn of the game on each new block froze phones. */
+    for (i = 0; i < rows.length; i++) { b = rows[i] && rows[i].block_index; if (b >= START && b < END) inWeek.push(rows[i]); }
+    V.readBurns(inWeek).forEach(function (r) {
       if (!r || !r.source || r.block_index < START || r.block_index >= END) return;
       if (st.tip != null && r.block_index > st.tip) return;
       set[r.source] = r.block_index;
@@ -100,7 +104,7 @@
     var petShow = false, meShow = false, id = 0, owner = null;
     if (on && petPage) {
       id = +(new URLSearchParams(location.search).get('id') || 0);
-      try { var w = window.V2Mock && (V2Mock.peek ? V2Mock.peek() : V2Mock.world()); owner = w && w.byId && w.byId[id] && w.byId[id].owner; } catch (e) {}
+      try { var w = window.V2Mock && V2Mock.peek && V2Mock.peek(); owner = w && w.byId && w.byId[id] && w.byId[id].owner; } catch (e) {} /* peek only: a full world build here froze the page */
       /* The chip is a burn record, not a grave. Pet 1765 is never drawn into the cemetery overlay. */
       petShow = id !== SABO_ID && (preview || survived(owner));
     }
@@ -118,7 +122,6 @@
     [/(?:^|\/)img\/xcpets-cast\.gif(?:\?.*)?$/, function () { return 'img/doom/xcpets-cast.gif'; }],
     [/(?:^|\/)img\/xcpets-cast\.webp(?:\?.*)?$/, function () { return 'img/doom/xcpets-cast.webp'; }],
     [/(?:^|\/)img\/logo\.png(?:\?.*)?$/, function () { return 'img/doom/logo.png'; }],
-    [/(?:^|\/)img\/xcpets_token\.png(?:\?.*)?$/, function () { return 'img/doom/token.png'; }],
     [/(?:^|\/)img\/favicon\.png(?:\?.*)?$/, function () { return 'img/doom/favicon.png'; }]
   ];
   function destFor(url) { var i, m; for (i = 0; i < SWAPS.length; i++) { m = SWAPS[i][0].exec(url || ''); if (m) return SWAPS[i][1](m); } return null; }
