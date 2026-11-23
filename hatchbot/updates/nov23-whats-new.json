@@ -1,0 +1,21 @@
+{
+  "_note": "Draft update series for the XCPETS Telegram group (Nov 23 2026). Posted only when the owner says go: Actions > hatchbot > Run workflow > update: nov23-whats-new. Each post carries a pet picture drawn by hatchbot/art.js.",
+  "posts": [
+    {
+      "art": { "kind": "breed", "ids": [228, 247] },
+      "text": "📣 XCPETS UPDATE 1/4: Gooby's Motel got a matchmaker 💘\n\n🐸 Gooby now picks 3 rooms for you: the best shot at a rarer egg, a hybrid you don't own yet, and a purebred pair. Odds shown, one tap to check in.\n🥚 Every check-in now says who gets the egg and who becomes the carrier. No more guessing.\n🎯 New pet picker everywhere: pictures, power and win odds before you fight or breed.\n🏊 COMING ~2 DAYS: Pool Dip. Dunk a pet in Gooby's pool and its breed cooldown is cut in half (once per cooldown, from block 977,440).\n\nxcpets.fun"
+    },
+    {
+      "art": { "kind": "shine", "id": 17545, "halo": true },
+      "text": "📣 XCPETS UPDATE 2/4: no more oopsies 🛡️\n\n⚠️ Sacrifice safety check: before you feed pets to a zombie or an altar, the game names your Legendaries, Wizards, starred and just-fed pets and leaves them out unless you tick 'I'm sure'. Gods and Mythics can never be sacrificed.\n🔥 Fire Sale end warning now starts 6 blocks (about an hour) before it ends.\n👑 Road to Mythic explained in plain words: the normal road and the 21,000 short road side by side, and which of your pets is closest.\n📈 Pet Score now shows arrows and why it moved.\n\nxcpets.fun"
+    },
+    {
+      "art": { "kind": "lineup", "ids": [202394, 205411, 205413, 205415, 205412, 203397] },
+      "text": "📣 XCPETS UPDATE 3/4: the town got a glow-up ✨\n\n🏆 Rankings has a Rare finds tab (the Hall of Rare Finds lives there now).\n🪦 Cemetery finder: sort by species, rarity or Most powerful in one tap. The mini altar follows you while you offer.\n🪞 Flex Forge moved into the Rare Room mirror.\n🧹 Calmer My Pets: one slim toolbar, tools pop up when you select.\n⚡ Faster first burn: the chain check runs quietly in the background.\n👹 Raids fixed: bosses have 1/20 the HP, every feed, breed and hatch chips the boss, and everyone who hits a fallen boss gets a free spin.\n\nxcpets.fun"
+    },
+    {
+      "art": { "kind": "rise", "id": 74534 },
+      "text": "📣 XCPETS UPDATE 4/4: DOOM IS BACK 💀\n\nThe whole town goes dark again, and this time it stays until we say stop. Raise your dead, feed your zombies, guard your Mythics.\n\nCOMING SOON\n🍽️ Pantry: prepay meals and the game feeds the pets you pick at the start of each game day.\n🏊 Pool Dip: half the breed cooldown, from block 977,440.\n🌱 SEASON 1: first look around Nov 29, it starts around Dec 6 (block 979,058). Limited season eggs, points, tiers and rewards.\n\nSee you in the swamp 🐸 xcpets.fun"
+    }
+  ]
+}
