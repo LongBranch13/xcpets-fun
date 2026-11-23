@@ -36,6 +36,9 @@
       '.lp-card.on::after{content:"";position:absolute;inset:0;border-radius:6px;pointer-events:none;background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.18) 45%,rgba(159,232,255,.15) 55%,transparent 70%)}' +
       '.lp-modal [role=dialog]{border:4px solid #ffd166!important;border-radius:12px;background:linear-gradient(160deg,#2a1f4d,#120e22 70%)!important;color:#eee!important;box-shadow:0 0 0 3px #000,6px 6px 0 #000}.lp-modal p,.lp-modal .small{color:#eee!important}.lp-modal .muted{color:#b8b0d8!important}.lp-modal b{color:#ffd166}.lp-modal h3{color:#ffd166;text-align:center;border-bottom:2px dashed #6d5bd0;padding-bottom:6px}' +
       '@media (prefers-reduced-motion:no-preference){.lp-card.on::after{animation:lpSheen 3.5s linear infinite;background-size:250% 100%}@keyframes lpSheen{0%{background-position:100% 0}100%{background-position:-150% 0}}}';
+    s.textContent += '.lp-mirror{display:flex;gap:14px;align-items:center;margin:8px 0 10px;padding:10px;border:3px solid #ffd166;border-radius:10px;background:radial-gradient(circle at 25% 50%,#3a2a6a,#120e22 70%);box-shadow:3px 3px 0 #000}' +
+      '.lp-mirror .lp-big{width:160px;height:160px;flex:0 0 160px;image-rendering:pixelated;border:2px solid #000;border-radius:6px;background:#0b0816}.lp-steps{margin:0;padding-left:22px;font-size:16px;line-height:1.35}.lp-steps li{opacity:.7;margin:2px 0}.lp-steps li.now{opacity:1;color:#ffd166}' +
+      '@media (max-width:520px){.lp-mirror{flex-direction:column;text-align:left}.lp-mirror .lp-big{width:200px;height:200px;flex-basis:auto}}';
     document.head.appendChild(s); }
   /* realistic preview: the pet's own sprite with just this look drawn by js/v2-looks.js */
   /* one card per look code: several earned copies of the same look are counted together */
@@ -64,15 +67,21 @@
     var isOn = function (L) { return L.on.indexOf(p.id) >= 0; }, want = function (L) { return st.want[L.code] == null ? isOn(L) : st.want[L.code]; };
     var ops = owned.filter(function (L) { return want(L) !== isOn(L); }).map(function (L) { return { code: L.code, on: want(L) }; });
     var where = function (L) { return L.on.length ? 'on ' + L.on.map(function (i) { return '#' + i; }).join(', ') : 'not on a pet'; };
-    var h = '<div class="lp" id="' + (opt.id || '') + '"><h3>🃏 ' + esc(NAMES.panel) + ' · card #' + p.id + ' ' + esc(p.name || '') + '</h3>' + (gateText(w) ? '<p class="lp-note">' + esc(gateText(w)) + '</p>' : '') +
+    /* flex-mirror (owner Nov 23 2026: make forging clear and visual, display only): the Rare Room station shows a big mirror of the pet wearing
+     * every look you have switched on (before you send), and the three steps in plain words */
+    var mirror = opt.id === 'lpStation' && owned.length ? '<div class="lp-mirror"><canvas width="32" height="32" class="lp-big" aria-label="Card #' + p.id + ' with the looks you picked"></canvas><ol class="lp-steps">' +
+      '<li' + (ops.length ? '' : ' class="now"') + '><b>Pick a pet</b> above.</li><li' + (ops.length ? '' : ' class="now"') + '><b>Tap ' + esc(NAMES.wear) + '</b> or <b>' + esc(NAMES.off) + '</b> on a look below. The mirror shows it at once, nothing is sent yet.</li>' +
+      '<li' + (ops.length ? ' class="now"' : '') + '><b>' + esc(NAMES.send) + '</b>: ' + (ops.length ? ops.length + ' change' + (ops.length === 1 ? '' : 's') + ' ready, one burn per 6 changes.' : 'when it looks right.') + '</li></ol></div>' : '';
+    var h = '<div class="lp" id="' + (opt.id || '') + '"><h3>🃏 ' + esc(NAMES.panel) + ' · card #' + p.id + ' ' + esc(p.name || '') + '</h3>' + (gateText(w) ? '<p class="lp-note">' + esc(gateText(w)) + '</p>' : '') + mirror +
       (owned.length ? '<div class="lp-grid">' + owned.map(function (L, i) { var on = want(L), cap = L.kind === 'flame' ? (L.cap ? ' · up to ' + L.cap + ' pet' + (L.cap === 1 ? '' : 's') : '') : L.n > 1 ? ' · one pet each' : '';
         var hint = !on || isOn(L) ? '' : L.kind === 'flame' ? (L.cap && L.on.length >= L.cap ? (L.cap === 1 ? 'moves here from #' + L.on[0] : 'already on ' + L.cap + ' pets; take it off one first') : '') : (L.on.length >= L.n ? 'moves here from #' + L.on[0] : '');
         return '<div class="lp-card' + (on ? ' on' : '') + (on !== isOn(L) ? ' chg' : '') + '"><canvas width="32" height="32" data-i="' + i + '"></canvas><b>' + esc(L.name) + '</b><small>' + KIND[L.kind] + copies(L) + cap + '</small><small>Now ' + esc(where(L)) + '</small>' +
           (hint ? '<small style="color:#7CFF6B">' + esc(hint) + '</small>' : '') + '<button type="button" class="lp-tg" data-code="' + L.code + '" aria-pressed="' + on + '">' + (on ? NAMES.off : NAMES.wear) + '</button></div>'; }).join('') + '</div>'
         : '<p class="lp-note">Your closet is empty. Burn for flame looks, go questing, or earn looks with your pets to decorate this card.</p>') +
-      '<div class="lp-bar"><button type="button" class="btn" data-send' + (ops.length && V.lookPickOn(tip(w) + 1) ? '' : ' disabled') + '>Send ' + ops.length + ' card change' + (ops.length === 1 ? '' : 's') + (ops.length ? ' (' + V.lookPlans(p.id, ops).length + ' burn' + (V.lookPlans(p.id, ops).length === 1 ? '' : 's') + ')' : '') + '</button>' +
+      '<div class="lp-bar"><button type="button" class="btn" data-send' + (ops.length && V.lookPickOn(tip(w) + 1) ? '' : ' disabled') + '>' + (opt.id === 'lpStation' ? '✨ ' + esc(NAMES.send) + ': ' : 'Send ') + ops.length + ' card change' + (ops.length === 1 ? '' : 's') + (ops.length ? ' (' + V.lookPlans(p.id, ops).length + ' burn' + (V.lookPlans(p.id, ops).length === 1 ? '' : 's') + ')' : '') + '</button>' +
       (ops.length ? '<button type="button" class="q" data-reset>' + NAMES.undo + '</button>' : '') + '<span class="small muted">One look per spot on each pet (head, back, skin, foil, aura): forging a new one on takes off the old one in that spot.</span></div></div>';
     el.innerHTML = h;
+    var big = el.querySelector('canvas.lp-big'); if (big) { try { var R = window.V2Render, fr = R.petFrames(p, w, { looks: owned.filter(want).map(lookFx), noHunger: true }); R.paint(big, fr[0]); } catch (e) { } }
     el.querySelectorAll('canvas[data-i]').forEach(function (c) { preview(c, w, p, lookFx(owned[+c.dataset.i])); });
     el.querySelectorAll('.lp-tg').forEach(function (b) { b.onclick = function () { var L = owned.filter(function (x) { return x.code === b.dataset.code; })[0]; st.want[L.code] = !want(L); panel(el, w, p, ME, opt); }; });
     var r = el.querySelector('[data-reset]'); if (r) r.onclick = function () { st.want = {}; panel(el, w, p, ME, opt); };
@@ -134,7 +143,10 @@
     if (/pet\.html/.test(location.pathname) && id) { var p = w.byId[id], anchor = $('questCard') || $('starveWarn') || $('facts'), el = $('lookPanel');
       if (!p || !ME || p.owner !== ME || p.dead || p.released) { if (el) el.remove(); }
       else if (anchor && keys.pet !== k + id) { keys.pet = k + id; if (!el) { el = document.createElement('section'); el.id = 'lookPanel'; el.className = 'panel'; anchor.parentNode.insertBefore(el, anchor.nextSibling); } panel(el, w, p, ME, { id: 'looks' }); } }
-    var pp = $('petsPanel'); if (pp && ME && page === 'play' && keys.my !== k) { keys.my = k; var ml = $('myLooks'); if (!ml) { ml = document.createElement('div'); ml.id = 'myLooks'; pp.appendChild(ml); } /* below the pet list (owner 2026-10-27: pets first) */ myLooks(ml, w, ME); }
+    /* mypets-calm (owner Nov 23 2026: Flex Forge "never worked very intuitively or belonged here"): the My Flex list is no longer drawn under My Pets;
+     * looks are put on and taken off in The Rare Room's Flex Forge Station (My Pets ⚙️ More links there). The old list code stays for MYFLEX_ON_PLAY = true. */
+    var oldMl = $('myLooks'); if (oldMl && page === 'play' && !window.MYFLEX_ON_PLAY) oldMl.remove();
+    var pp = $('petsPanel'); if (pp && ME && page === 'play' && window.MYFLEX_ON_PLAY && keys.my !== k) { keys.my = k; var ml = $('myLooks'); if (!ml) { ml = document.createElement('div'); ml.id = 'myLooks'; pp.appendChild(ml); } /* below the pet list (owner 2026-10-27: pets first) */ myLooks(ml, w, ME); }
     var inv = $('invPanel'); if (inv && ME && page === 'rare' && keys.rr !== k) { keys.rr = k; var s = $('lookStation'); if (!s) { s = document.createElement('section'); s.id = 'lookStation'; s.className = 'panel shop8 split-keep'; inv.parentNode.insertBefore(s, inv.nextSibling); } station(s, w, ME); } }
   if (typeof document !== 'undefined') { setInterval(tick, 3000); if (document.readyState !== 'loading') setTimeout(tick, 600); else document.addEventListener('DOMContentLoaded', function () { setTimeout(tick, 600); }); }
   window.V2LookPicker = { panel: panel, myLooks: myLooks, station: station, looksOn: looksOn, startPet: startPet, tick: function () { keys = {}; tick(); } };
