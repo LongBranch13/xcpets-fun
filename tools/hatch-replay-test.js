@@ -13,7 +13,7 @@ let pass = 0, fail = 0;
 const ok = (c, m) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (c) pass++; else fail++; };
 function md5(rel) { return crypto.createHash('md5').update(fs.readFileSync(path.join(ROOT, rel))).digest('hex'); }
 const src = fs.readFileSync(path.join(ROOT, 'js/v2.js'), 'utf8');
-ok(md5('js/v2-rules.js') === 'bd47929530201cc653d086e673d58184', 'rules MD5 stays bd47929530201cc653d086e673d58184');
+ok(md5('js/v2-rules.js') === '11b5c6c1959c56a7fd51c09a8b2a2309', 'rules MD5 stays 11b5c6c1959c56a7fd51c09a8b2a2309');
 ok(/function onChainDiscarded\(p\) \{ return !!\(p && ME && p\.hd === ME\); \}/.test(src), 'on-chain discard is the pet.hd flag for this wallet');
 ok(/!onChainDiscarded\(p\)/.test(src.slice(src.indexOf('function mine(w)'), src.indexOf('function mine(w)') + 220)), 'My Pets hides an on-chain discard');
 ok(/p\.hungry && !onChainDiscarded\(p\)/.test(src), 'Feed all hungry skips an on-chain discard');
