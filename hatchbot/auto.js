@@ -143,6 +143,7 @@ export const T = {
   burn: [(a) => `\u{1F525} ${fmt(a)} XCPETS burned playing the game so far! That's ${fmt(a / 1e6)}M of the 100M supply turned into hatches, meals, rolls and battles \u{1F95A}`, (a) => `\u{1F525}\u{1F525} Milestone: ${fmt(a)} XCPETS have now been burned for pets. ${fmt(a / 1e6)}M down, all of it gameplay \u{1F3AE}`],
   count: [(m, p) => `\u{1F95A} ${fmt(m)} pets have hatched in XCPETS!${p ? " Number " + fmt(m) + " is " + p + "." : ""} Welcome to the world, little ones \u{1F389}`, (m, p) => `\u{1F389} Pet #${fmt(m)} just hatched${p ? ": say hi to " + p.replace(/^#\d+ /, "") : ""}! The XCPETS world keeps growing \u{1F95A}`],
 };
+const parentsOf = (P, p) => { const ps = (p.parents || []).filter((x) => x != null), pn = (id) => { const r = rowById(P, id); return (r ? r[1] + " " : "") + "#" + id; }; return ps.length >= 2 ? "\nParents: " + pn(ps[0]) + " \u00D7 " + pn(ps[1]) : ""; };
 const cmName = (meta, W) => { const c = meta && meta.community && meta.community.current; if (c && c.name) return (c.the ? "The " : "") + c.name; return W && W.cm && W.cm.name ? W.cm.name : "the community pet"; };
 
 /* ---------------------------------------------------------------- chain events (diff of two looks) */
@@ -152,7 +153,7 @@ export function chainEvents(P, W, meta, st, C) {
   if (P && st.maxId != null) {
     for (let i = P.rows.length - 1; i >= 0 && P.rows[i][0] > st.maxId; i--) {
       const p = petOf(P, P.rows[i]); if (p.community) continue;
-      if (p.hy && p.parents) ev.push({ type: "hybrid", key: "hybrid:" + p.id, block: p.born, pet: p });
+      if (p.hy && p.parents) ev.push({ type: "hybrid", key: "hybrid:" + p.id, block: p.born, pet: p, par: parentsOf(P, p) });
       else if (p.parents) ev.push({ type: "bred", key: "bred:" + p.id, block: p.born, pet: p });
       if (p.species === "nakamoto") ev.push({ type: "nakamoto", key: "nakamoto:" + p.id, block: p.born, pet: p });
       else if (p.tier === 3 && !p.hy) ev.push({ type: "legendary", key: "legendary:" + p.id, block: p.born, pet: p });
@@ -212,7 +213,7 @@ export function batch(events, st) {
   const hy = by("hybrid");
   if (hy.length) {
     const bred = by("bred").length, more = bred ? ` (Plus ${bred} more bred ${bred === 1 ? "baby" : "babies"}.)` : "";
-    posts.push({ type: "hybrids", prio: 1, keys: hy.concat(by("bred")).map((e) => e.key), block: Math.max(...hy.map((e) => e.block)), text: choose(T.hybrid, seedOf(hy), st, "hy")(list(hy.map((e) => nmHy(e.pet)), 4), hy.length, more) + (hy.length === 1 ? plink(hy[0].pet) : "") });
+    posts.push({ type: "hybrids", prio: 1, keys: hy.concat(by("bred")).map((e) => e.key), block: Math.max(...hy.map((e) => e.block)), text: choose(T.hybrid, seedOf(hy), st, "hy")(list(hy.map((e) => nmHy(e.pet)), 4), hy.length, more) + (hy.length === 1 ? (hy[0].par || "") + plink(hy[0].pet) : "") });
   }
   const nk = by("nakamoto"), lg = by("legendary");
   if (nk.length || lg.length) {
@@ -351,7 +352,7 @@ export function routinePosts(P, W, st, C, nowMs, force) {
     if (fs24.length) push("fight_night", "fn:" + t.date, "\u{1F94A} Fight Night at X Circus Kekimus: " + fs24.length + " fight" + (fs24.length > 1 ? "s" : "") + " today.\n" + fs24.slice(-8).map((x) => "#" + x.winner + " beat #" + x.loser).join("\n") + "\nLosers wear a black eye for 72 blocks.");
   }
   if (P && ok("motel_alert")) {
-    const b = []; for (let i = P.rows.length - 1; i >= 0 && P.rows[i][18] > P.tip - 36; i--) { const p = petOf(P, P.rows[i]); if (p.parents && p.id > (st.rt.motelMax || 0)) b.push(p); }
+    const b = []; for (let i = P.rows.length - 1; i >= 0 && P.rows[i][18] > P.tip - 36; i--) { const p = petOf(P, P.rows[i]); if (p.parents && p.id > (st.rt.motelMax || 0) && !(p.hy && (C.chain || {}).hybrids === true)) b.push(p); } /* hybrid eggs already get the Breeding pen post */
     if (b.length) {
       const c = b[0], ps = c.parents.filter((x) => x != null), pn = (id) => { const r = rowById(P, id); return (r ? r[1] + " " : "") + "#" + id; };
       const from = ps.length >= 2 ? ", from " + pn(ps[0]) + " \u00D7 " + pn(ps[1]) : ps.length === 1 ? ", from " + pn(ps[0]) : "";
@@ -455,6 +456,15 @@ function enqueue(st, posts, nowMs) {
     st.q.push(Object.assign({ at: nowMs }, p));
   }
 }
+export async function claimPost(env, it) {
+  if (!env.DB || env.__dry) return true;
+  const k = "post:" + (it.keys && it.keys[0] ? it.keys[0] : it.type + ":" + String(it.text).slice(0, 80));
+  try {
+    const r = await env.DB.prepare("INSERT OR IGNORE INTO kv(k, v) VALUES (?, ?)").bind(k, String(Date.now())).run();
+    if (Math.random() < 0.02) await env.DB.prepare("DELETE FROM kv WHERE k LIKE 'post:%' AND CAST(v AS INTEGER) < ?").bind(Date.now() - 30 * 864e5).run();
+    return !(r && r.meta && r.meta.changes === 0);
+  } catch (e) { console.log("claim failed", e && e.message); return true; }
+}
 async function sendOne(env, it, tg) {
   const chat = env.TELEGRAM_CHAT_ID; if (!chat) throw new Error("no TELEGRAM_CHAT_ID");
   if (it.photo) { const r = await tg(env, "sendPhoto", { chat_id: chat, photo: it.photo, caption: it.text }); if (r.ok) return r; }
@@ -469,6 +479,9 @@ async function drain(env, st, C, nowMs, tg) {
   if (st.sent.filter((t) => nowMs - t < 3600e3).length >= L.max_per_hour) return 0;
   if (st.sent.length && nowMs - Math.max(...st.sent) < (L.min_gap_s || 30) * 1000) return 0;
   const it = st.q.shift(); st.sent.push(nowMs); /* at most once: counted before sending */
+  /* KV (the queue's home) is only eventually consistent, so two cron runs a minute apart can both see an item as new
+     (Breeding pen news posted twice, Nov 23 2026). D1 is consistent: claim the post's key there first, skip it if taken. */
+  if (!(await claimPost(env, it))) { await saveState(env, st); return 0; }
   if (it.routine) routineSent(st, it, nowMs);
   await saveState(env, st);
   try { const r = await sendOne(env, it, tg); if (!r.ok) console.log("auto post failed", it.type, r.status); } catch (e) { console.log("auto post error", it.type, e && e.message); }
