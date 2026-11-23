@@ -138,6 +138,7 @@
     L.forEach(function (o, n) { var cx = lx0 + n * lstep + 6, fy = rm ? 0 : Math.round(Math.sin(t / 520 + n * 1.7)), cy = P.y + 17 + fy;
       px(x, '#ff4fd8', cx - 6, cy - 1, 12, 4); px(x, '#1e90c8', cx - 3, cy, 6, 2); px(x, '#fff', cx - 5, cy - 1, 2, 1);
       if (o.p && V2Render) try { putPet(x, o.p, cx, cy + 1, 12, t); } catch (e) { }
+      if (o.p && o.p.dipFor != null && o.p.dipFor === o.p.lastBreed) { var dd = rm ? 0 : Math.floor(t / 260 + n) % 4; px(x, '#4fe0ff', cx - 7, cy - 8 + dd, 1, 2); px(x, '#4fe0ff', cx + 6, cy - 6 + ((dd + 2) % 4), 1, 2); } /* POOL DIP: a dipped pet drips */
       x.font = '4px "Press Start 2P", monospace'; x.textAlign = 'center'; var lab = o.left > 99 ? Math.round(o.left / 6) / 1 + 'h' : String(o.left);
       px(x, '#140f24', cx - 6, cy - 19, 12, 6); x.fillStyle = '#ffd166'; x.fillText(lab, cx, cy - 14); x.textAlign = 'left'; });
     if (!L.length && !D.length) { var fy0 = rm ? 0 : Math.round(Math.sin(t / 500)); px(x, '#ff4fd8', 258, 168 + fy0, 10, 6); px(x, '#1e90c8', 261, 170 + fy0, 4, 2); px(x, '#fff', 259, 168 + fy0, 2, 1); }
@@ -150,7 +151,7 @@
     if (!S.lounge || !S.lounge.length) { var w = S.w || (window.V2UI && V2UI.world && V2UI.world()); if (w && w.pets) S.lounge = w.pets.filter(function (p) { return p.stage >= 2 && !p.dead; }).slice(0, 2).map(function (p, i) { return { p: p, left: 37 + i * 52 }; }); } }
   function poolLine() { var D = S.A && S.B && S.od, L = S.lounge || [];
     if (D) return 'Gene pool: ' + S.od.sp.map(function (q) { return q[0] + ' ' + (q[1] === 100 ? '100' : q[1].toFixed(1)) + '%'; }).join(', ') + '. Golden duck = hybrid.';
-    if (L.length) return L.length + (L.length === 1 ? ' guest is' : ' guests are') + ' resting. Next back: #' + L[0].p.id + ' in ' + L[0].left + ' blocks.';
+    if (L.length) return L.length + (L.length === 1 ? ' guest is' : ' guests are') + ' resting. Next back: #' + L[0].p.id + ' in ' + L[0].left + ' blocks.' + (window.V2Rules && V2Rules.dipOn && V2Rules.dipOn(((S.w && S.w.tip) || 0) + 1) ? ' A dip halves the wait (DIP in My cooldowns).' : '');
     return 'The pool. Pick two guests and the gene pool fills up.'; }
   function draw(t) { var x = S.x; if (!x) return; if (window.V2Sharp) V2Sharp.begin(x, S.k); else x.imageSmoothingEnabled = false; /* scene-sharp: logical units at k x */ var rm = reduced();
     px(x, '#0b0a1f', 0, 0, W, H); for (var i = 0; i < 40; i++) px(x, (i * 7 + Math.floor(t / 600)) % 11 ? '#c9c9ff' : '#555', (i * 53) % W, (i * 29) % 60, 1, 1); px(x, '#f5efc0', 286, 10, 10, 10); px(x, '#0b0a1f', 290, 9, 8, 9); /* stars + moon */
