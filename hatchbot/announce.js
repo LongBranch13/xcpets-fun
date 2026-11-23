@@ -140,6 +140,7 @@ async function main() {
     const f = path.resolve(ROOT, 'hatchbot/updates', path.basename(opt('--update')).replace(/\.json$/, '') + '.json');
     const U = JSON.parse(fs.readFileSync(f, 'utf8')), posts = (U.posts || []).filter(x => x && x.text);
     if (!posts.length) throw new Error('no posts in ' + f);
+    if (!DRY && posts.some(x => /\{[A-Z_]+\}/.test(x.text))) throw new Error('unfilled placeholder in ' + f + ' (e.g. {OPEN}): fill it in before posting');
     const needArt = !NO_ART && posts.some(x => x.art), R = needArt ? replay() : null; let bad = 0;
     for (const x of posts) { const ok = await post({ key: 'update', text: x.text, art: x.art || null }, R && R.ctx, R && R.w); if (!ok && !DRY) bad++; await new Promise(r => setTimeout(r, 2500)); }
     process.exit(bad ? 1 : 0); }
