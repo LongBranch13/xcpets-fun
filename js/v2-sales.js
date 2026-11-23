@@ -366,11 +366,19 @@
       worker.onmessage = function (ev) { if (done) return; done = true; clearTimeout(t); try { worker.terminate(); } catch (x) {} var m = ev.data || {}; if (!m.ok) no(new Error(m.error || 'replay failed')); else ok(m); };
       worker.onerror = function () { if (done) return; done = true; clearTimeout(t); no(new Error('the order book could not be rebuilt')); };
       worker.postMessage({ scripts: scripts, rows: inp.rows, hashes: inp.hashes, tip: inp.tip, dex: inp.dex }); }); }
-  function applyBook(pack) { var view = W && W._view ? W : null, byId = {}, id;
+  /* Nov 23 2026 (Yuri: the Token Press asked to tie tokens again for pets already tied, and showed only 24 pets): the server's order book
+   * carries deed records for listed pets only, and W.deeds was set to that list, so every other tied pet looked untied. W was also a copy
+   * of the world taken when Spam City opened, before a wallet's later owner pages arrived (24 pets = the first page). Keep the view's
+   * deeds under the book's, and rebuild W from the current world before the Token Press or Sell list is drawn. Display only. */
+  var LAST_BOOK = null;
+  function freshW() { var M = window.V2Mock, v = M && M.world && M.world(); if (!LAST_BOOK || !v || !v._view) return; W = v; applyBook(LAST_BOOK); }
+  function applyBook(pack) { LAST_BOOK = pack; var view = W && W._view ? W : null, byId = {}, id, deeds = {};
+    if (view && view.deeds) Object.keys(view.deeds).forEach(function (k) { deeds[k] = view.deeds[k]; });
+    if (pack.deeds) Object.keys(pack.deeds).forEach(function (k) { deeds[k] = pack.deeds[k]; });
     (pack.pets || []).forEach(function (p) { if (p && p.id != null) byId[p.id] = p; });
     if (view && view.byId) Object.keys(view.byId).forEach(function (k) { if (!byId[k]) byId[k] = view.byId[k]; });
     var pets = []; Object.keys(byId).forEach(function (k) { pets.push(byId[k]); });
-    W = { tip: pack.tip || TIP, pets: pets, byId: byId, listings: pack.listings || [], deeds: pack.deeds || {}, items: (view && view.items) || {}, itemList: (view && view.itemList) || [],
+    W = { tip: pack.tip || TIP, pets: pets, byId: byId, listings: pack.listings || [], deeds: deeds, items: (view && view.items) || {}, itemList: (view && view.itemList) || [],
       fights: (view && view.fights) || [], log: [], community: (view && view.community) || { burned: 0 }, rug: { ads: [] }, breedReqs: [], swaps: [], gifts: [], players: (view && view.players) || {}, playerAddr: (view && view.playerAddr) || {} };
     TIP = W.tip || TIP; BOOK = pack.orders || []; }
   function load() { if (PREVIEW) return Promise.resolve();
@@ -507,7 +515,7 @@
     var id, p;
     for (id in live.byId) { p = live.byId[id]; if (!p || W.byId[p.id]) continue; W.byId[p.id] = p; W.pets.push(p); }
   }
-  function sellPick() {
+  function sellPick() { freshW();
     absorbViewPets();
     var live = (window.V2Mock && V2Mock.world && V2Mock.world()) || W;
     var wait = window.xcpLivingFill && (!(window.xcpRestDone && xcpRestDone(live)) || (window.xcpDiscardMiss && xcpDiscardMiss(ME).length));
@@ -587,7 +595,7 @@
   /* ---- Token Press (owner Oct 24 2026, 5:30 AM CT): make + tie a pet token, no listing. Step 1 = the free token (only the Bitcoin fee),
    * wait 1 block, Step 2 = the 1-dander pet:deed tie burn. Reuses freeDeed / V.mintPlan / V.deedPlan / tokenAt / pend (same pending key as Sell). */
   function pressable(p) { return p.owner === ME && !p.dead && !p.released && !p.community && V.sellStep(W, p, ME) !== 'list' && !V.deedWhy(W, { petId: p.id }, ME, TIP + 1) && !(V.giveLocks && V.giveLocks(W, p, TIP + 1)); }
-  function pressPick() { var free = W.pets.filter(pressable), fS = PF.load('press'), mine = V.petFilter(W, free.map(function (p) { return { p: p }; }), fS, TIP + 1).map(function (x) { return x.p; });
+  function pressPick() { freshW(); var free = W.pets.filter(pressable), fS = PF.load('press'), mine = V.petFilter(W, free.map(function (p) { return { p: p }; }), fS, TIP + 1).map(function (x) { return x.p; });
     var tied = W.pets.filter(function (p) { return p.owner === ME && !p.dead && !p.released && !p.community && V.sellStep(W, p, ME) === 'list'; }).length;
     modal('<h3>🏭 Token Press</h3><p class="sh-hint">Pick a pet without a token. The press makes its 🎟 pet token and ties it to the pet: then the pet can be gifted or listed in one wallet window. ' + (tied ? 'You already have ' + tied + ' tokenized pet' + (tied === 1 ? '' : 's') + '.' : '') + ' Pets in a fight, a breed request, a Rug Me ad, a listing or a pending gift/swap are locked and are not shown.</p>' +
       PF.html(fS, PICK_F, { species: PF.species(free), count: mine.length, total: free.length }) + '<div class="sh-pick">' +
