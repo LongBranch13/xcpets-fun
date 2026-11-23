@@ -15,7 +15,9 @@ function play(list, tip) { const hashes = {}; list.forEach(r => { hashes[r.block
 const mine = w => w.pets.filter(p => p.owner === ME);
 const alive = w => mine(w).filter(p => !p.dead && !p.released);
 
-ok(V.grindGate() === null, 'the Grinder is OFF on main (gate null)');
+const GATE = V.grindGate();
+ok(GATE === 977220, 'the Grinder opens at block 977,220');
+V._setGrindActivation(null); /* section 1 checks the switched-off behaviour */
 ok(V.parseTag('pet:grind').action === 'grind' && V.parseTag('pet:grind:2000').n === 2000 && V.parseTag('pet:grind:2001').action === 'invalid' && V.parseTag('pet:grind:0').action === 'invalid', 'pet:grind and pet:grind:N (1-2000) parse');
 
 /* 1 · gate off: community food */
@@ -85,6 +87,6 @@ ok(Math.abs(pv3.goldPct - Math.min(10, pv3.n / 200)) < 1e-9 && V.grindPreview(Ob
 const cnt = [0, 0, 0, 0];
 for (let i = 0; i < 20000; i++) cnt[V._sausageTierTest(fakeHash(i), 'x' + i)]++;
 if (V._sausageTierTest) ok(cnt[0] === 0 && Math.abs(cnt[1] / 20000 - 0.6) < 0.02 && Math.abs(cnt[2] / 20000 - 0.32) < 0.02 && Math.abs(cnt[3] / 20000 - 0.08) < 0.01, 'Sausage ladder over 20,000 rolls: ' + cnt.join(' / '));
-V._setGrindActivation(null);
+V._setGrindActivation(GATE);
 if (fails) { console.log(fails + ' failed'); process.exit(1); }
 console.log('grinder ok');

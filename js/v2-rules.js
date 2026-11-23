@@ -341,7 +341,7 @@
    * this burn: never Common (GRIND_SAUSAGE_10K: Uncommon 60%, Rare 32%, Legendary 8%). GOLDEN SAUSAGE: each grind rolls once for a sure
    * Legendary egg; chance = pets ground / 20,000 (1% per 200 pets), at most 10%. Egg seeds: '<tx>:88000+i' (Sausage), '<tx>:88999' (Golden).
    * Below ACTIVATE_GRIND_BLOCK (and while null) pet:grind is an unknown tag (community food), exactly as before. */
-  var ACTIVATE_GRIND_BLOCK = null; /* OFF until Jake picks a start block */
+  var ACTIVATE_GRIND_BLOCK = 977220; /* opens at block 977,220 (Mon Nov 23 2026, about midday Central) */
   var GRIND_COST = 69, GRIND_MAX = 2000, GRIND_MEAT = [1, 2, 5, 20], GRIND_SPIN_EVERY = 250, GRIND_EGG_EVERY = 1000, GRIND_SAUSAGE_10K = [0, 6000, 3200, 800],
     GRIND_GOLD_PER_PET = 50 /* per million: 1% per 200 pets */, GRIND_GOLD_MAX = 100000 /* per million: 10% */;
   function grindOn(b) { return ACTIVATE_GRIND_BLOCK != null && b != null && Number(b) >= ACTIVATE_GRIND_BLOCK; }
