@@ -6,67 +6,100 @@
   /* t3176u: a kept hybrid top (FUNTRUMP windblown hair, Lord Kek nemes, Viking horns) is fitted once
    * against the frame margin. It stays still while the body bobs, and the pixels that stick out past
    * that fit miss the ink outline. Shift the layer by the body's own bounce and close the outline.
-   * Display only: the part list, the plan and the roll are untouched. */
+   * Display only: the part list, the plan and the roll are untouched.
+   * hair-bob-1123 (Jake Nov 23 2026, Keknibtrump #154188 "glitched", "Trump hair doesn't move on the gif of many pets"): the bounce
+   * used to be guessed on the full picture, so a patterned background, a blink or a wing flap made the guess fail and the hair
+   * froze (most FUNTRUMP-hair hybrids), or got pasted from the wrong pose over the eyes (Kek bodies). Now the body and the layer are
+   * measured on the magenta-keyed renders (no background), on the head columns only, and every frame takes the SAME layer from one
+   * reference frame, moved by the body's bob. A body whose pose changes between frames (Kek wings + Snibby claws) bobs one whole pose. */
   var hybridFramesBare = V.hybridFrames;
   function hairFollowsBody(art, opts, fr) {
     var h = art && art.hybrid, parts = h && h.parts;
     if (!h || !parts || !parts.length || !fr || fr.length < 2 || !hybridFramesBare) return fr;
     var keep = {};
-    parts.forEach(function (q) { var d = V.partDef && V.partDef(q.sp, q.part); if (d && d.keep && d.kind === 'top') keep[q.sp + ':' + q.part] = 1; });
+    parts.forEach(function (q) { var d = V.partDef && V.partDef(q.sp, q.part); if (d && ((d.keep && d.kind === 'top') || (d.kind === 'arms' && h.shape === 'kek'))) keep[q.sp + ':' + q.part] = 1; }); /* kek-wings-1123: Snibby claws on Lord Kek erased his spread wings every other frame; the claws ride the body like a kept top */
     if (!Object.keys(keep).length) return fr;
-    var rest = parts.filter(function (q) { return !keep[q.sp + ':' + q.part]; });
-    var bare = hybridFramesBare(Object.assign({}, art, { hybrid: Object.assign({}, h, { parts: rest }) }), opts);
-    if (!bare || bare.length !== fr.length) return fr;
-    var INK = [26, 16, 32];
+    var armsK = Object.keys(keep).filter(function (k2) { var d2 = V.partDef(k2.split(':')[0], k2.split(':')[1]); return d2 && d2.kind === 'arms'; });
+    var rest = parts.filter(function (q) { return !keep[q.sp + ':' + q.part]; }), KEY = { background: 'solid', bgColor: '#ff00ff', pattern: 'none' };
+    var hRest = Object.assign({}, h, { parts: rest });
+    var bare = hybridFramesBare(Object.assign({}, art, { hybrid: hRest }), opts);
+    var bareK = hybridFramesBare(Object.assign({}, art, KEY, { hybrid: hRest }), opts);
+    var fullK = hybridFramesBare(Object.assign({}, art, KEY), opts);
+    var N = fr.length;
+    if (!bare || !bareK || !fullK || bare.length !== N || bareK.length !== N || fullK.length !== N) return fr;
+    var INK = [26, 16, 32], LOW = 28; /* rows from LOW down are the ground line: never moved */
+    function corner(j) { return (j & 31) > 25 && (j >> 5) < 6; } /* the hybrid badge */
+    function isKey(d, q) { return d[q] === 255 && d[q + 1] === 0 && d[q + 2] === 255; }
     function isInk(d, q) { return Math.abs(d[q] - INK[0]) + Math.abs(d[q + 1] - INK[1]) + Math.abs(d[q + 2] - INK[2]) <= 8; }
-    function maskOf(f) {
-      var a = fr[f].data, b = bare[f].data, m = new Uint8Array(1024), n = 0;
-      for (var j = 0; j < 1024; j++) { var x = j & 31, y = j >> 5; if (x > 25 && y < 6) continue; var q = j * 4;
-        if (a[q] !== b[q] || a[q + 1] !== b[q + 1] || a[q + 2] !== b[q + 2]) { m[j] = 1; n++; } }
-      m.n = n; return m;
-    }
-    /* s maps frame 0 onto this frame: this[y] lines up with frame0[y - s]. Same bounce the gear rig uses. */
-    function bounce(a, b, bytes) {
-      var best = null;
-      for (var s = -2; s <= 2; s++) { var mis = 0;
-        for (var y = 0; y < 28; y++) for (var x = 0; x < 26; x++) { var Y = y - s;
-          if (Y < 0 || Y > 31) { mis++; continue; }
-          if (bytes) { var i = (y * 32 + x) * 4, j = (Y * 32 + x) * 4; if (a[i] !== b[j] || a[i + 1] !== b[j + 1] || a[i + 2] !== b[j + 2]) mis++; }
-          else if (a[y * 32 + x] !== b[Y * 32 + x]) mis++; }
-        if (!best || mis < best[1]) best = [s, mis]; }
-      return best[1] <= 80 ? best[0] : 0;
-    }
-    function bgAt(d) { return [d[0], d[1], d[2]]; }
-    function isBg(d, q, bg) { return Math.abs(d[q] - bg[0]) + Math.abs(d[q + 1] - bg[1]) + Math.abs(d[q + 2] - bg[2]) <= 8; }
+    function layer(f) { var a = fullK[f].data, b = bareK[f].data, m = new Uint8Array(1024), n = 0, l = 32, r = -1;
+      for (var j = 0; j < 1024; j++) { if (corner(j) || (j >> 5) >= LOW) continue; var q = j * 4;
+        if (a[q] !== b[q] || a[q + 1] !== b[q + 1] || a[q + 2] !== b[q + 2]) { m[j] = 1; n++; if (!isKey(a, q)) { l = Math.min(l, j & 31); r = Math.max(r, j & 31); } } } /* columns: where the layer paints (not where it only took the old top away) */
+      m.n = n; m.l = l; m.r = r; return m; }
+    function silOf(K) { var d = K.data, s = new Uint8Array(1024), n = 0; for (var j = 0; j < 1024; j++) if (!corner(j) && (j >> 5) < LOW && !isKey(d, j * 4)) { s[j] = 1; n++; } s.n = n; return s; }
+    var Sb = bareK.map(silOf), Sf = fullK.map(silOf);
+    /* reference pose: frame 0, unless the body changes pose between frames; then the fullest pose (most body pixels) */
+    function fit(S, f, ref, l, r) { var best = null, area = 0, K = S === Sb ? bareK : fullK; /* shape AND colour: eyes and mouth move with the body, a ground shadow does not */
+      for (var y0 = 0; y0 < LOW; y0++) for (var x0 = l; x0 <= r; x0++) if (S[ref][y0 * 32 + x0]) area++;
+      for (var s = -2; s <= 2; s++) { var mis = 0, shp = 0;
+        for (var y = 0; y < LOW; y++) for (var x = l; x <= r; x++) { var Y = y - s, j1 = y * 32 + x, j2 = Y * 32 + x, a = S[f][j1], b = (Y < 0 || Y >= LOW) ? 0 : S[ref][j2];
+          if (a !== b) { mis++; shp++; } else if (a) { var p = K[f].data, o = K[ref].data, q1 = j1 * 4, q2 = j2 * 4; if (p[q1] !== o[q2] || p[q1 + 1] !== o[q2 + 1] || p[q1 + 2] !== o[q2 + 2]) mis++; } }
+        if (!best || mis < best[1] || (mis === best[1] && Math.abs(s) < Math.abs(best[0]))) best = [s, mis, 0, shp]; }
+      best[2] = area; return best; }
+    var L0 = layer(0); if (L0.n < 8) return fr;
+    var cl = Math.max(0, L0.l), cr = Math.min(31, L0.r);
+    var rigid = true, f, k;
+    for (f = 1; f < N; f++) { k = fit(Sb, f, 0, cl, cr); if (k[3] > Math.max(6, k[2] * 0.12)) rigid = false; } /* rigid = the same outline, moved (a blink or a mouth is fine) */
+    var ref = 0;
+    if (!rigid) { for (f = 1; f < N; f++) if (Sb[f].n > Sb[ref].n + 4) ref = f; }
+    if (armsK.length) { rigid = true; ref = 1; } /* Lord Kek flaps his wings (KekSprite: spread on frames 0/3, folded on 1/2): keep the flap, take the claws from a wings-folded frame, measure the bob on his middle */
+    var L = layer(ref); if (L.n < 8) return fr;
+    cl = Math.max(0, L.l); cr = Math.min(31, L.r); if (armsK.length) { cl = 12; cr = 19; }
+    var shift = []; for (f = 0; f < N; f++) shift[f] = f === ref ? 0 : fit(rigid ? Sb : Sf, f, ref, cl, cr)[0];
+    if (shift.every(function (s, i) { return i === ref || s === 0; }) && rigid) { /* the body does not bob: the frames are already right */
+      var same = true; for (f = 0; f < N && same; f++) { var Lf = layer(f); for (var j0 = 0; j0 < 1024; j0++) if (Lf[j0] !== L[j0]) { same = false; break; } } if (same) return fr; }
     function closeOutline(data, hair, bg) {
       var nb = [[1, 0], [-1, 0], [0, 1], [0, -1]], add = [];
-      function at(x, y) { return (x < 0 || y < 0 || x > 31 || y > 28 || (x > 25 && y < 6)) ? -1 : y * 32 + x; }
-      for (var j = 0; j < 1024; j++) if (hair[j] && !isBg(data, j * 4, bg) && !isInk(data, j * 4)) { var x = j & 31, y = j >> 5;
-        nb.forEach(function (dv) { var n = at(x + dv[0], y + dv[1]); if (n < 0 || hair[n] || !isBg(data, n * 4, bg)) return; add.push(n); }); }
-      add.forEach(function (n) { var q = n * 4; data[q] = INK[0]; data[q + 1] = INK[1]; data[q + 2] = INK[2]; data[q + 3] = 255; hair[n] = 1; });
-      /* a background pixel the layer left between itself and the ink is a hole in the outline */
-      for (var pass = 0; pass < 3; pass++) { var fill = [];
-        for (j = 0; j < 1024; j++) if (hair[j] && isBg(data, j * 4, bg)) { var x2 = j & 31, y2 = j >> 5;
-          if (nb.some(function (dv) { var n = at(x2 + dv[0], y2 + dv[1]); return n >= 0 && (isInk(data, n * 4) || (hair[n] && !isBg(data, n * 4, bg))); })) fill.push(j); }
-        fill.forEach(function (n) { var q = n * 4; data[q] = INK[0]; data[q + 1] = INK[1]; data[q + 2] = INK[2]; data[q + 3] = 255; }); if (!fill.length) break; }
+      function at(x, y) { return (x < 0 || y < 0 || x > 31 || y >= LOW || (x > 25 && y < 6)) ? -1 : y * 32 + x; }
+      for (var j = 0; j < 1024; j++) if (hair[j] && !bg[j] && !isInk(data, j * 4)) { var x = j & 31, y = j >> 5;
+        nb.forEach(function (dv) { var n = at(x + dv[0], y + dv[1]); if (n < 0 || hair[n] || !bg[n]) return; add.push(n); }); }
+      add.forEach(function (n) { var q = n * 4; data[q] = INK[0]; data[q + 1] = INK[1]; data[q + 2] = INK[2]; data[q + 3] = 255; hair[n] = 1; bg[n] = 0; });
     }
-    var m0 = maskOf(0); if (m0.n < 8) return fr;
-    var mRef = new Uint8Array(m0);
-    for (var f = 0; f < fr.length; f++) {
-      var bodyS = f === 0 ? 0 : bounce(bare[f].data, bare[0].data, 1);
-      var hairS = f === 0 ? 0 : bounce(maskOf(f), mRef, 0);
-      var bg = bgAt(bare[f].data), data, hair;
-      if (f === 0 || bodyS === hairS) { data = new Uint8ClampedArray(fr[f].data); hair = f === 0 ? m0 : maskOf(f); }
-      else {
-        data = new Uint8ClampedArray(bare[f].data); hair = new Uint8Array(1024);
-        var src = fr[0].data;
-        for (var j = 0; j < 1024; j++) if (m0[j]) { var y = (j >> 5) + bodyS, x = j & 31; if (y < 0 || y > 28 || (x > 25 && y < 6)) continue;
-          var t = y * 32 + x, q = t * 4, s = j * 4; data[q] = src[s]; data[q + 1] = src[s + 1]; data[q + 2] = src[s + 2]; data[q + 3] = 255; hair[t] = 1; }
+    var srcK = fullK[ref].data, src = fr[ref].data, eraseK = srcK;
+    /* kek-wings-1123: the claws take nothing away (his wings stay behind them); only a kept top may take the old top off */
+    if (armsK.length) { var topOnly = hybridFramesBare(Object.assign({}, art, KEY, { hybrid: Object.assign({}, h, { parts: parts.filter(function (q) { return armsK.indexOf(q.sp + ':' + q.part) < 0; }) }) }), opts); eraseK = topOnly && topOnly[ref] ? topOnly[ref].data : null; }
+    var topK = armsK.length ? topOnly : fullK;
+    var out = fr.map(function (F, f) {
+      var s = shift[f], data, hair = new Uint8Array(1024), bg = new Uint8Array(1024), j, q, t, y, x;
+      if (rigid) {
+        /* this frame's own body (blink, flap) + the reference layer moved with it */
+        data = new Uint8ClampedArray(bare[f].data);
+        for (j = 0; j < 1024; j++) bg[j] = isKey(bareK[f].data, j * 4) ? 1 : 0;
+        /* what the kept top took away in THIS frame (Lord Kek's nemes ornament moves on its own) goes too */
+        if (topK && topK[f]) for (j = 0; j < LOW * 32; j++) { if (bg[j] || corner(j) || !isKey(topK[f].data, j * 4)) continue; var fk0 = fullK[f].data, rd = fr[f].data, bj = j;
+          if (!isKey(fk0, j * 4)) { for (var dd = 1; dd < 32 && bj === j; dd++) for (var sg0 = -1; sg0 <= 1 && bj === j; sg0 += 2) { var xx0 = (j & 31) + sg0 * dd; if (xx0 >= 0 && xx0 < 32 && isKey(fk0, ((j >> 5) * 32 + xx0) * 4)) bj = (j >> 5) * 32 + xx0; } }
+          data[j * 4] = rd[bj * 4]; data[j * 4 + 1] = rd[bj * 4 + 1]; data[j * 4 + 2] = rd[bj * 4 + 2]; data[j * 4 + 3] = 255; bg[j] = 1; }
+        for (j = 0; j < 1024; j++) { if (!L[j]) continue; y = (j >> 5) + s; x = j & 31; if (y < 0 || y >= LOW) continue; t = y * 32 + x; if (corner(t)) continue; q = j * 4;
+          if (isKey(srcK, q)) { if (!eraseK || !isKey(eraseK, q)) continue; /* the layer took this pixel away (the old top came off): show the background here */
+            var bq = isKey(fullK[f].data, t * 4) ? [fr[f].data, t * 4] : [src, q];
+            data[t * 4] = bq[0][bq[1]]; data[t * 4 + 1] = bq[0][bq[1] + 1]; data[t * 4 + 2] = bq[0][bq[1] + 2]; data[t * 4 + 3] = 255; bg[t] = 1;
+            continue; }
+          data[t * 4] = src[q]; data[t * 4 + 1] = src[q + 1]; data[t * 4 + 2] = src[q + 2]; data[t * 4 + 3] = 255; hair[t] = 1; bg[t] = 0; }
+      } else {
+        /* the pose changes between frames: the whole reference pose bobs (no half-and-half bodies) */
+        data = new Uint8ClampedArray(F.data);
+        var fk = fullK[f].data;
+        var bgPix = function (t2) { var x2 = t2 & 31, y2 = t2 >> 5; if (isKey(fk, t2 * 4)) return t2;
+          for (var d = 1; d < 32; d++) for (var sg = -1; sg <= 1; sg += 2) { var xx = x2 + sg * d; if (xx >= 0 && xx < 32 && isKey(fk, (y2 * 32 + xx) * 4)) return y2 * 32 + xx; } return t2; };
+        var clean = new Uint8ClampedArray(F.data);
+        for (j = 0; j < LOW * 32; j++) if (!corner(j)) { var b0 = bgPix(j) * 4; clean[j * 4] = F.data[b0]; clean[j * 4 + 1] = F.data[b0 + 1]; clean[j * 4 + 2] = F.data[b0 + 2]; clean[j * 4 + 3] = 255; bg[j] = 1; }
+        data = clean;
+        for (j = 0; j < LOW * 32; j++) { if (isKey(srcK, j * 4) || corner(j)) continue; y = (j >> 5) + s; x = j & 31; if (y < 0 || y >= LOW) continue; t = y * 32 + x; if (corner(t)) continue; q = j * 4;
+          data[t * 4] = src[q]; data[t * 4 + 1] = src[q + 1]; data[t * 4 + 2] = src[q + 2]; data[t * 4 + 3] = 255; bg[t] = 0; if (L[j]) hair[t] = 1; }
       }
       closeOutline(data, hair, bg);
-      fr[f] = Object.assign({}, fr[f], { data: data });
-    }
-    return fr;
+      return Object.assign({}, F, { data: data });
+    });
+    return out;
   }
   V.hybridFrames = function (art, opts) { var fr = hybridFramesBare.apply(V, arguments); try { return hairFollowsBody(art, opts, fr); } catch (eHair) { return fr; } };
   V2Gear.install(BonusGear);

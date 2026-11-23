@@ -6,6 +6,7 @@
  *   node hatchbot/announce.js --state FILE            post new events (needs TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID)
  *   node hatchbot/announce.js --state FILE --dry      print what it would post, send nothing (--art-out DIR also saves the pictures)
  *   --no-art                                          text only, no pictures
+ *   --pics DIR                                        also draw stills of the pets the Cloudflare bot may post about (DIR/p/<id>.png)
  *   node hatchbot/announce.js --post "text"           post one game update (the "Post update" button)
  *   node hatchbot/announce.js --update NAME            post the prepared series hatchbot/updates/NAME.json (text + pet pictures)
  *
@@ -139,6 +140,35 @@ function newMythics(V, w, st) { const now = w.pets.filter(p => p && isMythic(p) 
   const old = new Set(st.mythics || []), fresh = st.mythics ? now.filter(id => !old.has(id)) : [];
   st.mythics = now; return fresh.map(id => ({ key: 'mythic-' + id, at: w.tip, prio: 5, text: '👑 A NEW MYTHIC HAS RISEN! ' + petName(w, id, V) + ' just hit Mythic. Bow down. 🙇\n' + link(id), art: { kind: 'shine', id, halo: false } })); }
 
+
+/* ---------------------------------------------------------------- pet pictures for the Cloudflare bot (Nov 23 2026)
+ * The Worker (hatchbot/auto.js) cannot draw pets, and t/<id>.png only exists for tokenized pets, so Pet of the Day,
+ * breeding news, milestones, battles and the recap went out as text. Each run draws a still of every pet the Worker
+ * may post about into DIR/p/<id>.png; the workflow publishes DIR on the hatchbot-art branch (never main). */
+function drawPics(w, ctx, tip, dir) {
+  const t0 = Date.now(), art = require('./art.js'), out = path.join(dir, 'p'); fs.mkdirSync(out, { recursive: true });
+  let rows = []; try { rows = JSON.parse(fs.readFileSync(path.join(ROOT, 'api/pets.json'), 'utf8')).pets || []; } catch (e) { console.log('pics: no pets.json: ' + e.message); }
+  const want = new Map(), addId = (id, why) => { id = +id; if (id > 0 && !want.has(id)) want.set(id, why); };
+  const alive = rows.filter(r => !r[10] && r[4] != null && (r[8] === 0 || r[0] === 1765)).sort((a, b) => b[4] - a[4] || a[0] - b[0]);
+  alive.slice(0, 60).forEach(r => addId(r[0], 'top'));                                   /* Pet of the Day pool + weekly top 5 */
+  const recent = rows.filter(r => r[18] > tip - 300);
+  recent.filter(r => r[13] || (r[3] | 0) >= 3 || r[0] % 10000 === 0).forEach(r => addId(r[0], 'new'));   /* bred/hybrid eggs, Legendaries, milestone pets */
+  recent.slice().sort((a, b) => (b[3] | 0) - (a[3] | 0) || (b[4] || 0) - (a[4] || 0)).slice(0, 20).forEach(r => addId(r[0], 'rare')); /* recap: rarest newborns */
+  Object.keys(w.everMythic || {}).forEach(id => { if (+w.everMythic[id] > tip - 300) addId(id, 'mythic'); });
+  (w.fights || []).forEach(f => { if (f && f.winner != null && (f.acceptBlock || f.block) > tip - 160) { addId(f.winner, 'fight'); addId(f.loser, 'fight'); } });
+  let n = 0, bad = 0;
+  for (const [id] of want) {
+    if (Date.now() - t0 > 4 * 60e3) { console.log('pics: time is up, ' + (want.size - n - bad) + ' left for the next run'); break; }
+    try {
+      const p = w.byId[id]; if (!p || !p.art) { bad++; continue; }
+      art.load(ctx); const S = art.spriteSet(ctx, w, p, (p.stage | 0) === 0 ? { stage: 0 } : null); if (!S || !S.length) { bad++; continue; }
+      const nm = String(p.name || 'PET').toUpperCase().slice(0, 14) + ' #' + id;
+      fs.writeFileSync(path.join(out, id + '.png'), art.png(art._scenes.lineup([S], { top: nm }), 4)); n++;
+    } catch (e) { bad++; }
+  }
+  fs.writeFileSync(path.join(dir, 'index.json'), JSON.stringify({ tip, at: new Date().toISOString(), ids: Array.from(want.keys()) }));
+  console.log('pics: drew ' + n + ' pet pictures (' + bad + ' skipped) in ' + ((Date.now() - t0) / 1000).toFixed(0) + ' s');
+}
 /* ---------------------------------------------------------------- main */
 async function main() {
   if (opt('--update') != null) { /* a prepared update series (hatchbot/updates/<name>.json): { posts: [{ text, art? }] }, posted in order with its pictures */
@@ -153,7 +183,8 @@ async function main() {
   if (!STATE) throw new Error('--state FILE is required');
   const st = fs.existsSync(STATE) ? JSON.parse(fs.readFileSync(STATE, 'utf8')) : null, first = !st, S = st || { v: 1, posted: [] };
   const t0 = Date.now(), { V, w, tip, ctx } = replay(); console.log('replayed to block ' + tip + ' in ' + ((Date.now() - t0) / 1000).toFixed(0) + ' s');
-  if (S.tip && tip <= S.tip) { console.log('no new blocks since ' + S.tip); return; }
+  const PICS = opt('--pics'), pics = () => { if (PICS) try { drawPics(w, ctx, tip, PICS); } catch (e) { console.log('pics failed: ' + (e && e.message)); } };
+  if (S.tip && tip <= S.tip) { console.log('no new blocks since ' + S.tip); pics(); return; }
   const from = S.tip || tip, seen = new Set(S.posted || []);
   let ev = collect(V, w, tip, first ? tip : from).concat(newMythics(V, w, S)).filter(e => !seen.has(e.key));
   if (first) { /* baseline: remember what already happened, post nothing */
@@ -174,6 +205,7 @@ async function main() {
     await post(p, ctx, w); await new Promise(r => setTimeout(r, 1200));
   }
   S.tip = tip; save();
+  pics();
   console.log('posted ' + posts.length + ' (block ' + from + ' -> ' + tip + ')');
 }
 main().catch(e => { console.error(e); process.exit(1); });
