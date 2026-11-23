@@ -1,5 +1,5 @@
 {
- "lastBlock": 977251,
+ "lastBlock": 977257,
  "count": 443,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
@@ -5245,7 +5245,7 @@
    "species": "hyb:nakamoto:viking",
    "speciesLabel": "Naking (hybrid)",
    "rarity": "Legendary",
-   "stage": "Hatchling"
+   "stage": "Juvenile"
   },
   {
    "id": 205410,
@@ -5257,7 +5257,7 @@
    "species": "peepo",
    "speciesLabel": "Peepo",
    "rarity": "Legendary",
-   "stage": "Hatchling"
+   "stage": "Juvenile"
   },
   {
    "id": 67059,
@@ -5269,7 +5269,7 @@
    "species": "funtrump",
    "speciesLabel": "FUNTRUMP",
    "rarity": "Rare",
-   "stage": "Juvenile"
+   "stage": "Adult"
   },
   {
    "id": 8440,
@@ -5317,7 +5317,7 @@
    "species": "pepe",
    "speciesLabel": "Pepe",
    "rarity": "Legendary",
-   "stage": "Hatchling"
+   "stage": "Juvenile"
   }
  ]
 }
