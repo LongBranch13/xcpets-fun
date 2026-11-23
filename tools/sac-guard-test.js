@@ -1,4 +1,4 @@
-// Sacrifice guard (js/v2-sac-guard.js): names Gods, Mythics, Legendaries, Wizards and recently fed pets before they are fed to a zombie,
+// Sacrifice guard (js/v2-sac-guard.js): names Legendaries, Wizards, starred and recently fed pets (Gods and Mythics can't be offered at all) before they are fed to a zombie,
 // pledged or offered at an altar, and hooks into every place a pet can be picked for that. UI only. node tools/sac-guard-test.js [snap-file]
 'use strict';
 const fs = require('fs'), path = require('path'), vm = require('vm');
@@ -14,10 +14,9 @@ const live = w.pets.filter(p => !p.dead && !p.community);
 const leg = live.find(p => (p.tier | 0) >= 3 && p.stage < 5), myth = live.find(p => p.stage >= 5), wiz = live.find(p => p.species === 'wizard');
 const plain = live.find(p => (p.tier | 0) === 0 && p.stage < 5 && p.species !== 'wizard' && !p.resurrected && (p.lastFed == null || w.tip - p.lastFed >= 288));
 ok(leg && has(leg, 'leg'), 'a Legendary is flagged (#' + (leg && leg.id) + ')');
-ok(myth && has(myth, 'mythic'), 'a Mythic is flagged (#' + (myth && myth.id) + ')');
+ok(myth && c.V2Rules.cemOfferWhy(w, myth, myth.owner, w.tip + 1) != null, 'a Mythic can never be offered (rules keep it out of every list)');
 ok(!wiz || has(wiz, 'wiz'), 'a Bitcoin Wizard is flagged');
 ok(plain && G.flags(w, plain, '').length === 0, 'an unfed Common is not flagged (#' + (plain && plain.id) + ')');
-ok(has(Object.assign({}, plain, { resurrected: true }), 'god'), 'a God (resurrected) is flagged');
 ok(has(Object.assign({}, plain, { lastFed: w.tip - 10 }), 'fed'), 'a pet fed 10 blocks ago is flagged');
 ok(!has(Object.assign({}, plain, { lastFed: w.tip - 300 }), 'fed'), 'a pet last fed 300 blocks ago is not');
 let got = null; G.check({ w, ids: [plain.id], me: '', onGo: ids => { got = ids; } });

@@ -1,7 +1,7 @@
 /* XCPETS sacrifice guard (Nov 23 2026, UI only: no rule, tag or replay change).
- * A player once fed a Juvenile God to a seance by accident ("I accidentally included him in a sacrifice"). Before any pet is fed to a zombie,
- * pledged to a Resurrection or offered at an altar, this sheet stops and names the special ones in the pick: Gods, Mythics, Legendaries,
- * Bitcoin Wizards, starred pets and pets fed in the last 2 chain days. The easy button leaves them out; keeping them in takes a tick first.
+ * Before any pet is fed to a zombie, pledged to a Resurrection or offered at an altar, this sheet stops and names the special ones in the pick:
+ * Legendaries, Bitcoin Wizards, starred pets and pets fed in the last 2 chain days. Gods and Mythics can't be sacrificed at all (owner, Nov 23 2026),
+ * so the rules already keep them out of every list. The easy button leaves them out; keeping them in takes a tick first.
  * V2SacGuard.check({ w, ids, me, verb, onGo(ids) }): calls onGo at once when nothing is special, else shows the sheet.
  * V2SacGuard.flags(w, p, me): the reasons for one pet ([] = ordinary). */
 (function () {
@@ -12,9 +12,7 @@
   function kept(me, id) { try { if (window.V2UI && V2UI.isKept) return !!V2UI.isKept(id); var v = JSON.parse(localStorage.getItem('xcpets-keep-' + net() + '-' + me) || '[]'); return Array.isArray(v) && v.map(Number).indexOf(+id) >= 0; } catch (e) { return false; } }
   function ago(n) { return n < 6 ? 'just now' : n < 144 ? 'about ' + Math.max(1, Math.round(n / 6)) + ' hour' + (Math.round(n / 6) > 1 ? 's' : '') + ' ago' : 'yesterday'; }
   function flags(w, p, me) { var f = []; if (!p) return f; var tip = (w && w.tip) || 0;
-    if (p.resurrected || p.mythicGod) f.push({ k: 'god', t: '😇 GOD' });
-    if (p.stage >= 5 || p.mythicCare || p.ascended) f.push({ k: 'mythic', t: '🌕 MYTHIC' });
-    else if ((p.tier | 0) >= 3) f.push({ k: 'leg', t: '👑 LEGENDARY' });
+    if ((p.tier | 0) >= 3) f.push({ k: 'leg', t: '👑 LEGENDARY' }); /* Gods and Mythics can never be offered (rules: cemOfferWhy), so they never reach this sheet */
     if (p.species === 'wizard') f.push({ k: 'wiz', t: '🧙 WIZARD' });
     if (kept(me, p.id)) f.push({ k: 'star', t: '⭐ STARRED' });
     if (p.lastFed != null && tip - p.lastFed >= 0 && tip - p.lastFed < FED_RECENT) f.push({ k: 'fed', t: '🍖 FED ' + ago(tip - p.lastFed).toUpperCase() });
@@ -27,7 +25,7 @@
       '.sg-l li{display:grid;grid-template-columns:44px 1fr;gap:8px;align-items:center;background:#2f2a4a;border:3px solid #000;padding:5px}' +
       '.sg-l canvas{width:44px;height:44px;image-rendering:pixelated;background:#0f0d1e}.sg-n{font-weight:700;overflow-wrap:anywhere}.sg-n .muted{font-weight:400;opacity:.7}' +
       '.sg-l i{font:normal 8px/1.3 "Press Start 2P",monospace;display:inline-block;border:2px solid #000;padding:2px 4px;margin:3px 4px 0 0;background:#ffc93c;color:#221400}' +
-      '.sg-l i.god{background:#fff3b0}.sg-l i.mythic{background:#b07cff;color:#14052a}.sg-l i.wiz{background:#6ac8ff;color:#041826}.sg-l i.star{background:#ffe066}.sg-l i.fed{background:#7dff6a;color:#0b1a08}' +
+      '.sg-l i.wiz{background:#6ac8ff;color:#041826}.sg-l i.star{background:#ffe066}.sg-l i.fed{background:#7dff6a;color:#0b1a08}' +
       '.sg-b{display:flex;flex-direction:column;gap:8px;margin-top:10px}.sg-b button{font:700 16px "Comic Neue","Comic Sans MS",sans-serif;border:3px solid #000;box-shadow:3px 3px 0 #000;padding:10px 12px;cursor:pointer}' +
       '.sg-ok{background:#3ddc84;color:#06210f}.sg-no{background:#2f2a4a;color:#f3ecd8}.sg-yes{background:#ff4d4d;color:#fff}.sg-yes:disabled{opacity:.4;cursor:not-allowed}' +
       '.sg-tick{display:flex;gap:8px;align-items:center;font-size:14px;margin-top:4px}.sg-tick input{width:20px;height:20px}';
