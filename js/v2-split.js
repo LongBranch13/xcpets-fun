@@ -1035,6 +1035,30 @@
     }, function () { boardP = null; return null; });
     return boardP;
   }
+  /* lead-1123 (Jake Nov 23 2026: Rankings / Proof Parade took ~15 s on a phone): the server writes view/p/99900.json beside rank.json,
+   * a small file with the top of every board, each listed wallet's best pets and every tokenized pet (tools/sync-server/split.js leadFile).
+   * loadLead() adds those pets to the view world (marked _lead; their block hashes are the file's own list) and returns the boards with
+   * owner addresses in place of indexes. null when the file is missing (an older server build), so pages fall back to loadBoard(). */
+  var leadP = null, leadHashes = null, leadPets = null;
+  function remergeLead() { if (leadPets) mergePets(leadPets); }
+  function loadLead() {
+    if (leadP) return leadP;
+    var folder = viewFolder;
+    if (!folder || !lastSummary || lastSummary.v !== 3) return Promise.resolve(null);
+    leadP = Promise.all([getJson(folder + 'view/p/99900.json', 15000, false), ownersReady()]).then(function (r) {
+      var L = r[0], own = viewOwners || [], tip = (L && L.tip) || lastSummary.tip || 0, pets = [], byId = {}, i, p;
+      if (!L || !L.lead || !L.pets || !own.length) return null;
+      leadHashes = L.hashes || [];
+      for (i = 0; i < L.pets.length; i++) { if ((L.pets[i].id | 0) === 1765) continue; p = expandRank(L.pets[i], tip); p._lead = 1; pets.push(p); byId[p.id] = p; }
+      var addr = function (o) { return own[o] || ''; }, players = {}, best = {}, ownN = {};
+      Object.keys(L.players || {}).forEach(function (k) { players[k] = L.players[k].map(function (e) { return { o: addr(e[0]), v: e[1], id: e[2] }; }); });
+      Object.keys(L.best || {}).forEach(function (o) { best[addr(o)] = L.best[o]; });
+      (L.own || []).forEach(function (e) { ownN[addr(e[0])] = e[1]; });
+      leadPets = pets; mergePets(pets);
+      return { tip: tip, live: L.live, counts: L.counts || {}, tops: L.tops || {}, players: players, best: best, own: ownN, species: L.species || [], pets: pets, byId: byId };
+    }, function () { return null; });
+    return leadP;
+  }
   function loadBoard(onProg) {
     if (boardP) return boardP;
     if (lastSummary && lastSummary.v === 3 && lastSummary.rank) return loadRank(onProg);
@@ -1076,8 +1100,9 @@
     for (i = 0; i < ids.length; i++) {
       id = ids[i] | 0; p = w.byId[id];
       if (!p || (p.art && p.art.dna)) continue;
-      if (window.XcpArt && window.PetCore && rankHashes && p._h != null) {
-        try { p.art = XcpArt.buildArt(p, rankHashes, PetCore, opt); n++; } catch (e) {}
+      var hs = p._lead ? leadHashes : rankHashes;
+      if (window.XcpArt && window.PetCore && hs && p._h != null) {
+        try { opt.hashes = hs; p.art = XcpArt.buildArt(p, hs, PetCore, opt); n++; } catch (e) {}
         continue;
       }
       name = ('00000' + Math.floor(id / 2000)).slice(-5);
@@ -1169,5 +1194,5 @@
     zombieP = getJson(folder + 'view/zombies.json').then(function (z) { return applyZombies(z); }, function () { return scanZombies(folder, onProg); });
     return zombieP;
   }
-  window.V2Split = { STALE: STALE, SCREEN_PAGES: SCREEN_PAGES, AUTO_CAP: AUTO_CAP, prepare: prepare, recheck: recheck, install: install, assemble: assemble, startVerify: startVerify, checkPlans: checkPlans, serverCheck: serverCheck, serverShop: serverShop, serverStat: function () { return serverStat; }, rest: rest, more: more, loadBoard: loadBoard, loadZombies: loadZombies, dress: dress, boardBytes: function () { return { bytes: boardBytes, files: boardFiles }; }, ensureDead: ensureDead, ensurePet: ensurePet, ownerShard: function (addr, cb) { sha2(addr).then(function (h) { cb(h.slice(0, 2)); }); }, petSig: petSig, healthTip: function () { return healthTipN; }, noteHealth: noteHealth, pingHealth: pingHealth, ownersReady: ownersReady, ownersKnown: ownersKnown, adoptOwners: adoptOwners, openOwnerPets: openOwnerPets, openList: openList, notePets: notePets, ownerTable: ownerTable, pageWallet: pageWallet, resolveWorld: resolveWorld, newestPages: newestPages, rowsToLog: rowsToLog, loadNewest: loadNewest };
+  window.V2Split = { loadLead: loadLead, remergeLead: remergeLead, STALE: STALE, SCREEN_PAGES: SCREEN_PAGES, AUTO_CAP: AUTO_CAP, prepare: prepare, recheck: recheck, install: install, assemble: assemble, startVerify: startVerify, checkPlans: checkPlans, serverCheck: serverCheck, serverShop: serverShop, serverStat: function () { return serverStat; }, rest: rest, more: more, loadBoard: loadBoard, loadZombies: loadZombies, dress: dress, boardBytes: function () { return { bytes: boardBytes, files: boardFiles }; }, ensureDead: ensureDead, ensurePet: ensurePet, ownerShard: function (addr, cb) { sha2(addr).then(function (h) { cb(h.slice(0, 2)); }); }, petSig: petSig, healthTip: function () { return healthTipN; }, noteHealth: noteHealth, pingHealth: pingHealth, ownersReady: ownersReady, ownersKnown: ownersKnown, adoptOwners: adoptOwners, openOwnerPets: openOwnerPets, openList: openList, notePets: notePets, ownerTable: ownerTable, pageWallet: pageWallet, resolveWorld: resolveWorld, newestPages: newestPages, rowsToLog: rowsToLog, loadNewest: loadNewest };
 })();
