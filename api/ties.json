@@ -1,5 +1,5 @@
 {
- "lastBlock": 977227,
+ "lastBlock": 977232,
  "count": 443,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
@@ -5197,7 +5197,7 @@
    "species": "hyb:wizard:kek",
    "speciesLabel": "Wikek (hybrid)",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 192393,
@@ -5209,7 +5209,7 @@
    "species": "hyb:chud:doge",
    "speciesLabel": "Chuge (hybrid)",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 162482,
