@@ -5,7 +5,7 @@
 'use strict';
 const fs = require('fs'), path = require('path'), ROOT = path.join(__dirname, '..'), P = require('../js/v2-places.js');
 const SKIP = ['play.html', 'fight.html', 'rare-room.html', 'breed.html', 'raid.html', '404.html'];
-const TAG = '<script src="js/v2-places.js?v=0eb71906b7" defer></script>';
+const TAG = '<script src="js/v2-places.js?v=lm1123a" defer></script>';
 function fix(s) { const M = '<!--places-->' + P.menu() + '<!--/places-->';
   s = /<!--places-->[\s\S]*?<!--\/places-->/.test(s) ? s.replace(/<!--places-->[\s\S]*?<!--\/places-->/, M) : s.replace(/(<a class="navplay"[^>]*>[\s\S]*?<\/a>|<nav>)/, '$1' + M);
   /* fewer-pages (Nov 22 2026): the how-to links now live in the Learn menu, so drop their old one-off copies from the header bar */

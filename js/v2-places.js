@@ -18,7 +18,7 @@
     { id: 'pantheon', ico: '🌕', name: 'The Pantheon', url: 'pantheon.html', line: '21 seats, 21 gods', pages: ['pantheon.html'] },
     { id: 'tokens', ico: '🎖️', name: 'Proof Parade', url: 'tokens.html', line: 'every token in order', pages: ['tokens.html'] },
     /* live-activity (owner Nov 1 2026): the Live Feed, what just happened, newest first (display only, no wallet) */
-    { id: 'live', ico: '📡', name: 'Live Feed', url: 'live.html', line: 'what just happened', pages: ['live.html'] }
+    { id: 'live', ico: '📡', name: 'Live', url: 'live.html', line: 'what just happened', pages: ['live.html', 'watch.html'] } /* live-merge-1123: Live Feed + Watch are one page (📺 Big screen switch) */
   ];
   /* tutorial-banner (owner playtest note 1, Oct 27 2026): The Big Beautiful Tutorial is NOT a place. It sits in the top banner by itself
    * (its own link after Ranking on every page with the banner), never in the Places menu, the My Pets 'Places' card or the front-page place cards. */
