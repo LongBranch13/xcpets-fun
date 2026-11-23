@@ -560,7 +560,16 @@
   function wagmiDays(raw) { var freeze = PAUSE_FROM > 0 ? day(PAUSE_FROM - 1) : 0, c = {};
     Object.keys(raw || {}).forEach(function (k) { if (!raw[k]) return; var d = +k, use = PAUSE_FROM > 0 && d * BLOCKS_PER_DAY >= PAUSE_FROM ? freeze : d; c[use] = 1; });
     return c; }
-  function streakOf(w, addr, tip) { var c = wagmiDays(w && w.wagmi && w.wagmi[addr]), ds = Object.keys(c).map(Number).sort(function (a, b) { return a - b; }), best = 0, run = 0, prev = null;
+  /* WAGMI days fix (Nov 23 2026, players: 'what happened to the rankings page', every streak showed 💀 NGMI). w.wagmi keys are game days
+   * (day(b), which already stands still during the pause), but wagmiDays() above read them as raw chain days and folded every day after the
+   * pause into day 6,776, so every streak since Nov 19 counted as one day and broke. wagmiDaysNow() keeps the keys as they are. Display and
+   * send checks use it now; the replay's 'already said WAGMI' check switches at ACTIVATE_WAGMI_DAYS_FIX_BLOCK (before it a second pet:wagmi on
+   * the same game day was taken again, which could hand one wallet two of the day's first-five spins). Replay before the block is unchanged. */
+  var ACTIVATE_WAGMI_DAYS_FIX_BLOCK = 977450;
+  function wagmiFixOn(b) { return b != null && b >= ACTIVATE_WAGMI_DAYS_FIX_BLOCK; }
+  function wagmiDaysNow(raw) { var c = {}; Object.keys(raw || {}).forEach(function (k) { if (raw[k]) c[+k] = 1; }); return c; }
+  function wagmiDaysAt(raw, b) { return wagmiFixOn(b) ? wagmiDaysNow(raw) : wagmiDays(raw); }
+  function streakOf(w, addr, tip) { var c = wagmiDaysNow(w && w.wagmi && w.wagmi[addr]), ds = Object.keys(c).map(Number).sort(function (a, b) { return a - b; }), best = 0, run = 0, prev = null;
     ds.forEach(function (d) { run = prev != null && d === prev + 1 ? run + 1 : 1; prev = d; if (run > best) best = run; });
     var t = day(tip != null ? tip : w.tip), d = c[t] ? t : t - 1, cur = 0; while (c[d]) { cur++; d--; }
     return { current: cur, best: best, today: !!c[t], days: ds.length, last: prev, state: cur ? 'wagmi' : ds.length ? 'ngmi' : 'new' }; }
@@ -4372,7 +4381,7 @@
       case 'wagmi': {
         if (b < ACTIVATE_WAGMI_BLOCK) return L(r, 'rejected', 'unknown pet: tag (community food)');
         if (!(amt >= COSTS.wagmi)) return L(r, 'rejected', 'below WAGMI cost 1 sat');
-        var wd = (w.wagmi[src] = w.wagmi[src] || {}); if (wagmiDays(wd)[day(b)]) return L(r, 'wagmi', src + ' already said WAGMI on chain day ' + day(b) + ' (counts once)');
+        var wd = (w.wagmi[src] = w.wagmi[src] || {}); if (wagmiDaysAt(wd, b)[day(b)]) return L(r, 'wagmi', src + ' already said WAGMI on chain day ' + day(b) + ' (counts once)');
         wd[day(b)] = 1;
         if (wagmiPrizeOn(b)) { var F5 = (w.wagmiFirst[day(b)] = w.wagmiFirst[day(b)] || []); /* top-five prize: first 5 distinct wallets of the chain day (block, then tx order) */
           if (F5.length < WAGMI_PRIZE_N) { F5.push(src); earnSpin(w, src, b, r.tx_hash, 'wagmi', 1); return L(r, 'wagmi', src + ' said WAGMI for chain day ' + day(b) + ' (#' + F5.length + ' of the day: +1 saved spin)', { first5: F5.length }); } }
@@ -5573,7 +5582,7 @@
    * fit go in normal pet:fr burns after it (same plan as Feed all, packed to 22 characters so the first burn can carry the flags). */
   var DC_BODY = MAX_TAG_BYTES - DC_PREFIX.length - 2 - 3;
   function dailyChoresPlan(w, owner, nb, o) { o = o || {}; var A = w && w.tip; if (A == null || !owner) return null; nb = nb != null ? nb : A + 1; if (!choresOn(nb)) return null;
-    var wg = !(w.wagmi && wagmiDays(w.wagmi[owner])[day(nb)]), sp = o.spins !== false && !spinTargetOn(nb), f = (wg ? DC_WAGMI : 0) | (sp ? DC_SPINS : 0);
+    var wg = !(w.wagmi && wagmiDaysNow(w.wagmi[owner])[day(nb)]), sp = o.spins !== false && !spinTargetOn(nb), f = (wg ? DC_WAGMI : 0) | (sp ? DC_SPINS : 0);
     var ps = w.pets.filter(function (p) { return p.owner === owner && frEats(p, nb) && (!o.ids || o.ids.indexOf(p.id) >= 0); }), inRef = new Set(refList(w, owner, A, nb).map(function (p) { return p.id; }));
     var left = ps.filter(function (p) { return !inRef.has(p.id); }); ps = ps.filter(function (p) { return inRef.has(p.id); }); /* a pet outside the eater list goes in a pet-number feed burn after the chores (same as Feed all) */
     var fr = ps.length ? feedRunsPlan(w, owner, ps, nb, DC_BODY) : null, extra = left.length ? feedQueue(w, owner, left.map(function (p) { return p.id; }), nb) : [];
@@ -5734,7 +5743,7 @@
   return { ACTIVATE_TRANSFER_GAPS_BLOCK: ACTIVATE_TRANSFER_GAPS_BLOCK, transferGapsGate: function () { return ACTIVATE_TRANSFER_GAPS_BLOCK; }, xferOn: xferOn, _setTransferGaps: function (b) { ACTIVATE_TRANSFER_GAPS_BLOCK = b == null ? null : Number(b); }, ACTIVATE_CARRYPICK_BLOCK: ACTIVATE_CARRYPICK_BLOCK, carryPickGate: function () { return ACTIVATE_CARRYPICK_BLOCK; }, carryPickOn: carryPickOn, _setCarryPick: function (b) { ACTIVATE_CARRYPICK_BLOCK = b == null ? null : Number(b); }, ACTIVATE_SPIN_TARGET_BLOCK: ACTIVATE_SPIN_TARGET_BLOCK, spinTargetGate: function () { return ACTIVATE_SPIN_TARGET_BLOCK; }, spinTargetOn: spinTargetOn, _setSpinTargetActivation: function (b) { ACTIVATE_SPIN_TARGET_BLOCK = b; }, spinList: spinList, spinTargetPlans: spinTargetPlans, REWEAR_GRANTS: REWEAR_GRANTS, rewearGrant: rewearGrant, rewearPlan: rewearPlan, rewearPlans: rewearPlans,
     ACTIVATE_BORP_BLOCK: ACTIVATE_BORP_BLOCK, borpGate: function () { return ACTIVATE_BORP_BLOCK; }, borpOn: borpOn, isBorpPair: isBorpPair, _setBorp: function (b) { ACTIVATE_BORP_BLOCK = b == null ? null : Number(b); },
     ACTIVATE_TWIN_ALIKE_BLOCK: ACTIVATE_TWIN_ALIKE_BLOCK, twinAlikeGate: function () { return ACTIVATE_TWIN_ALIKE_BLOCK; }, twinAlikeOn: twinAlikeOn, twinAlike: twinAlike, _setTwinAlike: function (b) { ACTIVATE_TWIN_ALIKE_BLOCK = b == null ? null : Number(b); },
-    ACTIVATE_ONEOFONE_CROSS_BLOCK: ACTIVATE_ONEOFONE_CROSS_BLOCK, crossGate: function () { return ACTIVATE_ONEOFONE_CROSS_BLOCK; }, crossOn: crossOn, crossOf: crossOf, crossLabel: crossLabel, ACTIVATE_SPECIAL_PAIR_BLOCK: ACTIVATE_SPECIAL_PAIR_BLOCK, specialPairOn: specialPairOn, specialPairOf: specialPairOf, _setSpecialPair: function (b) { ACTIVATE_SPECIAL_PAIR_BLOCK = b; }, ACTIVATE_SPECIAL_PAIR_RETRO_BLOCK: ACTIVATE_SPECIAL_PAIR_RETRO_BLOCK, SP_PAIR_RETRO: SP_PAIR_RETRO, spPairRetro: spPairRetro, _setSpecialPairRetro: function (b) { ACTIVATE_SPECIAL_PAIR_RETRO_BLOCK = b; }, CROSS_PLANS: CROSS_PLANS, _jackpotEgg: jackpotEgg, _setOneOfOneCross: function (b) { ACTIVATE_ONEOFONE_CROSS_BLOCK = b == null ? null : Number(b); },
+    ACTIVATE_ONEOFONE_CROSS_BLOCK: ACTIVATE_ONEOFONE_CROSS_BLOCK, crossGate: function () { return ACTIVATE_ONEOFONE_CROSS_BLOCK; }, crossOn: crossOn, crossOf: crossOf, crossLabel: crossLabel, ACTIVATE_SPECIAL_PAIR_BLOCK: ACTIVATE_SPECIAL_PAIR_BLOCK, specialPairOn: specialPairOn, specialPairOf: specialPairOf, _setSpecialPair: function (b) { ACTIVATE_SPECIAL_PAIR_BLOCK = b; }, ACTIVATE_SPECIAL_PAIR_RETRO_BLOCK: ACTIVATE_SPECIAL_PAIR_RETRO_BLOCK, ACTIVATE_WAGMI_DAYS_FIX_BLOCK: ACTIVATE_WAGMI_DAYS_FIX_BLOCK, wagmiFixOn: wagmiFixOn, SP_PAIR_RETRO: SP_PAIR_RETRO, spPairRetro: spPairRetro, _setSpecialPairRetro: function (b) { ACTIVATE_SPECIAL_PAIR_RETRO_BLOCK = b; }, CROSS_PLANS: CROSS_PLANS, _jackpotEgg: jackpotEgg, _setOneOfOneCross: function (b) { ACTIVATE_ONEOFONE_CROSS_BLOCK = b == null ? null : Number(b); },
     retireGate: function () { return ACTIVATE_RETIRE_TAGS_BLOCK; }, retireOn: retireOn, retiredAt: retiredAt, retiredUI: function (w) { return retireOn(((w && w.tip) || 0) + 1); }, RETIRED_ACTIONS: RETIRED_ACTIONS, _setRetireActivation: function (b) { ACTIVATE_RETIRE_TAGS_BLOCK = b == null ? null : Number(b); },
     retireDeadGate: function () { return ACTIVATE_RETIRE_DEAD_BLOCK; }, retireDeadOn: retireDeadOn, RETIRE_DEAD_DAYS: RETIRE_DEAD_DAYS, retireSpareWhy: retireSpareWhy, retireSpareFlags: retireSpareFlags, retireRareSpecies: retireRareSpecies, retireDeadDue: retireDeadDue, retireDeathClock: retireDeathClock, retireDeadBanner: retireDeadBanner, _retireDeadSweep: retireDeadSweep, _setRetireDeadActivation: function (b) { ACTIVATE_RETIRE_DEAD_BLOCK = b == null ? null : Number(b); RETIRE_RARE_SPECIES = null; },
     grindGate: function () { return ACTIVATE_GRIND_BLOCK; }, grindOn: grindOn, grindWhy: grindWhy, grindList: grindList, grindPreview: grindPreview, grindPlan: grindPlan, _setGrindActivation: function (b) { ACTIVATE_GRIND_BLOCK = b == null ? null : Number(b); }, _sausageTierTest: sausageTier, GRIND: { COST: GRIND_COST, MAX: GRIND_MAX, MEAT: GRIND_MEAT, SPIN_EVERY: GRIND_SPIN_EVERY, EGG_EVERY: GRIND_EGG_EVERY, SAUSAGE_10K: GRIND_SAUSAGE_10K, GOLD_PER_PET: GRIND_GOLD_PER_PET, GOLD_MAX: GRIND_GOLD_MAX },
