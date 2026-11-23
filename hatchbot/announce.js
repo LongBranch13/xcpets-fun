@@ -26,7 +26,8 @@ function clean(t) { return String(t).replace(/\b(bc1|tb1)[a-z0-9]{8,}\b/gi, 'a p
 async function tg(method, body) {
   if (DRY || !TOKEN || !CHAT) { console.log('--- ' + method + (DRY ? ' (dry)' : ' (no token/chat)') + '\n' + (body.text || body.caption || '')); return true; }
   for (let i = 0; i < 3; i++) {
-    const r = await fetch('https://api.telegram.org/bot' + TOKEN + '/' + method, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(Object.assign({ chat_id: CHAT }, body)) });
+    let r; try { r = await fetch('https://api.telegram.org/bot' + TOKEN + '/' + method, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(Object.assign({ chat_id: CHAT }, body)), signal: AbortSignal.timeout(60e3) }); }
+    catch (e) { console.log('telegram ' + method + ' no answer (' + (e && (e.name || e.message)) + '): it may have posted, so it is not sent again'); return true; }
     if (r.ok) return true;
     const j = await r.json().catch(() => ({}));
     if (r.status === 429 && j.parameters && j.parameters.retry_after) { await new Promise(res => setTimeout(res, (j.parameters.retry_after + 1) * 1000)); continue; }
@@ -38,11 +39,14 @@ const say = text => tg('sendMessage', { text: clean(text), disable_web_page_prev
 /* Posts with a picture (Nov 23 2026): the pet drawn by the site's own renderer, as a short GIF for big moments (hatchbot/art.js).
  * A file upload (multipart), so Telegram never fetches anything from us. Any drawing or upload problem falls back to the plain text post. */
 const ART_OUT = opt('--art-out'), NO_ART = has('--no-art');
+/* Drawing GIFs is slow; past this point in a run, posts go out as text so the run finishes well inside the workflow's 15 minutes. */
+const T_START = Date.now(), ART_BUDGET_MS = 7 * 60e3;
 async function tgFile(method, field, file, name, caption) {
   if (DRY || !TOKEN || !CHAT) { if (ART_OUT) { fs.mkdirSync(ART_OUT, { recursive: true }); const f = path.join(ART_OUT, String(++tgFile.n).padStart(2, '0') + '-' + name); fs.writeFileSync(f, file); console.log('--- ' + method + ' ' + f); } else console.log('--- ' + method + ' (' + file.length + ' bytes)'); console.log(caption); return true; }
   for (let i = 0; i < 3; i++) {
     const fd = new FormData(); fd.append('chat_id', CHAT); fd.append('caption', caption); fd.append(field, new Blob([file]), name);
-    const r = await fetch('https://api.telegram.org/bot' + TOKEN + '/' + method, { method: 'POST', body: fd });
+    let r; try { r = await fetch('https://api.telegram.org/bot' + TOKEN + '/' + method, { method: 'POST', body: fd, signal: AbortSignal.timeout(120e3) }); }
+    catch (e) { console.log('telegram ' + method + ' no answer (' + (e && (e.name || e.message)) + '): it may have posted, so no text copy and no retry'); return true; }
     if (r.ok) return true;
     const j = await r.json().catch(() => ({}));
     if (r.status === 429 && j.parameters && j.parameters.retry_after) { await new Promise(res => setTimeout(res, (j.parameters.retry_after + 1) * 1000)); continue; }
@@ -53,7 +57,7 @@ async function tgFile(method, field, file, name, caption) {
 tgFile.n = 0;
 async function post(ev, ctx, w) {
   const text = clean(ev.text);
-  if (ev.art && ctx && !NO_ART && text.length <= 1000) {
+  if (ev.art && ctx && !NO_ART && text.length <= 1000 && Date.now() - T_START < ART_BUDGET_MS) {
     let a = null; try { a = require('./art.js').event(ctx, w, ev.art); } catch (e) { console.log('art skipped for ' + ev.key + ': ' + (e && e.message)); }
     if (a) { const ok = a.type === 'photo' ? await tgFile('sendPhoto', 'photo', a.file, a.name, text) : await tgFile('sendAnimation', 'animation', a.file, a.name, text); if (ok) return true; }
   }
@@ -160,9 +164,16 @@ async function main() {
   let posts = ev;
   if (ev.length > MAX_POSTS) { const keep = ev.slice().sort((a, b) => b.prio - a.prio).slice(0, MAX_POSTS - 1), rest = ev.filter(e => keep.indexOf(e) < 0);
     posts = keep.sort((a, b) => a.at - b.at).concat([{ key: 'roundup-' + tip, at: tip, text: '📜 Also in the last few blocks: ' + rest.length + ' more cool moments. See them all at xcpets.fun/live.html', keys: rest.map(e => e.key) }]); }
-  for (const p of posts) { const ok = await post(p, ctx, w); if (ok || DRY) { seen.add(p.key); (p.keys || []).forEach(k => seen.add(k)); } await new Promise(r => setTimeout(r, 1200)); }
-  S.tip = tip; S.posted = Array.from(seen).slice(-5000); S.at = new Date().toISOString();
-  if (!DRY) fs.writeFileSync(STATE, JSON.stringify(S));
+  /* Each event posts at most once (Nov 23 2026 double posts): it is written to memory BEFORE it is sent, and memory is
+     saved after every post, so a run that crashes, hangs or is cancelled halfway never posts the same thing again. */
+  const save = () => { S.posted = Array.from(seen).slice(-5000); S.at = new Date().toISOString(); if (!DRY) fs.writeFileSync(STATE, JSON.stringify(S)); };
+  const sent = new Set();
+  for (const p of posts) {
+    if (seen.has(p.key) || sent.has(p.text)) continue;
+    seen.add(p.key); (p.keys || []).forEach(k => seen.add(k)); sent.add(p.text); save();
+    await post(p, ctx, w); await new Promise(r => setTimeout(r, 1200));
+  }
+  S.tip = tip; save();
   console.log('posted ' + posts.length + ' (block ' + from + ' -> ' + tip + ')');
 }
 main().catch(e => { console.error(e); process.exit(1); });
