@@ -114,13 +114,17 @@
     d.head.appendChild(s); }
 
   /* sprites: a real pet of that kind, drawn on a transparent background. Missing = solid silhouette. Drawn only when on screen. */
-  function draw(c) { var x = CELLS[+c.getAttribute('data-pdx')]; if (!x) return; var p = x.mine ? x.best || x.sample : x.sample, w = wNow; c.__sil = !x.mine; if (!p || !w) return; if (!root.V2Render || !root.V2Render.petFrames) { if ((c.__try = (c.__try || 0) + 1) < 40) setTimeout(function () { draw(c); }, 500); return; }
+  function draw(c) { var x = CELLS[+c.getAttribute('data-pdx')]; if (!x) return; var p = x.mine ? x.best || x.sample : x.sample, w = wNow; if (p && !p.art && w && w.byId && w.byId[p.id]) p = w.byId[p.id]; c.__sil = !x.mine; if (!p || !w || !p.art) return; if (!root.V2Render || !root.V2Render.petFrames) { if ((c.__try = (c.__try || 0) + 1) < 40) setTimeout(function () { draw(c); }, 500); return; }
     try { var kp = Object.assign({}, p, { art: Object.assign({}, p.art, { background: 'solid', bgColor: '#ff00fe', pattern: 'none' }) }), f = root.V2Render.petFrames(kp, w, { noHunger: true })[0];
       if (!f || !f.data || f.data.length !== 4096) return; c.width = c.height = 32; var g = c.getContext('2d'), id = g.createImageData(32, 32), s = f.data, o = id.data, sil = !!c.__sil;
       for (var i = 0; i < 4096; i += 4) { var r = s[i], gg = s[i + 1], b = s[i + 2]; if (r > 240 && gg < 16 && b > 240) { o[i + 3] = 0; continue; }
         if (sil) { o[i] = 34; o[i + 1] = 30; o[i + 2] = 48; o[i + 3] = 255; } else { o[i] = r; o[i + 1] = gg; o[i + 2] = b; o[i + 3] = 255; } }
       g.putImageData(id, 0, 0); } catch (e) { } }
-  function watch(scope) { var cs = scope.querySelectorAll('canvas[data-pdx]');
+  /* board pets (view/rank.json) carry no art until V2Split.dress fetches it, the same way Rankings paints its sprites */
+  function dressThen(cs) { var B = root.V2Split, ids = [], todo = [];
+    cs.forEach(function (c) { var x = CELLS[+c.getAttribute('data-pdx')], p = x && (x.mine ? x.best || x.sample : x.sample); if (p && !p.art) { ids.push(p.id); todo.push(c); } });
+    if (!ids.length || !B || !B.dress) return; B.dress(ids).then(function () { todo.forEach(function (c) { if (c.isConnected) draw(c); }); }, function () { }); }
+  function watch(scope) { var cs = scope.querySelectorAll('canvas[data-pdx]'); dressThen(Array.prototype.slice.call(cs));
     if (!('IntersectionObserver' in root)) { cs.forEach(draw); return; }
     if (!obs) obs = new IntersectionObserver(function (es) { es.forEach(function (e) { if (e.isIntersecting) { obs.unobserve(e.target); draw(e.target); } }); }, { root: el, rootMargin: '200px' });
     cs.forEach(function (c) { obs.observe(c); }); }
@@ -130,7 +134,7 @@
     return '<button type="button" class="pdx-c ' + cls + solo + '" style="--rc:' + rc + '" data-i="' + i + '" aria-label="' + esc((c.name || '') + ' ' + (col ? col.name : '') + (c.mine ? ', caught' : ', not caught yet')) + '">' +
       (tag ? '<b>' + tag + '</b>' : '') + '<canvas data-pdx="' + i + '" width="32" height="32"></canvas></button>'; }
   function body() { var x = dexNow; CELLS = [];
-    if (tab === 'species') return '<div class="pdx-head"><span>Species</span>' + COLS.map(function (c) { return '<span style="color:' + c.col + ';text-shadow:1px 1px 0 #2b2b2b">' + c.short + '</span>'; }).join('') + '</div>' +
+    if (tab === 'species') return '<div class="pdx-head"><span></span>' + COLS.map(function (c) { return '<span style="color:' + c.col + ';text-shadow:1px 1px 0 #2b2b2b">' + c.short + '</span>'; }).join('') + '</div>' +
       x.rows.map(function (r) { return '<div class="pdx-row' + (r.done ? ' done' : '') + '"><span class="pdx-nm">' + esc(r.name) + '<small>' + r.have + '/' + r.of + '</small>' + (r.done ? '<span class="pdx-stamp">MASTERED</span>' : '') + '</span>' +
         r.cells.map(function (c, j) { if (c) c.name = r.name; return cellHtml(c, COLS[j], c && c.n === 1 ? '1!' : ''); }).join('') + '</div>'; }).join('');
     var L = tab === 'legends' ? x.legends : x.hybrids;
@@ -154,7 +158,7 @@
     box.querySelector('.pdx-score').innerHTML = '<b>' + dexNow.got + '</b>/' + dexNow.total + ' caught';
     box.querySelector('.pdx-rank').textContent = dexNow.rank;
     box.querySelector('.pdx-bar i').style.width = Math.max(2, dexNow.pct) + '%';
-    box.querySelector('.pdx-sub').textContent = !m ? 'Connect a wallet (or view one) to see what you have caught.' : counting ? 'Counting every pet on chain\u2026 ' : (w._pages && !w._full ? 'Still loading some pets… ' : '') + dexNow.mastered.length + ' row' + (dexNow.mastered.length === 1 ? '' : 's') + ' mastered · tap any square';
+    box.querySelector('.pdx-sub').textContent = !m ? 'Connect a wallet (or view one) to see what you have caught.' : counting ? 'Counting every pet on chain\u2026 ' : (w._pages && !w._full && !w._ranked ? 'Still loading some pets… ' : '') + dexNow.mastered.length + ' row' + (dexNow.mastered.length === 1 ? '' : 's') + ' mastered · tap any square';
     [['species', 'Species ' + dexNow.species.got + '/' + dexNow.species.of], ['legends', 'Legends ' + dexNow.legendGot + '/' + dexNow.legends.length], ['hybrids', 'Hybrids ' + dexNow.hybridGot + '/' + dexNow.hybrids.length]].forEach(function (t) {
       var b = box.querySelector('[data-tab=' + t[0] + ']'); b.textContent = t[1]; b.setAttribute('aria-pressed', String(tab === t[0])); });
     var bd = box.querySelector('.pdx-body'); bd.innerHTML = body(); watch(bd); }
