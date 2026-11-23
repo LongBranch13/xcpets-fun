@@ -156,7 +156,7 @@
     var itemList = [];
     Object.keys(items).forEach(function (k) { itemList.push(items[k]); });
     var w = {
-      tip: summary.tip, pets: pets, byId: byId, items: items, itemList: itemList, log: [], fights: [], breedReqs: [],
+      tip: summary.tip, pets: pets, byId: byId, items: items, itemList: itemList, log: [], fights: [], breedReqs: ((pack && pack.breedReqs) || summary.breedReqs || []).map(function (r) { return { a: r.a, b: r.b, block: r.block, tx: r.tx, owner: r.owner }; }), /* open Gooby's requests (Nov 23 2026); older summaries have none */
       community: summary.community || {},
       tokens: {}, deeds: deeds, mythicOwners: mythicOwners,
       wizardMythic: cold.wizard || null, kekMythic: cold.kek || null, homerMythic: cold.homer || null,
@@ -317,7 +317,7 @@
         ownersReady();
         return view;
       });
-    }).then(function (view) { if (view && view._pages && view._pages.pages > 1) restView = view; cb(view); }, function () { cb(null); });
+    }).then(function (view) { if (view && view._pages && view._pages.pages > 1) restView = view; cb(view); if (view && view.breedReqs && view.breedReqs.length) reqPetsSoon(); }, function () { cb(null); });
   }
   function recheck() {
     if (!last || !last.man) return Promise.resolve(false);
@@ -495,6 +495,19 @@
     if (!ids || !ids.length || !folder) return Promise.resolve([]);
     return ownersReady().then(function () { return resolveIdsNow(ids); });
   }
+  /* Nov 23 2026 (players: 'missing about 100 pets', 'discards take forever'): every later owner page (24 ids) fetched and parsed its
+   * ~1 MB pet shard again, one page after another on the main thread, and a shard that timed out (12 s) or failed dropped that page's
+   * pets for good. A big Electric Egg Box puts ~1,000 of one wallet's pets in one or two shards, so that was ~40 parses of the same
+   * file. Keep the last few parsed shards per world folder, wait longer, and try a failed shard again before giving up. Display only. */
+  var shardMemo = {}, shardOrder = [], SHARD_KEEP = 6;
+  function idShard(url) {
+    if (shardMemo[url]) return shardMemo[url];
+    var p = getJson(url, 30000).then(null, function () { return getJson(url, 45000); });
+    p.then(null, function () { if (shardMemo[url] === p) { delete shardMemo[url]; shardOrder = shardOrder.filter(function (u) { return u !== url; }); } });
+    shardMemo[url] = p; shardOrder.push(url);
+    while (shardOrder.length > SHARD_KEEP) delete shardMemo[shardOrder.shift()];
+    return p;
+  }
   function resolveIdsNow(ids) {
     var folder = viewFolder, need = {}, i, id, name, names;
     for (i = 0; i < ids.length; i++) {
@@ -504,7 +517,7 @@
     }
     names = Object.keys(need);
     return Promise.all(names.map(function (nm) {
-      return getJson(folder + 'view/p/' + nm + '.json').then(function (pack) {
+      return idShard(folder + 'view/p/' + nm + '.json').then(function (pack) {
         var map = pack && pack.pets || {}, hashes = pack && pack.hashes || [], j, src, out = [];
         for (j = 0; j < need[nm].length; j++) {
           src = map[String(need[nm][j])];
@@ -534,7 +547,7 @@
     if (!lastSummary || !window.V2Mock || !V2Mock.setViewWorld) return;
     var who = me(), one = {};
     one[who] = aliveFirst(pets.slice());
-    var v = assemble(lastSummary, { owners: one, deeds: viewHold.deeds, mythicOwners: viewHold.mythicOwners, roster: done ? null : viewHold.roster, cem: viewHold.cem, keepArt: keepArt(), stash: viewHold.stash, owner: viewHold.owner });
+    var v = assemble(lastSummary, { owners: one, deeds: viewHold.deeds, mythicOwners: viewHold.mythicOwners, roster: done ? null : viewHold.roster, cem: viewHold.cem, keepArt: keepArt(), stash: viewHold.stash, owner: viewHold.owner, breedReqs: viewHold.breedReqs || null });
     v._pages = pages || null;
     v._full = done ? 1 : 0;
     if (done) viewHold.roster = null;
@@ -542,6 +555,7 @@
     V2Mock.setViewWorld(v);
     if (viewOwners) fillWorld();
     if (done) rememberRoster(v);
+    if (v.breedReqs && v.breedReqs.length) reqPetsSoon();
   }
   var restView = null;
   function adoptJob(view) {
@@ -675,6 +689,7 @@
     if (m.mode === 'diff') {
       if (m.deeds) viewHold.deeds = m.deeds;
       if (m.mythicOwners) viewHold.mythicOwners = m.mythicOwners;
+      if (m.breedReqs) viewHold.breedReqs = m.breedReqs;
       if (m.pets && m.pets.length) diffBuf = diffBuf.concat(m.pets);
       if (!m.last) return;
       var shown = (window.V2Mock && V2Mock.world && V2Mock.world()) || {};
@@ -703,6 +718,7 @@
     if (m.fights) pageJob.fights = m.fights;
     if (m.deeds) viewHold.deeds = m.deeds;
     if (m.mythicOwners) viewHold.mythicOwners = m.mythicOwners;
+    if (m.breedReqs) viewHold.breedReqs = m.breedReqs;
     if (m.last) publishOwner(pageJob.pets, pageJob.pages, pageJob.fights, true);
   }
   function petSig(p) {
@@ -732,7 +748,7 @@
     var scripts = scriptList();
     if (!scripts || typeof Worker === 'undefined') return Promise.resolve(null);
     readyP = new Promise(function (res) {
-      try { worker = new Worker(new URL('js/v2-verify-worker.js?v=br1123a', location.href).href); }
+      try { worker = new Worker(new URL('js/v2-verify-worker.js?v=stable1123a', location.href).href); }
       catch (e) { res(null); return; }
       worker.onmessage = function (ev) {
         var m = ev.data || {};
@@ -1127,6 +1143,19 @@
       }, function () {});
     })).then(function () { return n; });
     });
+  }
+  /* Gooby's requests (Nov 23 2026): a request for one of my pets names the asker's pet, which a slim world does not hold, so the
+   * accept check said 'no such pet' and the desk, pop-up and 'Asking you' shelf stayed empty. Fetch those pets once. Display only. */
+  var reqAsked = {};
+  function reqPetsSoon() {
+    setTimeout(function () {
+      var w = window.V2Mock && V2Mock.world && V2Mock.world(), me0 = me();
+      if (!w || !w.byId || !me0) return;
+      (w.breedReqs || []).forEach(function (r) {
+        var B = w.byId[r.b], A = w.byId[r.a];
+        [[B, r.b], [A, r.a]].forEach(function (x) { if (!x[0] && !reqAsked[x[1]] && (r.owner === me0 || (B && B.owner === me0) || !B)) { reqAsked[x[1]] = 1; ensurePet(x[1]); } });
+      });
+    }, 1200);
   }
   function ensurePet(id) {
     id = id | 0;

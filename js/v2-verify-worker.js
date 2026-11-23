@@ -111,6 +111,10 @@ function start(m) {
             var fs = world.fights || [], fi, f;
             for (fi = 0; fi < fs.length; fi++) { f = fs[fi]; if (ids[f.a] || ids[f.b] || f.challenger === meAddr) fights.push(f); }
           }
+          /* open Gooby's breed requests at the checked tip (Nov 23 2026): the slim world only has the published ones, so a request made
+           * after the published block showed nowhere until the next world build. Small (inside the 144-block window). */
+          var reqs = [], rq = world.breedReqs || [], ri; for (ri = 0; ri < rq.length; ri++) { var r0 = rq[ri]; if (r0 && !r0.used && world.tip - (r0.block | 0) <= 192) reqs.push({ a: r0.a, b: r0.b, block: r0.block, tx: r0.tx || null, owner: r0.owner || null }); }
+          self._reqs = reqs;
           self._mine = mine; self._owned = ids; self._fights = fights; self._deeds = ownerDeeds; self._mythic = mythicOwners; self._tip = world.tip; self._n = pets.length; self._alive = alive;
           mark('mine');
           self.postMessage({ cmd: 'ready', ok: true, t: T, tip: world.tip, n: pets.length, alive: alive, burned: world.community && world.community.burned || 0, mineN: mine.length });
@@ -141,7 +145,7 @@ function syncMine(m) {
   var STEP = 400, from = 0;
   function send() {
     var last = from + STEP >= out.length || !out.length;
-    self.postMessage({ cmd: 'mine', mode: 'diff', pets: out.slice(from, from + STEP), from: from, total: out.length || 1, last: last, fights: last ? (self._fights || []) : null, deeds: last ? (self._deeds || {}) : null, mythicOwners: last ? (self._mythic || {}) : null, tip: self._tip, n: self._n, alive: self._alive });
+    self.postMessage({ cmd: 'mine', mode: 'diff', pets: out.slice(from, from + STEP), from: from, total: out.length || 1, last: last, fights: last ? (self._fights || []) : null, deeds: last ? (self._deeds || {}) : null, mythicOwners: last ? (self._mythic || {}) : null, breedReqs: last ? (self._reqs || null) : null, tip: self._tip, n: self._n, alive: self._alive });
     if (!last) { from += STEP; setTimeout(send, 0); }
   }
   send();
