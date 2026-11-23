@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><!--err-report-1102--><script>/* err-report-1102: page errors -> message, file, line, build, page only (no wallet, no query string); see tools/build-err-report.js */(function(){try{var U='https://2-31-126-156.sslip.io/e',seen={},n=0,q=[],W=window,D=document;function cut(s,k){return String(s==null?'':s).replace(/\b(bc1|tb1)[a-z0-9]{20,90}\b/gi,'<addr>').replace(/\b[13mn2][a-km-zA-HJ-NP-Z1-9]{25,34}\b/g,'<addr>').replace(/\b[0-9a-f]{40,}\b/gi,'<hex>').replace(/[^\s@]+@[^\s@]+\.[a-z]{2,}/gi,'<email>').slice(0,k)}function pth(u){try{var x=new URL(u,location.href);return x.origin===location.origin?x.pathname:x.origin}catch(e){return ''}}function bid(){var s=D.querySelector('script[src*="?v="]'),m=s&&/[?&]v=([0-9a-f]{6,12})/.exec(s.src);return m?m[1]:'?'}function go(o){try{var b=JSON.stringify(o);if(!(navigator.sendBeacon&&navigator.sendBeacon(U,b)))fetch(U,{method:'POST',body:b,mode:'no-cors',keepalive:true})}catch(e){}}function rep(k,m,f,l,c){m=cut(m,300);if(!m||/^Script error\.?$/.test(m)||n>=5)return;var o={k:k,m:m,f:pth(f),l:l|0,c:c|0,b:bid(),p:location.pathname},key=[k,m,o.f,o.l].join('|');if(seen[key])return;seen[key]=1;n++;if(D.prerendering){if(!q.length)D.addEventListener('prerenderingchange',function(){q.splice(0).forEach(go)},{once:true});q.push(o)}else go(o)}W.addEventListener('error',function(e){if(!e||!e.message)return;rep('error',e.message,e.filename,e.lineno,e.colno)});W.addEventListener('unhandledrejection',function(e){var r=e&&e.reason,f='',l=0,c=0,s=r&&r.stack&&String(r.stack).split('\n'),i,m;for(i=0;s&&i<s.length;i++){m=/(https?:\/\/[^\s)]+?):(\d+):(\d+)/.exec(s[i]);if(m){f=m[1];l=+m[2];c=+m[3];break}}rep('rejection',r&&r.message?(r.name&&r.name!=='Error'?r.name+': ':'')+r.message:String(r),f,l,c)})}catch(e){}})();</script><!--err-report-1102-->
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>XCPETS in Telegram</title>
+<meta name="description" content="XCPETS inside Telegram: your pets, who needs food, the live feed and quick links to play. View only.">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0e0b16">
+<link rel="icon" href="../img/favicon.png">
+<link rel="preconnect" href="https://node.xcpets.fun" crossorigin>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bangers&family=Comic+Neue:wght@400;700&family=Press+Start+2P&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="app.css?v=tg1123a">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+<!-- XCPETS mini app (Telegram). VIEW ONLY: reads public files (the published world on node.xcpets.fun and the Counterparty API there).
+     It never signs, never asks for keys, never burns. Every action opens xcpets.fun in the player's own browser or wallet app. -->
+<header class="top">
+  <div class="brand"><img src="../img/logo.png" alt="" width="30" height="30"><span>XCPETS</span></div>
+  <div class="chip" id="tipChip">⛓ …</div>
+</header>
+
+<main>
+  <!-- NOW -->
+  <section class="tab on" id="tab-now" aria-label="Now">
+    <div class="card day" id="dayCard"><div class="sk"></div></div>
+    <div class="card comm" id="commCard"><div class="sk"></div></div>
+    <div class="card">
+      <h2><span class="dot"></span> Live on chain</h2>
+      <p class="sub">Every move is a burn on Bitcoin. Newest first.</p>
+      <ol class="feed" id="feed"><li class="sk"></li><li class="sk"></li><li class="sk"></li></ol>
+      <button class="ghost" id="feedFull">📡 Open the full Live Feed</button>
+    </div>
+    <div class="card raid" id="raidCard" hidden></div>
+    <div class="card">
+      <h2>🔥 Top burners</h2>
+      <ol class="lb" id="lb"><li class="sk"></li></ol>
+    </div>
+  </section>
+
+  <!-- MY PETS -->
+  <section class="tab" id="tab-pets" aria-label="My Pets">
+    <div class="card" id="walletCard">
+      <h2>🐸 My Pets</h2>
+      <p class="sub" id="walletSub">Paste your wallet address to see your pets here. View only: nothing can be signed in Telegram.</p>
+      <form id="walletForm" autocomplete="off">
+        <input id="walletIn" inputmode="text" spellcheck="false" autocapitalize="off" placeholder="bc1… or 1… address" aria-label="Wallet address">
+        <button class="go" type="submit">Show</button>
+      </form>
+      <p class="err" id="walletErr" hidden></p>
+    </div>
+    <div id="mine" hidden>
+      <div class="card me">
+        <div class="meTop"><span class="addr" id="meAddr"></span><button class="link" id="meChange">change</button></div>
+        <div class="stats" id="meStats"></div>
+        <div class="species" id="meSpecies"></div>
+      </div>
+      <div class="card" id="riseCard" hidden>
+        <h2>🧟 Your zombies</h2>
+        <div class="grid" id="rise"></div>
+      </div>
+      <div class="card">
+        <h2 id="petsTitle">Your pets</h2>
+        <p class="sub" id="petsSub"></p>
+        <div class="grid" id="pets"></div>
+        <button class="ghost" id="more" hidden>Show 24 more</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- PLAY -->
+  <section class="tab" id="tab-play" aria-label="Play">
+    <div class="card">
+      <h2>🎮 Play</h2>
+      <p class="sub">Moves are burns, so your wallet signs them. A tap opens xcpets.fun in your browser. On a phone, the page offers <b>Open in Casa Tookan</b> so your wallet app can sign.</p>
+      <div class="tiles" id="tiles"></div>
+    </div>
+    <div class="card how">
+      <h2>🤔 New here?</h2>
+      <ol>
+        <li><b>Hatch</b> eggs by burning XCPETS. Every egg is a random pixel pet, some are 1 in 7,777.</li>
+        <li><b>Feed</b> them once a chain day (144 blocks) so they grow to Mythic. Unfed pets end up in the Pet Cemetery.</li>
+        <li><b>Breed</b>, <b>fight</b>, <b>raid</b> and show off. It all lives on Bitcoin.</li>
+      </ol>
+      <button class="ghost" data-open="tutorial.html">🎓 The Big Beautiful Tutorial</button>
+    </div>
+  </section>
+</main>
+
+<nav class="tabs" role="tablist">
+  <button role="tab" data-tab="now" class="on" aria-selected="true"><span>📡</span>Now</button>
+  <button role="tab" data-tab="pets" aria-selected="false"><span>🐸</span>My Pets</button>
+  <button role="tab" data-tab="play" aria-selected="false"><span>🎮</span>Play</button>
+</nav>
+
+<div class="sheet" id="sheet" hidden>
+  <div class="sheetBg" data-close></div>
+  <div class="sheetBox" role="dialog" aria-modal="true" aria-labelledby="sheetName">
+    <button class="x" data-close aria-label="Close">✕</button>
+    <div id="sheetBody"></div>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script src="app.js?v=tg1123a"></script>
+</body></html>
