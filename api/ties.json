@@ -1,6 +1,6 @@
 {
- "lastBlock": 977102,
- "count": 436,
+ "lastBlock": 977122,
+ "count": 438,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -5232,6 +5232,30 @@
    "name": "Tutopip",
    "species": "hyb3:bobo:dodo:viking",
    "speciesLabel": "Bodoking (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 205411,
+   "asset": "A8015691271037452300",
+   "tiedBlock": 977110,
+   "tiedTx": "e9dd11039c3ad170cae15386d2cada5359789ee47a3c7e483076dbbd410d7e28",
+   "kind": "deed",
+   "name": "Boopekin",
+   "species": "hyb:nakamoto:viking",
+   "speciesLabel": "Naking (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 205410,
+   "asset": "A1653609194990986214",
+   "tiedBlock": 977111,
+   "tiedTx": "619adbd7bef7538d159462446c3f644f5517a86b0a40afd4da1289d312cbdce3",
+   "kind": "deed",
+   "name": "Zibetot",
+   "species": "peepo",
+   "speciesLabel": "Peepo",
    "rarity": "Legendary",
    "stage": "Hatchling"
   }

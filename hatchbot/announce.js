@@ -70,7 +70,9 @@ function collect(V, w, tip, from) {
   /* 1) log lines worth a post */
   (w.log || []).forEach(x => { if (!x || x.block <= from) return; const m = String(x.msg || ''), id = (m.match(/#(\d+)/) || [])[1], k = x.kind + '-' + (x.tx || '') + '-' + x.block + '-' + (id || '');
     if (x.kind === 'raise') add(k, x.block, '🧟 RISE! ' + petName(w, +id, V) + ' clawed its way out of the grave as a zombie' + ((m.match(/\(([\d.]+) times/) || [])[1] ? ' at ' + m.match(/\(([\d.]+) times/)[1] + ' times its death power' : '') + '.\n' + link(id), 3);
-    else if (x.kind === 'resurrect') add(k, x.block, '😇 MIRACLE! ' + petName(w, +id, V) + ' is ALIVE again with a halo.\n' + link(id), 4);
+    else if (x.kind === 'resurrect') { /* the rules log a failed try under the same kind ("...turned to dust forever"), so read the outcome */
+      if (/failed|dust/i.test(m)) add(k, x.block, '💨 So close... ' + petName(w, +id, V) + ' tried to come back, but the resurrection failed. It turned to dust forever.\n' + link(id), 3);
+      else if (/ALIVE again/.test(m)) add(k, x.block, '😇 MIRACLE! ' + petName(w, +id, V) + ' is ALIVE again with a halo.\n' + link(id), 4); }
     else if (x.kind === 'unleash') add(k, x.block, '🩸 UNLEASHED! Zombie ' + petName(w, +id, V) + ' is starving and has been let loose. In 6 blocks it eats one of its owner\'s Mythics...\n' + link(id), 4);
     else if (x.kind === 'mgmeal') { const ids = (m.match(/#(\d+)/g) || []).map(s => +s.slice(1)); add(k, x.block, '💜 A Mythic was devoured! Zombie ' + petName(w, ids[0], V) + ' ate ' + petName(w, ids[1], V) + '. The zombie is cured forever, and the Mythic now rests in a Mythic grave, waiting for a seance.\n' + link(ids[1]), 5); }
     else if (x.kind === 'hunt' && /won|defeated|beat/i.test(m)) add(k, x.block, '⚔️ Zombie hunt! ' + clean(m).slice(0, 200), 2);
@@ -83,6 +85,18 @@ function collect(V, w, tip, from) {
   const leg = w.pets.filter(p => p && p.hatchBlock > from && p.hatchBlock <= tip && (p.tier | 0) >= 3 && !p.community);
   if (leg.length > 3) add('hatch-leg-' + leg.map(p => p.id).join('.').slice(0, 120), leg[0].hatchBlock, '🌟 LEGENDARY HATCHES! ' + leg.length + ' Legendary pets just hatched: ' + leg.slice(0, 10).map(p => petName(w, p.id, V)).join(', ') + (leg.length > 10 ? ' and more' : '') + '.', 3);
   else leg.forEach(p => add('hatch-leg-' + p.id, p.hatchBlock, '🌟 LEGENDARY HATCH! ' + petName(w, p.id, V) + ' just cracked out of its egg.\n' + link(p.id), 3));
+  /* 2b) raids: boss appears, HP milestones (50%, 25%, 10%), defeated or escaped */
+  (w.raids || []).forEach(R => { const B = V.raidBossById ? V.raidBossById(R.boss) : null, nm = B ? B.name : 'The boss', url = '\nxcpets.fun/raid.html', f = n => Number(n).toLocaleString('en-US');
+    if (R.open > from && R.open <= tip) add('raid-open-' + R.n, R.open, '👹 RAID ' + R.n + ': ' + nm + ' has appeared with ' + f(R.hp) + ' HP! You have 3 days to take it down.' + (R.v2 ? ' Every feed, breed and hatch hits it too.' : '') + url, 4);
+    const live = R.killBlock == null && tip <= R.end, pct = R.hp ? R.left / R.hp * 100 : 100;
+    if (live) [50, 25, 10].forEach(m => { if (pct <= m) add('raid-hp-' + R.n + '-' + m, tip, (m === 10 ? '🩸 ' : '⚔️ ') + nm + ' is down to ' + Math.max(1, Math.ceil(pct)) + '% HP (' + f(R.left) + ' left). ' + f(R.end - tip + 1) + ' blocks to finish it!' + url, m === 10 ? 4 : 3); });
+    if (R.killBlock != null && R.killBlock > from) { const who = R.killPet != null ? petName(w, R.killPet, V) : 'a community burn'; add('raid-kill-' + R.n, R.killBlock, '💥 ' + nm + ' IS DEFEATED! The killing blow came from ' + who + '. Rewards count in 6 blocks.' + url, 5); }
+    if (R.result === 'escaped' && R.decided != null && R.decided > from && (R.order.length || R.chipTotal)) add('raid-esc-' + R.n, R.decided, '💨 ' + nm + ' escaped with ' + f(R.left) + ' HP left. Next boss in a few days.' + url, 2); });
+  /* 2c) seasons: legend pulls, egg supply milestones, the season result */
+  Object.values(w.seasons || {}).forEach(Z => { const sup = V.SEASON ? V.SEASON.SUPPLY : 690, url = '\nxcpets.fun';
+    (Z.legends || []).forEach(id => { const p = w.byId[id]; if (p && p.hatchBlock > from) add('season-legend-' + id, p.hatchBlock, '👑 SEASON LEGEND! ' + petName(w, id, V) + ' hatched from a Season ' + Z.n + ' egg. 1 in ' + (V.SEASON ? V.SEASON.LEGEND_ODDS : 690) + '!\n' + link(id), 5); });
+    if (!Z.settled) [[sup / 2, '50'], [sup * 3 / 4, '75'], [sup - 10, 'last10'], [sup, 'soldout']].forEach(([n, k]) => { if (Z.sold >= n) add('season-supply-' + Z.n + '-' + k, tip, k === 'soldout' ? '🚨 SOLD OUT! All ' + sup + ' Season ' + Z.n + ' eggs are gone. Breeding is the only way to get the trait now.' + url : k === 'last10' ? '⏳ Only ' + (sup - Z.sold) + ' Season ' + Z.n + ' eggs left!' + url : '🥚 ' + (sup - Z.sold) + ' of ' + sup + ' Season ' + Z.n + ' eggs left.' + url, k === 'soldout' ? 5 : 3); });
+    if (Z.settled && Z.decided > from) { const ch = (Z.champions || []).map((a, i) => ['🥇', '🥈', '🥉'][i] + ' ' + clean(a) + ' (' + Z.pts[a] + ' pts)').join('  '); add('season-end-' + Z.n, Z.decided, '🏆 SEASON ' + Z.n + ' IS OVER! ' + Object.keys(Z.tiers || {}).length + ' players reached a reward tier, ' + Z.sold + ' season eggs hatched.' + (ch ? '\nChampions: ' + ch : '') + url, 5); } });
   /* 3) the existing HatchBot hooks: halvings + fire sales, Legendary/Mythic gifts and swaps, Pantheon seats */
   try { require(path.join(ROOT, 'tools/hatchbot-warnings.js')).events(w, tip, V).forEach(e => add(e.id, tip, e.text, 5)); } catch (e) { console.log('warnings hook skipped: ' + e.message); }
   try { require(path.join(ROOT, 'tools/hatchbot-gifts.js')).messages(w).forEach(e => { if (e.at > from) add(e.key, e.at, e.text, 2); }); } catch (e) { console.log('gifts hook skipped: ' + e.message); }

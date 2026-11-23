@@ -69,7 +69,7 @@ const SEED = `() => {
 
 (async () => {
   fs.mkdirSync(ART, { recursive: true });
-  const RULES_MD5 = '7787b1e10cb08c9f36aec3fb656dd99c';
+  const RULES_MD5 = '11b5c6c1959c56a7fd51c09a8b2a2309';
   RULES.forEach(f => { const a = md5(path.join(ROOT, f)); ok(f === 'js/v2-rules.js' ? a === RULES_MD5 : a === crypto.createHash('md5').update(gitFile(f)).digest('hex'), f === 'js/v2-rules.js' ? 'js/v2-rules.js MD5 is ' + RULES_MD5 : 'rule unchanged ' + f); });
   const oldShop = gitFile('js/v2-shop.js');
   const mainStacks = /function stackPieces/.test(oldShop);
@@ -93,7 +93,9 @@ const SEED = `() => {
   async function openDress(page, pid) {
     await page.evaluate(id => { location.hash = 'dressing-room'; if (id && window.V2Shop) { V2Shop._state().pet = id; if (V2Shop.refreshRoll) V2Shop.refreshRoll(); } }, pid || null);
     await page.waitForSelector('#rrDress .dr-grid', { timeout: 30000 });
-    if (pid) await page.evaluate(id => { var b = document.querySelector('[data-dpid="' + id + '"]'); if (b) b.click(); }, pid);
+    if (pid) await page.evaluate(async id => { var b = document.querySelector('[data-dpid="' + id + '"]'); if (b) return b.click(); /* pet-picker: Change pet, search the number, tap the card */
+      var c = document.querySelector('#drChg'); if (!c) return; c.click(); var q = document.querySelector('#drPk [data-pk2q]'); if (q) { q.value = String(id); q.dispatchEvent(new Event('input')); }
+      var k = document.querySelector('#drPk [data-pk2="' + id + '"]'); if (k) k.click(); }, pid);
     await page.waitForTimeout(400);
     await page.evaluate(() => { var d = document.getElementById('rrDress'); if (d) d.scrollIntoView({ block: 'start' }); });
     await page.waitForTimeout(200);

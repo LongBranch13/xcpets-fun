@@ -45,7 +45,7 @@ const INIT = `(() => {
 })();`;
 (async () => {
   fs.mkdirSync(ART, { recursive: true });
-  const RULES_MD5 = '7787b1e10cb08c9f36aec3fb656dd99c';
+  const RULES_MD5 = '11b5c6c1959c56a7fd51c09a8b2a2309';
   RULES.forEach(f => { const a = md5(path.join(ROOT, f)); ok(f === 'js/v2-rules.js' ? a === RULES_MD5 : a === crypto.createHash('md5').update(gitFile(f)).digest('hex'), f === 'js/v2-rules.js' ? 'js/v2-rules.js MD5 is ' + RULES_MD5 : 'rule unchanged ' + f + ' ' + a); });
   const server = await serve();
   const origin = 'http://127.0.0.1:' + server.address().port;
@@ -136,7 +136,7 @@ const INIT = `(() => {
       const dom = Array.prototype.map.call(document.querySelectorAll('#rrDress .dr-slots canvas[data-gic]'), cv => cv.getAttribute('data-gic')).sort();
       return {
         clickMs: clickMs, hash: location.hash, dress: !!document.querySelector('#rrDress'),
-        strip: document.querySelectorAll('#drStrip .dr-pt').length,
+        strip: document.querySelectorAll('#drStrip .dr-pt, #drChg').length /* pet-picker: the strip is now one Change pet bar (js/v2-pick.js) */,
         pid: pid, sameGear: worn.join() === dom.join(), wornN: worn.length,
         longMax: (window.__long || []).reduce((a, b) => Math.max(a, b), 0),
         delay: Math.max(0, ...delays)

@@ -106,10 +106,12 @@
     if (!same(back, art)) return { bh: sp.bh, as: as, sid: sid, ax: null, ac: art.community ? 1 : 0, keep: art };
     return { bh: sp.bh, as: as, sid: sid, ax: ax, ac: art.community ? 1 : 0, keep: null };
   }
+  /* freeze-hunt (Nov 22 2026): test the one field first. The old version built a key list for every nested object of every pet,
+   * the top cost of opening a 10,000-pet wallet. Same answer: exactly one own key, '__s', holding a number. */
   function isMarker(v) {
-    if (!v || typeof v !== 'object' || Array.isArray(v)) return false;
-    var ks = Object.keys(v);
-    return ks.length === 1 && ks[0] === '__s' && typeof v.__s === 'number';
+    if (!v || typeof v !== 'object' || typeof v.__s !== 'number' || Array.isArray(v) || !Object.prototype.hasOwnProperty.call(v, '__s')) return false;
+    for (var k in v) if (k !== '__s') return false;
+    return true;
   }
   /* A marker stays a marker until the owner table has a real address at that index.
    * owners[undefined] used to wipe the index, and the pet could never be filled later. */
