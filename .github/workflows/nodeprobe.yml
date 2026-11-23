@@ -31,3 +31,17 @@ jobs:
               console.log('summary tip', s.tip, 'rsig', s.rsig, Array.isArray(R) ? R.length + ' raids' : 'NO raids key');
               (R || []).forEach(r => console.log(' raid', r.n, 'open', r.open, 'end', r.end, 'boss', r.boss, 'hp', r.left + '/' + r.hp, 'hits', (r.hits || []).length, r.settled ? 'settled ' + r.result : 'live'));
             }).catch(e => console.log('raids probe failed:', e.message));"
+      - name: Part churn between the last builds
+        run: |
+          node -e "
+            const B = 'https://node.xcpets.fun', get = u => fetch(u + '?cb=' + Date.now(), { cache: 'no-store' }).then(r => r.ok ? r.json() : null);
+            (async () => {
+              const l = await get(B + '/xp/v1/world/latest.json'); const tip = l.tip, rs = l.rsig, mans = [];
+              for (let t = tip; t > tip - 40 && mans.length < 4; t--) { const m = await get(B + '/xp/v1/world/' + rs + '/' + t + '/manifest.json').catch(() => null); if (m && m.checkpoint) mans.push([t, m]); }
+              const sh = m => { const c = m.checkpoint, o = new Map(); (c.files || []).forEach(f => o.set(f.sha256, f.bytes || 0)); return o; };
+              const all = m => (m.checkpoint.files || []).reduce((s, f) => s + (f.bytes || 0), 0);
+              console.log('builds found', mans.map(x => x[0]).join(', '));
+              for (let i = 1; i < mans.length; i++) { const a = sh(mans[i][1]), b = sh(mans[0][1]); let same = 0, sameB = 0; for (const [h, n] of b) if (a.has(h)) { same++; sameB += n; }
+                console.log('tip', mans[0][0], 'vs', mans[i][0], ':', same, 'of', b.size, 'parts unchanged,', (sameB / 1e6).toFixed(1), 'of', (all(mans[0][1]) / 1e6).toFixed(1), 'MB'); }
+              const f0 = (mans[0][1].checkpoint.files || []).slice(0, 3).map(f => f.url + ' ' + f.bytes).join(' | '); console.log('sample', f0);
+            })().catch(e => console.log('churn probe failed:', e.message));"

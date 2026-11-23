@@ -4,7 +4,7 @@
  * patched the same way the catch-up worker patches it. The file on disk is not changed. */
 'use strict';
 importScripts('v2-resume.js', 'v2-art.js?v=af3b16f45f');
-var world = null, ownerTable = null;
+var world = null, ownerTable = null, VBYTES = 0;
 function shim() {
   var mem = {}, st = { getItem: function (k) { return Object.prototype.hasOwnProperty.call(mem, k) ? mem[k] : null; }, setItem: function (k, v) { mem[k] = String(v); }, removeItem: function (k) { delete mem[k]; } };
   self.window = self; self.localStorage = st; self.sessionStorage = st;
@@ -26,6 +26,7 @@ function sha256Buf(buf) { return crypto.subtle.digest('SHA-256', buf).then(hexOf
  * the published world instead of the tampered part (the catch-up caller falls back to today's load the same way). */
 function loadFile(f, got, total) {
   return fetch(f.url).then(function (r) { if (!r.ok) throw new Error('part ' + r.status); return r.arrayBuffer(); }).then(function (buf) {
+    VBYTES += buf.byteLength;
     return sha256Buf(buf).then(function (h) {
       if (h !== f.sha256) throw new Error('bad hash');
       got.n++;
@@ -47,18 +48,24 @@ function filesOf(man, dir) {
 function dirOf(url) { return String(url || '').replace(/[^/]+$/, ''); }
 function start(m) {
   var base = String(m.base || '').replace(/\/$/, '');
+  /* Timings (ms) for each step, sent with 'ready' so a probe can see where the check spends its time. Display/measure only. */
+  var T = { t0: Date.now() }, mark = function (k) { T[k] = Date.now() - T.t0; }, bytes = 0;
   self.postMessage({ cmd: 'progress', phase: 'sync', got: 0, total: 1 });
   return Promise.all([
     m.manifest && /^https?:/.test(m.manifest) ? Promise.resolve({ manifest: m.manifest }) : fetch(base + '/xp/v1/world/latest.json').then(function (r) { if (!r.ok) throw new Error('latest'); return r.json(); }),
     fetch(base + '/xp/v1/sync').then(function (r) { if (!r.ok) throw new Error('sync'); return r.json(); })
   ]).then(function (pair) {
-    var latest = pair[0], sync = pair[1];
+    var latest = pair[0], sync = pair[1]; mark('sync'); T.rows = (sync.rows && sync.rows.list || []).length;
     var manUrl = /^https?:/.test(latest.manifest) ? latest.manifest : base + latest.manifest;
     return fetch(manUrl).then(function (r) { if (!r.ok) throw new Error('manifest'); return r.json(); }).then(function (man) {
+      mark('manifest');
       var files = filesOf(man, dirOf(manUrl)), got = { n: 0 }, loaded = [];
-      var chain = Promise.resolve();
-      files.forEach(function (f) { chain = chain.then(function () { return loadFile(f, got, files.length).then(function (row) { loaded.push(row); }); }); });
-      return chain.then(function () {
+      /* Nov 23 2026: four parts at a time instead of one after another (each part is still hash-checked before it is used). */
+      var queue = files.slice(), lanes = [], L;
+      function lane() { var f = queue.shift(); if (!f) return Promise.resolve(); return loadFile(f, got, files.length).then(function (row) { loaded.push(row); return lane(); }); }
+      for (L = 0; L < 4; L++) lanes.push(lane());
+      return Promise.all(lanes).then(function () {
+        mark('files'); T.nFiles = files.length; T.bytes = VBYTES;
         self.postMessage({ cmd: 'progress', phase: 'rules', got: files.length, total: files.length });
         shim();
         var scripts = (m.scripts || []).slice(), rulesUrl = null, i;
@@ -67,23 +74,24 @@ function start(m) {
         if (!rulesUrl) throw new Error('rules');
         if (rest.length) importScripts.apply(self, rest);
         return loadText(rulesUrl).then(function (src) {
-          (0, eval)(XcpResume.patchRules(src));
+          (0, eval)(XcpResume.patchRules(src)); mark('rules');
           self.LiveEngine = { RealCore: self.RealCore, Chain: self.Chain && self.Chain.Chain, CFG: self.XCPETS_CONFIG };
           var root = null, parts = [], meta = null;
           loaded.forEach(function (g) { if (g.role === 'root') root = g.val; else if (g.role === 'meta') meta = g.val; else parts[g.i] = g.val; });
           loaded = null;
           if (!root || !meta) throw new Error('parts');
           self.postMessage({ cmd: 'progress', phase: 'replay', got: 0, total: 1 });
-          var w = XcpResume.wsDecode(root, parts);
+          var w = XcpResume.wsDecode(root, parts); mark('decode');
           ownerTable = w._owners || null;
           if (self.XcpArt && (w._owners || w._hashes)) XcpArt.restore(w, self.PetCore, { ftLook: self.V2Rules && V2Rules.ftLookOfTier ? function (t) { return V2Rules.ftLookOfTier(t); } : null });
-          root = null; parts = null;
+          root = null; parts = null; mark('restore');
           var rows = (sync.rows && sync.rows.list) || [];
           var tip = sync.tip || man.tip;
           var seen = {}, list = meta.seen || [], s;
           for (s = 0; s < list.length; s++) seen[list[s]] = 1;
           world = self.V2Rules.replay(rows, sync.hashes || {}, [], { tip: tip, live: self.LiveEngine.RealCore, dex: sync.dex && sync.dex.body || undefined,
             _resume: { w: w, seen: seen, dexPos: meta.dexPos || 0, grand: meta.grand ? 1 : 0, tip: meta.tip } });
+          mark('replay'); T.from = meta.tip; T.to = world.tip;
           var alive = 0, i2, pets = world.pets || [], meAddr = m.me || '', mine = [], fights = [], wornBy = {}, ids = {}, ownerDeeds = {}, mythicOwners = {};
           for (i2 = 0; i2 < pets.length; i2++) if (pets[i2] && !pets[i2].dead && !pets[i2].released) alive++;
           if (meAddr && world.mythicOwners && world.mythicOwners[meAddr] != null) mythicOwners[meAddr] = world.mythicOwners[meAddr];
@@ -104,7 +112,8 @@ function start(m) {
             for (fi = 0; fi < fs.length; fi++) { f = fs[fi]; if (ids[f.a] || ids[f.b] || f.challenger === meAddr) fights.push(f); }
           }
           self._mine = mine; self._owned = ids; self._fights = fights; self._deeds = ownerDeeds; self._mythic = mythicOwners; self._tip = world.tip; self._n = pets.length; self._alive = alive;
-          self.postMessage({ cmd: 'ready', ok: true, tip: world.tip, n: pets.length, alive: alive, burned: world.community && world.community.burned || 0, mineN: mine.length });
+          mark('mine');
+          self.postMessage({ cmd: 'ready', ok: true, t: T, tip: world.tip, n: pets.length, alive: alive, burned: world.community && world.community.burned || 0, mineN: mine.length });
         });
       });
     });
