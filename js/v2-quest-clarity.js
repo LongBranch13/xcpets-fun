@@ -77,6 +77,12 @@
   function cell(n, why) { if (n === 0) return '<span class="qc-ok">Ready</span>' + (why ? '<small>' + esc(why) + '</small>' : '');
     if (n == null) return '<span class="qc-no">—</span><small>' + esc(why) + '</small>';
     return '<b>' + fmt(n) + ' blocks</b><small>' + hrs(n) + (why ? ' · ' + esc(why) : '') + '</small>'; }
+  /* POOL DIP (Nov 23 2026): pet:dip:ID halves the breed cooldown left, once per cooldown, from ACTIVATE_POOL_DIP_BLOCK. The wallet signs as usual. */
+  function dipBtn(w, p, b, t) { var R = V(); if (!R.dipInfo || !(t.breed > 0)) return ''; var I = R.dipInfo(w, p, b); if (!I || !I.on) return '';
+    if (I.dipped) return '<small class="qc-dipped">💦 dipped (−' + fmt(p.dipCut || 0) + ' blocks)</small>';
+    if (I.why) return ''; return '<button type="button" class="qc-dip" data-dip="' + p.id + '" title="Burn ' + I.cost + ' XCPETS: cooldown ' + fmt(I.left) + ' → ' + fmt(I.after) + ' blocks">🛁 DIP ' + I.cost + '</button>'; }
+  function dipGo(id) { var R = V(), U = window.V2UI, w = world(), p = w && w.byId && w.byId[id]; if (!R.dipInfo || !U || !U.confirmPlans || !p) return; var I = R.dipInfo(w, p, tip() + 1); if (!I || I.why) { if (U.toast) U.toast('🛁 ' + ((I && I.why) || 'no dip for #' + id)); return; }
+    U.confirmPlans('🛁 Pool Dip #' + id, [{ tag: I.tag, amount: R.DIP_COST, petIds: [id], label: 'Dip #' + id + ': cooldown ' + fmt(I.left) + ' → ' + fmt(I.after) + ' blocks' }], function () { if (U.toast) U.toast('🛁 Splash! #' + id + ' dips when the burn confirms.'); }); }
   var SORTS = { either: 'Soonest ready (breed or quest)', breed: 'Soonest breed-ready', quest: 'Soonest quest-ready', id: 'Pet number' };
   var st = { sort: 'either', all: false }, lastKey = '', jumped = false;
   try { var sv = localStorage.getItem('xcpets-cooldowns-sort'); if (SORTS[sv]) st.sort = sv; } catch (e) {}
@@ -93,13 +99,15 @@
     h += '<p class="small">' + fmt(pets.length) + ' pets · <b>' + fmt(nB) + '</b> can breed now · <b>' + fmt(nQ) + '</b> can quest now. Block ' + fmt(b - 1) + '; 6 blocks is about an hour.</p>' +
       '<label class="small">Sort: <select id="qcSort">' + Object.keys(SORTS).map(function (s) { return '<option value="' + s + '"' + (s === st.sort ? ' selected' : '') + '>' + SORTS[s] + '</option>'; }).join('') + '</select></label>' +
       '<div class="qc-wrap"><table class="qc-tab"><thead><tr><th>Pet</th><th>Breed</th><th>Breeds left</th><th>Quest</th></tr></thead><tbody>' + show.map(function (r) { var p = r.p, t = r.t;
-        return '<tr><td><a href="pet.html?id=' + p.id + '">#' + p.id + ' ' + esc(p.name || '') + '</a>' + (R.isMythic(p) ? ' <span class="qc-m">MYTHIC</span>' : '') + '</td><td>' + cell(t.breed, t.bWhy) + '</td><td>' + (t.left ? t.left.left + ' of ' + t.left.cap : '—') + '</td><td>' + cell(t.quest, t.qWhy) + '</td></tr>'; }).join('') + '</tbody></table></div>' +
+        return '<tr><td><a href="pet.html?id=' + p.id + '">#' + p.id + ' ' + esc(p.name || '') + '</a>' + (R.isMythic(p) ? ' <span class="qc-m">MYTHIC</span>' : '') + '</td><td>' + cell(t.breed, t.bWhy) + dipBtn(w, p, b, t) + '</td><td>' + (t.left ? t.left.left + ' of ' + t.left.cap : '—') + '</td><td>' + cell(t.quest, t.qWhy) + '</td></tr>'; }).join('') + '</tbody></table></div>' +
       (list.length > show.length || nNo ? '<p class="small muted">' + (st.all ? 'Showing all ' + fmt(pets.length) + ' pets.' : 'Showing ' + fmt(show.length) + ' of ' + fmt(live.length) + ' pets with a timer' + (nNo ? '; ' + fmt(nNo) + ' more can\u2019t breed or quest yet (not Adult or not Mythic)' : '') + '.') + '</p><button type="button" class="q" id="qcAll">' + (st.all ? 'Show only pets with a timer' : 'Show all ' + fmt(pets.length)) + '</button>' : '');
     el.innerHTML = h;
     if (!jumped && location.hash === '#myCooldowns') { jumped = true; el.scrollIntoView({ block: 'start' }); } /* from the Today card's "ready now" line on play.html */
     var s = $('qcSort'); if (s) s.onchange = function () { st.sort = s.value; try { localStorage.setItem('xcpets-cooldowns-sort', st.sort); } catch (e) {} paint(true); };
-    var m = $('qcAll'); if (m) m.onclick = function () { st.all = !st.all; paint(true); }; }
+    var m = $('qcAll'); if (m) m.onclick = function () { st.all = !st.all; paint(true); };
+    Array.prototype.forEach.call(el.querySelectorAll('.qc-dip'), function (d) { d.onclick = function () { dipGo(+d.getAttribute('data-dip')); }; }); }
   function css() { if ($('qcCss') || !document.head) return; var s = document.createElement('style'); s.id = 'qcCss'; s.textContent =
+    '.qc-dip{display:block;margin-top:4px;min-height:36px;padding:6px 8px;font:9px/1.3 "Press Start 2P",monospace;background:#4fe0ff;color:#06202a;border:2px solid #1a0d1f;border-radius:6px;box-shadow:2px 2px 0 #1a0d1f;cursor:pointer}.qc-dip:active{transform:translate(1px,1px);box-shadow:1px 1px 0 #1a0d1f}.qc-dipped{display:block;color:#1e90c8;font-weight:700}' +
     '.qc-out{margin-top:6px;font-size:12px;line-height:1.4}.qc-out summary{cursor:pointer;font-weight:700}.qc-out ul{list-style:none;margin:6px 0;padding:0}' +
     '.qc-out li{display:grid;grid-template-columns:1fr auto;gap:0 6px;padding:4px 0;border-top:1px dashed rgba(0,0,0,.25)}.qc-out .qc-p{text-align:right}.qc-out .qc-base{grid-column:2;text-align:right;font-size:10px;opacity:.7}.qc-out .qc-w{grid-column:1/3;font-size:11px}' +
     '.pc-q .qc-out{grid-column:1/-1;grid-row:3}.pc-q:has(.ip-why) .qc-out{grid-column:2/-1}.pc-q:has(.qc-out) .ip-why{grid-column:1;grid-row:3;align-self:start;margin-top:6px}.qc-n{margin:4px 0;font-size:11px}.qc-last{margin:6px 0;font-size:12px}' +
