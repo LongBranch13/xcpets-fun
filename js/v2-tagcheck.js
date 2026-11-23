@@ -31,7 +31,7 @@
     });
   }
   /* 2. the tag checker */
-  var NAMES = { hatch: 'hatch one egg', feed: 'feed pet #{petId}', breed: 'breed #{a} with #{b}', zap: 'open an Electric Egg case', hd: 'discard pets for good', hu: 'add discarded pets back', fight: 'fight', roll: 'roll gear', spin: 'spin the Pepe Wheel' };
+  var NAMES = { hatch: 'hatch one egg', feed: 'feed pet #{petId}', breed: 'breed #{a} with #{b}', zap: 'open an Electric Egg case', hd: 'discard pets for good', hu: 'add discarded pets back', fight: 'fight', roll: 'roll gear', spin: 'spin the Pepe Wheel', pantry: 'Pantry: add XCPETS (pet:pp / pet:px also change the pet list). Before the Pantry opens it only feeds the community pet' };
   function say(r, tag) {
     if (!tag) return '';
     if (!r || r.action === 'plain') {
