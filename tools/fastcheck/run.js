@@ -33,8 +33,23 @@ function engine() {
   for (const f of SCRIPTS) { if (f === '@LIVE') { vm.runInContext('window.LiveEngine={RealCore:window.RealCore,Chain:window.Chain&&window.Chain.Chain,CFG:window.XCPETS_CONFIG};', ctx); continue; } vm.runInContext(fs.readFileSync(path.join(ROOT, f), 'utf8'), ctx, { filename: f }); }
   return ctx;
 }
+const NODE = opt('--node', 'https://node.xcpets.fun').replace(/\/$/, '');
 const boot = JSON.parse(fs.readFileSync(path.join(ROOT, 'api/boot.json'), 'utf8'));
-const ROWS = boot.rows.slice().sort((a, b) => a.block_index - b.block_index || a.tx_index - b.tx_index);
+let ROWS = boot.rows.slice().sort((a, b) => a.block_index - b.block_index || a.tx_index - b.tx_index);
+/* Nov 23 2026: the live page is usually newer than api/boot.json (the feed is rebuilt every 20-25 min, the world every 6 blocks),
+ * and every scheduled run died with 'page tip is newer'. Take the game server's own full burn list (/xp/v1/sync, the same answer the
+ * burn check reads) when it is newer, so the full replay can reach the page's block. */
+async function freshRows() {
+  try {
+    const r = await fetch(NODE + '/xp/v1/sync?since=0', { signal: AbortSignal.timeout(60000) }); if (!r.ok) throw new Error('HTTP ' + r.status);
+    const a = await r.json(), list = a && a.rows && a.rows.list;
+    if (!(a.tip > boot.tip) || !Array.isArray(list) || !list.length) { log('server burn list tip ' + (a && a.tip) + ', keeping api/boot.json (' + boot.tip + ')'); return; }
+    ROWS = list.slice().sort((x, y) => x.block_index - y.block_index || x.tx_index - y.tx_index);
+    boot.hashes = Object.assign({}, boot.hashes || {}, a.hashes || {});
+    if (a.dex && a.dex.body) boot.dex = a.dex.body;
+    log('server burn list: ' + ROWS.length + ' burns to ' + a.tip + ' (api/boot.json ' + boot.tip + ')'); boot.tip = a.tip;
+  } catch (e) { log('server burn list unavailable (' + String(e.message || e).slice(0, 120) + '), keeping api/boot.json ' + boot.tip); }
+}
 const worlds = {};
 function fullAt(tip) { if (worlds[tip]) return worlds[tip];
   if (tip > boot.tip) throw new Error('page tip ' + tip + ' is newer than api/boot.json (' + boot.tip + ')');
@@ -86,6 +101,7 @@ function compare(fast, full, partial) {
 
 /* ---------------------------------------------------------------- main */
 (async () => {
+  await freshRows();
   let wallets = opt('--wallets') ? opt('--wallets').split(',') : null;
   if (!wallets) { /* fixed list + the biggest holders + a few small ones, from the newest feed */
     const { w } = fullAt(boot.tip), n = {}; w.pets.forEach(p => { if (p && p.owner && !p.community && !p.released) n[p.owner] = (n[p.owner] || 0) + 1; });
@@ -107,7 +123,9 @@ function compare(fast, full, partial) {
     if (r.error) { bad++; md += '## ' + short + '\n\n❌ ' + r.error + '\n\n'; return; }
     md += '## ' + short + (r.diffs.length ? ' ❌ ' + r.diffs.length + ' differences' : ' ✅ matches') + '\n\n' + r.fullPets + ' pets in the full game' + (r.partial ? ' · fast page only partly loaded (too big to load in the background)' : '') + ' · loaded in ' + r.secs.toFixed(0) + ' s' + (r.errors.length ? ' · page errors: ' + r.errors.slice(0, 3).join(' | ') : '') + '\n\n';
     if (r.diffs.length) { bad++; const g = {}; r.diffs.forEach(d => (g[d.kind] = g[d.kind] || []).push(d));
-      Object.keys(g).sort((a, b) => g[b].length - g[a].length).forEach(k => { md += '- **' + k + '** × ' + g[k].length + ': ' + g[k].slice(0, 3).map(d => '#' + d.key + ' fast=' + J(d.fast) + ' full=' + J(d.full)).join(' · ').slice(0, 600) + '\n'; }); md += '\n'; } });
+      Object.keys(g).sort((a, b) => g[b].length - g[a].length).forEach(k => { const rng = {}; g[k].forEach(d => { const n = Number(d.key); if (n >= 0) { const b = Math.floor(n / 10000) * 10; rng[b] = (rng[b] || 0) + 1; } });
+        const rs = Object.keys(rng).length > 1 ? ' (ids ' + Object.keys(rng).map(b => b + 'k+: ' + rng[b]).join(', ') + ')' : '';
+        md += '- **' + k + '** × ' + g[k].length + rs + ': ' + g[k].slice(0, 3).map(d => '#' + d.key + ' fast=' + J(d.fast) + ' full=' + J(d.full)).join(' · ').slice(0, 600) + '\n'; }); md += '\n'; } });
   fs.mkdirSync(OUT, { recursive: true });
   fs.writeFileSync(path.join(OUT, 'fastcheck-report.md'), md); fs.writeFileSync(path.join(OUT, 'fastcheck-report.json'), JSON.stringify(results, null, 1));
   if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, md);

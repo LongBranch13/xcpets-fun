@@ -782,8 +782,16 @@
   var WIZARD_EGG_ON_SALE = false;
   /* WIZARD_SIGN_CLAIM_ON (hotfix Oct 19 2026): false hides the play.html "Join us" sign claim button (pet:sign). Set true to restore at launch. UI only. */
   var WIZARD_SIGN_CLAIM_ON = false;
+  /* Nov 23 2026 (players: 'the hungry pets are all off'): a fast-loaded page paints the published world, whose fed-today and hungry flags
+   * are for the game day of the published block. Once the game day turns (or the page paints an older world while the server rebuilds),
+   * every pet kept yesterday's flags until a reload. The pet records carry their feed days, so set those two flags for the current
+   * block the way the rules do (fedToday = fed on this game day; hungry = alive, not fed today, a meal costs something). Display only. */
+  function freshHunger(w) { if (!w || !w._view || !w.pets || !ME || !V.day) return; var t = Math.max(S.tip || 0, w.tip || 0); if (w._hungerAt === t) return; w._hungerAt = t;
+    var d = V.day(t); if (V.day(w.tip || 0) === d && !w._hungerDay) return; w._hungerDay = d;
+    for (var i = 0; i < w.pets.length; i++) { var p = w.pets[i]; if (!p || p.owner !== ME || !p.feedDays || p.dead || p.released || (p.zombie && !p.zombie.end)) continue;
+      p.fedToday = !!p.feedDays[d]; p.hungry = !p.fedToday && (p.nextMeal || 0) > 0; } }
   function render() {
-    var w = world(), c = w.community; try { godUnhide(w); } catch (e) { } try { sweepHu(w); } catch (e) { } try { autoStarBackfill(w); } catch (e) { } notifyHatch(w); notifyWins(w); setTimeout(nextReveal, 0);
+    var w = world(), c = w.community; try { freshHunger(w); } catch (e) { } try { godUnhide(w); } catch (e) { } try { sweepHu(w); } catch (e) { } try { autoStarBackfill(w); } catch (e) { } notifyHatch(w); notifyWins(w); setTimeout(nextReveal, 0);
     $('bal').textContent = S.balanceAt ? fmt(S.balance) : '\u2013'; V2Wallet.paint(ME, $);
     $('cBurned').textContent = fmt(w._counts && w._counts.burned != null ? w._counts.burned : c.burned); $('cGame').textContent = fmt(w._counts && w._counts.burns != null ? w._counts.burns : S.rows.length); $('cPets').textContent = fmt(w._counts ? w._counts.n : w.pets.length);
     petTotal(w);
@@ -1069,7 +1077,7 @@
   var hdWait = null;
   function hdSettleThen(ids, restore) { var w = world(), pg = w && w._pages; if (hatchListSettled(w)) return false;
     hdWait = { ids: (hdWait && hdWait.restore === !!restore ? hdWait.ids : []).concat(ids), restore: !!restore, until: Date.now() + 10 * 60e3 };
-    var pull = function () { var w2 = world(), p2 = w2 && w2._pages; if (p2 && window.V2Split && V2Split.more) try { V2Split.more(Math.min(40, Math.max(1, (p2.pages || 1) - (p2.got || 1)))); } catch (e) { } }; pull();
+    var pull = function () { var w2 = world(), p2 = w2 && w2._pages; if (p2 && window.V2Split && V2Split.more) try { V2Split.more(Math.min(200, Math.max(1, (p2.pages || 1) - (p2.got || 1)))); /* Nov 23 2026: one big batch = one repaint (was 40 pages and a full repaint per batch) */ } catch (e) { } }; pull();
     toast('⏳ Loading the rest of your pets first, so the permanent burn names exactly these pets. It is offered as soon as they are in. Until then they are hidden in this browser only.', 9000);
     if (!hdSettleThen.t) hdSettleThen.t = setInterval(function () { if (!hdWait) { clearInterval(hdSettleThen.t); hdSettleThen.t = null; return; }
       if (Date.now() > hdWait.until) { hdWait = null; return; } if (!hatchListSettled(world())) return pull(); var job = hdWait; hdWait = null; chainDiscardIds(job.ids, job.restore); }, 3000);

@@ -19,7 +19,7 @@ jobs:
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
-        with: { ref: main, fetch-depth: 1 }
+        with: { fetch-depth: 1 }
       - uses: actions/setup-node@v4
         with: { node-version: '20' }
       - run: npm install --no-save --no-package-lock playwright-core@1

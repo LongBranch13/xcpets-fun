@@ -17,6 +17,15 @@ function ownerKey(addr) {
 function ownerShard(addr) {
   return ownerKey(addr).slice(0, 2);
 }
+function liveBreedReqs(world, tip) {
+  const out = [], list = (world && world.breedReqs) || [];
+  for (let i = 0; i < list.length; i++) {
+    const r = list[i];
+    if (!r || r.used || !(tip - (r.block | 0) <= 144 + 48)) continue;
+    out.push({ a: r.a, b: r.b, block: r.block, tx: r.tx || null, owner: r.owner || null });
+  }
+  return out;
+}
 function petShard(id) {
   const n = Math.floor(Number(id) / PET_SHARD);
   return String(n >= 0 ? n : 0).padStart(5, '0');
@@ -415,7 +424,11 @@ function write(dir, world, meta) {
     /* Pantry (prepaid meals; gated by ACTIVATE_PANTRY_BLOCK): each player's balance and pet list, so the slim Play page shows it */
     pantry: copy(world.pantry) || null, pantryDay: world.pantryDay != null ? world.pantryDay : null,
     /* Meat Grinder (gated by ACTIVATE_GRIND_BLOCK): each wallet's meat meter and last grind, so the slim My Pets shows it */
-    grind: copy(world.grind) || null
+    grind: copy(world.grind) || null,
+    /* Nov 23 2026 (players: 'no indicator for the person receiving a Gooby's request'): the slim world had no breed requests at all,
+     * so the Motel desk, the 'Asking you' shelf and the pending box were empty on every fast load. Only the open ones (not used,
+     * inside the 144-block window plus the page's 48-block staleness margin) ride here; a few small records. */
+    breedReqs: liveBreedReqs(world, tip)
   };
   const leadBurners = (world.community && world.community.leaderboard) || [];
   /* every pet that was ever tied to a token (a destroyed token too), so Proof Parade gives the same answer as from rank.json */
@@ -534,4 +547,4 @@ function write(dir, world, meta) {
   });
   });
 }
-module.exports = { LEAD_SHARD, leadFile, PET_SHARD, PAGE, COLD_KEYS, ownerKey, ownerShard, petShard, fromWorld, write, itemRec, petRec, fieldsOf, isHybRec, deedRec, ownerSide };
+module.exports = { liveBreedReqs, LEAD_SHARD, leadFile, PET_SHARD, PAGE, COLD_KEYS, ownerKey, ownerShard, petShard, fromWorld, write, itemRec, petRec, fieldsOf, isHybRec, deedRec, ownerSide };
