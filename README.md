@@ -5,7 +5,7 @@
 You hatch, feed, fight, breed and dress up meme pets. Every action is a real burn of the XCPETS token (a Counterparty `destroy`) that you sign in your own wallet. There is no game server, no account and no database. Every player's browser reads the same public burn history and replays the same rules, so everyone sees the same pets.
 
 - Play: <https://xcpets.fun/play.html>
-- Watch live, no wallet needed: <https://xcpets.fun/watch.html>
+- Watch live, no wallet needed: <https://xcpets.fun/live.html?view=big>
 - Check any pet's proof in your browser: <https://xcpets.fun/verify-pet.html>
 - How it works, in plain words: <https://xcpets.fun/how-it-works.html>
 - Exact costs, tags and odds: <https://xcpets.fun/rules.html>

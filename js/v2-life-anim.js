@@ -383,8 +383,24 @@
     if (!o.still && !o.noClip) clipLib(function () { if (!ended) V2Clip.offer(ov, c, function (d) { ov.style.visibility = 'hidden'; return play(ev, { w: w, done: d, noQueue: true, noClipQ: 1 }); }, caption(ev, w), (ev.kind || 'clip') + '-' + (ev.block || '')); });
     var draw = function (k) { try { paint(c, ev, k, w); } catch (e) { if (window.console) console.warn('life anim', e); } };
     if (reduced() || o.still) { draw(KEY_F[ev.kind] || N - 1); skip.textContent = 'Tap to close'; if (!o.still) tm = setInterval(end, 3000); return (API.last = { end: end, canvas: c, frame: draw }); }
-    draw(0); tm = setInterval(function () { f++; if (f >= N + 12) return end(); if (f < N) draw(f); }, 1000 / FPS); /* the last frame holds ~1.2 s */
+    /* reveal sounds (Nov 23 2026): 8-bit cues on the scene's own frames; silent unless the player's sound is on, and a 🔊 chip on the scene turns it on */
+    if (window.V2Sfx && V2Sfx.toggle) { var tg = document.createElement('div'); tg.innerHTML = V2Sfx.toggle('la-sfx'); tg = tg.firstChild; tg.style.cssText = 'position:absolute;top:12px;right:12px;font-size:20px;padding:6px 10px;border:3px solid #000;border-radius:10px;background:#fff3b0;cursor:pointer;box-shadow:3px 3px 0 #000'; ov.appendChild(tg); }
+    var cues = cuesFor(ev, w, N);
+    draw(0); tm = setInterval(function () { f++; if (f >= N + 12) return end(); if (f < N) draw(f); var q = cues[f]; if (q && window.V2Sfx) try { q(V2Sfx); } catch (e) { } }, 1000 / FPS); /* the last frame holds ~1.2 s */
     return (API.last = { end: end, canvas: c, frame: function (k) { clearInterval(tm); draw(k); } }); }
+  /* reveal sounds: frame -> fn(V2Sfx). Hatch frames follow hatchF (wobble from 2, crack at 18, pop at 24; bulk x0.6). Other scenes ring at their key frame. */
+  function cuesFor(ev, w, N) { var Q = {}, by = (w && w.byId) || {}, k = ev.kind, best = 0, kf = KEY_F[k] || N - 6;
+    (ev.ids || []).forEach(function (id) { best = Math.max(best, tierOf(by[id])); });
+    if (k === 'hatch' || k === 'hatch-bulk') { var sp = k === 'hatch-bulk' ? 0.6 : 1, crk = Math.round(18 * sp), pop = Math.round(24 * sp);
+      for (var i = 2; i < crk; i += 4) Q[i] = function (S) { S.knock(); }; Q[crk] = function (S) { S.crack(); }; Q[pop] = function (S) { S.reveal(best); }; return Q; }
+    if (k === 'feed') { [8, 12, 16, 20].forEach(function (i) { Q[i] = function (S) { S.munch(); }; }); Q[kf] = function (S) { S.coin(); }; return Q; }
+    if (k === 'starve') { Q[6] = function (S) { S.sad(); }; return Q; }
+    if (k === 'mythic' || k === 'god') { Q[Math.round(kf * 0.45)] = function (S) { S.fanfare(); }; return Q; }
+    if (k === 'rare' || k === 'birth' || k === 'arrival') { Q[Math.round(kf * 0.5)] = function (S) { S.crack(); }; Q[Math.round(kf * 0.5) + 3] = function (S) { S.reveal(k === 'rare' ? 4 : 3); }; return Q; }
+    if (k === 'gear') { Q[Math.round(kf * 0.6)] = function (S) { S.reveal(ev.tier | 0); }; return Q; }
+    if (k === 'stage') { Q[Math.round(kf * 0.6)] = function (S) { S.reveal(2); }; return Q; }
+    if (k === 'sold' || k === 'bought' || k === 'gift-in') { Q[Math.round(kf * 0.7)] = function (S) { S.coin(); }; return Q; }
+    return Q; }
   /* ---- hatch: called by js/v2.js nextReveal before the #packBox review opens. ids = the eggs of one hatch burn. Reduced motion: nothing, done() at once. */
   function rank(w, ids) { var by = (w && w.byId) || {}; return ids.slice().sort(function (a, b) { var A = by[a], B = by[b]; return tierOf(B) - tierOf(A) || a - b; }); }
   function specialOf(w, p) { if (!p || !p.art) return null; var R = window.V2Rules; if (p.art.rareTier && BT[p.art.rareTier]) return p.art.rareTier;

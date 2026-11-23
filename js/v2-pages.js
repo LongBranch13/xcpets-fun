@@ -78,7 +78,16 @@
    * V2Gear.CAST_KITS), plus the Bitcoin Wizard in his Cold Storage loadout. 320x56 logical px, pixelated; ~8 fps; pauses off screen and when the tab is
    * hidden; prefers-reduced-motion = one still lineup. The <picture> stays as the no-JS fallback (it is only swapped out when this runs). */
   function castParade() { var pic = document.querySelector('#cast picture'), img = pic && pic.querySelector('img.cast-gif'); if (!pic || !img || !R || !R.framesWith || !V2Gear.CAST_KITS) return;
-    var G = window.GenPetCore || PetCore, live = window.PetCore, NONE = { band: 'none', crown: 'none', armor: 'none', cape: 'none', weapon: 'none' }, LW = 320, LH = 56, list = [];
+    var G = window.GenPetCore || PetCore, live = window.PetCore, NONE = { band: 'none', crown: 'none', armor: 'none', cape: 'none', weapon: 'none' }, LW = 320, LH = 56, list = [], normal = null, doomList = null, doomNow = false;
+    /* Doom (owner Nov 23 2026): while the Doom look is on, the parade marches in Doom gear with the DOOM flag on a red-candle sky. */
+    var DOOM_SKY = [[58, 10, 18], [36, 8, 14], [20, 6, 12]];
+    function doomOn() { try { return !!(window.XCDoomWeek && XCDoomWeek.isOn() && window.DoomGear && DoomGear.frames); } catch (e) { return false; } }
+    function doomCut(f) { var c = document.createElement('canvas'); c.width = c.height = 32; var x2 = c.getContext('2d'), d = new Uint8ClampedArray(f.data);
+      for (var i = 0; i < d.length; i += 4) if (DOOM_SKY.some(function (k) { return d[i] === k[0] && d[i + 1] === k[1] && d[i + 2] === k[2]; })) d[i + 3] = 0; x2.putImageData(new ImageData(d, 32, 32), 0, 0); return c; }
+    function buildDoom() { var out = [];
+      live.SPECIES.forEach(function (sp) { var fr = null; window.PetCore = G; try { fr = DoomGear.frames(G.characterPet(sp.id, { tier: 'legendary' }), HERO_STAGE[sp.id] || 5); } catch (e) { fr = null; } finally { window.PetCore = live; }
+        if (fr && fr.length) out.push({ id: sp.id, fr: fr, c: fr.map(doomCut) }); });
+      return out; }
     live.SPECIES.forEach(function (sp) { var id = sp.id, kit = (V2Gear.CAST_KITS[id] || []).filter(function (g) { var it = V.GEAR_BY_ID[g]; return it && V.eligible(it, id); }), fr;
       window.PetCore = G; try { fr = R.framesWith(Object.assign(G.characterPet(id, { tier: 'legendary' }), NONE, { background: 'solid', bgColor: '#ff00fe', pattern: 'none' }), HERO_STAGE[id] || 5, kit, id === 'peepo' ? ['v2-honk'] : [], 5); } catch (e) { fr = null; } finally { window.PetCore = live; }
       if (fr && fr.length) list.push({ id: id, fr: fr }); });
@@ -91,18 +100,21 @@
     /* key out the backdrop (the render's own background colour, read from the top-left pixel of each frame) so pets walk on the scene */
     function cut(f) { var c = document.createElement('canvas'); c.width = c.height = 32; var x = c.getContext('2d'), d = new Uint8ClampedArray(f.data), r = d[0], g = d[1], b = d[2];
       for (var i = 0; i < d.length; i += 4) if (Math.abs(d[i] - r) + Math.abs(d[i + 1] - g) + Math.abs(d[i + 2] - b) < 24) d[i + 3] = 0; x.putImageData(new ImageData(d, 32, 32), 0, 0); return c; }
-    list.forEach(function (q) { q.c = q.fr.map(cut); });
+    list.forEach(function (q) { q.c = q.fr.map(cut); }); normal = list;
+    function syncDoom() { var d = doomOn(); if (d === doomNow) return; doomNow = d;
+      if (d) { if (!doomList) doomList = buildDoom(); if (doomList.length) list = doomList; } else list = normal;
+      LOOP = list.length * GAP; }
     var cv = document.createElement('canvas'); cv.width = LW; cv.height = LH; cv.className = 'cast-parade'; cv.setAttribute('role', 'img');
     cv.setAttribute('aria-label', 'The XCPETS cast marching by in signature gear: ' + list.map(function (q) { return q.id === 'wizard' ? 'Bitcoin Wizard' : V.speciesLabel(q.id); }).join(', '));
     cv.style.cssText = 'display:block;width:100%;max-width:600px;height:auto;margin:6px auto 14px;image-rendering:pixelated;border:3px solid #000;box-shadow:4px 4px 0 #000;background:#0e0b16';
     pic.parentNode.replaceChild(cv, pic); var x = cv.getContext('2d'); x.imageSmoothingEnabled = false;
     var GAP = 40, LOOP = list.length * GAP, t = 0, vis = true, raf = 0, last = 0, still = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
-    function scene() { x.fillStyle = '#0e0b16'; x.fillRect(0, 0, LW, LH); x.fillStyle = '#2b1d3f'; for (var s2 = 0; s2 < 26; s2++) x.fillRect((s2 * 53 + 7) % LW, (s2 * 17 + 3) % 30, 1, 1);
-      x.fillStyle = '#2b1d3f'; x.fillRect(0, 46, LW, 10); x.fillStyle = '#ff7a1a'; x.fillRect(0, 45, LW, 1); x.fillStyle = '#161122'; for (var k = 0; k < LW; k += 8) x.fillRect((k - Math.floor(t / 2)) % LW < 0 ? (k - Math.floor(t / 2)) % LW + LW : (k - Math.floor(t / 2)) % LW, 50, 4, 1); }
+    function scene() { x.fillStyle = doomNow ? '#14060c' : '#0e0b16'; x.fillRect(0, 0, LW, LH); x.fillStyle = doomNow ? '#5c0814' : '#2b1d3f'; for (var s2 = 0; s2 < 26; s2++) x.fillRect((s2 * 53 + 7) % LW, (s2 * 17 + 3) % 30, 1, 1);
+      x.fillStyle = doomNow ? '#3a0a12' : '#2b1d3f'; x.fillRect(0, 46, LW, 10); x.fillStyle = doomNow ? '#c8102e' : '#ff7a1a'; x.fillRect(0, 45, LW, 1); x.fillStyle = '#161122'; for (var k = 0; k < LW; k += 8) x.fillRect((k - Math.floor(t / 2)) % LW < 0 ? (k - Math.floor(t / 2)) % LW + LW : (k - Math.floor(t / 2)) % LW, 50, 4, 1); }
     function frame() { scene(); list.forEach(function (q, i) { var px = still ? 4 + i * Math.floor((LW - 36) / Math.max(1, list.length - 1)) : ((i * GAP - t * 2) % LOOP + LOOP) % LOOP - 32, f = still ? 0 : (Math.floor(t / 3) + i) % q.c.length, hop = still ? 0 : ((Math.floor(t / 3) + i) % 2);
       if (px > -32 && px < LW) x.drawImage(q.c[f], Math.round(px), 14 - hop); }); }
-    function loop(ts) { raf = 0; if (!vis || document.hidden) return; if (ts - last >= 120) { last = ts; t += 1; frame(); } raf = requestAnimationFrame(loop); }
-    frame(); if (still) return;
+    function loop(ts) { raf = 0; if (!vis || document.hidden) return; if (ts - last >= 120) { last = ts; t += 1; if (t % 20 === 1) syncDoom(); frame(); } raf = requestAnimationFrame(loop); }
+    syncDoom(); frame(); if (still) return;
     if (window.IntersectionObserver) new IntersectionObserver(function (es) { vis = es[es.length - 1].isIntersecting; if (vis && !raf) raf = requestAnimationFrame(loop); }).observe(cv);
     document.addEventListener('visibilitychange', function () { if (!document.hidden && vis && !raf) raf = requestAnimationFrame(loop); });
     raf = requestAnimationFrame(loop); }
@@ -111,7 +123,32 @@
     function frames(id) { if (cache[id]) return cache[id]; var kit = (V2Gear.CAST_KITS[id] || []).filter(function (g) { var it = V.GEAR_BY_ID[g]; return it && V.eligible(it, id); });
       window.PetCore = G; try { cache[id] = R.framesWith(Object.assign(G.characterPet(id, { tier: 'legendary' }), NONE), HERO_STAGE[id] || 5, kit, id === 'peepo' ? ['v2-honk'] : [], 5); } finally { window.PetCore = live; } return cache[id]; }
     var slots = []; for (var i = 0; i < 9; i++) { var c = document.createElement('canvas'); c.width = c.height = 32; box.appendChild(c); slots.push(c); }
-    function fill() { slots.forEach(function (c, i) { var id = ids[(k + i) % ids.length]; c.setAttribute('role', 'img'); c.setAttribute('aria-label', V.speciesLabel(id) + ' at ' + (HERO_STAGE[id] === 4 ? 'Elder' : 'Mythic')); c.setAttribute('data-sp', id); R.animate(c, frames(id)); }); k = (k + 9) % ids.length; }
+    /* Doom (owner Nov 23 2026: "needs doom flags and more variety of pets"): while the Doom look is on, each refill rolls 9 fresh
+     * random-looking pets (any species, any tier, own colours, pattern and eyes) and dresses them in Doom gear with the DOOM flag.
+     * Display only: rolled from a throwaway seed, never a real pet. Off again the moment Doom is off. */
+    var TIERS = ['common', 'uncommon', 'rare', 'legendary'], roll = 0, dcache = {}, dn = 0;
+    function doomOn() { try { return !!(window.XCDoomWeek && XCDoomWeek.isOn() && window.DoomGear && DoomGear.frames); } catch (e) { return false; } }
+    function doomFrames(id) {
+      var key = id + '|' + roll; if (dcache[key]) return dcache[key];
+      var fr = null, n = roll++, pet;
+      window.PetCore = G;
+      try {
+        pet = G.generate({ blockHash: 'doom-hero-' + Date.now().toString(36) + '-' + n, petId: n, overrides: { species: id, tier: TIERS[(Math.random() * 4) | 0] } });
+        fr = DoomGear.frames(pet, HERO_STAGE[id] || 5);
+      } catch (e) { fr = null; } finally { window.PetCore = live; }
+      if (fr && fr.length) { if (++dn > 60) { dcache = {}; dn = 0; } dcache[key] = fr; }
+      return fr && fr.length ? fr : null;
+    }
+    function shuffled() { var a = ids.slice(), i, j, t; for (i = a.length - 1; i > 0; i--) { j = (Math.random() * (i + 1)) | 0; t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+    function fill() {
+      var doom = doomOn(), pick = doom ? shuffled() : null;
+      slots.forEach(function (c, i) {
+        var id = doom ? pick[i % pick.length] : ids[(k + i) % ids.length], fr = doom ? doomFrames(id) : null;
+        c.setAttribute('role', 'img'); c.setAttribute('aria-label', V.speciesLabel(id) + (fr ? ' in the Doom look' : ' at ' + (HERO_STAGE[id] === 4 ? 'Elder' : 'Mythic'))); c.setAttribute('data-sp', id);
+        R.animate(c, fr || frames(id));
+      });
+      k = (k + 9) % ids.length;
+    }
     fill(); setInterval(fill, 4200); }
   /* THE gravestone (option C): the dead pet's own stone, drawn at the top of its death note and in the old grave list */
   function withStone(cb) { if (window.V2Gravestone) return cb(); var q = withStone.q = withStone.q || []; q.push(cb); if (q.length > 1) return; var t = document.createElement('script'); t.src = 'js/v2-gravestone.js?v=e6db15afb2'; t.onload = function () { withStone.q = []; q.forEach(function (f) { f(); }); }; t.onerror = function () { withStone.q = []; }; document.body.appendChild(t); }
@@ -338,7 +375,9 @@
     var w0 = M.world();
     if (w0 && w0._view && !w0._ranked && !ranking.gaveUp && window.V2Split && V2Split.loadBoard) {
       var st0 = $('status'); if (st0) st0.textContent = 'Reading every living pet for the boards…';
-      V2Split.loadBoard(function (i, n) { var s = $('status'); if (s) s.textContent = 'Reading every living pet… ' + i + ' files, ' + fmt(n) + ' pets'; }).then(function () { var nw = M.world(); if (!nw || !nw._ranked) ranking.gaveUp = 1; ranking(); }, function () { ranking.gaveUp = 1; ranking(); });
+      var rkGo = 0; function rkOnce(ok) { if (rkGo) return; rkGo = 1; var nw = M.world(); if (!ok || !nw || !nw._ranked) ranking.gaveUp = 1; ranking(); } /* board-stall-1123: a stalled board read falls back after 45 s instead of 'Reading…' forever */
+      V2Split.loadBoard(function (i, n) { var s = $('status'); if (s) s.textContent = 'Reading every living pet… ' + i + ' files, ' + fmt(n) + ' pets'; }).then(function () { rkOnce(true); }, function () { rkOnce(false); });
+      setTimeout(function () { rkOnce(false); }, 45000);
       return;
     }
     /* rankings-species-1107: the boards stay on the same replayed world as Play (V2Mock.world). capture() re-reads it when the fresh world lands
@@ -346,7 +385,7 @@
     var w, live, tip, burned, burnedWk, winsWk, score = function (p) { return p.stage * 1e7 + streak(p, w.tip) * 1e5 + Math.min(p.care, 99999); };
     /* ranking tabs (ux-batch 2026-10-16, UI only): every board is computed from the same replayed world; dead and released pets never count */
     var WEEK = 1008, RW = [1, 3, 10, 33];
-    function capture() { w = M.world(); live = w.pets.filter(function (p) { return !p.dead && !p.released; }); tip = w.tip || M.state().tip || 0;
+    function capture() { rowGen = (typeof rowGen === 'number' ? rowGen : 0) + 1; w = M.world(); live = w.pets.filter(function (p) { return !p.dead && !p.released; }); tip = w.tip || M.state().tip || 0;
       burned = {}; burnedWk = {}; winsWk = {}; }
     capture();
     var power = function (p) { var s = p.stats || {}; return ['vigor', 'spark', 'grit', 'zoom', 'luck'].reduce(function (a, k) { return a + (s[k] || 0); }, 0); };
@@ -390,7 +429,8 @@
     function board() { return BOARDS.filter(function (x) { return x.id === st.board; })[0]; }
     function mode(B) { return B.pets && B.players ? (st.mode === 'players' ? 'players' : 'pets') : B.pets ? 'pets' : 'players'; }
     function petRows(B, wk) { var L = live.filter(function (p) { return speciesMatch(p, st.sp); }), sc;
-      if (B.id === 'wagmi') { L.sort(function (a, b) { return score(b) - score(a) || a.id - b.id; }); return L.map(function (p) { var s = streak(p, tip); return { p: p, score: s ? '🔥 ' + s + '-day streak' : '<span class="badge bad">no streak</span>', sub: 'care ' + fmt(p.care) + ' · W' + (p.wins || 0) + '/L' + (p.losses || 0), subQ: window.IPQ ? IPQ.mythicQ(p) : '' }; }); }
+      if (B.id === 'wagmi') { /* rank-speed-1123: score each pet once, then sort (the old sort re-scored on every compare: ~5 M streak walks, seconds on a phone) */
+        L = L.map(function (p) { return { p: p, v: score(p) }; }).sort(function (a, b) { return b.v - a.v || a.p.id - b.p.id; }).map(function (r) { return r.p; }); return L.map(function (p) { var s = streak(p, tip); return { p: p, score: s ? '🔥 ' + s + '-day streak' : '<span class="badge bad">no streak</span>', sub: 'care ' + fmt(p.care) + ' · W' + (p.wins || 0) + '/L' + (p.losses || 0), subQ: window.IPQ ? IPQ.mythicQ(p) : '' }; }); }
       if (B.id === 'old') { L = L.filter(function (p) { return p.hatchBlock != null; }).sort(function (a, b) { return a.hatchBlock - b.hatchBlock || a.id - b.id; }); return L.map(function (p) { return { p: p, score: 'block ' + fmt(p.hatchBlock), sub: '~' + Math.max(0, Math.floor((tip - p.hatchBlock) / 144)) + ' days old' }; }); }
       sc = B.id === 'power' ? power : function (p) { return wk ? (winsWk[p.id] || 0) : (p.wins || 0); };
       L = L.map(function (p) { return { p: p, v: sc(p) }; }).filter(function (r) { return r.v > 0; }).sort(function (a, b) { return b.v - a.v || a.p.id - b.p.id; });
@@ -415,7 +455,12 @@
       return Object.keys(m).filter(function (o) { return m[o] > 0; }).sort(function (a, b) { return m[b] - m[a] || (a < b ? -1 : 1); }).map(function (o) { return { owner: o, p: best[o] || null, score: B.id === 'power' && best[o] ? '<span' + ptA(best[o]) + '>' + fmt(m[o]) + unit + '</span>' : fmt(Math.round(m[o] * 1e8) / 1e8) + unit, sub: B.id === 'power' && best[o] ? shardSub(best[o]) : undefined }; }); }
     var MED = ['🥇', '🥈', '🥉'], TCOL = ['#9aa3b5', '#4fd18b', '#4f9dff', '#ffc93c'];
     function short(a) { return a ? a.slice(0, 6) + '…' + a.slice(-4) : ''; }
-    function cur() { var B = board(), md = mode(B), wk = !!B.week && st.span === 'week'; return { B: B, md: md, wk: wk, rows: md === 'pets' ? petRows(B, wk) : playerRows(B, wk) }; }
+    /* rank-speed-1123 (Jake: 'rankings page went unresponsive'): the rows of a board are built once per world copy and reused by every
+     * render (Show more, Find me, Find a pet, the podium) instead of re-sorting every living pet on each tap. capture() starts a new copy. */
+    var rowMemo = {}, rowGen = 0;
+    function cur() { var B = board(), md = mode(B), wk = !!B.week && st.span === 'week', k = rowGen + '|' + B.id + '|' + md + '|' + wk + '|' + st.sp, rows = rowMemo[k];
+      if (!rows) { rowMemo = {}; rows = rowMemo[k] = md === 'pets' ? petRows(B, wk) : playerRows(B, wk); }
+      return { B: B, md: md, wk: wk, rows: rows }; }
     function wireBoards() { $('board').querySelectorAll('[data-board]').forEach(function (x) { x.onclick = function () { st.board = x.dataset.board; if (st.board !== 'hof') st.base = st.board; if (st.board !== 'hof' && st.hofAuto) { st.sp = ''; st.hofAuto = false; } /* rankings-tidy: the species the Hall of Fame picked by itself does not follow you to other boards */ st.n = STEP; st.hits = null; st.all = null; $('boardAll').onclick = more; try { var u = new URL(location.href); ['pets', 'alive', 'page', 'pet'].forEach(function (k) { u.searchParams.delete(k); }); history.replaceState(null, '', u); } catch (e) { } /* trait-rank-1101: the Trait rarity board's own params do not follow to other boards */ render(); }; }); }
     function tabsHtml(on) { return '<div class="pettabs rktabs" role="tablist">' + BOARDS.map(function (x) { var sel = x.id === on; return '<button type="button" role="tab" class="tab' + (sel ? ' on' : '') + '" data-board="' + x.id + '" aria-selected="' + sel + '">' + esc(x.label) + '</button>'; }).join('') + '</div>'; }
     function syncUrl() { try { var u = new URL(location.href), B = board(); u.searchParams.set('board', B.id);
@@ -520,8 +565,10 @@
     paintNgmi();
     /* rankings-species-1107: same refresh as Play (js/v2.js poll). onFresh repaints when the background chain read replaces the saved copy;
      * the 60s poll follows new blocks after that. A hidden tab does not read. */
-    var refreshing = false;
-    function refreshWorld() { if (refreshing) return; refreshing = true; try { capture(); tally(); icoMemo = {}; paintNgmi(); render(); } catch (e) { try { console.warn('[v2] ranking refresh', e); } catch (x) { } } refreshing = false; }
+    var refreshing = false, lastRows = (M.state().rows || []).length;
+    /* rank-speed-1123: the view-world poll calls back every 60 s even when nothing changed (same world copy, same tip); redoing every board
+     * over ~160,000 pets then froze the page for seconds (Jake tapped Home mid-refresh). Same copy = nothing to redo. */
+    function refreshWorld() { var nw = M.world(); if (nw && nw === w && (nw.tip || 0) === (w.tip || 0) && (M.state().rows || []).length === lastRows) return; if (refreshing) return; refreshing = true; lastRows = (M.state().rows || []).length; try { capture(); tally(); icoMemo = {}; paintNgmi(); render(); } catch (e) { try { console.warn('[v2] ranking refresh', e); } catch (x) { } } refreshing = false; }
     if (M.onFresh) M.onFresh(refreshWorld);
     var lastPoll = Date.now();
     function poll() { if (!M.refresh || document.hidden) return; lastPoll = Date.now(); M.refresh(refreshWorld); }

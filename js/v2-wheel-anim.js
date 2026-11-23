@@ -64,7 +64,9 @@
     function end() { if (ended) return; ended = true; clearInterval(tm); document.removeEventListener('keydown', key, true); if (ov.parentNode) ov.parentNode.removeChild(ov); done(); }
     function key(ev) { ev.preventDefault(); ev.stopPropagation(); end(); }
     ov.addEventListener('pointerdown', function (ev) { ev.preventDefault(); end(); }); document.addEventListener('keydown', key, true);
-    frame(); tm = setInterval(function () { f++; if (f >= TOTAL_F) { end(); return; } frame(); }, 1000 / FPS); }
+    /* reveal sounds (Nov 23 2026): clicks while the wheel turns (slowing down), the tier jingle as it lands; silent unless the player's sound is on */
+    var S = window.V2Sfx, snd = function () { if (!S) return; try { if (f < SPIN_F && (f < 10 || f % (f < 17 ? 2 : 3) === 0)) S.blip(); if (f === SPIN_F && S.reveal) S.reveal(t); } catch (e) { } };
+    frame(); tm = setInterval(function () { f++; if (f >= TOTAL_F) { end(); return; } frame(); snd(); }, 1000 / FPS); }
   /* gear batch -> the result to reveal, or null when nothing in it came from a wheel (Pepe Wheel spin, saved spin, community gear roll) or it already played */
   function fromWins(wins, w, communityName) { if (!wins || !wins.length || !w) return null; var tx = {}; (w.log || []).forEach(function (l) { if (l.gid && l.tx) tx[l.gid] = l.tx; });
     var spun = wins.filter(function (x) { var g = w.items && w.items[x.gid]; return x.community || (g && (g.wheel || g.src === 'usespin')); }); if (!spun.length) return null;

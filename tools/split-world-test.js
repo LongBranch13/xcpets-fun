@@ -10,7 +10,7 @@ const fixtures = require('./lib/fixtures');
 let fail = 0, pass = 0;
 const ok = (c, m) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (c) pass++; else fail++; };
 const rulesMd5 = crypto.createHash('md5').update(fs.readFileSync(path.join(__dirname, '..', 'js/v2-rules.js'))).digest('hex');
-ok(rulesMd5 === '9bcc20124f67ca7c15254741488f98f8', 'rules MD5 unchanged (Meat Grinder added, off)');
+ok(rulesMd5 === '37e0c15779b6d85e52637f00dfd7f478', 'rules MD5 unchanged (Meat Grinder added after the Moloch upgrade)');
 ok(/function bootFromView[\s\S]{0,700}readViewBalance\(/.test(fs.readFileSync(path.join(__dirname, '..', 'js/v2-chain.js'), 'utf8')), 'the published view reads the wallet balance');
 ok(/var ENABLED = true, START = 977136/.test(fs.readFileSync(path.join(__dirname, '..', 'js/doom-week.js'), 'utf8')), 'doom week 2 window is set (display only)');
 
