@@ -420,8 +420,8 @@
     function go(L, title) { var tags = L.map(function (p) { return p.tag; }); altarJs(function () { if (window.V2CemeteryAltar && V2CemeteryAltar.sendPlans) V2CemeteryAltar.sendPlans(title, L.map(function (p) { return V.cemPetAmount ? V.cemPetAmount(w, p, b) : p; }), ctx); else location.href = 'play.html#cem-' + encodeURIComponent(tags.join('~')); }); }
     zs.addEventListener('click', function (e) { var t = e.target.closest('[data-hunt],[data-zfeed],[data-rpl],[data-res]'); if (!t || t.disabled) return; var z;
       if ((z = t.getAttribute('data-hunt'))) { var pend = huntWait(); window.V2HuntPicker.open({ w: w, V: V, R: R, me: ME, zombie: +z, block: b, pets: myLiving(), pending: pend, send: go }); if (pend && window.xcpLivingFill) window.xcpLivingFill(ME).then(function () { syncWorld(); var d = document.getElementById('huntPicker'); if (d && d._fill) d._fill(myLiving(), w); }); }
-      else if ((z = t.getAttribute('data-zfeed'))) { var f = +zs.querySelector('[data-fpick="' + z + '"]').value; go([V.cemPlan(w, 'zfeed', +z, [f], b)], '🍖 Zombie meal for #' + z); }
-      else if ((z = t.getAttribute('data-rpl'))) { var r = +zs.querySelector('[data-rpick="' + z + '"]').value; go([V.cemPlan(w, 'rpl', +z, [r], b)], '😇 Resurrection offering for #' + z); }
+      else if ((z = t.getAttribute('data-zfeed'))) { var f = +zs.querySelector('[data-fpick="' + z + '"]').value, zf = +z; sgGo(w, f, 'feed it to zombie #' + zf, function () { go([V.cemPlan(w, 'zfeed', zf, [f], b)], '🍖 Zombie meal for #' + zf); }); }
+      else if ((z = t.getAttribute('data-rpl'))) { var r = +zs.querySelector('[data-rpick="' + z + '"]').value, zr = +z; sgGo(w, r, 'pledge it to the Resurrection of #' + zr, function () { go([V.cemPlan(w, 'rpl', zr, [r], b)], '😇 Resurrection offering for #' + zr); }); }
       else if ((z = t.getAttribute('data-res'))) go([V.cemPlan(w, 'resurrect', +z, null, b)], '😇 Resurrection of #' + z); });
     function pager(el, pages) { if (pages <= 1) { el.innerHTML = ''; return; } var bt = function (k, t, dis) { return '<button type="button" class="q" data-pg="' + k + '"' + (dis ? ' disabled' : '') + '>' + t + '</button>'; };
       el.innerHTML = bt('first', '⏮ First', !st.page) + bt('prev', '◀ Prev', !st.page) + '<label class="small">Page <input type="number" min="1" max="' + pages + '" value="' + (st.page + 1) + '" data-pgin aria-label="Page number"> of ' + fmt(pages) + '</label>' + bt('next', 'Next ▶', st.page >= pages - 1) + bt('last', 'Last ⏭', st.page >= pages - 1); }
@@ -504,6 +504,8 @@
   /* THE gravestone (option C, owner's pick Oct 29 2026): loaded once, then every finder card draws its stone */
   function stoneJs(cb) { if (window.V2Gravestone) return cb(); (S.gsQ = S.gsQ || []).push(cb); if (S.gsQ.length > 1) return; var v = ver(), sc = document.createElement('script'); sc.src = 'js/v2-gravestone.js' + (v ? '?' + v : '');
     sc.onload = function () { var q = S.gsQ; S.gsQ = []; q.forEach(function (f) { f(); }); }; sc.onerror = function () { S.gsQ = []; }; document.head.appendChild(sc); }
+  /* sac-guard (Nov 23 2026): a single pet picked for a zombie meal or a pledge is checked for Gods, Mythics, Legendaries, Wizards, stars and recent meals first */
+  function sgGo(w, id, verb, then) { if (!window.V2SacGuard || !(id > 0)) return then(); V2SacGuard.check({ w: w, ids: [id], me: (window.V2UI && V2UI.ME) || '', verb: verb, onGo: function (keep) { if (keep.length) then(); } }); }
   function ver() { var me = document.querySelector('script[src*="v2-cemetery-scene.js"]'); return me ? (me.getAttribute('src').split('?')[1] || '') : ''; }
   function altarJs(cb) { if (window.V2CemeteryAltar) return cb(); (S.altQ = S.altQ || []).push(cb); if (S.altQ.length > 1) return; var v = ver();
     if (!document.getElementById('cemAltCss')) { var l = document.createElement('link'); l.rel = 'stylesheet'; l.id = 'cemAltCss'; l.href = 'css/cemetery-altar.css' + (v ? '?' + v : ''); document.head.appendChild(l); }

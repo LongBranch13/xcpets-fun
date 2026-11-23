@@ -75,7 +75,11 @@
         if (k === 'one' && L.length) sel[L[0].id] = 1;
         if (k === 'fill') { var need = min - res.points, got = 0; L.filter(function (p) { return !myth(p) && tierOf(p) < 3; }).slice().sort(function (a, c) { return tierOf(c) - tierOf(a) || a.id - c.id; }).forEach(function (p) { if (got < need) { sel[p.id] = 1; got += P[tierOf(p)]; } }); }
         sum(); return; } });
-    bg.querySelector('#csacGo').addEventListener('click', function () { var I = ids(); if (!I.length) return; var big = I.filter(function (id) { var p = w.byId[id]; return tierOf(p) >= 3 || myth(p); });
+    function sendIds(I) { var PL = plans(o, I); if (!PL.length) return; close(); o.send(PL, (halo ? '😇 Halo points for ' : '🍖 Zombie meal for ') + (Z.name || '') + ' #' + Z.id + ' (' + I.length + ' pet' + (I.length === 1 ? '' : 's') + ')'); }
+    bg.querySelector('#csacGo').addEventListener('click', function () { var I = ids(); if (!I.length) return;
+      if (window.V2SacGuard) return V2SacGuard.check({ w: w, ids: I, me: o.ME, verb: halo ? 'give them as halo points to ' + (Z.name || '#' + Z.id) : 'feed them to ' + (Z.name || 'the zombie'), onGo: function (keep) { /* sac-guard (Nov 23 2026): special pets named, the easy way leaves them out */
+        I.forEach(function (id) { if (keep.indexOf(id) < 0) { delete sel[id]; var t = bg.querySelector('.csac-t[data-id="' + id + '"]'); if (t) t.setAttribute('aria-pressed', 'false'); } }); sum(); if (keep.length) sendIds(keep); } });
+      var big = I.filter(function (id) { var p = w.byId[id]; return tierOf(p) >= 3 || myth(p); });
       if (big.length && !confirm) { confirm = true; this.classList.add('warn'); this.textContent = '⚠ Yes, sacrifice ' + (big.length === 1 ? 'the Legendary' : 'all ' + big.length + ' Legendary/Mythic'); return; }
       var PL = plans(o, I); if (!PL.length) return; close(); o.send(PL, (halo ? '😇 Halo points for ' : '🍖 Zombie meal for ') + (Z.name || '') + ' #' + Z.id + ' (' + I.length + ' pet' + (I.length === 1 ? '' : 's') + ')'); });
     var first = bg.querySelector('.csac-t,.csac-x'); if (first) first.focus(); }

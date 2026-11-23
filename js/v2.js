@@ -333,6 +333,8 @@
       if (e.target.closest('.zb-resbtn')) { if (!Z || e.target.closest('.zb-resbtn').disabled) return; var ri = V.cemResInfo(w, Z, b); confirmPlans('😇 Try the Resurrection of ' + esc(Z.name || '#' + z) + ' #' + z + ' · ' + ri.points + ' points · ' + Math.round(ri.chance * 100) + '% chance · every pledged pet and gear is used up, win or lose', [{ tag: V.cemPlan(w, 'resurrect', z, null, b).tag, amount: V.cemCost(w, 'resurrect', b), petId: z, label: 'resurrect' }]); return; }
       var bt = e.target.closest('.zb-feedbtn'); if (!bt) return; var ids = picked(), gids = rp ? picked('.zb-gpick') : [];
       if (!Z || (!ids.length && !gids.length)) return toast('Tick the ' + (rp ? 'pets or gear you want to pledge to ' : 'pets you want ') + (Z ? esc(Z.name || '#' + z) : 'the zombie') + (rp ? '' : ' to eat') + ' first.');
+      if (window.V2SacGuard && ids.length && !bt._sgOk) return V2SacGuard.check({ w: w, ids: ids, me: ME, verb: rp ? 'pledge them to the Resurrection of ' + (Z.name || '#' + z) : 'feed them to ' + (Z.name || 'the zombie'), onGo: function (keep) { /* sac-guard: special pets left out -> untick them, then the same button again */
+        var RP = zRec(el, false); if (RP) ids.forEach(function (id) { if (keep.indexOf(id) < 0) { RP.sel.delete(id); var cb = el.querySelector('input.zb-pick[value="' + id + '"]'); if (cb) cb.checked = false; } }); try { upd(); } catch (x) { } if (!keep.length && !gids.length) return; bt._sgOk = 1; try { bt.click(); } finally { bt._sgOk = 0; } } });
       var names = ids.map(function (f) { var F = w.byId[f]; return esc((F && F.name) || '#' + f) + ' #' + f; }).concat(gids.map(function (n) { var g = w.items['g' + n]; return esc((g && g.label) || 'g' + n) + ' (gear)'; }));
       var nm = names.slice(0, 6).join(', ') + (names.length > 6 ? ' +' + (names.length - 6) + ' more' : '');
       if (!rp) return confirmPlans('🍖 Feed zombie ' + esc(Z.name || '#' + z) + ' #' + z + ' · eats ' + ids.length + ' pet' + (ids.length > 1 ? 's' : '') + ' for good: ' + nm, zFeedPlans(w, z, ids, b));
@@ -1360,14 +1362,14 @@
   /* firesale-countdown-1104 (UI only, rules unchanged): a burn is judged at the block it confirms in. In the last 2 blocks of a live Fire Sale
    * a burn sent at the sale cost may land after the sale and then pays only part of a meal list. The confirm sheet warns and offers the full
    * cost (sale amount / 0.31, rounded up, plus 2 sats per pet for the 8-place rounding), keeping the sale cost as the other choice. */
-  var FIRE_END_WARN = 2, FIRE_SALE_PART = 0.31;
+  var FIRE_END_WARN = 6, FIRE_SALE_PART = 0.31; /* sale-guard (Nov 23 2026): 2 -> 6 blocks (about an hour): a player sent feeds 3 blocks before the end and they landed after it */
   function fireEndPlans(w, plans) { if (!V.fireInfo || !plans || !plans.length) return null; var f; try { f = V.fireInfo(w, S.tip || 0); } catch (e) { return null; }
     var sl = f && f.live; if (!sl) return null; var left = sl.end - f.nextBlock; if (left > FIRE_END_WARN) return null; var any = false;
     var full = plans.map(function (p) { var a = Number(p && p.amount); if (!(a >= 0.001)) return p; any = true; var n = (p.petIds && p.petIds.length) || 1;
       return Object.assign({}, p, { amount: (Math.ceil(a / FIRE_SALE_PART * 1e8 - 1e-6) + 2 * n) / 1e8 }); });
     return any ? { sale: plans, full: full, left: left, end: sl.end } : null; }
   function fireEndNote(fe) { return '<div class="warn fs-endwarn" id="cfFireEnd" role="alert"><p><b>🔥 Sale may end before this confirms. Pay full cost to be safe?</b></p><p class="small">' +
-      (fe.left === 1 ? 'This is the last block' : 'Only ' + fe.left + ' blocks are') + ' left in the Fire Sale (it ends at block ' + fmt(fe.end) + '). A burn is judged at the block it lands in. If it lands after the sale at the sale cost, only some of the pets get fed.</p>' +
+      (fe.left === 1 ? 'This is the last block' : 'Only ' + fe.left + ' blocks are') + ' left in the Fire Sale (it ends at block ' + fmt(fe.end) + '). A burn is judged at the block it lands in, and a burn can wait a few blocks in line (a block sometimes takes an hour). If it lands after the sale at the sale cost, only some of the pets get fed.</p>' +
       '<div class="row"><button type="button" class="q" id="cfPayFull" aria-pressed="false">Pay full cost · ' + fmt(V.burnSummary(fe.full).total) + '</button> <button type="button" class="q" id="cfPaySale" aria-pressed="true">Keep sale cost · ' + fmt(V.burnSummary(fe.sale).total) + '</button></div></div>'; }
   function fireEndWire(fe) { function pick(full) { var L = full ? fe.full : fe.sale; if (pendingPlans !== fe.sale && pendingPlans !== fe.full) return; pendingPlans = L;
       var a = $('cfAmt'); if (a) a.textContent = fmt(V.burnSummary(L).total) + ' XCPETS'; var g = $('cfLog'); if (g) g.innerHTML = L.slice(0, 12).map(function (p) { return '<div><code>' + esc(p.tag) + '</code> · ' + fmt(p.amount) + '</div>'; }).join('') + (L.length > 12 ? '<div>… +' + (L.length - 12) + ' more</div>' : '');
