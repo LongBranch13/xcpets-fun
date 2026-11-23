@@ -6,7 +6,8 @@
  *   Legends        the special species (Bitcoin Wizard, Lord Kek, FUNTRUMP, Homer, DJ Pepe, 1 of 1s...): one square each, any rarity.
  *   Hybrids        every hybrid bred so far (2-way and 3-way), rarest last. Counted on their own (Hybrid Hunter), not in the Petdex score.
  * Missing squares show a black silhouette of a real pet of that kind. Tap any square for how many exist and how to get one.
- * "Share" copies a Wordle-style square grid (no address, no name). Opens from the Today card on Play, or with #petdex / ?petdex=1 in the URL.
+ * "Share" copies a Wordle-style square grid (no address, no name). Lives on petdex.html (?tab=legends|hybrids); the Today card on Play links there.
+ * On that page only, a view-only world reads every living pet once (V2Split.loadBoard, view/rank.json, as Rankings and Hybrids do).
  * compute(w, me) is pure and node-testable (tools/petdex-test.js). */
 (function (root, factory) {
   var api = factory(root);
@@ -77,7 +78,7 @@
   function me() { try { return (root.V2UI && root.V2UI.ME) || (root.V2Mock && root.V2Mock.ME) || localStorage.getItem('xcpets-v2-me') || ''; } catch (e) { return ''; } }
   function css() { if ($('pdxCss')) return; var s = d.createElement('style'); s.id = 'pdxCss'; s.textContent =
     '#petdex{position:fixed;inset:0;z-index:100009;background:rgba(10,8,20,.82);display:flex;align-items:flex-start;justify-content:center;overflow:auto;-webkit-overflow-scrolling:touch;padding:14px 10px 40px}' +
-    '#petdex[hidden]{display:none}' +
+    '#petdex[hidden]{display:none}#petdex.pdx-page{position:static;inset:auto;z-index:auto;background:none;padding:0;overflow:visible}#petdex.pdx-page .pdx-x{display:none}#petdex.pdx-page .pdx{max-width:900px;margin:0 auto}' +
     '#petdex .pdx{position:relative;width:100%;max-width:760px;background:#fff8dc;color:#2b2b2b;border:4px solid #2b2b2b;border-radius:14px;box-shadow:0 6px 0 #2b2b2b;padding:14px 12px 18px;font-family:"Comic Neue",var(--comic,sans-serif)}' +
     '#petdex h2{font:28px/1 Bangers,var(--meme,Impact),sans-serif;letter-spacing:1px;margin:0 40px 6px 0;color:#2b2b2b;text-shadow:2px 2px 0 #ffe27a}' +
     '#petdex .pdx-x{position:absolute;top:8px;right:8px;width:38px;height:38px;border:3px solid #2b2b2b;border-radius:10px;background:#ff6b6b;color:#fff;font:18px "Press Start 2P",monospace;cursor:pointer;box-shadow:0 3px 0 #2b2b2b}' +
@@ -113,7 +114,7 @@
     d.head.appendChild(s); }
 
   /* sprites: a real pet of that kind, drawn on a transparent background. Missing = solid silhouette. Drawn only when on screen. */
-  function draw(c) { var x = CELLS[+c.getAttribute('data-pdx')]; if (!x) return; var p = x.mine ? x.best || x.sample : x.sample, w = wNow; c.__sil = !x.mine; if (!p || !w || !root.V2Render || !root.V2Render.petFrames) return;
+  function draw(c) { var x = CELLS[+c.getAttribute('data-pdx')]; if (!x) return; var p = x.mine ? x.best || x.sample : x.sample, w = wNow; c.__sil = !x.mine; if (!p || !w) return; if (!root.V2Render || !root.V2Render.petFrames) { if ((c.__try = (c.__try || 0) + 1) < 40) setTimeout(function () { draw(c); }, 500); return; }
     try { var kp = Object.assign({}, p, { art: Object.assign({}, p.art, { background: 'solid', bgColor: '#ff00fe', pattern: 'none' }) }), f = root.V2Render.petFrames(kp, w, { noHunger: true })[0];
       if (!f || !f.data || f.data.length !== 4096) return; c.width = c.height = 32; var g = c.getContext('2d'), id = g.createImageData(32, 32), s = f.data, o = id.data, sil = !!c.__sil;
       for (var i = 0; i < 4096; i += 4) { var r = s[i], gg = s[i + 1], b = s[i + 2]; if (r > 240 && gg < 16 && b > 240) { o[i + 3] = 0; continue; }
@@ -141,44 +142,51 @@
     if (c.mine) return '✅ ' + what + ': you have <b>' + fmt(c.mine) + '</b>. ' + fmt(c.n) + ' exist' + (c.n === 1 ? 's' : '') + ' on chain' + (c.n === 1 ? '. The only one. Absolute flex.' : '.');
     var how = col && col.k === 'M' ? 'Raise one to Mythic (Road to Mythic on its pet page).' : isHyb(c.sp) ? 'Breed its parent species together, or find one for sale in Spam City.' : col ? 'Hatch eggs, breed, or find one for sale in Spam City.' : 'These are rare. Watch Spam City and the Telegram for one.';
     return '❓ ' + what + ': not yet. <b>' + fmt(c.n) + '</b> exist' + (c.n === 1 ? 's' : '') + ', held by ' + fmt(c.players) + ' player' + (c.players === 1 ? '' : 's') + '. ' + how; }
-  var pKey = '', pTimer = 0;
-  function paint() { var w = world(), m = me(); if (!el) return; wNow = w; pKey = m + '|' + (w && w.tip) + '|' + (w && w.pets ? w.pets.length : 0) + '|' + (w && w._full ? 1 : 0);
-    if (!pTimer) pTimer = setInterval(function () { if (!el || el.hidden) { clearInterval(pTimer); pTimer = 0; return; } var w2 = world(), k = me() + '|' + (w2 && w2.tip) + '|' + (w2 && w2.pets ? w2.pets.length : 0) + '|' + (w2 && w2._full ? 1 : 0); if (k !== pKey) paint(); }, 2000); /* the world keeps loading */
+  var pKey = '', pTimer = 0, boardAsked = 0;
+  function paint() { var w = world(), m = me(); if (!el) return; wNow = w; pKey = m + '|' + (w && w.tip) + '|' + (w && w.pets ? w.pets.length : 0) + '|' + (w && w._full ? 1 : 0) + (w && w._ranked ? 'r' : '');
+    if (!pTimer) pTimer = setInterval(function () { if (!el || el.hidden) { clearInterval(pTimer); pTimer = 0; return; } var w2 = world(), k = me() + '|' + (w2 && w2.tip) + '|' + (w2 && w2.pets ? w2.pets.length : 0) + '|' + (w2 && w2._full ? 1 : 0) + (w2 && w2._ranked ? 'r' : ''); if (k !== pKey) paint(); }, 2000); /* the world keeps loading */
     var box = el.querySelector('.pdx'); if (!w || !w.pets || !w.pets.length) { box.querySelector('.pdx-body').innerHTML = '<p class="pdx-note">Reading the chain… the Petdex opens once your pets have loaded.</p>'; return; }
+    /* a view-only / fast world carries only this wallet's pets: read every living pet once (view/rank.json, the same file Rankings uses) so
+     * "how many exist" and the silhouettes are real. Until it lands the squares count only what this wallet has. */
+    var B = root.V2Split; if (PAGE && w._view && !w._ranked && B && B.loadBoard && !boardAsked) { boardAsked = 1; B.loadBoard().then(function () { boardAsked = 2; sumKey = ''; if (el && !el.hidden) paint(); }, function () { boardAsked = 2; }); }
+    var counting = PAGE && w._view && !w._ranked && boardAsked !== 2;
     dexNow = compute(w, m);
     box.querySelector('.pdx-score').innerHTML = '<b>' + dexNow.got + '</b>/' + dexNow.total + ' caught';
     box.querySelector('.pdx-rank').textContent = dexNow.rank;
     box.querySelector('.pdx-bar i').style.width = Math.max(2, dexNow.pct) + '%';
-    box.querySelector('.pdx-sub').textContent = !m ? 'Connect a wallet (or view one) to see what you have caught.' : (w._pages && !w._full ? 'Still loading some pets… ' : '') + dexNow.mastered.length + ' row' + (dexNow.mastered.length === 1 ? '' : 's') + ' mastered · tap any square';
+    box.querySelector('.pdx-sub').textContent = !m ? 'Connect a wallet (or view one) to see what you have caught.' : counting ? 'Counting every pet on chain\u2026 ' : (w._pages && !w._full ? 'Still loading some pets… ' : '') + dexNow.mastered.length + ' row' + (dexNow.mastered.length === 1 ? '' : 's') + ' mastered · tap any square';
     [['species', 'Species ' + dexNow.species.got + '/' + dexNow.species.of], ['legends', 'Legends ' + dexNow.legendGot + '/' + dexNow.legends.length], ['hybrids', 'Hybrids ' + dexNow.hybridGot + '/' + dexNow.hybrids.length]].forEach(function (t) {
       var b = box.querySelector('[data-tab=' + t[0] + ']'); b.textContent = t[1]; b.setAttribute('aria-pressed', String(tab === t[0])); });
     var bd = box.querySelector('.pdx-body'); bd.innerHTML = body(); watch(bd); }
-  function open() { css(); var w = world(); if (!el) { el = d.createElement('div'); el.id = 'petdex'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', 'Petdex');
+  var PAGE = false;
+  function open() { if (!PAGE) { location.href = 'petdex.html'; return; } css(); var w = world(); if (!el) { el = d.createElement('div'); el.id = 'petdex'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', 'Petdex');
       el.innerHTML = '<div class="pdx"><button type="button" class="pdx-x" aria-label="Close">×</button><h2>📖 PETDEX</h2>' +
         '<div class="pdx-top"><span class="pdx-score"></span><span class="pdx-rank"></span><span class="pdx-sub small"></span><div class="pdx-bar"><i></i></div></div>' +
         '<div class="pdx-tabs"><button type="button" data-tab="species"></button><button type="button" data-tab="legends"></button><button type="button" data-tab="hybrids"></button><button type="button" class="pdx-share" data-share="1">📤 Share</button></div>' +
         '<div class="pdx-body"></div><div class="pdx-tip">Tap a square: what it is, how many exist, how to get one.</div></div>';
-      d.body.appendChild(el);
+      var mount = $('petdexMount'); if (mount) { el.className = 'pdx-page'; mount.appendChild(el); } else d.body.appendChild(el);
       el.addEventListener('click', function (e) { if (e.target === el || e.target.closest('.pdx-x')) return close();
         var t = e.target.closest('[data-tab]'); if (t) { tab = t.getAttribute('data-tab'); el.scrollTop = 0; return paint(); }
         if (e.target.closest('[data-share]')) return share(e.target.closest('[data-share]'));
         var c = e.target.closest('.pdx-c[data-i]'); if (c) { var x = CELLS[+c.getAttribute('data-i')]; if (x) { el.querySelector('.pdx-tip').innerHTML = tipFor(x); c.classList.remove('pop'); void c.offsetWidth; c.classList.add('pop'); if (root.V2Sfx && root.V2Sfx.blip) try { root.V2Sfx.blip(); } catch (er) { } } } });
       d.addEventListener('keydown', function (e) { if (e.key === 'Escape' && el && !el.hidden) close(); }); }
-    el.hidden = false; d.body.classList.add('pdx-open'); paint(); void w;
+    el.hidden = false; if (!PAGE) d.body.classList.add('pdx-open'); paint(); void w;
     try { root.dispatchEvent(new CustomEvent('xcpets:petdex-open')); } catch (e) { } /* daily loot tick (js/v2-daily-loot.js) */
-    try { if (location.hash !== '#petdex') history.replaceState(null, '', '#petdex'); } catch (e) { } }
-  function close() { if (!el) return; el.hidden = true; d.body.classList.remove('pdx-open'); try { if (location.hash === '#petdex') history.replaceState(null, '', location.pathname + location.search); } catch (e) { } }
+  }
+  function close() { if (!el || PAGE) return; el.hidden = true; d.body.classList.remove('pdx-open'); try { if (location.hash === '#petdex') history.replaceState(null, '', location.pathname + location.search); } catch (e) { } }
   function share(b) { if (!dexNow) return; var t = shareText(dexNow), done = function () { var o = b.textContent; b.textContent = '✅ Copied!'; setTimeout(function () { b.textContent = o; }, 1600); };
     try { if (navigator.share && /Mobi|Android/i.test(navigator.userAgent)) { navigator.share({ text: t }).catch(function () { }); return; } } catch (e) { }
     try { navigator.clipboard.writeText(t).then(done, function () { root.prompt('Copy your Petdex:', t); }); } catch (e) { root.prompt('Copy your Petdex:', t); } }
   /* Today card entry: one line under the tiles (js/v2-today.js asks summary()). */
   var sumKey = '', sumVal = null;
   function summary() { var w = world(), m = me(); if (!w || !w.pets || !m) return null; var k = m + '|' + w.tip + '|' + w.pets.length; if (k !== sumKey) { sumKey = k; sumVal = compute(w, m); } return sumVal; }
-  function todayHtml() { var x = summary(); if (!x) return ''; css();
+  function todayHtml() { var w = world(); if (w && w._view && !w._ranked) { css(); return '<button type="button" class="td-dex" data-td="dex">\ud83d\udcd6 <span>Petdex: every species, rarity and hybrid. What are you missing?</span><span class="td-go">gotta burn em all \u203a</span></button>'; }
+    var x = summary(); if (!x) return ''; css();
     return '<button type="button" class="td-dex" data-td="dex">📖 <span>Petdex <b>' + x.got + '/' + x.total + '</b> · ' + esc(x.rank) + (x.mastered.length ? ' · ⭐ ' + x.mastered.length + ' mastered' : '') + '</span><span class="td-go">gotta burn em all ›</span></button>'; }
-  function start() { if (!d) return; var q = /[?&]petdex=(\w+)/.exec(location.search); if (q && /^(species|legends|hybrids)$/.test(q[1])) tab = q[1]; /* ?petdex=1 (or =hybrids...) opens it: links from HatchBot */
-    var go = function () { if (location.hash === '#petdex' || q) { var n = 0, t = setInterval(function () { var w = world(); if ((w && w.pets && w.pets.length) || ++n > 120) { clearInterval(t); open(); } }, 500); } };
-    if (d.readyState === 'loading') d.addEventListener('DOMContentLoaded', go); else go();
-    root.addEventListener && root.addEventListener('hashchange', function () { if (location.hash === '#petdex') open(); }); }
+  function start() { if (!d) return; var q = /[?&]petdex=(\w+)/.exec(location.search) || /[?&]tab=(\w+)/.exec(location.search); if (q && /^(species|legends|hybrids)$/.test(q[1])) tab = q[1];
+    var go = function () { PAGE = d.body && d.body.getAttribute('data-v2page') === 'petdex';
+      if (!PAGE && (location.hash === '#petdex' || /[?&]petdex=/.test(location.search))) { location.replace('petdex.html' + (q ? '?tab=' + q[1] : '')); return; }
+      if (!PAGE) return; var n = 0, t = setInterval(function () { var w = world(); if ((w && w.pets && w.pets.length) || ++n > 120 || (n > 20 && !me())) { clearInterval(t); open(); } }, 500); };
+    if (d.readyState === 'loading') d.addEventListener('DOMContentLoaded', go); else go(); }
   return { compute: compute, shareText: shareText, open: open, close: close, todayHtml: todayHtml, start: start, COLS: COLS, rankOf: rankOf };
 });
