@@ -1,25 +1,26 @@
 {
   "_note": "HatchBot automatic posts (Cloudflare Worker cron). Every switch is OFF. Nothing posts unless announce is true AND that post type is true. Change a switch here in the repo (never only in Cloudflare): the next deploy picks it up. Owner approval needed before any switch goes true.",
-  "announce": false,
+  "announce": true,
   "limits": { "max_per_day": 30, "max_per_hour": 6, "min_gap_s": 30, "expire_hours": 6, "stale_blocks": 36, "watch_every_min": 10, "legendary_digest_hours": 3, "burn_step": 1000000, "pet_count_step": 10000 },
   "chain": {
     "hatch_highlights": false,
-    "hybrids": false,
+    "hybrids": true,
     "mythic": false,
-    "burn_milestone": false,
-    "pet_count_milestone": false,
-    "community_stage": false,
-    "battles": false
+    "burn_milestone": true,
+    "pet_count_milestone": true,
+    "community_stage": true,
+    "battles": true
   },
-  "ties": false,
-  "spamcity": false,
-  "warnings": { "feed_lag": false, "lag_blocks": 12, "caught_up_blocks": 3 },
+  "ties": true,
+  "spamcity": true,
+  "warnings": { "feed_lag": true, "lag_blocks": 12, "caught_up_blocks": 3 },
   "routines": {
-    "pet_of_day": false,
-    "fight_night": false,
-    "motel_alert": false,
-    "leaderboard": false
+    "pet_of_day": true,
+    "fight_night": true,
+    "motel_alert": true,
+    "leaderboard": true
   },
-  "recap": false,
-  "recap_hour_ct": 8
+  "recap": true,
+  "recap_hour_ct": 8,
+  "commands": { "rate": true }
 }
