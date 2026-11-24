@@ -1,6 +1,6 @@
 {
- "lastBlock": 977428,
- "count": 451,
+ "lastBlock": 977429,
+ "count": 453,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -5414,6 +5414,30 @@
    "speciesLabel": "Homer Pepe",
    "rarity": "Legendary",
    "stage": "Mythic"
+  },
+  {
+   "id": 210440,
+   "asset": "A2053750034821272444",
+   "tiedBlock": 977429,
+   "tiedTx": "3c0d6c5b791662cbf7ca2b633aad30cb542c9f76d25654bd3d1430a70f16d817",
+   "kind": "deed",
+   "name": "Poyooki",
+   "species": "hyb:bobo:dodo",
+   "speciesLabel": "Bodo (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 210443,
+   "asset": "A6205859790026262519",
+   "tiedBlock": 977429,
+   "tiedTx": "ad939114c8049142f87f1110de2b3dedba0945fbea5c90947b1a4d6b4e7728d5",
+   "kind": "deed",
+   "name": "Muboteboo",
+   "species": "mumu",
+   "speciesLabel": "Mumu",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
   }
  ]
 }
