@@ -28,21 +28,26 @@ async function fillHashes(state, needed, io) {
 function dropShallow(state, tip) { Object.keys(state.hashes).forEach(k => { if (+k > tip - 6) delete state.hashes[k]; }); }
 async function applyTip(state, io, height) {
   const asset = io.asset || 'XCPETS';
+  state.step = 'burns';
   const page = await io.getJson('/assets/' + asset + '/destructions?limit=1000');
   let rows = null;
+  state.step = 'merge';
   if (state.rows.length && state.tip && io.mergeRows) rows = io.mergeRows(page, state.rows, state.tip);
   if (!rows) rows = await readRows(io.getJson, asset);
   state.rows = rows;
   dropShallow(state, height);
+  state.step = 'hashes';
   const needed = bootSync().neededBlocks(rows, height, state.gates || {});
   await fillHashes(state, needed, io);
   const still = needed.filter(b => !state.hashes[b]);
   if (still.length) throw new Error('missing hashes');
   if (io.loadDex) {
+    state.step = 'sales';
     const dex = await io.loadDex(rows, { tip: height, hashes: state.hashes, dex: state.dex, dexTip: state.dexTip, dexHash: state.dexHash, dexAssets: state.dexAssets });
     if (dex) { state.dex = io.normalize ? io.normalize(dex) : dex;
       state.dexAssets = io.dexAssets ? io.dexAssets() : (state.dexAssets || []); state.dexTip = height; state.dexHash = state.hashes[height] || ''; }
   }
+  state.step = 'done';
   state.tip = height; state.tipHash = state.hashes[height] || '';
   state.coreHeight = Math.max(state.coreHeight || 0, height);
   state.lastBlockAt = new Date().toISOString(); state.builtAt = state.lastBlockAt; state.ready = true;
@@ -50,6 +55,7 @@ async function applyTip(state, io, height) {
   state.lag = Math.max(0, Math.max(state.coreHeight || 0, state.mempoolHeight || 0) - state.tip);
 }
 async function tick(state, io) {
+  state.step = 'tip';
   const info = await io.getJson('/');
   const height = info && info.result && (info.result.counterparty_height || (info.result.last_block && info.result.last_block.block_index));
   if (!(height > 0)) throw new Error('tip');

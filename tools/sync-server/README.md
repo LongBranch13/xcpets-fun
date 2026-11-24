@@ -59,3 +59,15 @@ What keeps it moving now:
 - **Heartbeat in health:** `/xp/v1/health` `loop` = `stepSec` (how long the current step has run), `lastStepAgoSec`, `lastOkAgoSec`, `errors`/`errorRun`/`lastError` (short codes), `restarts1h`/`restarts24h`, `resumedFrom`, `heapMB`/`heapLimitMB`, `lastStall`.
 - **On-server watchdog** (installed by server-repair, `sync_watchdog`): every minute it asks health on loopback; 3 misses in a row, or a step stuck 15 minutes, restarts the service. The feed job gets a 40-minute time limit.
 - **Outside watchers:** HatchBot's Cloudflare cron (`hatchbot/serverwatch.js`, every 4 minutes) compares the server with the real chain (mempool.space) and sends Telegram alerts to `TELEGRAM_ALERT_CHAT_ID` and to anyone who DMs the bot `/alerts`. `worldwatch` does the same check, opens the `world-alert` issue, and reboots the server through server-restart when it stays down or stuck for 25 minutes (at most once every 3 hours; repository variable `WW_AUTO_RESTART=0` turns that off).
+
+### When every follow step fails (Nov 24 2026)
+
+After the second never-freeze repair the server answered but every step failed with a bare `error`, while the same code followed
+the chain from the public Counterparty nodes (`tools/followprobe.js`, workflow `followprobe`: one read-only follow step from
+`api/boot.json`, and it prints the live health heartbeat first).
+
+- Health `loop.lastStep` names the step that failed (`tip`, `burns`, `merge`, `hashes`, `sales`, `done` = after the follow), and
+  `loop.lastError` names sales-read failures (`sales: ...`) and code faults (`code: TypeError`) by kind only. The journal line
+  `sync tick failed (...)` carries the full message with upstream addresses, onions and IPs removed.
+- Public fallback: when the configured nodes fail 6 steps in a row the follower reads from the public nodes and stays there,
+  trying its own nodes again every 30th step (`loop.fallback` in health). `XP_PUBLIC_FALLBACK=0` turns it off.
