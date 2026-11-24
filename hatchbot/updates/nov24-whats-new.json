@@ -1,0 +1,21 @@
+{
+  "_note": "Update series for the XCPETS Telegram group (Nov 24 2026): everything that went live since nov23-whats-new (posted Nov 23 03:53 UTC). Posted only when the owner says go: Actions > hatchbot > Run workflow > update: nov24-whats-new. {species} tokens become HatchBot's pixel pet emoji.",
+  "posts": [
+    {
+      "art": { "kind": "banner", "top": "WE'RE SO BACK", "bottom": "FASTER THAN EVER", "color": "green" },
+      "text": "📣 XCPETS UPDATE 1/4: the swamp is FAST now ⚡{pepe}\n\n🛠️ The game server got rebuilt so it never freezes again: it watches itself, fixes itself and screams for help if it ever gets stuck.\n📱 My Pets loads WAY faster, big wallets and phones too. Your pets stay saved on your device, so coming back is almost instant.\n🏙️ Spam City opens instantly. No more waiting on the order book.\n🧟 Zombies never vanish from My Pets anymore, and every pet (zombies too) has one pet page.\n🐣 Hatches you missed wait in a calm little pill: one box = one review, weirdest finds first.\n\nKnow someone who quit because it was slow? Tell them to come back 😏\nxcpets.fun"
+    },
+    {
+      "art": { "kind": "banner", "top": "FLEX ON THEM", "bottom": "SHARE YOUR PETS", "color": "pink" },
+      "text": "📣 XCPETS UPDATE 2/4: flex your pets everywhere {chad}\n\n📤 One Share button on every pet page. Your pet's link now shows a real card of YOUR pet in Telegram and X. Post it, send it, save it.\n📲 Phone hand-off: no wallet on your phone? Turn on plan mode, pick your burns on the phone all day, then scan ONE QR code at your computer and sign them all in XCP Wallet. Nothing gets signed on the phone.\n🍽️ The Pantry is open on Play: prepay meals and the game feeds only the pets you pick, every game day.\n🪙 OG BACKER: hold XCPETS.FUN.D and a gold OG BACKER coin badge shows up in Your badges. Only the OGs have it.\n\nxcpets.fun"
+    },
+    {
+      "art": { "kind": "banner", "top": "NEW STICKERS", "bottom": "PETS AS EMOJI", "color": "purple" },
+      "text": "📣 XCPETS UPDATE 3/4: every pet is now a sticker AND an emoji {doge}{bobo}{kek}{gooby}\n\n🎨 New XCPETS sticker pack: t.me/addstickers/xcpets_pets_by_xcpets_hatchbot\n😎 Pixel pet emoji pack: t.me/addemoji/xcpets_emoji_by_xcpets_hatchbot\n🤖 Type /stickers to HatchBot any time to grab them. /burns is simpler too: just the totals.\n💀 Zombies look MORE dead (and the glitch frame is gone). Hybrids got fixes: hats, wings, beaks, glasses.\n🪦 Raising in the Cemetery is way easier, and the altar and candles actually do something now.\n💘 Gooby's got the request alert, detailed cards and sort chips back.\n\nSpam the chat with them. That's an order. {pepe}"
+    },
+    {
+      "art": { "kind": "banner", "top": "TICK TOCK", "bottom": "WHO'S NEXT?", "color": "red" },
+      "text": "📣 XCPETS UPDATE 4/4: the clock is ticking ⏳{rabbit}\n\n🐇 The White Rabbit is more than HALFWAY to Mythic. Every burn in the game feeds it.\n🥕 Burn 69+ XCPETS before it hits Mythic and you get a Golden Carrot. The TOP 3 raisers also get the Mad Hatter top hat 🎩. Once it's Mythic, the list is locked forever.\n✂️ The moment it goes Mythic, every burn costs HALF 6 blocks later.\n🐸 And then... community pet #7 moves in. All we'll say: he's green, he's comfy, and his name starts with a G. 👀\n🏊 Pool Dip opens at block 977,440 (about a day away): dunk a pet in Gooby's pool and its breed cooldown is cut in half.\n🌱 SEASON 1 starts around Dec 6. Only 690 Season eggs. Ever.\n\nThe ones who feed now are the ones who flex later.\nxcpets.fun"
+    }
+  ]
+}
