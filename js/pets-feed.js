@@ -37,9 +37,8 @@
     var tiers = TIERS.slice(), statuses = STATUS.slice();
     var rows = list.map(function (p) {
       var sp = String(p.species), lab = p.speciesLabel == null ? '' : String(p.speciesLabel);
-      var si = sMap.get(sp);
-      if (si == null) { si = species.length; species.push(sp); labels.push(lab); sMap.set(sp, si); }
-      else if (labels[si] !== lab) throw new Error('pets feed: species ' + sp + ' has two labels');
+      var sk = sp + '\u0000' + lab, si = sMap.get(sk); /* keyed by species AND label: a 1 of 1 cross pet (Nov 24 2026) keeps its species but shows its own name ('Star-Lord Pigeon'), so one species can sit in the dictionary twice */
+      if (si == null) { si = species.length; species.push(sp); labels.push(lab); sMap.set(sk, si); }
       var gear = p.gear && p.gear.length ? p.gear.map(function (g) {
         return [idx(SLOTS, g.slot, 'slot'), g.item, g.name, g.tier == null ? null : intern(tiers, tMap, g.tier)];
       }) : null;
