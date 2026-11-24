@@ -2098,7 +2098,7 @@
   function button(p) { var a = document.createElement('a'); a.className = 'btn tgshare'; a.target = '_blank'; a.rel = 'noopener'; a.href = shareUrl(p); a.textContent = '📣 Share to Telegram'; a.setAttribute('data-pet', p.id);
     a.onclick = function (e) { e.preventDefault(); shareTelegram(p); }; return a; }
   function withGif(p, fn) { function go() { try { fn(window.XCPGif.petGif(p, window.V2Mock.world(), 8), 'xcpets-' + p.id + '.gif'); } catch (e) { toast('Could not make the GIF'); } }
-    if (window.XCPGif) return go(); var t = document.createElement('script'); t.src = 'js/v2-gif.js?v=e6db15afb2'; t.onload = go; t.onerror = function () { toast('Could not load the GIF maker'); }; document.head.appendChild(t); }
+    if (window.XCPGif) return go(); var t = document.createElement('script'); t.src = '/js/v2-gif.js?v=e6db15afb2'; t.onload = go; t.onerror = function () { toast('Could not load the GIF maker'); }; document.head.appendChild(t); }
   function shareTelegram(p) { var popup = null, phone = !!(navigator.canShare && navigator.share);
     if (!phone) popup = window.open('about:blank', '_blank'); /* opened inside the click so it is not blocked; pointed at the group once the GIF is saved */
     withGif(p, function (blob, name) { var file = null; try { file = new File([blob], name, { type: 'image/gif' }); } catch (e) {}
@@ -2108,21 +2108,30 @@
   function petById(id) { try { return window.V2Mock.world().byId[id]; } catch (e) { return null; } }
   /* Share image (Jake 2026-10-15, UI only): renders the pet card to a PNG (crisp nearest-neighbour sprite + name/#id/tier/species/stage) and shares the FILE
    * via navigator.share({files}) when canShare allows; otherwise copies the PNG to the clipboard (ClipboardItem) and downloads it. Toast says which happened. */
-  function cardCanvas(p) { var W = 1200, H = 1200, c = document.createElement('canvas'); c.width = W; c.height = H; var g = c.getContext('2d'), V = window.V2Rules;
-    var TCOL = ['#9aa3b5', '#4fd18b', '#4f9dff', '#ffc93c'], col = TCOL[p.tier] || '#3ddc84';
-    g.fillStyle = '#0d1117'; g.fillRect(0, 0, W, H); g.fillStyle = '#18221b'; g.fillRect(16, 16, W - 32, H - 32); g.strokeStyle = col; g.lineWidth = 10; g.strokeRect(21, 21, W - 42, H - 42);
+  /* Nov 24 2026: the same 1200x630 layout as the server's share card (tools/sync-server/card.js), used when that card is not reachable */
+  function cardCanvas(p) { var W = 1200, H = 630, c = document.createElement('canvas'); c.width = W; c.height = H; var g = c.getContext('2d'), V = window.V2Rules;
+    var TCOL = ['#cdcdd7', '#60dc5a', '#5ac8ff', '#ffc93c'], col = p.resurrected ? '#ffc93c' : (TCOL[p.tier] || '#cdcdd7'), F = "'Press Start 2P', monospace", gone = p.dead && !quietDead(p);
+    g.fillStyle = '#14121f'; g.fillRect(0, 0, W, H); g.strokeStyle = '#f5c518'; g.lineWidth = 6; g.strokeRect(11, 11, W - 22, H - 22);
+    g.fillStyle = '#0b0a12'; g.fillRect(44, 56, 518, 518); g.lineWidth = 4; g.strokeRect(46, 58, 514, 514);
     var s = document.createElement('canvas'); s.width = s.height = 32; try { var w = window.V2Mock.world(); window.V2Render.paint(s, window.V2Render.petFrames(p, w)[0]); } catch (e) {}
-    g.imageSmoothingEnabled = false; g.drawImage(s, 152, 40, 896, 896); /* 32px sprite x28 nearest-neighbour */
-    var sp = V && V.speciesLabel ? V.speciesLabel(p.species) : p.species, F = "'Press Start 2P', monospace"; g.textAlign = 'center'; g.fillStyle = '#ffffff';
-    g.font = '48px ' + F; g.fillText(((p.name || '') + ' #' + p.id).slice(0, 22), W / 2, 1010);
-    g.fillStyle = col; g.font = '32px ' + F; g.fillText(((p.resurrected ? 'God' : TL[p.tier]) || '') + ' ' + sp + ' · ' + ((V && V.stageLabelOf ? V.stageLabelOf(p) : p.stageName) || ''), W / 2, 1072);
-    g.fillStyle = '#3ddc84'; g.font = '24px ' + F; g.fillText('xcpets.fun', W / 2, 1140); return c; }
+    if (gone) g.filter = 'grayscale(1)'; g.imageSmoothingEnabled = false; g.drawImage(s, 63, 75, 480, 480); g.filter = 'none';
+    var sp = V && V.speciesLabel ? V.speciesLabel(p.species) : p.species, stg = (V && V.stageLabelOf ? V.stageLabelOf(p) : p.stageName) || '';
+    function fit(t, px, max) { var z = px; do { g.font = z + 'px ' + F; } while (g.measureText(t).width > max && --z > 10); return z; }
+    g.textAlign = 'left'; g.textBaseline = 'top'; g.lineJoin = 'round';
+    function txt(t, y, px, fill) { fit(t, px, 540); g.lineWidth = 8; g.strokeStyle = '#000'; g.strokeText(t, 610, y); g.fillStyle = fill; g.fillText(t, 610, y); }
+    txt(String(p.name || 'Pet').toUpperCase().slice(0, 18), 70, 52, '#ffe9a0'); txt('#' + p.id, 150, 40, '#ffffff');
+    txt([(p.resurrected ? 'God' : TL[p.tier]) || '', sp, stg].filter(Boolean).join(' - ').toUpperCase(), 222, 22, col);
+    if (gone) txt('IN LOVING MEMORY', 262, 22, '#9696a0');
+    var st = p.stats || {}, tot = 0; ['vigor', 'spark', 'grit', 'zoom', 'luck'].forEach(function (k, i) { var v = Math.max(0, st[k] | 0), y = 310 + i * 40; tot += v;
+      g.font = '22px ' + F; g.fillStyle = '#cdc8e1'; g.fillText(k.toUpperCase(), 610, y); g.fillStyle = '#22202f'; g.fillRect(760, y, 330, 24); g.fillStyle = '#60dc5a'; g.fillRect(760, y, Math.round(330 * Math.min(1, v / 40)), 24);
+      g.fillStyle = '#fff'; g.fillText(String(v), 1106, y); });
+    g.font = '22px ' + F; g.fillStyle = '#f5c518'; g.fillText('TOTAL ' + tot, 610, 512); txt('XCPETS.FUN', 556, 30, '#f5c518'); return c; }
   function toast(msg) { var t = document.createElement('div'); t.className = 'shtoast'; t.textContent = msg; t.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#18221b;color:#fff;border:2px solid #3ddc84;border-radius:10px;padding:10px 16px;z-index:99999;font-size:14px;max-width:90vw;text-align:center';
     document.body.appendChild(t); setTimeout(function () { if (t.parentNode) t.parentNode.removeChild(t); }, 4000); }
   /* Pet share (Jake 2026-10-15): row sits under the stats (pet page #stats, play dialog #dStats). Share image = native share sheet with the PNG file
    * + text + pet URL when navigator.canShare({files}) (mobile: pick X / Telegram / ...); else copy PNG to clipboard + download (as before).
    * Post on X = copy PNG (ClipboardItem) then open x.com/intent/post with text + url; no clipboard -> download + toast. Save image = download. */
-  function petLink(p) { var ref = ''; try { var q = new URLSearchParams(location.search).get('ref'); if (q != null) ref = q; } catch (e) {} return 'https://xcpets.fun/pet/' + p.id + '?ref=' + encodeURIComponent(ref); }
+  function petLink(p) { return 'https://xcpets.fun/pet.html?id=' + p.id; } /* /pet/<id> was a 404 ("page not found" preview) for all but 24 pets */
   function shortText(p) { if (p.dead && !quietDead(p)) return memorial(p); return (p.name || ('#' + p.id)) + ' #' + p.id + ' on XCPETS'; }
   function withBlob(p, fn) { cardCanvas(p).toBlob(function (blob) { if (!blob) { toast('Could not make the image'); return; } fn(blob, 'xcpets-' + p.id + '.png'); }, 'image/png'); }
   function download(blob, name) { var url = URL.createObjectURL(blob), a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.parentNode.removeChild(a); setTimeout(function () { URL.revokeObjectURL(url); }, 10000); }
@@ -2139,12 +2148,11 @@
     withBlob(p, function (blob) { copyPng(blob).then(function () { toast('Image copied: paste it into your post (Ctrl/Cmd+V)'); }, function () { toast('Tip: use 💾 Save image to attach the pet card to your post'); }); }); }
   function saveImage(p) { withBlob(p, function (blob, name) { download(blob, name); toast('Image saved'); }); }
   function btn(cls, label, aria, fn, p) { var b = document.createElement('button'); b.type = 'button'; b.className = 'btn ' + cls; b.textContent = label; b.title = aria; b.setAttribute('aria-label', aria); b.setAttribute('data-pet', p.id); b.onclick = function () { fn(p); }; return b; }
-  function imgButton(p) { return btn('imgshare savegif', '🎞️ Save GIF', 'Download the pet\'s dancing GIF', saveGif, p); } /* P7: was 'Share image' (share sheet / file save); now a direct GIF download */
-  function shareRow(p) { var d = document.createElement('p'); d.className = 'petshare'; d.setAttribute('data-pet', p.id);
-    /* Share my pet + Share to Telegram are the one pair in js/v2-share.js (the /pet/<id>?ref= link). This row keeps the file saves. */
-    [imgButton(p), btn('ghost saveimg', '💾 Save image', 'Download the pet card image', saveImage, p)].forEach(function (b, i) { if (i) d.appendChild(document.createTextNode(' ')); d.appendChild(b); });
-    return d; }
-  window.XCPShare = { saveGif: saveGif, shareTelegram: shareTelegram, cardCanvas: cardCanvas, shareImage: shareImage, postX: postX, saveImage: saveImage, shareRow: shareRow };
+  /* Nov 24 2026: the share buttons are one quiet "Share" button with a small sheet (js/v2-share.js fills this placeholder). */
+  function shareRow(p) { var d = document.createElement('div'); d.className = 'petshare'; d.setAttribute('data-pet', p.id); return d; }
+  function gifBlob(p, fn) { function go() { var b = null; try { b = window.XCPGif.petGif(p, window.V2Mock.world(), 8); } catch (e) { b = null; } fn(b); }
+    if (window.XCPGif) return go(); var t = document.createElement('script'); t.src = '/js/v2-gif.js?v=e6db15afb2'; t.onload = go; t.onerror = function () { fn(null); }; document.head.appendChild(t); }
+  window.XCPShare = { saveGif: saveGif, gifBlob: gifBlob, shareTelegram: shareTelegram, cardCanvas: cardCanvas, shareImage: shareImage, postX: postX, saveImage: saveImage, shareRow: shareRow };
   var TC = ['common', 'uncommon', 'rare', 'legendary'];
   /* family-tree-fix (2026-10-19, display only). Chart layout: ancestors ABOVE the pet (parents, grandparents; the ancestor block is drawn as the old
    * top-down tree flipped with scaleY(-1), nodes flipped back), the pet, then its own children as a row UNDER it (so a parent with no parents of its own,

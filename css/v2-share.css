@@ -1,22 +1,49 @@
-/* Share my pet. Phone toast uses the same left/right anchor as the PR #41 toast fix
-   (no translateX(-50%), so a long link cannot slide off a 360px or 412px screen). */
-.sh-row{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:stretch;width:100%;max-width:100%;box-sizing:border-box;margin:8px 0}
-.sh-btn{flex:1 1 148px;max-width:100%;min-height:44px;box-sizing:border-box;white-space:normal;overflow-wrap:anywhere;text-align:center;line-height:1.25}
-.sh-x{background:#111;color:#fff;border:3px solid #e11d2e}
-.sh-tg{background:#229ed9;color:#fff;border:3px solid #000}
-.petshare{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:stretch}
-.petshare .btn,.petshare .sh-btn{flex:1 1 140px;max-width:100%;white-space:normal;overflow-wrap:anywhere;min-height:44px;box-sizing:border-box}
+/* Share a pet (Nov 24 2026): one quiet "Share" button and a small sheet (js/v2-share.js).
+   Pixel style: near-black panel, thin gold edge, hard black shadow. Phone toast keeps the PR #41 left/right anchor. */
+.sh-row{display:flex;justify-content:center;width:100%;max-width:100%;box-sizing:border-box;margin:10px 0 4px}
+.petshare{display:flex;justify-content:center}
+.sh-one{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:8px 18px;box-sizing:border-box;cursor:pointer;
+  font:11px/1 'Press Start 2P',monospace;letter-spacing:.5px;text-transform:uppercase;color:#ffe9a0;background:#14121f;
+  border:2px solid #f5c518;border-radius:4px;box-shadow:3px 3px 0 #000;transition:transform .08s,box-shadow .08s}
+.sh-one:hover{background:#1f1c30}
+.sh-one:active{transform:translate(2px,2px);box-shadow:1px 1px 0 #000}
+.sh-one:focus-visible{outline:2px solid #fff;outline-offset:2px}
+/* pixel "send" arrow */
+.sh-ico{width:12px;height:12px;flex:none;background:currentColor;
+  clip-path:polygon(0 42%,58% 42%,58% 17%,100% 50%,58% 83%,58% 58%,0 58%)}
 .la-ov .sh-row{max-width:min(520px, calc(100vw - 24px));cursor:default}
-.la-ov .sh-btn{cursor:pointer}
 #shPack{width:100%;max-width:100%;box-sizing:border-box}
-.sh-toast{position:fixed;z-index:100020;left:max(8px, env(safe-area-inset-left));right:max(8px, env(safe-area-inset-right));bottom:max(12px, env(safe-area-inset-bottom));width:auto;max-width:calc(100vw - 16px);margin-left:auto;margin-right:auto;box-sizing:border-box;transform:none;background:#16241a;color:#fff;border:2px solid #e11d2e;border-radius:8px;padding:10px 12px;font-weight:700;box-shadow:3px 3px 0 #000;text-align:center;overflow-wrap:anywhere;word-break:break-word;white-space:normal}
+
+.sh-ov{position:fixed;inset:0;z-index:100030;background:rgba(5,4,10,.6);display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box}
+.sh-sheet{width:min(380px,100%);max-height:calc(100vh - 32px);overflow:auto;box-sizing:border-box;background:#14121f;color:#fff;
+  border:3px solid #f5c518;border-radius:6px;box-shadow:5px 5px 0 #000;padding:12px;font-family:system-ui,-apple-system,'Segoe UI',sans-serif}
+.sh-head{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.sh-title{flex:1;min-width:0;font:11px/1.5 'Press Start 2P',monospace;color:#ffe9a0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sh-x{flex:none;width:32px;height:32px;border:2px solid #3a3650;border-radius:4px;background:#0b0a12;color:#fff;font-size:20px;line-height:1;cursor:pointer}
+.sh-pic{position:relative;aspect-ratio:1200/630;background:#0b0a12;border:2px solid #3a3650;border-radius:4px;overflow:hidden}
+.sh-pic img{display:block;width:100%;height:100%;object-fit:contain;image-rendering:pixelated;-webkit-touch-callout:default}
+.sh-pic.loading img,.sh-pic.none img{visibility:hidden}
+.sh-pic.loading::after{content:'Drawing the card\2026';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:10px 'Press Start 2P',monospace;color:#8a86a0}
+.sh-pic.none::after{content:'No picture yet';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:10px 'Press Start 2P',monospace;color:#8a86a0}
+.sh-hint{margin:8px 0 0;font-size:13px;color:#ffe9a0;text-align:center}
+.sh-list{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px}
+.sh-act{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:2px;min-height:48px;padding:8px 10px;box-sizing:border-box;text-align:left;cursor:pointer;
+  background:#0b0a12;color:#fff;border:2px solid #3a3650;border-radius:4px;font:inherit}
+.sh-act b{font-size:14px;font-weight:700}
+.sh-act small{font-size:11px;color:#9c98b4;line-height:1.2}
+.sh-act:hover{border-color:#f5c518}
+.sh-act:focus-visible{outline:2px solid #fff;outline-offset:1px}
+.sh-act:disabled{opacity:.5;cursor:wait}
+.sh-act.sh-main{grid-column:1/-1;border-color:#f5c518}
+.sh-act[hidden]{display:none}
+@media (max-width:600px){
+  .sh-ov{align-items:flex-end;padding:0}
+  .sh-sheet{width:100%;max-height:85vh;border-radius:10px 10px 0 0;border-bottom:0;box-shadow:none;padding-bottom:max(12px, env(safe-area-inset-bottom))}
+}
+
+.sh-toast{position:fixed;z-index:100040;left:max(8px, env(safe-area-inset-left));right:max(8px, env(safe-area-inset-right));bottom:max(12px, env(safe-area-inset-bottom));width:auto;max-width:calc(100vw - 16px);margin-left:auto;margin-right:auto;box-sizing:border-box;transform:none;background:#14121f;color:#fff;border:2px solid #f5c518;border-radius:6px;padding:10px 12px;font-weight:700;box-shadow:3px 3px 0 #000;text-align:center;overflow-wrap:anywhere;word-break:break-word;white-space:normal}
 .sh-toast b{display:block}
 .sh-toast .sh-url{display:block;margin-top:4px;font-weight:600;font-size:13px;line-height:1.35;overflow-wrap:anywhere;word-break:break-word}
 @media (min-width:601px){
   .sh-toast{left:50%;right:auto;width:min(420px, calc(100vw - 32px));transform:translateX(-50%)}
-}
-@media (max-width:600px){
-  .sh-toast{left:max(8px, env(safe-area-inset-left));right:max(8px, env(safe-area-inset-right));width:auto;max-width:calc(100vw - 16px);transform:none;font-size:14px;line-height:1.3}
-  .sh-row{flex-direction:column;align-items:stretch}
-  .sh-btn,.petshare .btn{width:100%;flex:none}
 }

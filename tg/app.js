@@ -369,11 +369,25 @@
     fillArt($('sheetBody'), [p], S.page && S.page.hashes);
   }
   function closeSheet() { $('sheet').hidden = true; backBtn(); }
+  /* Nov 24 2026: the shared link is the game server's pet page (https://node.xcpets.fun/xp/v1/pet/<id>), whose preview in the chat is
+   * that pet's own card picture. Until the server answers it, the link is the pet page on xcpets.fun. */
+  var cardOk = {};
+  function cardLink(id) {
+    var c = 'https://node.xcpets.fun/xp/v1/pet/' + id, plain = siteUrl('pet.html?id=' + id);
+    if (cardOk[id] != null) return Promise.resolve(cardOk[id] ? c : plain);
+    return new Promise(function (res) {
+      var done = false, t = setTimeout(function () { if (!done) { done = true; res(plain); } }, 4000);
+      fetch(c + '.png', { cache: 'no-cache' }).then(function (r) { var ok = r.ok && /image\/png/.test(r.headers.get('content-type') || '') && !/\/img\/og\.png/.test(r.url || ''); cardOk[id] = ok; if (!done) { done = true; clearTimeout(t); res(ok ? c : plain); } },
+        function () { if (!done) { done = true; clearTimeout(t); res(plain); } });
+    });
+  }
   function share(id) {
-    var p = findPet(id), u = siteUrl('pet.html?id=' + id), txt = p ? 'Check out my ' + TIER[p.tier | 0] + ' ' + spLabel(p.species) + ' ' + (p.name || '') + ' (#' + id + ') on XCPETS 🐸' : 'XCPETS #' + id;
-    var link = 'https://t.me/share/url?url=' + encodeURIComponent(u) + '&text=' + encodeURIComponent(txt);
-    try { if (TG && TG.openTelegramLink) { TG.openTelegramLink(link); return; } } catch (e) {}
-    if (navigator.share) navigator.share({ title: 'XCPETS', text: txt, url: u }).catch(function () {}); else W.open(link, '_blank', 'noopener');
+    var p = findPet(id), txt = p ? 'Check out my ' + TIER[p.tier | 0] + ' ' + spLabel(p.species) + ' ' + (p.name || '') + ' (#' + id + ') on XCPETS 🐸' : 'XCPETS #' + id;
+    cardLink(id).then(function (u) {
+      var link = 'https://t.me/share/url?url=' + encodeURIComponent(u) + '&text=' + encodeURIComponent(txt);
+      try { if (TG && TG.openTelegramLink) { TG.openTelegramLink(link); return; } } catch (e) {}
+      if (navigator.share) navigator.share({ title: 'XCPETS', text: txt, url: u }).catch(function () {}); else W.open(link, '_blank', 'noopener');
+    });
   }
 
   /* ---------------------------------------------------------------- PLAY tab */
