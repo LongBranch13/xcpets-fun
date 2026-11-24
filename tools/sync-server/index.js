@@ -253,7 +253,7 @@ function loopInfo() {
   const now = Date.now();
   return { upSec: Math.round((now - LOOP.startedAt) / 1000), stepSec: LOOP.runningSince ? Math.round((now - LOOP.runningSince) / 1000) : 0,
     lastStepAgoSec: LOOP.lastDoneAt ? Math.round((now - LOOP.lastDoneAt) / 1000) : null, lastOkAgoSec: LOOP.lastOkAt ? Math.round((now - LOOP.lastOkAt) / 1000) : null,
-    steps: LOOP.steps, errors: LOOP.errors, errorRun: LOOP.errorRun, fallback: !!LOOP.fallback, lastError: LOOP.lastError, lastStep: LOOP.lastError ? LOOP.lastStep || null : null, maxMin: tickMaxMs() / 60000,
+    steps: LOOP.steps, errors: LOOP.errors, errorRun: LOOP.errorRun, fallback: !!LOOP.fallback, lastError: LOOP.lastError, lastStep: LOOP.lastError ? LOOP.lastStep || null : null, lastHint: LOOP.lastError ? LOOP.lastHint || null : null, waitSec: LOOP.errorRun ? Math.max(0, Math.round((LOOP.lastFailAt + backoffMs() - now) / 1000)) : 0, maxMin: tickMaxMs() / 60000,
     lastStall: LOOP.stall ? { at: LOOP.stall.at, tip: LOOP.stall.tip, sec: LOOP.stall.sec } : null,
     restarts1h: LOOP.starts.filter(t => now - t < 3600e3).length - 1, restarts24h: LOOP.starts.filter(t => now - t < 86400e3).length - 1,
     resumedFrom: LOOP.resumedFrom, heapMB: Math.round(process.memoryUsage().heapUsed / 1048576), heapLimitMB: HEAP_LIMIT_MB };
@@ -281,12 +281,13 @@ function readFollow(dataDir) {
   try { const j = JSON.parse(fs.readFileSync(path.join(dataDir, 'follow-state.json'), 'utf8'));
     return j && j.v === 1 && j.tip > 0 && Array.isArray(j.rows) && j.hashes && typeof j.hashes === 'object' ? j : null; } catch (e) { return null; }
 }
+function backoffMs() { const b = +(process.env.XP_BACKOFF_BASE_MS || 10000); return LOOP.errorRun ? Math.min(300000, b * Math.pow(2, Math.min(LOOP.errorRun, 6))) : 0; }
 function tickMaxMs() { return Math.max(2, +(process.env.XP_TICK_MAX_MIN || 10)) * 60000; }
 /* short error codes only (no URLs, no addresses) */
 /* Nov 24 2026: after the second repair every step failed with a bare 'error' and nothing outside the server could tell why. Known
  * failures from the sales read (js/v2-sales.js) and plain code faults now get a short public class; anything else stays 'error'. The
  * full message (upstream addresses scrubbed) goes to the journal only. */
-const SALES_ERR = /^(DEX API \d+|bad \w+ reply|bad events|token held on a utxo|no saved sale book|balance check failed|unknown (credit|debit)|send (credit|debit) without a known \w+|node repeated a page cursor|more than \d+ pages|pet token transfers could not be read|could not find a free token name|sales)\b/;
+const SALES_ERR = /^(DEX API busy|DEX API \d+|could not check the chain|bad \w+ reply|bad events|token held on a utxo|no saved sale book|balance check failed|unknown (credit|debit)|send (credit|debit) without a known \w+|node repeated a page cursor|more than \d+ pages|pet token transfers could not be read|could not find a free token name|sales)\b/;
 function errCode(e) { const m = String(e && e.message || e || 'error');
   if (/^upstream \w+$|^tip$|^missing hash(es)?$|^burn page cursor$|^timeout after \d+ ms$|^base too old$/.test(m)) return m;
   if (e && e.name === 'TimeoutError') return 'timeout';
@@ -294,6 +295,10 @@ function errCode(e) { const m = String(e && e.message || e || 'error');
   const sm = SALES_ERR.exec(m); if (sm) return 'sales: ' + sm[1].toLowerCase();
   if (e && /^(TypeError|RangeError|ReferenceError|SyntaxError)$/.test(e.name)) return 'code: ' + e.name;
   return 'error'; }
+/* A short public hint of the message: no URLs, IPs, onions, addresses or long hex; letters and spaces mostly. For health. */
+function errHint(e) { try { return String(e && e.message || e || '').replace(/https?:\/\/\S+/g, '[host]').replace(/\b[a-z2-7]{16,56}\.onion\b/gi, '[onion]')
+  .replace(/\b\d{1,3}(\.\d{1,3}){3}(:\d+)?\b/g, '[ip]').replace(/\b(bc1|tb1)[0-9a-z]{8,}\b/gi, '[addr]').replace(/\b[13][1-9A-HJ-NP-Za-km-z]{25,34}\b/g, '[addr]')
+  .replace(/\b[0-9a-f]{32,}\b/gi, '[hex]').replace(/[^\w .,:;()'\-\[\]#/]/g, '').slice(0, 120); } catch (x) { return ''; } }
 function errLine(e) { try { return scrub(e).split('\n').slice(0, 3).map(x => x.trim()).join(' | ').replace(/\b[a-z2-7]{16,56}\.onion\b/gi, '[onion]').replace(/\b\d{1,3}(\.\d{1,3}){3}(:\d+)?\b/g, '[ip]').slice(0, 400); } catch (x) { return ''; } }
 function readStall(dataDir) { try { const j = JSON.parse(fs.readFileSync(path.join(dataDir, 'stall.json'), 'utf8')); return j && j.at ? j : null; } catch (e) { return null; } }
 function stallCheck(state, dataDir, exit) {
@@ -349,7 +354,9 @@ function main() {
   function adopt(r) { if (!r || !r.changed) return; restartWanted = r.rsig || 'new files'; console.log('rules: builder files changed (' + restartWanted + '); restarting the service once no build runs'); }
   let timer = null, held = false;
   const every = Math.max(1, +(process.env.XP_SNAPSHOT_EVERY || 6));
-  const loop = singleFlight(async function () { LOOP.runningSince = Date.now(); let ok = false; try {
+  /* Nov 24 2026: a failed step used to be retried every 10 s from scratch, the whole sales read included, which can keep a public
+   * node's rate limit closed for good. After a failure the next step waits 20 s, 40 s, ... up to 5 minutes. */
+  const loop = singleFlight(async function () { if (LOOP.errorRun && Date.now() - LOOP.lastFailAt < backoffMs()) return; LOOP.runningSince = Date.now(); let ok = false; try {
     if (restartWanted && !startSnapshot.running) { console.log('rules: restarting to load ' + restartWanted); clearInterval(timer); ckStop('off'); setTimeout(() => process.exit(75), 200); return; }
     if (!(process.env.XP_HOLD === '1' && held)) { const usePub = pubOn && (LOOP.errorRun >= 6 || LOOP.pubSticky) && LOOP.steps % 30 !== 0; LOOP.fallback = usePub;
       if (usePub) { await tick(state, pubIo()); LOOP.pubSticky = true; } else { io.upstream = io0.upstreamOf(); await tick(state, io); LOOP.pubSticky = false; } ok = true; state.upstream = usePub ? 'public' : io.upstream === 'private' ? 'private' : 'public'; if (process.env.XP_HOLD === '1' && state.ready) held = true; }
@@ -363,7 +370,7 @@ function main() {
     rules.poll().then(adopt, () => {});
     if (ok || held) { LOOP.lastOkAt = Date.now(); LOOP.errorRun = 0; }
     if (ok && state.ready && state.tip > LOOP.savedTip) { if (saveFollow(dataDir, state)) LOOP.savedTip = state.tip; console.log('sync: tip ' + state.tip + ', heap ' + Math.round(process.memoryUsage().heapUsed / 1048576) + ' MB of ' + HEAP_LIMIT_MB); }
-  } catch (e) { LOOP.errors++; LOOP.errorRun++; LOOP.lastError = errCode(e); LOOP.lastStep = state.step || null; if (LOOP.errorRun === 1 || LOOP.errorRun % 30 === 0) console.error('sync tick failed (' + LOOP.lastError + ', ' + LOOP.errorRun + ' in a row): ' + errLine(e)); }
+  } catch (e) { LOOP.errors++; LOOP.errorRun++; LOOP.lastError = errCode(e); LOOP.lastHint = errHint(e); LOOP.lastStep = state.step || null; LOOP.lastFailAt = Date.now(); if (LOOP.errorRun === 1 || LOOP.errorRun % 30 === 0) console.error('sync tick failed (' + LOOP.lastError + ', ' + LOOP.errorRun + ' in a row): ' + errLine(e)); }
   finally { LOOP.runningSince = 0; LOOP.lastDoneAt = Date.now(); LOOP.steps++; } });
   loop(); timer = setInterval(loop, 10000);
   const guard = setInterval(() => stallCheck(state, dataDir), 30000); if (guard.unref) guard.unref();
@@ -371,4 +378,4 @@ function main() {
   return { server: httpd.server, state, stop() { clearInterval(timer); clearInterval(guard); httpd.server.close(); } };
 }
 if (require.main === module) main();
-module.exports = { main, loopInfo, stallCheck, errCode, saveFollow, readFollow, recordStart, _LOOP: LOOP, chainFns, seedHashes, writeLatest, backfillRsigLatest, PUBLIC, memInfo, ckInfo, _CK: CK, ckTick, ckAsk, ckShop, ckStop };
+module.exports = { main, errHint, backoffMs, loopInfo, stallCheck, errCode, saveFollow, readFollow, recordStart, _LOOP: LOOP, chainFns, seedHashes, writeLatest, backfillRsigLatest, PUBLIC, memInfo, ckInfo, _CK: CK, ckTick, ckAsk, ckShop, ckStop };
