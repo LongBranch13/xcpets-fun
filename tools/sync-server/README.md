@@ -43,3 +43,19 @@ Compose and broadcast are unchanged and are not served here. This process answer
 The world builder no longer depends on the rule files someone copied onto the server. Every 3 minutes (`XP_RULES_EVERY_S`) the service asks GitHub for main's newest commit. When main moved, it downloads the builder's files at that exact commit (rule files, replay worker, `js/v2-sales.js`, `js/v2-art.js`, `tools/sync-server/*.js` and every repo file they name) into `<XP_DATA>/code/<sha12>/`, checks that each script parses and that `snapshot.js` loads, and points `<XP_DATA>/code/current.json` at it. The builder then runs `snapshot.js` from that copy, so the published world has the same rules signature (rsig) as the pages main serves. When the rsig changes it builds right away instead of waiting 6 blocks. Any failure keeps the previous copy. `XP_RULES_FOLLOW=0` turns this off. `/xp/v1/health` shows `rules` (commit, rsig, failures) and `worldRsig`. The service process itself (chain follow, HTTP) is still updated with the server-repair workflow.
 
 Each rsig also keeps its own pointer, `/xp/v1/world/<rsig>/latest.json`. During a rules change, pages that still run the previous rules keep finding the previous world there instead of rebuilding everything in the browser.
+
+## Never freeze (Nov 24 2026)
+
+Nov 23 2026 the follower sat at 977,257 for hours. Two causes, both silent:
+
+- **A read that never ended.** Every upstream timer stopped once the headers arrived, so an answer that stalled mid-body (the Tor link to the game's own node does that) left `r.json()` waiting forever. The follow loop runs one step at a time, so nothing else ran: no new blocks, no builds, no rules checks, no log line. Now `net.js` `timedFetch` and `tools/lib/core-limiter.js` read the whole body under the same timer (the feed uses the limiter too).
+- **Out of memory, 9 times in 3.5 hours.** Each restart began again from the boot file (the feed's, itself stuck), so the same catch-up ran every time. `js/v2-sales.js` kept every answer in memory forever, and so did the service's emulated localStorage; both are now bounded.
+
+What keeps it moving now:
+
+- **Stall guard** (`XP_TICK_MAX_MIN`, default 10): a follow step that runs longer writes `stall.json` and exits; systemd starts the service again.
+- **Resume, don't restart from scratch:** the follower saves `follow-state.json` after every new tip and starts from it when it is newer than the boot file.
+- **Listen first:** the HTTP server starts before the rules load, so the published world on disk is served again within about a second of any restart. Builds still publish atomically (pending folder, then rename), so players always get the last good world.
+- **Heartbeat in health:** `/xp/v1/health` `loop` = `stepSec` (how long the current step has run), `lastStepAgoSec`, `lastOkAgoSec`, `errors`/`errorRun`/`lastError` (short codes), `restarts1h`/`restarts24h`, `resumedFrom`, `heapMB`/`heapLimitMB`, `lastStall`.
+- **On-server watchdog** (installed by server-repair, `sync_watchdog`): every minute it asks health on loopback; 3 misses in a row, or a step stuck 15 minutes, restarts the service. The feed job gets a 40-minute time limit.
+- **Outside watchers:** HatchBot's Cloudflare cron (`hatchbot/serverwatch.js`, every 4 minutes) compares the server with the real chain (mempool.space) and sends Telegram alerts to `TELEGRAM_ALERT_CHAT_ID` and to anyone who DMs the bot `/alerts`. `worldwatch` does the same check, opens the `world-alert` issue, and reboots the server through server-restart when it stays down or stuck for 25 minutes (at most once every 3 hours; repository variable `WW_AUTO_RESTART=0` turns that off).

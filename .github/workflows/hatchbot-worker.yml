@@ -1,12 +1,13 @@
 # HatchBot commands (/play opens the mini app, /pet, /burns, /whosthat, /breed, /battle, /meme, /chainday, /season, /bug, /help) on Cloudflare Workers. Deploys hatchbot/worker.js, then points
 # the Telegram bot at it and sets its command list. Secrets: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, TELEGRAM_BOT_TOKEN.
-# Optional: TELEGRAM_CHAT_ID (the group for automatic posts, hatchbot/auto.js). Automatic posts stay off until hatchbot/auto-config.json switches them on.
+# Optional: TELEGRAM_CHAT_ID (the group for automatic posts, hatchbot/auto.js). TELEGRAM_ALERT_CHAT_ID: chats for game server alerts
+# (hatchbot/serverwatch.js; anyone can also DM the bot /alerts). Automatic posts stay off until hatchbot/auto-config.json switches them on.
 # Until they are set this job does nothing.
 name: hatchbot-worker
 on:
   push:
     branches: [main]
-    paths: ['hatchbot/worker.js', 'hatchbot/auto.js', 'hatchbot/auto-config.json', 'hatchbot/bugs-to-issues.js', 'hatchbot/captions.json', 'hatchbot/wrangler.toml', 'hatchbot/build-memes.js', '.github/workflows/hatchbot-worker.yml']
+    paths: ['hatchbot/worker.js', 'hatchbot/auto.js', 'hatchbot/serverwatch.js', 'hatchbot/auto-config.json', 'hatchbot/bugs-to-issues.js', 'hatchbot/captions.json', 'hatchbot/wrangler.toml', 'hatchbot/build-memes.js', '.github/workflows/hatchbot-worker.yml']
   workflow_dispatch:
     inputs:
       subdomain: { description: 'Optional: give the account a neutral workers.dev subdomain (only when hatchbot is the only worker)', required: false, default: '' }
@@ -21,6 +22,7 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      TELEGRAM_ALERT_CHAT_ID: ${{ secrets.TELEGRAM_ALERT_CHAT_ID }}
     steps:
       - name: Check setup
         id: ready
@@ -68,6 +70,7 @@ jobs:
           printf '%s' "$TELEGRAM_BOT_TOKEN" | npx --yes wrangler@3 secret put TELEGRAM_BOT_TOKEN
           node -e "process.stdout.write(require('crypto').createHash('sha256').update('hbtest:'+process.env.TELEGRAM_BOT_TOKEN).digest('hex').slice(0,40))" | npx --yes wrangler@3 secret put HB_TEST_KEY
           if [ -n "$TELEGRAM_CHAT_ID" ]; then printf '%s' "$TELEGRAM_CHAT_ID" | npx --yes wrangler@3 secret put TELEGRAM_CHAT_ID; fi
+          if [ -n "$TELEGRAM_ALERT_CHAT_ID" ]; then printf '%s' "$TELEGRAM_ALERT_CHAT_ID" | npx --yes wrangler@3 secret put TELEGRAM_ALERT_CHAT_ID; fi
       - name: Neutral workers.dev address (by hand only)
         if: steps.ready.outputs.go && github.event.inputs.subdomain != ''
         env: { WANT: '${{ github.event.inputs.subdomain }}' }
