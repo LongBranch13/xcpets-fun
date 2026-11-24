@@ -566,8 +566,9 @@ body:has(#packBox.on) .tut-tip{display:none} /* pet-flow-smoother: a coach tip t
 .ctip { position: fixed; z-index: 60; max-width: min(300px, calc(100vw - 12px)); padding: 6px 10px; background: var(--panel); color: var(--ink); border: 2px solid #000; border-radius: 8px; box-shadow: 3px 3px 0 #000; pointer-events: none; } .ctip > div + div { margin-top: 4px; } .ctip > .ctip-h { margin-top: 8px; padding-top: 6px; border-top: 1px dashed #4b3f7a; } .ctip .pill { margin-left: 4px; }
 /* raise-tip (Nov 24 2026, display only): the community pet hover/tap card: bar to Mythic, your share, top raisers */
 .ctip .rt-top { display: flex; align-items: center; gap: 4px; font-family: 'Bangers', 'Comic Neue', sans-serif; font-size: 1.15em; letter-spacing: .5px; }
-.ctip .rt-bar { height: 10px; margin-top: 6px; background: #1b1530; border: 2px solid #000; border-radius: 4px; overflow: hidden; }
+.ctip .rt-bar { position: relative; height: 10px; margin-top: 6px; background: #1b1530; border: 2px solid #000; border-radius: 4px; overflow: hidden; }
 .ctip .rt-bar > i { display: block; height: 100%; background: repeating-linear-gradient(90deg, #ffd23f 0 6px, #ffb020 6px 12px); }
+.ctip .rt-bar > s { position: absolute; top: 0; bottom: 0; width: 2px; background: #fff; opacity: .8; } .cgoal { display: block; margin-top: 4px; font: 600 12px/1.2 'Comic Neue', sans-serif; letter-spacing: 0; opacity: .75; }
 .ctip .rt-lb { margin-top: 6px; } .ctip .rt-lb > div { margin-top: 2px; } .ctip .rt-me { color: #7dff9a; font-weight: bold; }
 /* trait-rank-1101 (display only): 💎 Trait rarity board on ranking.html?board=trait, and the pet page chip that links to it */
 a.prarlink{text-decoration:none;color:inherit}a.prarlink .chip.prar{cursor:pointer}a.prarlink:hover .chip.prar,a.prarlink:focus-visible .chip.prar{outline:2px solid #4f9dff}
