@@ -16,7 +16,7 @@ concurrency: { group: api-feed, cancel-in-progress: false }
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 30  # feed-rate-limit: a full (non-incremental) sale read at the gated pace took ~15.4 min in the Oct 25 dry run
+    timeout-minutes: 40  # (30 + the 5-minute pause before the next backup run) feed-rate-limit: a full (non-incremental) sale read at the gated pace took ~15.4 min in the Oct 25 dry run
     steps:
       - uses: actions/checkout@v4
         with: { ref: main, fetch-depth: 0 }
@@ -45,7 +45,7 @@ jobs:
           git add api/recent-events.json 2>/dev/null || true
           git add api/token-meta-state.json 2>/dev/null || true
           git add api/ties.json 2>/dev/null || true
-          git commit -m "api feed: block $(node -p "require('./api/meta.json').blockHeight")"
+          git commit -m "api feed: block $(node -p "require('./api/meta.json').blockHeight")" -m "Feed-Source: github-backup"
           FEED=$(git rev-parse HEAD)
           FILES=$(git diff --name-only --no-renames HEAD~1 HEAD -- api t)
           bh() { node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{console.log(JSON.parse(s).blockHeight||0)}catch(e){console.log(0)}})"; }
@@ -75,3 +75,17 @@ jobs:
         if: steps.commit.outputs.pushed == '1'
         env: { GH_TOKEN: '${{ github.token }}' }
         run: gh workflow run pages.yml -R "$GITHUB_REPOSITORY" --ref main && echo "Started a Pages deploy for the new feed."
+      # Nov 24 2026: after the backup caught up at 13:10 UTC the feed fell behind again within the hour: the server's feed job was
+      # still not publishing, and world watch's 15-minute schedule (GitHub cron) did not run for hours, so nothing started the next
+      # backup. While the server's feed is down the backup now keeps itself going: about every 20 minutes it starts the next run.
+      # It stops by itself once the server publishes again (a feed commit without the github-backup line from the last 45 minutes).
+      - name: Keep the backup going while the server's feed is down
+        if: always() && github.event_name == 'workflow_dispatch' && vars.FEED_BACKUP_LOOP != '0'
+        env: { GH_TOKEN: '${{ github.token }}' }
+        run: |
+          git fetch -q origin main
+          MSG=$(git log -1 --format=%B origin/main -- api/meta.json); AT=$(git log -1 --format=%ct origin/main -- api/meta.json)
+          AGE=$(( $(date +%s) - ${AT:-0} ))
+          if ! printf '%s' "$MSG" | grep -q 'Feed-Source: github-backup' && [ "$AGE" -lt 2700 ]; then echo "The server's feed published $((AGE / 60)) min ago: the backup stops here."; exit 0; fi
+          sleep 300
+          gh workflow run api-feed.yml -R "$GITHUB_REPOSITORY" --ref main && echo "The server's feed is still down (newest feed $((AGE / 60)) min old): started the next backup run." | tee -a "$GITHUB_STEP_SUMMARY"
