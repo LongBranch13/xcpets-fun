@@ -21,6 +21,10 @@ const SITE = opt('--site', 'https://xcpets.fun').replace(/\/$/, ''), MAX_WAIT = 
 const EMPTY_S = +opt('--empty-after', 90);
 const NO_WORLD = A.includes('--no-world'), SCROLL = A.includes('--scroll'), PROFILE = A.includes('--profile');
 const VERIFY = A.includes('--verify');
+/* --warm: after the first visit, open the page twice more in the same browser: a return visit (saved files kept) and a return visit after
+ * the server published a newer world (the saved world files dropped). Rows are marked first visit / return / return, new world. */
+const WARM = A.includes('--warm');
+const MODE = { cold: 'first visit', warm: 'return', newtip: 'return, new world' };
 const BRANCH = A.includes('--branch'), ROOT = require('path').resolve(__dirname, '../..');
 const WALLETS = (opt('--wallets', '') || [
   'bc1pfvkpmllr7mtn5uazqxumwp39h2ny3c8l6fmrgvjv2cqn5wlpt7hssf3gqd', /* Evan */
@@ -47,24 +51,41 @@ async function probe(browser, page, addr, branch) {
   /* main-thread freezes: every long task (over 50 ms) the page runs, with its start time */
   await cx.addInitScript(() => { try { const L = window.__probeLT = []; new PerformanceObserver(l => { for (const e of l.getEntries()) L.push([Math.round(e.startTime), Math.round(e.duration)]); }).observe({ type: 'longtask', buffered: true }); } catch (e) {} });
   if (NO_WORLD) await cx.route(u => /node\.xcpets\.fun\/xp\/v1\/world\//.test(u.href || String(u)), r => r.abort());
+  const runs = [await loadOnce(cx, page, addr, 'cold')];
+  if (WARM) { runs.push(await loadOnce(cx, page, addr, 'warm')); runs.push(await loadOnce(cx, page, addr, 'newtip')); }
+  await cx.close();
+  return runs.map(r => { const by = {}; let total = 0; r.reqs.forEach(q => { const k = kind(q.u); by[k] = by[k] || { n: 0, b: 0 }; by[k].n++; by[k].b += q.b; total += q.b; });
+    return Object.assign(r, { branch: !!branch, total, n: r.reqs.length, by, big: r.reqs.sort((a, b) => b.b - a.b).slice(0, 8) }); });
+}
+/* One page load in context cx. mode: 'cold' (first visit), 'warm' (same context again: the browser's saved files and IndexedDB stay),
+ * 'newtip' (same, but the saved published-world files are dropped first: a return visit after the server published a newer world,
+ * which is what a player who comes back an hour later sees). */
+async function loadOnce(cx, page, addr, mode) {
+  if (mode === 'newtip') { const pg0 = await cx.newPage(); try { await pg0.goto(SITE + '/robots.txt', { timeout: 30000 }); await pg0.evaluate(async () => {
+    for (const k of await caches.keys()) { const c = await caches.open(k); for (const r of await c.keys()) if (/\/xp\/v1\/world\//.test(r.url)) await c.delete(r); } }); } catch (e) {} await pg0.close(); }
   const pg = await cx.newPage(), reqs = [], errors = [];
   let prof = null;
   if (PROFILE) { prof = await cx.newCDPSession(pg); await prof.send('Profiler.enable'); await prof.send('Profiler.setSamplingInterval', { interval: 2000 }); await prof.send('Profiler.start'); try { prof.t0Page = await pg.evaluate(() => performance.now()); } catch (e) { prof.t0Page = 0; } }
   if (SLOW) { const s = await cx.newCDPSession(pg); await s.send('Network.enable'); await s.send('Network.emulateNetworkConditions', { offline: false, latency: 150, downloadThroughput: 9e6 / 8, uploadThroughput: 2e6 / 8 }); await s.send('Emulation.setCPUThrottlingRate', { rate: 4 }); }
   pg.on('pageerror', e => errors.push(String(e.message || e).slice(0, 160)));
+  /* answers from the game server that were not OK (rate limit, timeouts): the usual reason a page falls back to the slow in-browser rebuild */
+  const bad = {}; const noteBad = (u, why) => { if (!/node\.xcpets\.fun/.test(u)) return; const k = why + ' ' + u.replace(/^https:\/\/node\.xcpets\.fun/, '').replace(/\?.*/, '').replace(/r[0-9a-f]{32}\/\d+\//, '').slice(0, 40); bad[k] = (bad[k] || 0) + 1; };
+  pg.on('response', r => { if (r.status() >= 400) noteBad(r.url(), String(r.status())); });
+  pg.on('requestfailed', r => noteBad(r.url(), 'failed'));
   pg.on('requestfinished', async r => { try { const z = await r.sizes(); reqs.push({ u: r.url(), b: z.responseBodySize + z.responseHeadersSize }); } catch (e) {} });
-  const t0 = Date.now(); let tWorld = null, tDraw = null, tFull = null, st = null;
+  const t0 = Date.now(); let tWorld = null, tDraw = null, tFull = null, tCard = null, st = null;
   try {
     await pg.goto(SITE + '/' + page + '?probe=' + Date.now(), { waitUntil: 'domcontentloaded', timeout: 90000 });
     while (Date.now() - t0 < MAX_WAIT) {
       await pg.waitForTimeout(500);
-      st = await pg.evaluate(me => { try { const w = window.V2Mock && V2Mock.world && V2Mock.world(); const drawn = Array.prototype.filter.call(document.querySelectorAll('#pets canvas.sprite, canvas[data-id]'), c => !!c._fr).length;
-        if (!w || !w.pets) return { ready: false, drawn }; const pgs = w._pages, mine = w.pets.filter(p => p.owner === me).length;
-        return { ready: true, mine, pets: w.pets.length, pending: !!w.pending, drawn, full: !!w._full || !pgs || (pgs.got || 1) >= (pgs.pages || 1), n: pgs ? pgs.n : null, got: pgs ? pgs.got : null, pages: pgs ? pgs.pages : null,
+      st = await pg.evaluate(me => { try { const w = window.V2Mock && V2Mock.world && V2Mock.world(); const drawn = Array.prototype.filter.call(document.querySelectorAll('#pets canvas.sprite, canvas[data-id]'), c => !!c._fr).length, cards = document.querySelectorAll('#pets .pet.card').length;
+        if (!w || !w.pets) return { ready: false, drawn, cards }; const pgs = w._pages, mine = w.pets.filter(p => p.owner === me).length;
+        return { ready: true, cards, mine, pets: w.pets.length, pending: !!w.pending, drawn, full: !!w._full || !pgs || (pgs.got || 1) >= (pgs.pages || 1), n: pgs ? pgs.n : null, got: pgs ? pgs.got : null, pages: pgs ? pgs.pages : null,
           heap: performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1e6) : null }; } catch (e) { return { ready: false, err: String(e) }; } }, addr);
       const s = (Date.now() - t0) / 1000;
       if (st.ready && st.mine > 0 && tWorld == null) tWorld = s;
       if (st.drawn > 0 && tDraw == null) tDraw = s;
+      if (st.cards > 0 && tCard == null) tCard = s;
       /* the first world can be an empty placeholder that already says 'full': wait for this wallet's pets (or 25 s for a wallet with none) */
       /* An in-browser rebuild can take minutes: a wallet with pets waits for them (up to --max-wait); one that still shows none after EMPTY_S is empty. */
       if (st.ready && st.full && tFull == null && (st.mine > 0 || (s > EMPTY_S && !st.pending && st.pets > 0))) { tFull = s; await pg.waitForTimeout(3000); break; }
@@ -73,15 +94,15 @@ async function probe(browser, page, addr, branch) {
   await pg.waitForTimeout(1000);
   let blank = null, scroll = null, lt = [], top = null;
   try { blank = await pg.evaluate(BLANK_SRC); } catch (e) {}
-  if (SCROLL) try { scroll = await scrollTest(pg); } catch (e) { errors.push('scroll: ' + String(e.message || e).slice(0, 120)); }
+  if (SCROLL && mode !== 'newtip') try { scroll = await scrollTest(pg); } catch (e) { errors.push('scroll: ' + String(e.message || e).slice(0, 120)); }
   let verify = null;
-  if (VERIFY) try { verify = await verifyTest(pg); } catch (e) { errors.push('verify: ' + String(e.message || e).slice(0, 120)); }
+  if (VERIFY && mode === 'cold') try { verify = await verifyTest(pg); } catch (e) { errors.push('verify: ' + String(e.message || e).slice(0, 120)); }
   try { lt = await pg.evaluate(() => window.__probeLT || []); } catch (e) {}
   if (prof) try { const { profile } = await prof.send('Profiler.stop'); top = topFns(profile); top.tasks = taskFns(profile, prof.t0Page, lt); } catch (e) { errors.push('profile: ' + String(e.message || e).slice(0, 120)); }
-  await cx.close();
-  const by = {}; let total = 0; reqs.forEach(r => { const k = kind(r.u); by[k] = by[k] || { n: 0, b: 0 }; by[k].n++; by[k].b += r.b; total += r.b; });
-  return { branch: !!branch, page, addr, tWorld, tDraw, tFull, st, errors, total, n: reqs.length, by, big: reqs.sort((a, b) => b.b - a.b).slice(0, 8), secs: (Date.now() - t0) / 1000,
-    blank, scroll, lt, top, verify };
+  Object.keys(bad).forEach(k => errors.push('server ' + k + (bad[k] > 1 ? ' x' + bad[k] : '')));
+  let fcp = null; try { fcp = await pg.evaluate(() => { const e = performance.getEntriesByName('first-contentful-paint')[0]; return e ? Math.round(e.startTime) / 1000 : null; }); } catch (e) {}
+  await pg.close();
+  return { mode, page, addr, tWorld, tDraw, tFull, tCard, fcp, st, errors, reqs, secs: (Date.now() - t0) / 1000, blank, scroll, lt, top, verify };
 }
 /* Start the check worker (V2Split.startVerify) and note when each bar text first shows, plus the worker's own step timings. */
 async function verifyTest(pg) {
@@ -157,35 +178,51 @@ function taskFns(profile, t0Page, lt) {
 }
 function ltSum(lt, from, to) { const a = lt.filter(x => x[0] >= (from || 0) && x[0] < (to == null ? Infinity : to)); return { n: a.length, total: a.reduce((s, x) => s + x[1], 0), max: a.reduce((m, x) => Math.max(m, x[1]), 0), over1s: a.filter(x => x[1] >= 1000).length }; }
 const MB = b => (b / 1e6).toFixed(2) + ' MB', S = s => s == null ? '–' : s.toFixed(1) + ' s';
+/* Is the game server compressing its view files? (a ~1 MB pet shard is ~0.1 MB compressed) */
+async function wire() {
+  try {
+    const get = (u, enc) => fetch(u, { headers: enc ? { 'accept-encoding': enc } : {} });
+    const latest = await (await get('https://node.xcpets.fun/xp/v1/world/latest.json')).json();
+    const dir = 'https://node.xcpets.fun' + String(latest.manifest).replace(/[^/]+$/, '');
+    const out = [];
+    for (const f of ['view/summary.json', 'view/p/00090.json', 'part-000.json']) {
+      const r = await get(dir + f, 'br, gzip'); const b = Buffer.from(await r.arrayBuffer());
+      out.push(f + ': ' + (r.headers.get('content-encoding') || 'not compressed') + ', ' + (r.headers.get('content-length') || '?') + ' bytes on the wire, ' + b.length + ' bytes');
+    }
+    return out.join(' · ');
+  } catch (e) { return 'wire check failed: ' + String(e.message || e).slice(0, 80); }
+}
 (async () => {
   const { chromium } = require('playwright-core');
+  const wireNote = await wire(); log('server compression:', wireNote);
   const browser = await chromium.launch({ executablePath: process.env.CHROME || (fs.existsSync('/opt/google/chrome/chrome') ? '/opt/google/chrome/chrome' : undefined), args: ['--no-sandbox', '--enable-precise-memory-info'] });
-  let md = '# Load probe\n\n' + SITE + (SLOW ? ' · phone network + 4x slower CPU' : ' · fast network') + (NO_WORLD ? ' · **server world blocked (in-browser rebuild)**' : '') + ' · ' + new Date().toISOString() + '\n\n| Page | Wallet | Own pets in world | Pet drawn | All pages | Living pets (pages) | Downloaded | Requests | Heap | Errors |\n|---|---|---|---|---|---|---|---|---|---|\n';
+  let md = '# Load probe\n\n' + SITE + (SLOW ? ' · phone network + 4x slower CPU' : ' · fast network') + (NO_WORLD ? ' · **server world blocked (in-browser rebuild)**' : '') + ' · ' + new Date().toISOString() + '\n\n| Page | Wallet | Page shows | First card | Own pets in world | Pet drawn | All pages | Living pets (pages) | Downloaded | Requests | Heap | Errors |\n|---|---|---|---|---|---|---|---|---|---|---|---|\n';
   const detail = [];
   for (const addr of WALLETS) for (const page of PAGES) for (const br of (BRANCH ? [false, true] : [false])) {
-    const r = await probe(browser, page, addr, br);
-    log(page, addr.slice(0, 10), 'world', S(r.tWorld), 'drawn', S(r.tDraw), 'full', S(r.tFull), MB(r.total), r.n + ' req', r.errors.length + ' errors');
+    for (const r of await probe(browser, page, addr, br)) {
+    log(page, addr.slice(0, 10), r.mode, 'shell', S(r.fcp), 'card', S(r.tCard), 'world', S(r.tWorld), 'drawn', S(r.tDraw), 'full', S(r.tFull), MB(r.total), r.n + ' req', r.errors.length + ' errors');
     const st = r.st || {};
-    md += `| ${page}${BRANCH ? (br ? ' (branch)' : ' (live)') : ''} | ${addr.slice(0, 8)}…${addr.slice(-4)} | ${S(r.tWorld)} | ${S(r.tDraw)} | ${r.tFull != null ? S(r.tFull) : 'not in ' + (MAX_WAIT / 1000) + ' s'} | ${st.n != null ? st.n + ' (' + st.got + '/' + st.pages + ')' : (st.mine != null ? st.mine : '–')} | ${MB(r.total)} | ${r.n} | ${st.heap != null ? st.heap + ' MB' : '–'} | ${r.errors.length ? r.errors.slice(0, 2).join(' / ').replace(/\|/g, '/') : ''} |\n`;
+    md += `| ${page}${BRANCH ? (br ? ' (branch)' : ' (live)') : ''}${WARM ? ' · ' + MODE[r.mode] : ''} | ${addr.slice(0, 8)}…${addr.slice(-4)} | ${S(r.fcp)} | ${S(r.tCard)} | ${S(r.tWorld)} | ${S(r.tDraw)} | ${r.tFull != null ? S(r.tFull) : 'not in ' + (MAX_WAIT / 1000) + ' s'} | ${st.n != null ? st.n + ' (' + st.got + '/' + st.pages + ')' : (st.mine != null ? st.mine : '–')} | ${MB(r.total)} | ${r.n} | ${st.heap != null ? st.heap + ' MB' : '–'} | ${r.errors.length ? r.errors.slice(0, 2).join(' / ').replace(/\|/g, '/') : ''} |\n`;
     detail.push(r);
+    }
   }
   md += '\n## Freezes and blank pictures\n\nLong task = the page could not react for that long. Chrome shows \'Page Unresponsive\' when one runs for many seconds.\n\n| Page | Wallet | Long tasks (load) | Blocked total | Longest | Over 1 s | Blank pictures on screen at end | Scroll: long tasks / longest | Scroll: blank after 0.25 s / 1 s (of shown) |\n|---|---|---|---|---|---|---|---|---|\n';
   for (const r of detail) { const sc = r.scroll, L = ltSum(r.lt, 0, sc ? sc.t0 : null), Ls = sc ? ltSum(r.lt, sc.t0, sc.t1) : null, s1 = v => (v / 1000).toFixed(1) + ' s';
-    md += `| ${r.page}${r.branch ? ' (branch)' : ''} | ${r.addr.slice(0, 8)}… | ${L.n} | ${s1(L.total)} | ${s1(L.max)} | ${L.over1s} | ${r.blank ? r.blank.blank + ' of ' + r.blank.onScreen + ' (' + r.blank.cards + ' cards)' : '–'} | ${Ls ? Ls.n + ' / ' + s1(Ls.max) : '–'} | ${sc ? sc.blank250 + ' / ' + sc.blank1s + ' (of ' + sc.shown + ')' : '–'} |\n`; }
+    md += `| ${r.page}${r.branch ? ' (branch)' : ''}${WARM ? ' · ' + MODE[r.mode] : ''} | ${r.addr.slice(0, 8)}… | ${L.n} | ${s1(L.total)} | ${s1(L.max)} | ${L.over1s} | ${r.blank ? r.blank.blank + ' of ' + r.blank.onScreen + ' (' + r.blank.cards + ' cards)' : '–'} | ${Ls ? Ls.n + ' / ' + s1(Ls.max) : '–'} | ${sc ? sc.blank250 + ' / ' + sc.blank1s + ' (of ' + sc.shown + ')' : '–'} |\n`; }
   if (PROFILE) { md += '\n## Where the main thread went (CPU profile, self time)\n\n';
-    for (const r of detail) if (r.top) md += `**${r.page}${r.branch ? ' (branch)' : ''} · ${r.addr.slice(0, 8)}…** files: ` + r.top.files.map(([k, v]) => k + ' ' + v + ' ms').join(' · ') + '\n\n' + r.top.fns.map(([k, v]) => '- ' + v + ' ms ' + k.replace(/\|/g, '/')).join('\n') + '\n\n' +
+    for (const r of detail) if (r.top) md += `**${r.page}${r.branch ? ' (branch)' : ''}${WARM ? ' · ' + MODE[r.mode] : ''} · ${r.addr.slice(0, 8)}…** files: ` + r.top.files.map(([k, v]) => k + ' ' + v + ' ms').join(' · ') + '\n\n' + r.top.fns.map(([k, v]) => '- ' + v + ' ms ' + k.replace(/\|/g, '/')).join('\n') + '\n\n' +
       (r.top.tasks && r.top.tasks.length ? 'Longest tasks:\n' + r.top.tasks.map(x => `- ${x.ms} ms at ${(x.at / 1000).toFixed(1)} s: inside ${x.self} | started by ${x.from}`).join('\n') + '\n\n' : ''); }
   if (VERIFY) { md += '\n## Background chain check (burns wait for this)\n\nWorker step times are cumulative seconds from the start.\n\n';
     for (const r of detail) { const v = r.verify; if (!v) continue;
-      md += `**${r.page}${r.branch ? ' (branch)' : ''} · ${r.addr.slice(0, 8)}…** ` + (v.skipped ? v.skipped : `${v.ok ? 'done' : 'NOT done'} in ${v.secs.toFixed(1)} s`) + '\n\n';
+      md += `**${r.page}${r.branch ? ' (branch)' : ''}${WARM ? ' · ' + MODE[r.mode] : ''} · ${r.addr.slice(0, 8)}…** ` + (v.skipped ? v.skipped : `${v.ok ? 'done' : 'NOT done'} in ${v.secs.toFixed(1)} s`) + '\n\n';
       if (v.t) md += '- worker: ' + Object.entries(v.t).filter(([k]) => k !== 't0').map(([k, x]) => k + ' ' + (/^(rows|nFiles|from|to|bytes)$/.test(k) ? x : (x / 1000).toFixed(1) + ' s')).join(' · ') + '\n';
       if (v.seen) md += '- bar: ' + v.seen.map(([s1, b]) => s1 + ' s "' + b.replace(/\|/g, '/') + '"').join(' → ') + '\n';
       if (v.err) md += '- error: ' + String(v.err).replace(/\|/g, '/') + '\n';
       if (v.line) md += '- status line after: ' + v.line.replace(/\|/g, '/') + '\n';
       md += '\n'; } }
-  md += '\n## Where the bytes go\n\n';
+  md += '\n## Where the bytes go\n\nServer compression: ' + wireNote + '\n\n';
   for (const r of detail) {
-    md += `**${r.page}${r.branch ? ' (branch)' : ''} · ${r.addr.slice(0, 8)}…** ` + Object.entries(r.by).sort((a, b) => b[1].b - a[1].b).map(([k, v]) => `${k} ${MB(v.b)} (${v.n})`).join(' · ') + '\n\nBiggest: ' + r.big.map(b => b.u.replace(/\?.*/, '').split('/').slice(-2).join('/') + ' ' + MB(b.b)).join(' · ') + '\n\n';
+    md += `**${r.page}${r.branch ? ' (branch)' : ''}${WARM ? ' · ' + MODE[r.mode] : ''} · ${r.addr.slice(0, 8)}…** ` + Object.entries(r.by).sort((a, b) => b[1].b - a[1].b).map(([k, v]) => `${k} ${MB(v.b)} (${v.n})`).join(' · ') + '\n\nBiggest: ' + r.big.map(b => b.u.replace(/\?.*/, '').split('/').slice(-2).join('/') + ' ' + MB(b.b)).join(' · ') + '\n\n';
   }
   fs.writeFileSync('loadprobe.md', md);
   if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, md);

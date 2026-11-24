@@ -37,7 +37,18 @@
   }
   function say(html, cls) { if (!msg) return; msg.className = 'small cc-t' + (cls ? ' ' + cls : ''); msg.innerHTML = html || ''; }
   function openLink() { return '<a class="cc-open" href="casatookan://browse/' + encodeURIComponent(location.href.replace(/[?&]cc=1/, '')) + '">Open in Casa Tookan</a>'; }
+  /* phone-handoff (Nov 24 2026): no wallet on this phone -> plan mode (js/handoff.js): pick burns here, scan a code with the computer to sign there */
+  function planOk() { return !!(w.XcpHandoff && w.XcpHandoff.can && w.XcpHandoff.can()); }
+  function planOn() { return !!(w.XcpHandoff && w.XcpHandoff.on && w.XcpHandoff.on()); }
+  function planStart() { var H = w.XcpHandoff; if (!H) return; var cur = w.V2View && w.V2View.me ? w.V2View.me() : null, addr = null;
+    if (cur && w.confirm('Pick burns for ' + short(cur) + ' on this phone and sign them on your computer?\n\nPress Cancel to type a different address.')) addr = cur;
+    else addr = w.prompt('Your wallet address (the one in XCP Wallet on your computer):', '');
+    if (!addr) return; var err = H.start(addr); if (err) say(err, 'cc-hint'); }
+  d.addEventListener('click', function (e) { var t = e.target && e.target.closest ? e.target.closest('[data-xh-start],[data-xh-stop]') : null; if (!t) return; e.preventDefault();
+    if (t.hasAttribute('data-xh-stop')) { if (w.XcpHandoff) w.XcpHandoff.stop(); } else planStart(); });
   function paint() {
+    if (planOn()) { build(); if (btn && !busy) { var pa = w.XcpHandoff.planAddr(), pt = '\ud83d\udcf2 Signing on my computer \u00b7 ' + short(pa); if (btn.textContent !== pt) btn.textContent = pt; btn.classList.add('on'); btn.onclick = function () { say('Plan mode: pick burns here as usual. Where a wallet would open, you get a code to scan with your computer, and XCP Wallet signs there. <a href="#" data-xh-stop="1">Stop</a>', 'cc-hint'); }; }
+      if (msg && !msg.innerHTML) say('\ud83d\udcf2 Pick burns here, then scan the code with your computer to sign. <a href="#" data-xh-stop="1">Stop</a>'); return; }
     build(); var L = label(), a = me();
     if (btn && !busy) { btn.disabled = false; btn.classList.toggle('on', !!a); var tx = a ? '\u2713 ' + L + ' connected \u00b7 ' + short(a) : 'Connect ' + L; if (btn.textContent !== tx) btn.textContent = tx; }
     /* the page's own Connect buttons: same label, and usable before the chain reads finish (v2.js / v2-pages.js take them over later) */
@@ -46,7 +57,7 @@
       if (!b.onclick) b.onclick = function () { connect(true); }; });
     if (!anyProv() && Date.now() - t0 >= POLL_FOR && msg && !msg.innerHTML) {
       if (inCasa()) say('Casa Tookan has not attached its wallet to this page. Unlock your casa, fully close and reopen Casa Tookan, then open XCPETS from <b>Browse \u203a Apps</b> (or type xcpets.fun/play.html).', 'cc-hint');
-      else if (phone()) say('No wallet here? ' + openLink() + ' to play on your phone.', 'cc-hint');
+      else if (phone()) say('No wallet here? ' + openLink() + ' to play on your phone' + (planOk() ? ', or <a href="#" class="cc-plan" data-xh-start="1">pick burns here and sign them on your computer</a>.' : '.'), 'cc-hint');
     }
     if (anyProv() && msg && /cc-hint/.test(msg.className)) say('');
   }

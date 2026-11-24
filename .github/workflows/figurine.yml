@@ -1,0 +1,57 @@
+# Pet figurines (Nov 24 2026). Turns pet numbers into full-colour 3D print files, pictures and a spinning GIF.
+# How to run: GitHub > Actions > figurine > Run workflow > type the pet number(s) > Run. About 2 minutes.
+# Then open the finished run and download "figurines" at the bottom of the page (a zip with one folder per pet).
+# Inside each folder: the -obj.zip file to upload to the print service, a .3mf copy, preview.png, spin.gif and order.txt.
+# Optional: type yes in "telegram" to also post each pet's spinning figurine in the Telegram group (needs the HatchBot secrets).
+# Display only: it replays the game from api/boot.json and never changes anything.
+name: figurine
+on:
+  workflow_dispatch:
+    inputs:
+      pets:
+        description: 'Pet number(s), e.g. 17545 or 17545, 27'
+        required: true
+      size:
+        description: 'mini (50 mm), standard (75 mm) or big (100 mm)'
+        required: false
+        default: 'standard'
+      telegram:
+        description: 'Type yes to post the spinning figurine in the Telegram group'
+        required: false
+        default: ''
+permissions: { contents: read }
+jobs:
+  make:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PETS: ${{ github.event.inputs.pets }}
+      SIZE: ${{ github.event.inputs.size }}
+      TG: ${{ github.event.inputs.telegram }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: main, fetch-depth: 1 }
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - name: Make the figurines
+        run: node --max-old-space-size=6000 tools/figurine/make.js --ids "$PETS" --size "$SIZE" --out figurines
+      - name: Show the order notes
+        if: always()
+        run: for f in figurines/pet-*/order.txt; do echo "::group::$f"; cat "$f"; echo "::endgroup::"; done
+      - uses: actions/upload-artifact@v4
+        with: { name: figurines, path: figurines, retention-days: 30 }
+      - name: Post the spinning figurine in Telegram
+        if: env.TG == 'yes'
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then echo "::notice::HatchBot secrets are not set, nothing posted."; exit 0; fi
+          for d in figurines/pet-*/; do
+            [ -f "$d/spin.gif" ] || continue
+            id=$(basename "$d" | sed 's/pet-//')
+            curl -sS -o /dev/null -w "pet $id: %{http_code}\n" "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendAnimation" \
+              --form-string "chat_id=${TELEGRAM_CHAT_ID}" \
+              --form-string "caption=🗿 Pet #${id} as a real figurine! Want your own pet on your desk? Ask Jake. xcpets.fun/pet.html?id=${id}" \
+              -F "animation=@${d}spin.gif"
+          done

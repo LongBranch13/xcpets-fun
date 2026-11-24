@@ -330,6 +330,8 @@
   function cancelP() { return new Promise(function (_, rej) { cancelWait.push(function () { rej(cancelErr()); }); }); }
   function cancelErr() { var e = new Error('Cancelled. Nothing was signed or sent.'); e.cancelled = true; e.retry = true; return e; }
   function send(plan, viewed, onTry, recheck) { if (window.XcpMaint && XcpMaint.on()) return Promise.reject(XcpMaint.err());
+    /* phone plan mode (js/handoff.js): no wallet on this phone, so show the code to finish on the computer. Nothing is signed or sent here. */
+    if (win.XcpHandoff && win.XcpHandoff.on()) return Promise.reject(win.XcpHandoff.intercept(plan));
     if (window.V2Split && V2Split.ownersReady && !V2Split.ownersKnown()) { if (onTry) onTry(0, 0, 'owners'); return V2Split.ownersReady().then(function () { return send(plan, viewed, onTry, recheck); }); }
     var g0 = cancelGen, VS = mockState();
     if (!(VS && VS.prod && ((VS.stale && !VS.verified) || upd()) && window.V2Mock.whenFresh)) return send0(plan, viewed, onTry, g0);
@@ -447,7 +449,7 @@
     if (!(VS && VS.prod) || !T || !T.tokenAt || !as.length) return Promise.resolve();
     return Promise.all(as.map(function (A) { return T.tokenAt(A).then(function (t) { return t && t.utxo ? utxoErr(A, t.utxo) : null; }, function () { return null; }); })).then(function (r) { r = r.filter(Boolean); if (r.length) throw r[0]; }); }
   function conflictMsg(e) { var raw = String((e && e.raw) || (e && e.message) || ''); if (e && !e.utxoHeld && !/safety check/i.test(e.message || '') && /already exists in .*mempool|pending .* already exists|mempool conflict|HTTP 409/i.test(raw)) { var x = new Error('One of your transactions for this is still pending (not in a block yet), and the node will not build another on top of it. Wait for it to confirm, then try again. Nothing was sent.'); Object.keys(e).forEach(function (k) { if (!(k in x)) x[k] = e[k]; }); x.raw = raw; x.conflict = true; return x; } return e; }
-  function sendDex(plan, viewed) { if (window.XcpMaint && XcpMaint.on()) return Promise.reject(XcpMaint.err()); return utxoCheck(plan).then(function () { return sendDexF(plan, viewed); }).catch(function (e) { throw conflictMsg(e); }); }
+  function sendDex(plan, viewed) { if (window.XcpMaint && XcpMaint.on()) return Promise.reject(XcpMaint.err()); if (win.XcpHandoff && win.XcpHandoff.on()) return Promise.reject(win.XcpHandoff.intercept(plan)); /* phone plan mode: trades need a wallet on the device */ return utxoCheck(plan).then(function () { return sendDexF(plan, viewed); }).catch(function (e) { throw conflictMsg(e); }); }
   function sendDexF(plan, viewed) { var VS = mockState();
     if (!(VS && VS.prod && ((VS.stale && !VS.verified) || upd()) && window.V2Mock.whenFresh)) return sendDex0(plan, viewed);
     /* same gate as a burn: an unanswered read is a server error; a local pet rebuild is not, and same burns + sale data may proceed while that rebuild finishes */
@@ -624,7 +626,7 @@
   /** paint the play.html top bar: viewed address + connect / connected state. */
   function paint(ME, $) {
     lastPaint = [ME, $]; relabel(); var c = $('wconnect'); if (!c) return; var L = label();
-    $('me').textContent = ME ? ME + (wallet && wallet.address === ME ? ' (' + L + ')' : (function () { try { return store.getItem(ADDR_KEY) === ME; } catch (e) { return false; } })() ? (locked && wallet ? ' (' + L + ' locked: tap Unlock)' : ' (' + L + ': not attached, tap Reconnect)') : ' (view only: connect to burn)') : 'not connected';
+    $('me').textContent = ME ? ME + (wallet && wallet.address === ME ? ' (' + L + ')' : (function () { try { return store.getItem(ADDR_KEY) === ME; } catch (e) { return false; } })() ? (locked && wallet ? ' (' + L + ' locked: tap Unlock)' : ' (' + L + ': not attached, tap Reconnect)') : (win.XcpHandoff && win.XcpHandoff.on() ? ' (\ud83d\udcf2 sign on your computer)' : ' (view only: connect to burn)')) : 'not connected';
     c.textContent = wallet && wallet.address === ME ? '✓ ' + L + ' connected' : (function () { try { return store.getItem(ADDR_KEY) === ME; } catch (e) { return false; } })() ? '↻ Reconnect ' + L : 'Connect ' + L; c.disabled = false;
     if (!c._v2) { c._v2 = 1; c.onclick = function () { var m = $('wMsg'); if (m) m.textContent = 'Looking for ' + label() + '…';
       connect().then(function (a) { if (a !== ME && win.location) return win.location.reload(); if (m) m.textContent = 'Connected.'; paint(ME, $); }, function (e) { if (m) m.innerHTML = (win.V2Wallet && win.V2Wallet.errHtml || errHtml)(e); }); }; }
