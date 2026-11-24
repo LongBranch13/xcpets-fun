@@ -171,9 +171,16 @@ PIX = 3.2
 CHIN_Y = 62.0                       # the head starts just above the top of the board
 
 
+def sprite_path(species):
+    """the shells use the Mythic look: mythic/<species>.png is a real Mythic pet of that species drawn by js/pet-core.js
+    (stage 5, no gear, background removed; see mythic/README.md). Falls back to the site's species icon."""
+    m = os.path.join(HERE, 'mythic', '%s.png' % species)
+    return m if os.path.exists(m) else os.path.join(HERE, '..', '..', 'img', 'theme', 'sp-%s.png' % species)
+
+
 def sprite_rows(species):
     from PIL import Image
-    im = Image.open(os.path.join(HERE, '..', '..', 'img', 'theme', 'sp-%s.png' % species)).convert('RGBA')
+    im = Image.open(sprite_path(species)).convert('RGBA')
     px = im.load()
     rows = []
     for y in range(im.size[1]):
@@ -193,16 +200,17 @@ def sprite_rows(species):
 
 # Filament colours for the multi-colour files (at most 5, so a 4-slot AMS plus one swap, or two AMS units, can print them).
 # Every sprite pixel is printed in the nearest of these.
+GOLD = '#d4a838'                     # the Mythic gold rim, drawn round the whole shell
 PALETTES = {
-    'pepe': [('green', '#5aa83c'), ('black', '#1b1b1f'), ('white', '#f2f2ec'), ('blue', '#3f6fd1'), ('red', '#b5533c')],
-    'bobo': [('brown', '#7a4a2a'), ('black', '#1b1b1f'), ('white', '#f2f2ec'), ('red', '#c8342c')],
-    'dodo': [('dark grey', '#2b2b30'), ('grey', '#6b6b70'), ('white', '#f2f2ec'), ('red', '#c8342c')],
+    'pepe': [('green', '#6aa84f'), ('black', '#1a1020'), ('white', '#f4f1ea'), ('blue', '#3d6fd1'), ('red', '#c4483c'), ('gold', GOLD)],
+    'bobo': [('brown', '#704728'), ('black', '#1a1020'), ('white', '#f4f1ea'), ('red', '#cc1414'), ('tan', '#c4805b'), ('gold', GOLD)],
+    'dodo': [('grey', '#4a4a56'), ('light grey', '#7a7a88'), ('black', '#1a1020'), ('white', '#f4f1ea'), ('red', '#c41a1a'), ('gold', GOLD)],
 }
 
 
 def sprite_rgba(species):
     from PIL import Image
-    return np.asarray(Image.open(os.path.join(HERE, '..', '..', 'img', 'theme', 'sp-%s.png' % species)).convert('RGBA')).astype(int)
+    return np.asarray(Image.open(sprite_path(species)).convert('RGBA')).astype(int)
 
 
 def nearest(pal, rgb):
@@ -222,118 +230,169 @@ def hexrgb(hx):
     return np.array([int(hx[k:k + 2], 16) for k in (1, 3, 5)])
 
 
-def pixel_pet(species, head, body_row, center_col, deep, shallow, holes, title, blurb, chin=CHIN_Y, limbs=None):
-    """A whole pet, body shaped, in sprite pixels (PIX mm each).
-    head: (first_row, last_row) of the sprite drawn as-is above the chin. body_row: the sprite row repeated down as the torso
-    (the screen sits in the belly). limbs: arms and legs added in the same pixel grid, with their colours:
-      dict(sleeve=hex, arm=hex, hand=hex, arm_rows=n, sleeve_rows=n, arm_w=px, leg=hex, foot=hex, leg_w=px, leg_rows=n)
-    The feet are flat, so the Pet Shell stands up on a desk. The gap between the legs keeps the USB-C port free.
+def pixel_pet(species, head, center_col, deep, shallow, holes, title, blurb, pix=PIX, chin=CHIN_Y, torso=None, round_body=None, limbs=None):
+    """A whole pet, body shaped, in the Mythic look: sprite pixels of `pix` mm with a gold rim round the outside.
+    head: (first_row, last_row) of the Mythic sprite drawn as-is above the chin (it includes the hand-to-chin pose).
+    torso: dict(cols=n, fill, light, shade) a straight body below the chin, n pixels wide, in the shirt colours.
+    round_body: dict(cx, cy, rx, ry, fill, belly, wing=(first_row, [widths], colour)) a round, chubby body instead.
+    limbs: dict(sleeve, arm, sleeve_rows, arm_rows, arm_w, leg, foot, leg_w, leg_rows); arms hang from a straight torso,
+    legs stand below the flat bottom with a gap in the middle for the USB-C plug. The feet are flat, so it stands up.
     deep / shallow: sprite colours cut 1.2 mm / 0.5 mm into the front (a two-level pixel relief)."""
     rows = sprite_rows(species)
     rgba = sprite_rgba(species)
     sq, fdeep, fshallow = [], [], []
-    colour = {}                                       # (col, y0) of each added pixel -> hex, for limbs
+    paint = []                                        # (polygon, hex) for everything that is not the head sprite
     r0, r1 = head
-    def col_x(c): return (c - center_col) * PIX
+    def col_x(c): return (c - center_col) * pix
+    def cell(c, k):                                   # k = rows below the chin, clipped at the flat bottom
+        return box(col_x(c), max(BOTTOM_Y, chin - (k + 1) * pix), col_x(c + 1), chin - k * pix)
+    head_cells = set()
     for r in range(r0, r1 + 1):
-        y0 = chin + (r1 - r) * PIX
+        y0 = chin + (r1 - r) * pix
         for c, ch in enumerate(rows[r]):
             if ch == '.':
                 continue
-            px = box(col_x(c), y0, col_x(c + 1), y0 + PIX)
+            head_cells.add((c, r))
+            px = box(col_x(c), y0, col_x(c + 1), y0 + pix)
             sq.append(px)
             inner = all(0 <= r + dr < len(rows) and 0 <= c + dc < len(rows[r]) and rows[r + dr][c + dc] != '.' for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)))
             if inner and r != r1:
                 if ch in deep: fdeep.append(px)
                 elif ch in shallow: fshallow.append(px)
-    br = rows[body_row]
-    cols = [c for c, ch in enumerate(br) if ch != '.']
-    t0, t1 = min(cols), max(cols)
-    torso = box(col_x(t0), BOTTOM_Y, col_x(t1 + 1), chin + 0.01)
-    limb_px = []                                      # (box, hex)
+    nrows = int(math.ceil((chin - BOTTOM_Y) / pix))
+    side_cols = None
+    if torso:
+        T = torso
+        n = T['cols']
+        t0 = int(round(center_col - n / 2)); t1 = t0 + n - 1
+        side_cols = (t0, t1)
+        for k in range(nrows):
+            for c in range(t0, t1 + 1):
+                hx = '#1a1020' if c in (t0, t1) else T['light'] if c == t0 + 1 else T['shade'] if c == t1 - 1 else T['fill']
+                paint.append((cell(c, k), hx))
+    if round_body:
+        R = round_body
+        cells = set()
+        for k in range(-14, nrows + 30):          # a round belly may reach below the flat bottom: the USB-C plug has its own tunnel
+            yc = chin - (k + 0.5) * pix
+            for c in range(-20, 60):
+                xc = col_x(c) + pix / 2
+                if ((xc - R.get('cx', 0)) / R['rx']) ** 2 + ((yc - R['cy']) / R['ry']) ** 2 <= 1:
+                    if k < 0 and (c, r1 + 1 + k) in head_cells:
+                        continue                      # the head is drawn there
+                    cells.add((c, k))
+        bx_, by_, brx, bry = R.get('belly', (0, R['cy'] - R['ry'] * 0.25, R['rx'] * 0.55, R['ry'] * 0.55))
+        for (c, k) in cells:
+            xc, yc = col_x(c) + pix / 2, chin - (k + 0.5) * pix
+            hx = R['belly_hex'] if ((xc - bx_) / brx) ** 2 + ((yc - by_) / bry) ** 2 <= 1 else R['fill']
+            paint.append((box(col_x(c), chin - (k + 1) * pix, col_x(c + 1), chin - k * pix), hx))
+        body_low = {}
+        for (c, k) in cells:
+            body_low[c] = min(body_low.get(c, 1e9), chin - (k + 1) * pix)
+        k0, widths, whx = R.get('wing', (None, [], None))
+        for i, w in enumerate(widths):              # little wings out of the widest part
+            k = k0 + i
+            row = [c for c, kk in cells if kk == k]
+            for sd in (-1, 1):
+                for j in range(w):
+                    c = min(row) - 1 - j if sd < 0 else max(row) + 1 + j
+                    paint.append((box(col_x(c), chin - (k + 1) * pix, col_x(c + 1), chin - k * pix), whx))
+    else:
+        body_low = {}
     if limbs:
         L = limbs
-        aw = L.get('arm_w', 2)
-        for k in range(L.get('arm_rows', 7)):         # arms hang from the shoulders, k = rows below the chin
-            y1 = chin - k * PIX
-            last = k == L.get('arm_rows', 7) - 1
-            hx = L['sleeve'] if k < L.get('sleeve_rows', 2) else (L.get('hand', L['arm']) if last else L['arm'])
-            w = aw + (1 if last and L.get('fist', True) else 0)
-            for side in (-1, 1):
-                for j in range(w):
-                    c = t0 - 1 - j if side < 0 else t1 + 1 + j
-                    limb_px.append((box(col_x(c), y1 - PIX, col_x(c + 1), y1), hx))
+        if side_cols:
+            t0, t1 = side_cols
+            aw, ar = L.get('arm_w', 3), L.get('arm_rows', 7)
+            for k in range(ar):
+                last = k == ar - 1
+                hx = L['sleeve'] if k < L.get('sleeve_rows', 2) else L['arm']
+                for sd in (-1, 1):
+                    for j in range(aw + (1 if last else 0)):
+                        c = t0 - 1 - j if sd < 0 else t1 + 1 + j
+                        paint.append((cell(c, k), hx))
         lw, lr = L.get('leg_w', 4), L.get('leg_rows', 2)
-        g = LEG_GAP / PIX                             # columns from the centre kept clear
-        for k in range(lr):
-            y1 = BOTTOM_Y - k * PIX
-            last = k == lr - 1
-            hx = L.get('foot', L['leg']) if last else L['leg']
-            for side in (-1, 1):
-                inner_c = math.floor(center_col - g - 1 + 1e-6) if side < 0 else math.ceil(center_col + g - 1e-6)
-                w = lw + (1 if last else 0)                # the feet point outwards one pixel
-                for j in range(w):
-                    c = inner_c - j if side < 0 else inner_c + j
-                    limb_px.append((box(col_x(c), y1 - PIX, col_x(c + 1), y1), hx))
-    # one colour map for the pictures and the multi-colour files
-    def colour_at(x, y):
-        c = int(math.floor(x / PIX + center_col))
-        for bx, hx in limb_px:
-            if bx.covers(Point(x, y)):
-                return hexrgb(hx)
-        if y >= chin:
-            r = max(r0, r1 - int(math.floor((y - chin) / PIX)))
-        else:
-            r = body_row
-        c = min(max(c, 0), rgba.shape[1] - 1)
-        px = rgba[r, c]
-        if px[3] < 128:                               # just outside the sprite: nearest opaque pixel in that row
-            opaque = np.where(rgba[r][:, 3] >= 128)[0]
-            if len(opaque):
-                px = rgba[r][opaque[np.argmin(np.abs(opaque - c))]]
-        return px[:3]
-    pal, buckets = PALETTES.get(species), {}
-    if pal:
-        for r in range(r0, r1 + 1):
-            y0 = chin + (r1 - r) * PIX
-            for c, ch in enumerate(rows[r]):
-                if ch != '.':
-                    buckets.setdefault(nearest(pal, rgba[r, c]), []).append(box(col_x(c), y0, col_x(c + 1), y0 + PIX))
-        for c in cols:
-            buckets.setdefault(nearest(pal, rgba[body_row, c]), []).append(box(col_x(c), BOTTOM_Y - 0.01, col_x(c + 1), chin))
-        for bx, hx in limb_px:
-            buckets.setdefault(nearest(pal, hexrgb(hx)), []).append(bx)
-    sil = unary_union(sq + [torso] + [bx for bx, _ in limb_px]).buffer(0.02, join_style='mitre').buffer(-0.02, join_style='mitre')
+        g = LEG_GAP / pix
+        for sd in (-1, 1):
+            inner_c = math.floor(center_col - g - 1 + 1e-6) if sd < 0 else math.ceil(center_col + g - 1e-6)
+            legc = [inner_c - j if sd < 0 else inner_c + j for j in range(lw)]
+            top = min([body_low.get(c, BOTTOM_Y) for c in legc] + [BOTTOM_Y])   # legs start under the body
+            for k in range(lr):
+                y1 = top - k * pix
+                last = k == lr - 1
+                cs = legc + ([legc[-1] - 1 if sd < 0 else legc[-1] + 1] if last else [])   # the feet point outwards
+                for c in cs:
+                    paint.append((box(col_x(c), y1 - pix, col_x(c + 1), max(y1, body_low.get(c, BOTTOM_Y)) + 0.01), L.get('foot', L['leg']) if last else L['leg']))
+    sil = unary_union(sq + [p for p, _ in paint]).buffer(0.02, join_style='mitre').buffer(-0.02, join_style='mitre')
     if sil.geom_type != 'Polygon':
         sil = max(sil.geoms, key=lambda g: g.area)
-    hole_xy = [(col_x(c), chin + (r1 - r) * PIX + PIX / 2) for (c, r) in holes]
     if not sil.contains(core(STEP)):
-        raise RuntimeError('%s: the torso is too narrow for the board, battery and screws' % species)
+        raise RuntimeError('%s: the body is too small for the board, battery and screws' % species)
+    rim = sil.difference(sil.buffer(-pix + 0.01, join_style='mitre'))
+    # colour regions: gold rim first, then the painted body, then the head sprite pixels
+    from shapely.prepared import prep
+    by_hex = {}
+    for p, hx in paint:
+        by_hex.setdefault(hx, []).append(p)
+    painted = [(hx, unary_union(ps)) for hx, ps in by_hex.items()]
+    prim, ppaint = prep(rim), [(hexrgb(hx), prep(g)) for hx, g in painted]
+    gold = hexrgb(GOLD)
+    def colour_at(x, y):
+        pt = Point(x, y)
+        if prim.covers(pt):
+            return gold
+        c = int(math.floor(x / pix + center_col))
+        if y >= chin:
+            r = r1 - int(math.floor((y - chin) / pix))
+            if r0 <= r <= r1 and 0 <= c < rgba.shape[1] and rgba[r, c, 3] >= 128:
+                return rgba[r, c, :3]
+        for rgb, g in ppaint:
+            if g.covers(pt):
+                return rgb
+        r = min(max(r1 - int(math.floor((y - chin) / pix)), r0), r1)   # just off a pixel edge: nearest head pixel
+        opaque = np.where(rgba[r][:, 3] >= 128)[0]
+        return rgba[r][opaque[np.argmin(np.abs(opaque - min(max(c, 0), rgba.shape[1] - 1)))], :3] if len(opaque) else gold
+    pal, buckets = PALETTES.get(species), {}
+    if pal:
+        for (c, r) in head_cells:
+            y0 = chin + (r1 - r) * pix
+            buckets.setdefault(nearest(pal, rgba[r, c]), []).append(box(col_x(c), y0, col_x(c + 1), y0 + pix))
+        for hx, g in painted:
+            buckets.setdefault(nearest(pal, hexrgb(hx)), []).append(g)
+    hole_xy = [(col_x(c), chin + (r1 - r) * pix + pix / 2) for (c, r) in holes]
     def merged(lst):
         return unary_union(lst).buffer(0.02, join_style='mitre').buffer(-0.02, join_style='mitre') if lst else None
     regions = []
     if pal:
+        gi = [i for i, (nm, _) in enumerate(pal) if nm == 'gold'][0]
         for i, (nm, hx) in enumerate(pal):
-            if i in buckets:
-                regions.append((nm, hx, merged(buckets[i])))
+            if i == gi:
+                regions.append((nm, hx, rim))
+            elif i in buckets:
+                reg = merged(buckets[i]).intersection(sil).difference(rim)
+                if not reg.is_empty and reg.area > 0.5:
+                    regions.append((nm, hx, reg))
     return dict(name=species, title=title, blurb=blurb, sil=sil, pixel=True, deep=merged(fdeep), shallow=merged(fshallow), holes=hole_xy, front=[],
                 regions=regions, colour_at=colour_at)
 
 
 def design_pepe():
-    return pixel_pet('pepe', (11, 23), 26, 15.5, '#', 'wo', [(15.0, 12)], 'Pepe', 'the frog, arms and legs out, screen on his blue tee',
-                     limbs=dict(sleeve='#3d6fd1', arm='#5aa83c', hand='#5aa83c', leg='#5aa83c', foot='#5aa83c', leg_w=4))
+    return pixel_pet('pepe', (7, 24), 16, '#', 'w', [(15.5, 9)], 'Pepe', 'Mythic Pepe, hand on chin, standing tall in his blue tee', pix=2.7,
+                     torso=dict(cols=21, fill='#3d6fd1', light='#688fdb', shade='#325bab'),
+                     limbs=dict(sleeve='#3d6fd1', arm='#6aa84f', leg='#6aa84f', foot='#6aa84f', sleeve_rows=2, arm_rows=8, arm_w=3, leg_w=4, leg_rows=4))
 
 
 def design_bobo():
-    return pixel_pet('bobo', (10, 24), 26, 15.5, '#', 'w', [(8.5, 12)], 'Bobo', 'the bear, arms and legs out, screen on his red tee',
-                     limbs=dict(sleeve='#cc1414', arm='#704728', hand='#704728', leg='#704728', foot='#1a1020', leg_w=4))
+    return pixel_pet('bobo', (4, 25), 16, '#', 'w', [(6.5, 6)], 'Bobo', 'Mythic Bobo, the bear in his red tee', pix=2.6,
+                     torso=dict(cols=22, fill='#cc1414', light='#d74848', shade='#a71010'),
+                     limbs=dict(sleeve='#cc1414', arm='#704728', leg='#704728', foot='#1a1020', sleeve_rows=2, arm_rows=8, arm_w=3, leg_w=4, leg_rows=4))
 
 
 def design_dodo():
-    return pixel_pet('dodo', (9, 17), 22, 14.5, 'w', 'ro', [(19.5, 10)], 'Dodo', 'the dodo, wings out, standing on red feet', chin=67.6,
-                     limbs=dict(sleeve='#2a2a2a', arm='#2a2a2a', hand='#595959', sleeve_rows=6, arm_rows=6, fist=False,
-                                leg='#b40000', foot='#b40000', leg_w=2, leg_rows=3))
+    return pixel_pet('dodo', (3, 15), 18, '#', '', [(20.5, 5)], 'Dodo', 'Mythic Dodo, round and chubby, on red feet', pix=3.0, chin=70.0,
+                     round_body=dict(cx=0, cy=28, rx=38, ry=46, fill='#4a4a56', belly_hex='#7a7a88', belly=(0, 14, 22, 26),
+                                     wing=(10, [2, 3, 3, 3, 2, 1], '#3d3d47')),
+                     limbs=dict(leg='#c41a1a', foot='#c41a1a', leg_w=3, leg_rows=4))
 
 
 DESIGNS = {'pepe': design_pepe, 'bobo': design_bobo, 'dodo': design_dodo}

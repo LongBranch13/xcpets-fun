@@ -1,6 +1,6 @@
 # XCPETS Pet Shell
 
-A small handheld shaped like a pet from the game, head to feet: arms out, flat feet so it stands on a desk, the screen in its belly. It shows **one bonded pet, live**: its pixel art (it grows through the stages on
+A small handheld shaped like a Mythic pet from the game, head to feet, with the gold Mythic rim all round. Each pet has its own shape (Dodo is round and chubby). Flat feet let it stand on a desk; the screen sits in its belly. It shows **one bonded pet, live**: its pixel art (it grows through the stages on
 the screen too), hungry or fed, feed streak and stage. Press a button for a **feed QR**: scan it with a phone and xcpets.fun opens
 with the feed burn ready, for the player's **own wallet** to sign.
 
@@ -50,7 +50,8 @@ Rough cost per unit: **about $35-45** with your own printer.
   PLA, 0.2 mm layers, 3 walls, 15 % infill, **no supports**. The front prints face down (that makes the face crisp), the back prints
   back face down. Paint the cut-in face pixels with a paint pen if you like.
 - **Multi-colour** (Bambu with an AMS, Prusa MMU, or a print service): open `<pet>-multicolour.3mf`. The front comes in as one object
-  with one part per colour (Pepe: green, black, white, blue, red; Bobo: brown, black, white, red; Dodo: dark grey, grey, white, red).
+  with one part per colour (6 each, gold rim included. Pepe: green, black, white, blue, red, gold; Bobo: brown, black, white, red, tan, gold; Dodo: grey, light
+  grey, black, white, red, gold).
   Give each part its filament and print. The back is one colour.
 - **Shell number**: the back has a small box next to "No. … /21". In the slicer, use its text tool (Bambu/Orca: right-click >
   Add text; PrusaSlicer: right-click > Add part > Text) to write the number into the box, 0.4 mm deep, before printing.
@@ -109,8 +110,9 @@ What the screen says: *HUNGRY!* (not fed this chain day), *FED TODAY*, *STREAK N
 - Shells: `python3 -m pip install numpy shapely scikit-image trimesh manifold3d fast-simplification matplotlib rtree pillow`, then
   `python3 petshell/shells/make_shells.py` (all) or `... make_shells.py pepe`. Board measurements come from LilyGO's own 3D model
   (`dimensions/t-display-s3-full.stl` in github.com/Xinyuan-LilyGO/T-Display-S3). Each shell is the pet's icon
-  (`img/theme/sp-<species>.png`), one sprite pixel = 3.2 mm; the head is drawn as-is, the body row is repeated down as the torso
-  that holds the board, and pixel arms and legs are added (`limbs=` in each `design_<name>()`). The legs leave the USB-C port free. Adding a species = one `design_<name>()` line plus a palette. Older round designs (Hatchy, Chonk, Spook) are kept in
+  (the Mythic sprites in `shells/mythic/`, see its README), one sprite pixel = 2.6-3.0 mm (`pix=`); the head is drawn as-is, then a
+  body is added (`torso=` straight tee, or `round_body=` a pixel ellipse), arms or wings and legs (`limbs=`), and a gold rim. The legs
+  leave the USB-C port free (Dodo's round belly has a plug tunnel). Adding a species = one `design_<name>()` line plus a palette. Older round designs (Hatchy, Chonk, Spook) are kept in
   `EXTRA_DESIGNS`.
 - Pictures: `python3 petshell/shells/preview.py` (three.js in Playwright's Chromium; needs `npm i three@0.170.0`, path in `THREE_DIR`).
 - Firmware: `pip install platformio && pio run -d petshell/firmware`. Pure helpers live in `src/logic.h` and are tested on a computer
