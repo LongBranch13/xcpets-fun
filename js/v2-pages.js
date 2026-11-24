@@ -330,6 +330,7 @@
       $('crFed').textContent = fmt(fs2.fed); $('crNext').textContent = fs2.next != null ? fmt(fs2.next) + ' to ' + fs2.nextName : 'Mythic reached'; $('crProg').style.width = fs2.pct.toFixed(1) + '%'; }
     if (c.current === 'kek' && R.communityStats) { var ks = R.communityStats(w, rowsN); /* Lord Kek: care = burns since the Wizard's Mythic, 100x community thresholds */
       $('crFed').textContent = fmt(ks.fed); $('crNext').textContent = ks.next != null ? fmt(ks.next) + ' to ' + ks.nextName : 'Mythic reached'; $('crProg').style.width = ks.pct.toFixed(1) + '%'; }
+    if (!gap && R.communityGoalFill) R.communityGoalFill($('crFed'), $('crNext'), w); /* same framing as the pop-up: 'of 6,906,900 for Mythic' + 'n to Mythic' (Jake Nov 23 2026) */
     if ($('crBurned')) $('crBurned').textContent = fmt(Math.floor(c.burned)); $('crBurns').textContent = fmt(rowsN); $('crPets').textContent = fmt(petsN);
     $('crQuest').style.width = (rp.pct * 100).toFixed(2) + '%';
     $('crQuestTxt').textContent = wiz ? 'Nakamoto\'s finished story' : fmt(Math.floor(rp.count)) + ' XCPETS burned by the community';
