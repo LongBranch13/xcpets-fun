@@ -157,13 +157,16 @@
   /** mintAssets(rows) -> pet-token assets issued from ACTIVATE_SPAM_RULES_BLOCK on (rule 3: mint = tie, no burn announces them; ends at ACTIVATE_ONE_TIE_PATH_BLOCK, earlier mint ties stay). Reads the full nodes'
    *  global /issuances list (newest first) back to the gate; [] while the rules gate is null or not reached. Every node failing (or the page cap
    *  reached before the gate) rejects loadDex: the world stays unverified, never a silent guess. */
+  /* Nov 24 2026: pages of 100 (was 1,000) with 10x the page cap, the same depth. Some issuances inscribe ~750 KB descriptions, so one
+   * 1,000-row page could be hundreds of MB of text: JSON.parse ran the game server's sync service and feed job out of heap. */
+  var MINT_PAGE = 100, MINT_PAGES = 500;
   function nodeMintAssets(rows) { var G = V.rulesGate ? V.rulesGate() : null, top = (rows || []).reduce(function (m, r) { return Math.max(m, Number(r.block_index) || 0); }, 0); if (G == null || Math.max(top, (window.V2Mock && V2Mock.state && V2Mock.state().tip) || 0) < G) return Promise.resolve([]);
     var nodes = readBases(); nodes = nodes.filter(function (u) { return !netDead(u); }).concat(nodes.filter(function (u) { return netDead(u); }));
     function on(i) { if (i >= nodes.length) { var OG = V.oneTieGate ? V.oneTieGate() : null; if (OG != null && G < OG && !window.XCPETS_MINT_SCAN) return Promise.resolve(MINT_WINDOW.slice()); return Promise.reject(new Error('new pet tokens could not be read (every Counterparty node failed)')); }
       var base = nodes[i], out = {}, k = 0, seen = {}; if (DEAD[base]) return on(i + 1);
-      function go(cur) { return getJ(base + '/issuances?verbose=true&limit=1000' + (cur ? '&cursor=' + encodeURIComponent(cur) : '')).then(function (j) { if (!j || !Array.isArray(j.result)) throw new Error('bad issuances reply');
+      function go(cur) { return getJ(base + '/issuances?verbose=true&limit=' + MINT_PAGE + (cur ? '&cursor=' + encodeURIComponent(cur) : '')).then(function (j) { if (!j || !Array.isArray(j.result)) throw new Error('bad issuances reply');
         var lo = Infinity; j.result.forEach(function (x) { var b = Number(x.block_index); lo = Math.min(lo, b); if (b >= G && V.deedOk(x.asset) && V.mintId(x.description) != null) out[x.asset] = 1; });
-        if (!j.result.length || lo < G || !j.next_cursor) return Object.keys(out); return go(nextCur(j, seen, ++k, 50, 'issuances to scan')); }); }
+        if (!j.result.length || lo < G || !j.next_cursor) return Object.keys(out); return go(nextCur(j, seen, ++k, MINT_PAGES, 'issuances to scan')); }); }
       return go(null).catch(function (e) { noteNet(base, e); noteDead(base, e); return on(i + 1); }); }
     return on(0); }
   /* sale-cache: a verified BASE copy of the sale data (CI's api/boot.json, or this browser's last verified read) is stamped {tip, hash, assets}.
