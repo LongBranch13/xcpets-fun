@@ -41,7 +41,7 @@
     ['rip', 'PRESS F', 'Gone but not forgotten.', 'A pet in the Pet Cemetery', 'common', 1],
     ['old-money', OLD_MONEY_NAME, 'Paid full freight. Rarer: bred when breeding cost 690.', OLD_MONEY_RULE, 'rare', 1],
     ['day-one-degen', 'DAY ONE DEGEN', 'First five through the door. WAGMI.', 'One of the first five wallets to say WAGMI on a chain day', 'uncommon'],
-    /* OG BACKER (owner Nov 24 2026; art = a mini replica of the XCPETS token, no flavour quote): wallets holding the owner's XCPETS.FUN.D sub-asset (sold from its dispenser) = early backers of the game.
+    /* OG BACKER (owner Nov 24 2026; art = a mini replica of the XCPETS.FUN.D token (img/xcpets_fun_d_token.png), no flavour quote): wallets holding the owner's XCPETS.FUN.D sub-asset (sold from its dispenser) = early backers of the game.
      * Read from Counterparty balances (not the burns), so it is passed in as extra.backers; display only, lost if the asset is sent away. */
     ['og-backer', 'OG BACKER', '', 'Holds ' + 'XCPETS.FUN.D' + ' (bought from the dispenser)', 'legendary']
   ];
