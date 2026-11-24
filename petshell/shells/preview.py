@@ -27,36 +27,8 @@ def sprite_rgb(species):
 
 
 def colour_lookup(d, species):
-    """(x, y) on the shell -> RGB of the sprite pixel there (head as drawn, torso from the repeated body row)"""
-    spr = sprite_rgb(species)
-    args = DESIGN_ARGS[species]
-    (r0, r1), body_row, center, chin = args['head'], args['body_row'], args['center'], args.get('chin', M.CHIN_Y)
-
-    def at(x, y):
-        c = int(np.floor(x / M.PIX + center))
-        if y >= chin:
-            r = r1 - int(np.floor((y - chin) / M.PIX))
-            if r < r0:
-                r = r0
-        else:
-            r = body_row
-        c = min(max(c, 0), spr.shape[1] - 1)
-        r = min(max(r, 0), spr.shape[0] - 1)
-        px = spr[r, c]
-        if px[3] < 128:                                  # outside the sprite: nearest opaque pixel in that row
-            row = spr[r]
-            opaque = np.where(row[:, 3] >= 128)[0]
-            if len(opaque):
-                px = row[opaque[np.argmin(np.abs(opaque - c))]]
-        return px[:3] / 255.0
-    return at
-
-
-DESIGN_ARGS = {
-    'pepe': dict(head=(11, 23), body_row=26, center=15.5),
-    'bobo': dict(head=(10, 24), body_row=26, center=15.5),
-    'dodo': dict(head=(9, 17), body_row=22, center=14.5, chin=67.6),
-}
+    """(x, y) on the shell -> RGB 0..1, from the design's own colour map (head as drawn, torso, arms and legs)"""
+    return lambda x, y: np.asarray(d['colour_at'](x, y), dtype=float) / 255.0
 
 
 def coloured(tm, at, back=False):

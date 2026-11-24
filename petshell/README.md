@@ -1,6 +1,6 @@
 # XCPETS Pet Shell
 
-A small handheld shaped like a pet from the game. It shows **one bonded pet, live**: its pixel art (it grows through the stages on
+A small handheld shaped like a pet from the game, head to feet: arms out, flat feet so it stands on a desk, the screen in its belly. It shows **one bonded pet, live**: its pixel art (it grows through the stages on
 the screen too), hungry or fed, feed streak and stage. Press a button for a **feed QR**: scan it with a phone and xcpets.fun opens
 with the feed burn ready, for the player's **own wallet** to sign.
 
@@ -109,8 +109,8 @@ What the screen says: *HUNGRY!* (not fed this chain day), *FED TODAY*, *STREAK N
 - Shells: `python3 -m pip install numpy shapely scikit-image trimesh manifold3d fast-simplification matplotlib rtree pillow`, then
   `python3 petshell/shells/make_shells.py` (all) or `... make_shells.py pepe`. Board measurements come from LilyGO's own 3D model
   (`dimensions/t-display-s3-full.stl` in github.com/Xinyuan-LilyGO/T-Display-S3). Each shell is the pet's icon
-  (`img/theme/sp-<species>.png`), one sprite pixel = 3.2 mm; the head is drawn as-is and the body row is repeated down to hold the
-  board. Adding a species = one `design_<name>()` line plus a palette. Older round designs (Hatchy, Chonk, Spook) are kept in
+  (`img/theme/sp-<species>.png`), one sprite pixel = 3.2 mm; the head is drawn as-is, the body row is repeated down as the torso
+  that holds the board, and pixel arms and legs are added (`limbs=` in each `design_<name>()`). The legs leave the USB-C port free. Adding a species = one `design_<name>()` line plus a palette. Older round designs (Hatchy, Chonk, Spook) are kept in
   `EXTRA_DESIGNS`.
 - Pictures: `python3 petshell/shells/preview.py` (three.js in Playwright's Chromium; needs `npm i three@0.170.0`, path in `THREE_DIR`).
 - Firmware: `pip install platformio && pio run -d petshell/firmware`. Pure helpers live in `src/logic.h` and are tested on a computer
