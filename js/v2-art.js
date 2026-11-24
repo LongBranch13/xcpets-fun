@@ -136,7 +136,10 @@
   }
   /* Slim rows store the owner as o (an index) and nested addresses as {__s:N}.
    * pageOwner is the wallet this page was published for, used when the table is not here yet. */
-  function fillOwners(p, owners, pageOwner) {
+  /* done (optional, Nov 24 2026): a WeakSet the caller keeps for one owner table. Nested objects it already expanded with that
+   * table are skipped, so filling a 30,000-pet world again after each page batch costs a walk over the new copies only
+   * (expandOwners was 1.5 s of a 6 s load). Same result: expanding an object twice with the same table changes nothing. */
+  function fillOwners(p, owners, pageOwner, done) {
     if (!p || typeof p !== 'object') return p;
     /* Checkpoint pets keep {__s:N} until restore(), which expands them with the checkpoint table.
      * This function is given the view table. Those two lists do not share indexes, so a checkpoint
@@ -147,7 +150,7 @@
       if (from) p.owner = from;
       else if (pageOwner) p.owner = pageOwner;
     }
-    if (owners) expandOwners(p, owners, new Set());
+    if (owners) expandOwners(p, owners, done || new Set());
     if (p.owner && p.worn) {
       var i, g;
       for (i = 0; i < p.worn.length; i++) { g = p.worn[i]; if (g && (g.gid || g.label) && !g.owner) g.owner = p.owner; }

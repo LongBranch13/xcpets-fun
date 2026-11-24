@@ -12,12 +12,12 @@ for(const bad of [null,undefined,NaN,Infinity,-1,0,974930.5,974931])check(C.eraO
 check(C.eraOf(null,p(974841))===null,'no world');check(C.eraOf(w,{...p(974841),community:true})===null,'community pet has no player birth era');
 const old=JSON.stringify(w);era(974841);check(JSON.stringify(w)===old,'no world writes');
 const incomplete={...w,homerMythic:null};check(C.eraOf(incomplete,p(974841)).id==='homer','no fabricated handoff');
-const future={...w,rabbitMythic:{block:975000},penguinMythic:{block:975100},tip:975200};
-C.PETS.push({id:'penguin',no:7,name:'PENPEN',rec:'penguinMythic'},{id:'djpepe',no:8,name:'DJ Pepe',rec:'djpepeMythic'});
-c.V2Rules.ACTIVATE_PENGUIN_BLOCK=974950;c.V2Rules.ACTIVATE_DJPEPE_BLOCK=975050;
-check(C.eraOf(future,p(975000)).id==='penguin','future catalogue transition');check(C.eraOf(future,p(975100)).name==='DJ Pepe','future DJ Pepe without helper edit');
-c.V2Rules.ACTIVATE_DJPEPE_BLOCK=null;check(C.eraOf(future,p(975100)).id==='penguin','null gate stays off');
-c.V2Rules.ACTIVATE_DJPEPE_BLOCK=975150;check(C.eraOf(future,p(975149)).id==='penguin','delayed future gate honored');check(C.eraOf(future,p(975150)).id==='djpepe','future gate exact block');
+const future={...w,rabbitMythic:{block:975000},groyperMythic:{block:975100},tip:975200};
+C.PETS.push({id:'djpepe',no:8,name:'DJ Pepe',rec:'djpepeMythic'}); /* #7 is Groyper (real catalogue entry, Nov 24 2026); #8 a made-up future pet */
+c.V2Rules.ACTIVATE_GROYPER_BLOCK=974950;c.V2Rules.ACTIVATE_DJPEPE_BLOCK=975050;
+check(C.eraOf(future,p(975000)).id==='groyper','future catalogue transition');check(C.eraOf(future,p(975100)).name==='DJ Pepe','future DJ Pepe without helper edit');
+c.V2Rules.ACTIVATE_DJPEPE_BLOCK=null;check(C.eraOf(future,p(975100)).id==='groyper','null gate stays off');
+c.V2Rules.ACTIVATE_DJPEPE_BLOCK=975150;check(C.eraOf(future,p(975149)).id==='groyper','delayed future gate honored');check(C.eraOf(future,p(975150)).id==='djpepe','future gate exact block');
 C.PETS.splice(-2);
 // Render module with the same VM shims as api-feed; no browser/Telegram/wallet.
 c.document.readyState='loading';c.setInterval=()=>0;c.setTimeout=()=>0;

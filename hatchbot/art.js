@@ -15,7 +15,7 @@
 const fs = require('fs'), path = require('path'), vm = require('vm'), zlib = require('zlib');
 const ROOT = path.resolve(__dirname, '..');
 /* the sprite scripts pet.html loads, in its order (same list as tools/token-meta.js EXTRA) */
-const EXTRA = ['js/wizard-sprite.js', 'js/kek-sprite.js', 'js/funtrump-sprite.js', 'js/homer-sprite.js', 'js/rabbit-sprite.js', 'js/djpepe-sprite.js', 'js/viking-sprite.js', 'js/dragon-sprite.js', 'js/bo-sprite.js', 'js/rarepigeon-sprite.js', 'js/jackson-sprite.js', 'js/contest-sprite.js', 'js/dan-sprite.js', 'js/v2-bg.js', 'js/v2-looks.js', 'js/v2-clown-hair.js', 'js/v2-render.js'];
+const EXTRA = ['js/wizard-sprite.js', 'js/kek-sprite.js', 'js/funtrump-sprite.js', 'js/homer-sprite.js', 'js/rabbit-sprite.js', 'js/groyper-sprite.js', 'js/djpepe-sprite.js', 'js/viking-sprite.js', 'js/dragon-sprite.js', 'js/bo-sprite.js', 'js/rarepigeon-sprite.js', 'js/jackson-sprite.js', 'js/contest-sprite.js', 'js/dan-sprite.js', 'js/v2-bg.js', 'js/v2-looks.js', 'js/v2-clown-hair.js', 'js/v2-render.js'];
 
 function load(ctx) {
   if (ctx.V2Render) return ctx;
@@ -481,4 +481,4 @@ function event(ctx, w, ev) {
   if (k === 'shine') return anim(shine(S, Object.assign({}, cap, { bottom, halo: ev.halo !== false, color: ev.color && C[ev.color] })));
   return anim(idle(S, cap));
 }
-module.exports = { load, event, spriteSet, png, gif, readPng, imageSprite, Img, EXTRA, text, _scenes: { idle, shine, hatch, rise, miracle, dust, breed, devour, rage, grind, raid, banner, lineup } };
+module.exports = { load, event, spriteSet, png, gif, readPng, imageSprite, Img, EXTRA, text, textW, _scenes: { idle, shine, hatch, rise, miracle, dust, breed, devour, rage, grind, raid, banner, lineup } };

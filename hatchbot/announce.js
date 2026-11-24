@@ -22,9 +22,40 @@ const MAX_POSTS = 8; /* per run; anything beyond goes into one roundup post */
 const n = x => Number(x).toLocaleString('en-US');
 const TL = ['Common', 'Uncommon', 'Rare', 'Legendary'];
 
+/* ---------------------------------------------------------------- XCPETS emoji (Nov 24 2026)
+ * Pet names in posts end with their species' emoji ({pepe} tokens). HatchBot's XCPETS Emoji pack (hatchbot/stickers, workflow
+ * telegram-packs) replaces the plain emoji with the pet's own pixel emoji wherever Telegram lets a bot use custom emoji: in a group
+ * whose emoji pack is XCPETS Emoji, or anywhere once auto-config.json "custom_emoji" is true (bot owner has Telegram Premium). */
+const PACK_ALL = (() => { try { return JSON.parse(fs.readFileSync(path.join(__dirname, 'stickers/pets.json'), 'utf8')).pets; } catch (e) { return []; } })();
+const PACK_BY = {}; PACK_ALL.forEach(p => { if (p.look === 'no') PACK_BY[p.species] = p; });
+let EMO = null; /* species -> custom_emoji_id when this chat shows HatchBot's custom emoji */
+async function loadEmoji() {
+  if (EMO || DRY || !TOKEN || !CHAT) return; EMO = {};
+  try {
+    const get = async (m, b) => (await (await fetch('https://api.telegram.org/bot' + TOKEN + '/' + m, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(b), signal: AbortSignal.timeout(20e3) })).json());
+    const me = await get('getMe', {}), name = 'xcpets_emoji_by_' + (me.result && me.result.username);
+    let on = false; try { on = JSON.parse(fs.readFileSync(path.join(__dirname, 'auto-config.json'), 'utf8')).custom_emoji === true; } catch (e) {}
+    if (!on) { const c = await get('getChat', { chat_id: CHAT }); on = !!(c.ok && c.result.custom_emoji_sticker_set_name === name); }
+    if (!on) return;
+    const set = await get('getStickerSet', { name });
+    if (set.ok) PACK_ALL.forEach((p, i) => { const st = set.result.stickers[i]; if (p.look === 'no' && st && st.custom_emoji_id) EMO[p.species] = st.custom_emoji_id; });
+    console.log('XCPETS custom emoji on for ' + Object.keys(EMO).length + ' species');
+  } catch (e) { console.log('custom emoji check failed: ' + (e && e.message)); }
+}
+/** emo(text): {pepe} tokens -> { text, entities } (custom emoji where allowed, the plain emoji otherwise). */
+function emo(text) {
+  let out = '', last = 0, m; const entities = [], re = /\{([a-z]+)\}/g;
+  while ((m = re.exec(text))) { const p = PACK_BY[m[1]]; if (!p) continue; out += text.slice(last, m.index); last = re.lastIndex; const ch = p.emoji[0];
+    if (EMO && EMO[m[1]]) entities.push({ type: 'custom_emoji', offset: out.length, length: ch.length, custom_emoji_id: EMO[m[1]] }); out += ch; }
+  out += text.slice(last);
+  return { text: out, entities: entities.length ? entities : null };
+}
+const petEmoji = sp => (PACK_BY[sp] ? ' {' + sp + '}' : '');
+
 /* ---------------------------------------------------------------- Telegram */
 function clean(t) { return String(t).replace(/\b(bc1|tb1)[a-z0-9]{8,}\b/gi, 'a player').replace(/\b[13][a-km-zA-HJ-NP-Z1-9]{25,34}\b/g, 'a player'); }
 async function tg(method, body) {
+  if (body.text) { const e = emo(body.text); body = Object.assign({}, body, { text: e.text }, e.entities ? { entities: e.entities } : {}); }
   if (DRY || !TOKEN || !CHAT) { console.log('--- ' + method + (DRY ? ' (dry)' : ' (no token/chat)') + '\n' + (body.text || body.caption || '')); return true; }
   for (let i = 0; i < 3; i++) {
     let r; try { r = await fetch('https://api.telegram.org/bot' + TOKEN + '/' + method, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(Object.assign({ chat_id: CHAT }, body)), signal: AbortSignal.timeout(60e3) }); }
@@ -43,9 +74,10 @@ const ART_OUT = opt('--art-out'), NO_ART = has('--no-art');
 /* Drawing GIFs is slow; past this point in a run, posts go out as text so the run finishes well inside the workflow's 15 minutes. */
 const T_START = Date.now(), ART_BUDGET_MS = 7 * 60e3;
 async function tgFile(method, field, file, name, caption) {
+  const ce = emo(caption); caption = ce.text;
   if (DRY || !TOKEN || !CHAT) { if (ART_OUT) { fs.mkdirSync(ART_OUT, { recursive: true }); const f = path.join(ART_OUT, String(++tgFile.n).padStart(2, '0') + '-' + name); fs.writeFileSync(f, file); console.log('--- ' + method + ' ' + f); } else console.log('--- ' + method + ' (' + file.length + ' bytes)'); console.log(caption); return true; }
   for (let i = 0; i < 3; i++) {
-    const fd = new FormData(); fd.append('chat_id', CHAT); fd.append('caption', caption); fd.append(field, new Blob([file]), name);
+    const fd = new FormData(); fd.append('chat_id', CHAT); fd.append('caption', caption); if (ce.entities) fd.append('caption_entities', JSON.stringify(ce.entities)); fd.append(field, new Blob([file]), name);
     let r; try { r = await fetch('https://api.telegram.org/bot' + TOKEN + '/' + method, { method: 'POST', body: fd, signal: AbortSignal.timeout(120e3) }); }
     catch (e) { console.log('telegram ' + method + ' no answer (' + (e && (e.name || e.message)) + '): it may have posted, so no text copy and no retry'); return true; }
     if (r.ok) return true;
@@ -91,10 +123,15 @@ function replay() {
 /* ---------------------------------------------------------------- events */
 function petName(w, id, V) { const p = w.byId[id]; if (!p) return '#' + id;
   let sp = p.species; try { sp = V.speciesLabel(p.species); } catch (e) {}
-  return (p.name || 'Pet') + ' #' + id + (sp ? ' the ' + sp : ''); }
+  return (p.name || 'Pet') + ' #' + id + (sp ? ' the ' + sp : '') + petEmoji(p.species); }
 const link = id => 'xcpets.fun/pet.html?id=' + id;
 const isMythic = p => !!p && (p.mythicCare || p.stage >= 5);
 
+/* Community pet hand-off posts (Nov 24 2026): the log kind each community pet's Cold Storage writes (V2Rules COMMUNITY_HANDOFF), and the line for the pet that takes over. */
+const COLD_POST = { homercold: { id: 'homer', name: 'Homer Pepe', emoji: '🍩', eggs: 'Homer Pepe', banner: 'HOMER PEPE IS MYTHIC' },
+  rabbitcold: { id: 'rabbit', name: 'The White Rabbit', emoji: '🐇⌚', eggs: 'White Rabbit', banner: 'WHITE RABBIT IS MYTHIC' },
+  groypcold: { id: 'groyper', name: 'Groyper', emoji: '🐸', eggs: 'Groyper', banner: 'GROYPER IS MYTHIC' } };
+const COLD_POST_NEXT = { rabbit: '🐇 The White Rabbit is the new community pet. Every burn feeds him!', groyper: '🐸 GROYPER floats in on a lily pad: he is community pet #7. Every burn feeds him. Comfy.' };
 /* Every event has a stable key, the block it happened at and its text. Old keys are never posted twice. */
 function collect(V, w, tip, from) {
   const out = [], add = (key, at, text, prio, art) => out.push({ key, at, text, prio: prio || 1, art: art || null });
@@ -110,6 +147,9 @@ function collect(V, w, tip, from) {
     else if (x.kind === 'breed') { const egg = (m.match(/Egg #(\d+)/) || [])[1]; const ids = (m.match(/#(\d+)/g) || []).map(s => +s.slice(1));
       const big = ids.slice(0, 2).some(i => w.byId[i] && ((w.byId[i].tier | 0) >= 3 || isMythic(w.byId[i])));
       if (big) add(k, x.block, "💘 IT'S A MATCH! " + petName(w, ids[0], V) + ' and ' + petName(w, ids[1], V) + " checked into Gooby's Motel and made an egg" + (egg ? ' (#' + egg + ')' : '') + '! 🥚 Big genes incoming.' + (egg ? '\n' + link(egg) : ''), 2, { kind: 'breed', ids: ids.slice(0, 2), egg: egg ? +egg : null }); }
+    else if (COLD_POST[x.kind]) { const P = COLD_POST[x.kind], tot0 = (m.match(/\((\d+) burned\)/) || [])[1], tot = tot0 && Number(tot0).toLocaleString('en-US'), cur = w.community && w.community.current, nx = cur && cur !== P.id && COLD_POST_NEXT[cur]; /* community pet -> Cold Storage (Nov 24 2026: the hand-off used to post nothing) */
+      add(k, x.block, '🧊 MYTHIC! ' + P.name + ' just hit Mythic' + (tot ? ' with ' + tot + ' XCPETS burned by the community' : '') + ' and went into COLD STORAGE. ' + P.emoji + '\n🥚 ' + P.eggs + ' eggs now hatch (1 in 777) and can breed.\n✂️ Burn costs halve 6 blocks from now.' + (nx ? '\n' + nx : '') + '\nxcpets.fun', 5, { kind: 'banner', top: 'COLD STORAGE!', bottom: P.banner, color: 'cyan' }); }
+    else if (x.kind === 'grant' && /^XCPETS:raisers:/.test(x.tx || '')) add(k, x.block, '🎁 RAISER PRIZES! ' + clean(m) + '. Check your gear! 🎉\nxcpets.fun', 4, { kind: 'banner', top: 'RAISER PRIZES!', bottom: 'THANKS FOR FEEDING HIM', color: 'gold' });
     else if (x.kind === 'mzfull') add(k, x.block, '💀 FULL POWER! ' + petName(w, +id, V) + ' just maxed out its zombie power. Nobody is safe. 🧟\n' + link(id), 3, { kind: 'rage', id: +id, color: 'green' });
   });
   /* 2) Legendary hatches (one post per pet, or one roundup when a big egg case drops several) */
@@ -171,6 +211,7 @@ function drawPics(w, ctx, tip, dir) {
 }
 /* ---------------------------------------------------------------- main */
 async function main() {
+  await loadEmoji();
   if (opt('--update') != null) { /* a prepared update series (hatchbot/updates/<name>.json): { posts: [{ text, art? }] }, posted in order with its pictures */
     const f = path.resolve(ROOT, 'hatchbot/updates', path.basename(opt('--update')).replace(/\.json$/, '') + '.json');
     const U = JSON.parse(fs.readFileSync(f, 'utf8')), posts = (U.posts || []).filter(x => x && x.text);

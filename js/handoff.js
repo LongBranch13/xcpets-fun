@@ -130,7 +130,7 @@
     o.innerHTML = '<div class="xh-box">' + html + '</div>'; o.addEventListener('click', function (e) { if (e.target === o || (e.target.closest && e.target.closest('[data-xh-close]'))) close(); }); d.body.appendChild(o); return o; }
   var qrLoad = null;
   function loadQr() { if (w.qrcode) return Promise.resolve(w.qrcode); if (qrLoad) return qrLoad;
-    qrLoad = new Promise(function (res, rej) { var s = d.createElement('script'); s.src = 'js/qr.min.js?v=xh1124a'; s.onload = function () { w.qrcode ? res(w.qrcode) : rej(new Error('QR')); }; s.onerror = function () { qrLoad = null; rej(new Error('QR')); }; d.head.appendChild(s); });
+    qrLoad = new Promise(function (res, rej) { var s = d.createElement('script'); s.src = 'js/qr.min.js?v=xh1124b'; s.onload = function () { w.qrcode ? res(w.qrcode) : rej(new Error('QR')); }; s.onerror = function () { qrLoad = null; rej(new Error('QR')); }; d.head.appendChild(s); });
     return qrLoad; }
   function qrSvg(text) { var q = w.qrcode(0, text.length > 900 ? 'L' : 'M'); q.addData(text, 'Byte'); q.make(); return q.createSvgTag({ cellSize: 4, margin: 0, scalable: true }); }
 
