@@ -1680,6 +1680,8 @@
     h += '<div class="small">' + (left ? fmtN(left) + ' XCPETS to <b>Mythic</b> (' + Math.floor(pct) + '% there)' : '<b>Mythic reached!</b>') + '</div>';
     h += '<div class="small muted">Every XCPETS burn feeds him: hatches, meals, fights, breeding, all of it.</div>';
     if (left) h += '<div class="ctip-h small">🌕 <b>At Mythic:</b> every burn costs half (the next halving)' + (P.eggs ? ' and ' + esc(P.eggs) : '') + '.</div>';
+    var PZ = V2.raisersOn && V2.raisersOn() && V2.RAISER_PRIZES && V2.RAISER_PRIZES[c.current], gl = function (id) { var x = ((window.V2Gear && V2Gear.WR_RAISER_GEAR) || []).filter(function (g) { return g[0] === id; })[0]; return x ? x[1] : id; };
+    if (PZ && left) h += '<div class="ctip-h small">🎁 <b>Raiser prizes at Mythic:</b> everyone who fed him ' + fmtN(V2.RAISER_MIN) + '+ gets a <b>' + esc(gl(PZ.all)) + '</b>; the top ' + V2.RAISER_TOP + ' also get the <b>' + esc(gl(PZ.top)) + '</b>.</div>'; /* community raiser prizes (rules grantRaisers, gated) */
     var rs = raisersOf(w);
     if (rs) { var i = -1, mine = 0; rs.forEach(function (x, n) { if (me && x.address === me) { i = n; mine = x.amount; } });
       h += '<div class="ctip-h small">🫵 ' + (!me ? 'Connect a wallet to see your share.' : i >= 0 ? 'You raised <b>' + bigN(mine) + '</b> (' + (100 * mine / Math.max(fed, 1e-9)).toFixed(mine / fed >= 0.1 ? 0 : 1) + '%) · <b>#' + (i + 1) + '</b> of ' + rs.length + ' raisers' : 'You have not fed him yet. Any burn counts!') + '</div>';
