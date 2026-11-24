@@ -16,6 +16,15 @@ ok("guard blocks connection details and the banned name", ["at home", ["st", "ar
 ok("guard allows xcpets.fun links", A.violations("See https://xcpets.fun/pet.html?id=42").length === 0);
 ok("guard blocks other links", A.violations("see example.com").length > 0);
 
+/* 1b) FOMO lines (hatchbot/fomo.mjs): true numbers only, never on warnings or the recap, captions stay short */
+{ const s = { tip: 977330, cm: { current: "rabbit", fed: 3800000 }, hatched: 206900 }, P = [{ type: "hybrid", keys: ["a"], text: "x" }, { type: "warning_feed_lag", keys: ["b"], text: "y" }, { type: "recap", keys: ["c"], text: "z" }];
+  A.withFomo(P, s);
+  ok("fomo line added to a hybrid post", P[0].text.length > 1 && P[0].text.startsWith("x\n\n"));
+  ok("no fomo on warnings or the recap", P[1].text === "y" && P[2].text === "z");
+  ok("fomo never pushes a caption past 1000 chars", A.withFomo([{ type: "hybrid", keys: ["d"], text: "q".repeat(990) }], s)[0].text.length === 990);
+  ok("fomo shows the community pet's real %", A.withFomo([{ type: "battle", keys: ["e"], text: "w" }], { cm: { current: "rabbit", fed: 3800000 } })[0].text.includes("55%"));
+  ok("no gate line once its block has passed", !A.withFomo([{ type: "battle", keys: ["f"], text: "w" }], { tip: 977441 })[0].text.includes("Pool Dip")); }
+
 /* 2) everything off: no fetch, no state */
 ok("all switches off: nothing runs", (await A.autoTick(env, C, tg)).off === true && store.size === 0);
 
