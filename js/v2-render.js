@@ -110,6 +110,7 @@
   /* gear-fit 2026-11-23 (Jake: "these glasses don't fit", Poyofu #23620 Wojak Mythic, Pope #4528 Nakamoto Mythic): Rabbit-hole shades and the Teardrop gem
    * had no eye trace (v2-gear.js EYE_GEAR is a rule file, so it is set here, render only), so they were stamped as a fixed 9-px map at a guessed eye row:
    * a black blob between/above the eyes on tall or off-centre faces. Now traced on the real eyes like every other pair of shades. The map stays the icon. */
+  if (BonusGear.DEFS['sig-nakamoto-face']) BonusGear.DEFS['sig-nakamoto-face'].v2eye = { s: 'shadow' }; /* sprite-qa 2026-11-24: traced hood shadow (drawEyeGear 'shadow'); the map below stays the icon + fallback */
   [['wr-shades', { s: 'glasses', f: 'n', l: ['n', 'Z'], drop: 1, up: 1, wide: 1 }], ['v2-teardrop-gem', { s: 'tear' }]].forEach(function (e) { var d0 = BonusGear.DEFS[e[0]]; if (d0 && !d0.v2eye) BonusGear.DEFS[e[0]] = Object.assign({}, d0, { v2eye: e[1] }); });
   /* shadow-face-1123 (Jake Nov 23 2026: "this black spot is like a shadowed face... it could look way cooler"): Nakamoto's ★ Shadowed face
    * was a flat grey-black block. Same size and slot, drawn here at render time only (the rule file v2-gear.js keeps its map, so no rsig change):
@@ -448,6 +449,17 @@
     if (g.s === 'shiner') { injure(img, a.isSil, B, a); return; }
     if (g.s === 'bags') { B.forEach(function (b) { for (x = b.x0; x <= b.x1; x++) put(x, b.y1 + 1, g.f); }); return; }
     var ecy = Math.round(E.reduce(function (t, e) { return t + e[1]; }, 0) / E.length), top = Math.max(ecy - 1, Math.min.apply(null, B.map(function (b) { return b.y0; }))) - (g.up || 0), bot = Math.min(ecy + 1, Math.max.apply(null, B.map(function (b) { return b.y1; }))) + (g.drop || 0); // lenses stay on the eye line (tall eyes, e.g. Peepo, are not boxed whole)
+    if (g.s === 'shadow') { /* sprite-qa 2026-11-24 (Jake: "it doesnt work whatever it is", Yetememi #114875): Nakamoto's Shadowed face was a 7x8 block over the
+       * whole face. Now the pet's own face sinks into the hood's shadow: the brow and eye rows go near-black and fade out over the cheeks, the eyes become
+       * two glowing Bitcoin-orange embers, and the mouth stays in the half-light. Traced on this frame's real eyes, so it fits every face and bobs with it. */
+      var sx0 = B[0].x0 - 2, sx1 = B[B.length - 1].x1 + 2, y0s = Math.max(a.minY + 1, top - 2), y1s = Math.min(31, bot + 2), cxs = (sx0 + sx1) / 2, rx = (sx1 - sx0) / 2 + 0.6, ry = (y1s - y0s) / 2 + 0.6, cys = (y0s + y1s) / 2 - 0.5;
+      for (y = y0s; y <= y1s; y++) for (x = Math.max(0, sx0); x <= Math.min(31, sx1); x++) { if (!a.isSil(x, y)) continue; /* a rounded pool of shadow, darkest at the brow, soft at its rim */
+        var e2 = Math.pow((x - cxs) / rx, 2) + Math.pow((y - cys) / ry, 2); if (e2 > 1.05) continue; var f = e2 > 0.72 ? 0.55 : y > bot ? 0.38 : 0.16;
+        var q = (y * 32 + x) * 4; D[q] = Math.round(D[q] * f + 14 * (1 - f)); D[q + 1] = Math.round(D[q + 1] * f + 8 * (1 - f)); D[q + 2] = Math.round(D[q + 2] * f + 24 * (1 - f)); }
+      var glow = function (x2, y2, c) { if (x2 < 0 || y2 < 0 || x2 > 31 || y2 > 31 || !a.isSil(x2, y2)) return; var q = (y2 * 32 + x2) * 4; D[q] = c[0]; D[q + 1] = c[1]; D[q + 2] = c[2]; };
+      B.forEach(function (b) { var w = b.x1 - b.x0 + 1, cx = Math.round((b.x0 + b.x1) / 2), gy = Math.max(b.y0, Math.min(b.y1, ecy)), x2 = w >= 3 ? cx - (w >= 4 ? 1 : 0) : cx;
+        glow(x2 - 1, gy, [120, 40, 8]); glow(x2 + (w >= 4 ? 2 : 1), gy, [120, 40, 8]); glow(x2, gy, [255, 176, 46]); if (w >= 4) glow(x2 + 1, gy, [255, 214, 120]); glow(x2, gy + 1, [150, 60, 10]); });
+      return; }
     if (spid === 'chud' && (g.s === 'glasses' || g.s === 'visor')) { /* Chud's built-in dark-framed glasses: equipped eyewear covers them whole (no double frame) */
       var bx0 = B[0].x0, bx1 = B[B.length - 1].x1, cx2 = Math.round((bx0 + bx1) / 2), rowDark = function (yy) { var n2 = 0; for (var xx = bx0; xx <= bx1; xx++) if (dk(xx, yy)) n2++; return n2 >= (bx1 - bx0 + 1) * 0.5; };
       while (top - 1 > a.minY && rowDark(top - 1) && ecy - top < 2) top--; while (bot + 1 < a.maxY && rowDark(bot + 1) && bot - ecy < 3) bot++;
@@ -834,7 +846,98 @@
   if (V) { V._rareTierPaint = rareTierPaint; V._rareTierFrames = rareTierFrames; V._dynastPaint = dynastPaint; V._dynastFrames = dynastFrames; }
   function clownWanted(ids, ov) { var a = (ids || []).concat(ov || []), i; for (i = 0; i < a.length; i++) if (a[i] === 'v2-honk') return true; return false; }
   function framesWith(art, stage, itemIds, extraOv, cap, baseGo) { var fr = framesWithB(art, stage, itemIds, extraOv, cap, baseGo); if (!(art && art.cross && art.cross.body && window.ContestSprite && ContestSprite.CROSS)) { /* 1 OF 1 CROSS body already carries its look */ if (art && art.boMark && !art.boLook) fr = boMarkFrames(fr, art, stage); if (art && art.rpMark && !art.rpLook) fr = rpMarkFrames(fr, art, stage); if (art && (art.rpLook || art.boLook)) fr = oneOfOneLookFrames(fr, art, stage); if (art && art.rareTier) fr = rareTierFrames(fr, art, stage, itemIds, extraOv, cap, baseGo); if (art && !stage && art.rareHatch) fr = rareEggFrames(fr, art, itemIds, extraOv, cap, baseGo); }
-    if (window.V2ClownHair && stage && clownWanted(itemIds, extraOv)) fr = window.V2ClownHair.apply(fr, art, stage | 0); return fr; }
+    if (window.V2ClownHair && stage && clownWanted(itemIds, extraOv)) fr = window.V2ClownHair.apply(fr, art, stage | 0);
+    if (art && art.hybrid && stage && !hatBusy) fr = keptTopHat(fr, art, stage, itemIds, extraOv, cap, baseGo);
+    if (art && art.hybrid && stage && Array.isArray(art.hybrid.parts) && art.hybrid.parts.some(function (q) { return q.sp === 'dodo' && q.part === 'beak'; })) fr = dodoBeak(fr, art, stage);
+    if (art && art.hybrid && art.hybrid.shape === 'kek' && stage && Array.isArray(art.hybrid.parts) && art.hybrid.parts.some(function (q) { return q.sp === 'nakamoto' && q.part === 'glasses'; })) fr = kekGlassArms(fr, art, stage);
+    if (art && art.hybrid && art.hybrid.shape === 'kek' && stage && Array.isArray(art.hybrid.parts) && art.hybrid.parts.some(function (q) { return q.sp === 'orangedragon' && q.part === 'wings'; })) fr = kekDragonWings(fr, art, stage); return fr; }
+  /* sprite-qa 2026-11-24 (potential-hybrid sweep): on a Kek body the Orange Dragon wings part erased Kek's own wings on the wings-down frames and
+   * drew a stub (half of it past the canvas edge), so the pet flickered between two full wings and a stub; on the other frames the part already looks
+   * like Kek's wings. Display only: every frame shows the wings as the body draws them without the part, so both wings stay and flap together. */
+  function kekDragonWings(fr, art, stage) {
+    try { var nh = Object.assign({}, art.hybrid, { parts: art.hybrid.parts.filter(function (q) { return !(q.sp === 'orangedragon' && q.part === 'wings'); }) });
+      var RW = framesWithB(art, stage, [], []), RN = framesWithB(Object.assign({}, art, { hybrid: nh }), stage, [], []); /* the bare pet with and without the part, on its real background */
+      return fr.map(function (F, f) { var w = RW[f % RW.length].data, n = RN[f % RN.length].data, D = F.data, d = null;
+        for (var i = 0; i < 1024; i++) { var q = i * 4; if (w[q] === n[q] && w[q + 1] === n[q + 1] && w[q + 2] === n[q + 2]) continue;
+          if (D[q] !== w[q] || D[q + 1] !== w[q + 1] || D[q + 2] !== w[q + 2]) continue; /* gear drawn here: leave it */
+          if (!d) d = new Uint8ClampedArray(D); d[q] = n[q]; d[q + 1] = n[q + 1]; d[q + 2] = n[q + 2]; d[q + 3] = 255; }
+        return d ? Object.assign({}, F, { data: d }) : F; });
+    } catch (e) { return fr; } }
+  /* sprite-qa 2026-11-24: on a Kek body the rules run the Nakamoto glasses' side arms along the whole row, so a black line crossed both wings
+   * (#46072, #46074). Display only: the arms stop 3 px past the lenses (the edge of the face) and the wing pixels under the rest come back. */
+  function kekGlassArms(fr, art, stage) {
+    try { var key = Object.assign({}, art, { background: 'solid', bgColor: '#ff00ff', pattern: 'none' }), nb = Object.assign({}, key, { hybrid: Object.assign({}, key.hybrid, { parts: key.hybrid.parts.filter(function (q) { return !(q.sp === 'nakamoto' && q.part === 'glasses'); }) }) });
+      var KW = framesWithB(key, stage, [], []), KN = framesWithB(nb, stage, [], []);
+      return fr.map(function (F, f) { var w = KW[f % KW.length].data, n = KN[f % KN.length].data, L = 99, R = -1, i, q, d = null;
+        for (i = 0; i < 1024; i++) { q = i * 4; if (w[q] === n[q] && w[q + 1] === n[q + 1] && w[q + 2] === n[q + 2]) continue; if (w[q + 2] > 140 && w[q + 2] > w[q] + 40) { L = Math.min(L, i & 31); R = Math.max(R, i & 31); } } /* the blue lenses */
+        if (R < 0) return F;
+        for (i = 0; i < 1024; i++) { var x = i & 31; if (x >= L - 3 && x <= R + 3) continue; q = i * 4; if (w[q] === n[q] && w[q + 1] === n[q + 1] && w[q + 2] === n[q + 2]) continue;
+          if (F.data[q] !== w[q] || F.data[q + 1] !== w[q + 1] || F.data[q + 2] !== w[q + 2]) continue; if (!d) d = new Uint8ClampedArray(F.data); d[q] = n[q]; d[q + 1] = n[q + 1]; d[q + 2] = n[q + 2]; }
+        return d ? Object.assign({}, F, { data: d }) : F; });
+    } catch (e) { return fr; } }
+  /* sprite-qa 2026-11-24 (Jake: "that kekdodo beak doesnt look great", Chafokak #89552): the Dodo beak hybrid part is drawn by the rules on a front-facing
+   * face as a flat 7-px red triangle, which read as a bib or a gem, not a beak (22 living pets, every body shape). Display only: that drawing is found by
+   * rendering the same hybrid with and without the beak part, covered with the face's skin, and a real beak goes in its place: a hooked bill in a
+   * three-quarter view with a lit top, an open-mouth line and a dark tip, in the same beak colour. Gear drawn over the face stays on top. */
+  var beakMemo = {};
+  function dodoBeak(fr, art, stage) {
+    try { if (!fr || !fr.length || (fr[0].width || 32) !== 32) return fr;
+      var mk = JSON.stringify([art, stage]), plan = beakMemo[mk];
+      if (!plan) { var key = Object.assign({}, art, { background: 'solid', bgColor: '#ff00ff', pattern: 'none' }), nb = Object.assign({}, key, { hybrid: Object.assign({}, key.hybrid, { parts: key.hybrid.parts.filter(function (q) { return !(q.sp === 'dodo' && q.part === 'beak'); }) }) });
+        var KW = framesWithB(key, stage, [], []), KN = framesWithB(nb, stage, [], []); /* the same body path as the pet (Kek, Wizard, Viking bodies have their own) */
+        plan = beakMemo[mk] = KW.map(function (w, f) { var a = w.data, b = KN[f].data, red = {}, ms = [], rx0 = 99, rx1 = -1, ry0 = 99, i, cnt = {}, best = null, sk = {}, skin = null;
+          for (i = 0; i < 1024; i++) { var q = i * 4; if (a[q] === b[q] && a[q + 1] === b[q + 1] && a[q + 2] === b[q + 2]) continue; ms.push(i);
+            if (a[q] > 70 && a[q] > a[q + 1] * 1.6 && a[q] > a[q + 2] * 1.6) { /* every shade of the beak (its dark tip too) */ red[i] = 1; rx0 = Math.min(rx0, i & 31); rx1 = Math.max(rx1, i & 31); ry0 = Math.min(ry0, i >> 5); var c = a[q] + ',' + a[q + 1] + ',' + a[q + 2]; cnt[c] = (cnt[c] || 0) + (a[q] > 150 ? 1 : 0.01); if (!best || cnt[c] > cnt[best]) best = c; } }
+          if (!best) return null; var dark = function (q) { return a[q] + a[q + 1] + a[q + 2] < 120; }, clr = [];
+          ms.forEach(function (j) { var q = j * 4; if (red[j]) { clr.push(j); return; } if (dark(q) && (red[j + 1] || red[j - 1] || red[j + 32] || red[j - 32])) { clr.push(j); return; } var c = a[q] + ',' + a[q + 1] + ',' + a[q + 2]; if (!dark(q)) { sk[c] = (sk[c] || 0) + 1; if (!skin || sk[c] > sk[skin]) skin = c; } });
+          var A = best.split(',').map(Number), S = skin ? skin.split(',').map(Number) : A;
+          var rows = rx1 - rx0 + 1 >= 6 ? ['.hhhh..', 'hAAAAAd', 'hAAAAdt', 'nnnnntt', '.AAAd.t', '..dd...'] : ['.hhh.', 'hAAAt', 'nnntt', '.Ad..'];
+          /* a dodo's bill: bone-pale with a dark hooked tip, so the face reads "beak", not "red lips" */
+          var pal = { A: [232, 208, 140], h: [255, 242, 196], d: [176, 136, 78], t: [112, 76, 44], n: [20, 16, 24] };
+          var w0 = rows[0].length, x0 = Math.round((rx0 + rx1) / 2 - (w0 - 1) / 2), y0 = ry0, put = [], on = {};
+          rows.forEach(function (r, yy) { for (var xx = 0; xx < w0; xx++) { var ch = r.charAt(xx), X = x0 + xx, Y = y0 + yy; if (ch === '.' || X < 0 || Y < 0 || X > 31 || Y > 31) continue; on[Y * 32 + X] = 1; put.push([Y * 32 + X, pal[ch]]); } });
+          put.slice().forEach(function (p) { [1, -1, 32, -32].forEach(function (d) { var n = p[0] + d, q = n * 4; if (n < 0 || n > 1023 || on[n] || Math.abs((n & 31) - (p[0] & 31)) > 1) return; if (b[q] > 240 && b[q + 1] < 16 && b[q + 2] > 240) return; on[n] = 1; put.push([n, pal.n]); }); });
+          return { w: a, clr: clr, skin: S, put: put }; }); }
+      return fr.map(function (F, f) { var P = plan[f % plan.length]; if (!P) return F; var d = new Uint8ClampedArray(F.data), w = P.w, same = function (j) { var q = j * 4; return d[q] === w[q] && d[q + 1] === w[q + 1] && d[q + 2] === w[q + 2]; }, ok = {};
+        P.clr.concat(P.put.map(function (p) { return p[0]; })).forEach(function (j) { ok[j] = same(j); }); /* only pixels the gear layer left as the bare face */
+        P.clr.forEach(function (j) { if (ok[j]) { var q = j * 4; d[q] = P.skin[0]; d[q + 1] = P.skin[1]; d[q + 2] = P.skin[2]; } });
+        P.put.forEach(function (p) { if (ok[p[0]]) { var q = p[0] * 4; d[q] = p[1][0]; d[q + 1] = p[1][1]; d[q + 2] = p[1][2]; d[q + 3] = 255; } });
+        return Object.assign({}, F, { data: d }); });
+    } catch (e) { return fr; } }
+  /* sprite-qa 2026-11-24 (Jake: "yes if it fits right"): a hybrid that keeps a parent's top (Wizard hat, FUNTRUMP hair, Kek nemes) drew no worn
+   * headwear at all: the kept top covered it or the body's gear layer skipped it (5 living pets: a laurel, a party hat, three crowns). When a worn
+   * head piece changes no pixel, a small version is drawn on the pet's own top on every frame, measured on that frame, so it bobs with the pet:
+   * crowns/tiaras/laurels sit where the top first gets wide enough (a crowned Wizard hat, a crown on the hair), bands wrap that row, other hats
+   * get a small cone. Display only. */
+  var hatBusy = false;
+  function keptTopHat(fr, art, stage, itemIds, extraOv, cap, baseGo) {
+    var heads = (itemIds || []).filter(function (id) { var it = V.GEAR_BY_ID[id]; return it && it.slot === 'head' && id !== 'wizard-hat'; }); if (!heads.length || !fr || !fr.length || (fr[0].width || 32) !== 32) return fr;
+    hatBusy = true; try {
+      var key = Object.assign({}, art, { background: 'solid', bgColor: '#ff00ff', pattern: 'none' }), rest = (itemIds || []).filter(function (id) { return heads.indexOf(id) < 0; });
+      var id = heads[0], it = V.GEAR_BY_ID[id] || {}, lab = String(it.label || id).toLowerCase(), cols = itemCols(id), m = /\b(gold|golden|silver|brown|black|white|red|green|blue|midnight|purple|pink|orange|iron|wooden|denim)\b/i.exec(lab); if (m) cols = [WORD_COL[m[1].toLowerCase()]].concat(cols);
+      var keptTop = ((art.hybrid && art.hybrid.parts) || []).some(function (q) { var d0 = V.partDef && V.partDef(q.sp, q.part); return (d0 && d0.kind === 'top') || q.part === 'hat' || q.part === 'nemes'; });
+      var K0 = framesWith(key, stage, rest, extraOv, cap, baseGo), K1 = framesWith(key, stage, itemIds, extraOv, cap, baseGo), hits = 0, diff = 0, f, i, pal = cols.slice(0, 4).map(hexRgbR);
+      /* shown = the piece's own colours appear where it changed pixels (a crown under FUNTRUMP hair only nudges the hair colours) */
+      for (f = 0; f < 1; f++) for (i = 0; i < 4096; i += 4) { var A1 = K1[f].data, A0 = K0[f].data; if (A1[i] === A0[i] && A1[i + 1] === A0[i + 1] && A1[i + 2] === A0[i + 2]) continue; diff++;
+        if (pal.some(function (c) { return Math.abs(c[0] - A1[i]) + Math.abs(c[1] - A1[i + 1]) + Math.abs(c[2] - A1[i + 2]) < 60; })) hits++; }
+      if (hits >= 4 || (diff && !keptTop)) return fr; /* drawn and visible, or drawn on a hybrid with no kept top: leave it */
+      var c0 = hexRgbR(cols[0] || '#ffd23f'), c1 = hexRgbR(cols[1] || cols[0] || '#c49a1a'), ink = [20, 16, 24], laurel = /laurel|wreath/.test(lab), crown = laurel || /crown|tiara|circlet/.test(lab), band = /band|bandana|hachimaki|scarf/.test(lab);
+      if (laurel) { c0 = [255, 210, 63]; c1 = [120, 200, 70]; } /* golden laurel: a green one vanished into the green Mythic glow */
+      return fr.map(function (F, fi) { var k = K0[fi % K0.length].data, isS = function (x, y) { if (x < 0 || y < 0 || x > 31 || y > 31) return false; var q = (y * 32 + x) * 4; return !(k[q] > 240 && k[q + 1] < 16 && k[q + 2] > 240); };
+        var span = function (y) { var l = -1, r = -1; for (var x = 2; x < (y < 7 ? 25 : 30); x++) if (isS(x, y)) { if (l < 0) l = x; r = x; } return [l, r]; }; /* x 25-31 on the top rows = the hybrid DNA badge */
+        var top = -1, y, row = -1, sp; for (y = 0; y < 26 && top < 0; y++) if (span(y)[0] >= 0) top = y; if (top < 0) return F;
+        var need = crown ? 7 : 6; for (y = top; y < Math.min(top + 12, 26); y++) { sp = span(y); if (sp[0] >= 0 && sp[1] - sp[0] + 1 >= need) { row = y; break; } } if (row < 0) return F;
+        var d = Array.isArray(F.data) ? F.data.slice() : new F.data.constructor(F.data), o = Object.assign({}, F, { data: d }), put = {};
+        var set = function (x, yy, c) { if (x < 0 || yy < 0 || x > 31 || yy > 31) return; var q = (yy * 32 + x) * 4; d[q] = c[0]; d[q + 1] = c[1]; d[q + 2] = c[2]; d[q + 3] = 255; put[yy * 32 + x] = 1; };
+        var cx = Math.round((sp[0] + sp[1]) / 2), w = Math.min(sp[1] - sp[0] + 1, crown ? 9 : 8), x0 = cx - Math.floor(w / 2), x;
+        if (crown) { var by = Math.max(1, row); for (x = x0; x < x0 + w; x++) { set(x, by, c0); if (laurel ? (x - x0) % 2 === 0 : ((x - x0) % 2 === 0)) set(x, by - 1, laurel ? c1 : c0); } if (!laurel) set(cx, by, c1); }
+        else if (band) { for (x = sp[0]; x <= sp[1]; x++) set(x, row + 1, c0); set(sp[1] + 1, row + 2, c1); }
+        else { var hy = Math.max(3, row); for (var h = 0; h < 4; h++) for (x = cx - (3 - h); x <= cx + (3 - h); x++) set(x, hy - h, h === 0 ? c1 : ((x + h) % 2 ? c0 : c1)); set(cx, hy - 4, [255, 255, 255]); }
+        Object.keys(put).forEach(function (j) { j = +j; var px = j % 32, py = (j / 32) | 0; [[1, 0], [-1, 0], [0, -1]].forEach(function (q) { var X = px + q[0], Y = py + q[1]; if (X >= 0 && Y >= 0 && X < 32 && Y < 32 && !put[Y * 32 + X] && !isS(X, Y)) set2(X, Y); }); });
+        function set2(X, Y) { var q = (Y * 32 + X) * 4; d[q] = ink[0]; d[q + 1] = ink[1]; d[q + 2] = ink[2]; d[q + 3] = 255; }
+        return o; });
+    } catch (e) { return fr; } finally { hatBusy = false; } }
+  function hexRgbR(h) { h = String(h || '#000').replace('#', ''); if (h.length === 3) h = h.split('').map(function (c) { return c + c; }).join(''); return [parseInt(h.slice(0, 2), 16) || 0, parseInt(h.slice(2, 4), 16) || 0, parseInt(h.slice(4, 6), 16) || 0]; }
   /* dj-sign (display only, 2026-11-11): DjPepeSprite paints signature Grip/Headwear and a one-row Guise tint.
    * It never paints Drip. A banner (Number go up, Burn it, WAGMI, HODL, the other signs and flags) can be
    * equipped and still be missing on the sprite. Draw that one class with the same BonusGear banner pass
