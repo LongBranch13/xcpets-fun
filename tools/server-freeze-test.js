@@ -19,6 +19,9 @@ function stallServer() {
   const socks = new Set();
   const srv = http.createServer((req, res) => {
     if (req.url === '/v2/' || req.url === '/v2') { res.writeHead(200, { 'content-type': 'application/json' }); res.end(JSON.stringify({ result: { counterparty_height: 977289 } })); return; }
+    if (req.url === '/v2/slow') { /* a big answer that keeps arriving: 10 pieces, 250 ms apart */
+      res.writeHead(200, { 'content-type': 'application/json' }); let i = 0; res.write('{"result": [0');
+      const iv = setInterval(() => { i++; if (i < 10) { res.write(',' + i); return; } clearInterval(iv); res.end(']}'); }, 250); return; }
     res.writeHead(200, { 'content-type': 'application/json' }); res.write('{"result": ['); /* ... and never the rest */
   });
   srv.on('connection', s => { socks.add(s); s.on('close', () => socks.delete(s)); });
@@ -28,13 +31,16 @@ function stallServer() {
 (async () => {
   const up = await stallServer(), base = 'http://127.0.0.1:' + up.port;
 
-  /* 1. body timeouts */
+  /* 1. body timeouts (headers within the request limit; the body fails only when it stops arriving for XP_BODY_IDLE_MS) */
+  process.env.XP_BODY_IDLE_MS = '600';
   const { timedFetch } = require('./sync-server/net');
   let t0 = Date.now(), err = null;
   try { const r = await timedFetch(base + '/v2/assets/XCPETS/destructions', {}, 400); await r.json(); } catch (e) { err = e; }
   ok('timedFetch: a body that stalls after the headers fails within the limit', err && Date.now() - t0 < 2500, err ? (Date.now() - t0) + ' ms' : 'no error');
   const good = await timedFetch(base + '/v2/', {}, 2000).then(r => r.json());
   ok('timedFetch: a normal answer still reads as JSON', good && good.result && good.result.counterparty_height === 977289);
+  t0 = Date.now(); const slow = await timedFetch(base + '/v2/slow', {}, 400).then(r => r.json()).catch(e => ({ err: e.message }));
+  ok('timedFetch: a slow answer that keeps arriving is read whole, past the request limit (the sales read pages)', slow && slow.result && slow.result.length === 10 && Date.now() - t0 > 2000, JSON.stringify(slow));
   const LIM = require('./lib/core-limiter');
   const lim = LIM.makeFetch((u, o) => fetch(u, o), { timeoutMs: 400, match: () => true, rps: 50 });
   t0 = Date.now(); err = null;
@@ -42,6 +48,8 @@ function stallServer() {
   ok('core limiter: a stalled body fails within timeoutMs (the feed and the sales reads use it)', err && Date.now() - t0 < 2500, err ? (Date.now() - t0) + ' ms' : 'no error');
   const fake = { status: 200, ok: true, json: async () => ({ x: 1 }) };
   const lim2 = LIM.makeFetch(async () => fake, { match: () => true, rps: 50 });
+  { const slow2 = await lim(base + '/v2/slow').then(r => r.json()).catch(e => ({ err: e.message }));
+    ok('core limiter: a slow answer that keeps arriving is read whole', slow2 && slow2.result && slow2.result.length === 10, JSON.stringify(slow2)); }
   ok('core limiter: test fakes pass through unchanged', (await lim2('http://x/')) === fake);
 
   /* 2. stall guard */
@@ -58,6 +66,11 @@ function stallServer() {
   ok('errCode keeps short codes and hides anything else', idx.errCode(new Error('upstream down')) === 'upstream down' && idx.errCode(new Error('fetch http://10.0.0.1:4000 failed')) === 'error');
 
   ok('errCode names sales-read failures without their details', idx.errCode(new Error('balance check failed for PETTOKEN1')) === 'sales: balance check failed' && idx.errCode(new Error('DEX API 503: busy at http://x')) === 'sales: dex api 503');
+  ok('errCode names a busy public node', idx.errCode(new Error('DEX API busy (429: rate limited)')) === 'sales: dex api busy');
+  { const h = idx.errHint(new Error('DEX API busy at https://10.1.2.3:4000/v2 for bc1qtke38j72qv4d8eljn7pccaykypw8luytfwdn7q 1JwWsArppwALMEdXWPmpDBcP1jwWsAPYkD 10.0.0.7:8080 abcdefghijklmnop.onion ' + 'ab'.repeat(32)));
+    ok('errHint keeps the words and drops hosts, IPs, onions, addresses and hashes', /DEX API busy/.test(h) && !/10\.|bc1q|1JwW|\.onion|abab|http/.test(h), h); }
+  idx._LOOP.errorRun = 1; const b1 = idx.backoffMs(); idx._LOOP.errorRun = 20; const b20 = idx.backoffMs(); idx._LOOP.errorRun = 0;
+  ok('a failing step backs off (20 s after one failure, at most 5 min)', b1 === 20000 && b20 === 300000 && idx.backoffMs() === 0);
   ok('errCode names code faults by their kind only', idx.errCode(new TypeError('cannot read properties of undefined (reading bc1qsecret)')) === 'code: TypeError');
   /* 2b. saved follower state and the restart counter */
   const dd2 = fs.mkdtempSync(path.join(os.tmpdir(), 'xp-follow-'));
@@ -75,7 +88,7 @@ function stallServer() {
   fs.writeFileSync(path.join(data, 'stall.json'), JSON.stringify({ at: '2026-11-23T23:00:00.000Z', tip: 977257, sec: 700 }));
   fs.writeFileSync(path.join(data, 'follow-state.json'), JSON.stringify({ v: 1, tip: 977280, rows: [], hashes: {}, dex: null, dexTip: 0, dexHash: '', dexAssets: [] }));
   fs.writeFileSync(path.join(data, 'starts.json'), JSON.stringify([Date.now() - 600e3, Date.now() - 300e3]));
-  const env = Object.assign({}, process.env, { XP_UPSTREAMS: base + '/v2', XP_PORT: String(port), XP_DATA: data, XP_FETCH_MS: '600', XP_SNAPSHOT: '0', XP_CHECK: '0', XP_RULES_FOLLOW: '0', XP_RPS: '50' });
+  const env = Object.assign({}, process.env, { XP_UPSTREAMS: base + '/v2', XP_PORT: String(port), XP_DATA: data, XP_FETCH_MS: '600', XP_SNAPSHOT: '0', XP_CHECK: '0', XP_RULES_FOLLOW: '0', XP_RPS: '50', XP_BACKOFF_BASE_MS: '50', XP_BODY_IDLE_MS: '600' });
   const kid = spawn(process.execPath, [path.join(__dirname, 'sync-server', 'index.js')], { env, stdio: ['ignore', 'ignore', 'pipe'] });
   let errs = ''; kid.stderr.on('data', d => { errs += d; });
   let h = null, firstAt = 0; const start = Date.now();
