@@ -1,6 +1,6 @@
 {
- "lastBlock": 977257,
- "count": 443,
+ "lastBlock": 977366,
+ "count": 450,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -5161,7 +5161,7 @@
    "species": "hyb3:homer:djpepe:dodo",
    "speciesLabel": "Hodjdo (hybrid)",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 48896,
@@ -5197,7 +5197,7 @@
    "species": "hyb:wizard:kek",
    "speciesLabel": "Wikek (hybrid)",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 192393,
@@ -5209,7 +5209,7 @@
    "species": "hyb:chud:doge",
    "speciesLabel": "Chuge (hybrid)",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 162482,
@@ -5233,7 +5233,7 @@
    "species": "hyb3:bobo:dodo:viking",
    "speciesLabel": "Bodoking (hybrid)",
    "rarity": "Legendary",
-   "stage": "Juvenile"
+   "stage": "Adult"
   },
   {
    "id": 205411,
@@ -5245,7 +5245,7 @@
    "species": "hyb:nakamoto:viking",
    "speciesLabel": "Naking (hybrid)",
    "rarity": "Legendary",
-   "stage": "Juvenile"
+   "stage": "Adult"
   },
   {
    "id": 205410,
@@ -5257,7 +5257,7 @@
    "species": "peepo",
    "speciesLabel": "Peepo",
    "rarity": "Legendary",
-   "stage": "Juvenile"
+   "stage": "Adult"
   },
   {
    "id": 67059,
@@ -5269,7 +5269,7 @@
    "species": "funtrump",
    "speciesLabel": "FUNTRUMP",
    "rarity": "Rare",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 8440,
@@ -5316,6 +5316,90 @@
    "name": "Senapa",
    "species": "pepe",
    "speciesLabel": "Pepe",
+   "rarity": "Legendary",
+   "stage": "Adult"
+  },
+  {
+   "id": 205429,
+   "asset": "A16324758420446515189",
+   "tiedBlock": 977263,
+   "tiedTx": "ee0f60c1259214a93260cca5c09d4e8f21fcf0263095c3f1c10008881f7863f8",
+   "kind": "deed",
+   "name": "Fowijubun",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
+   "rarity": "Legendary",
+   "stage": "Adult"
+  },
+  {
+   "id": 205426,
+   "asset": "A17085282554415600624",
+   "tiedBlock": 977276,
+   "tiedTx": "cb50688c58be8814de91a2a4adf25911f10564f6ea1aab65c3bed14883980629",
+   "kind": "deed",
+   "name": "Mapidok",
+   "species": "nakamoto",
+   "speciesLabel": "Nakamoto",
+   "rarity": "Legendary",
+   "stage": "Adult"
+  },
+  {
+   "id": 205427,
+   "asset": "A4628499380379452676",
+   "tiedBlock": 977276,
+   "tiedTx": "a9058e4e69d37e642a9009ca0e4418b3c3ffc669389c80e6264e0009d540c591",
+   "kind": "deed",
+   "name": "Luhehin",
+   "species": "nakamoto",
+   "speciesLabel": "Nakamoto",
+   "rarity": "Legendary",
+   "stage": "Adult"
+  },
+  {
+   "id": 209433,
+   "asset": "A8620992851280014920",
+   "tiedBlock": 977280,
+   "tiedTx": "82cbdc079fd3f454f6bd52c7131940d8fd9cf4b99719aea6b0e452a223cb7e37",
+   "kind": "deed",
+   "name": "Pavuzabit",
+   "species": "hyb:kek:nakamoto",
+   "speciesLabel": "Kekmoto (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Juvenile"
+  },
+  {
+   "id": 210434,
+   "asset": "A363650200345609478",
+   "tiedBlock": 977294,
+   "tiedTx": "dccf04ca086bb48573ea389788f7738f761aefd92cb813ad2d6a87e8602643c0",
+   "kind": "deed",
+   "name": "Numetapip",
+   "species": "kek",
+   "speciesLabel": "Lord Kek",
+   "rarity": "Legendary",
+   "stage": "Juvenile"
+  },
+  {
+   "id": 210436,
+   "asset": "A17961312502433703869",
+   "tiedBlock": 977323,
+   "tiedTx": "830da0695e2e573cc8f06b6811769c9085352d100d24fa9911bfc881212fa9cb",
+   "kind": "deed",
+   "name": "Defifeboo",
+   "species": "hyb:dodo:wizard",
+   "speciesLabel": "Dowiz (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Juvenile"
+  },
+  {
+   "id": 210437,
+   "asset": "A12358848635609781599",
+   "tiedBlock": 977349,
+   "tiedTx": "29b9eaa2fe8e12c86b1cdd51301b25fa29b8ea8f9992d2bbc764758c3a6898eb",
+   "kind": "deed",
+   "name": "Feroolu",
+   "species": "bobo",
+   "speciesLabel": "Bobo",
    "rarity": "Legendary",
    "stage": "Juvenile"
   }
