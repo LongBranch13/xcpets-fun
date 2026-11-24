@@ -113,9 +113,13 @@ function ownerSide(rows, world) {
     rise: rise
   };
 }
-function communityCopy(c) {
+function communityCopy(c, world) {
   if (!c) return null;
   const o = copy(c) || {};
+  /* raise-tip (Nov 24 2026, display only): each wallet's share of the current community pet's care (the rules' w[<pet>].by map),
+   * so the fast page can show 'you raised X (#N of M)' without a replay. Rounded to 8 decimals, biggest first. */
+  const R = world && c.current && world[c.current];
+  if (R && R.by) o.raisers = { pet: c.current, list: Object.keys(R.by).filter(a => R.by[a] > 0).map(a => [a, Math.round(R.by[a] * 1e8) / 1e8]).sort((x, y) => y[1] - x[1] || (x[0] < y[0] ? -1 : 1)) };
   if (Array.isArray(o.leaderboard)) o.leaderboard = o.leaderboard.slice(0, 20);
   if (Array.isArray(o.gearLog)) o.gearLog = o.gearLog.slice(-40);
   return o;
@@ -165,7 +169,7 @@ function fromWorld(world) {
     v: 1, tip: world.tip || 0, n: all.length, alive: alive, dead: dead, released: released,
     burned: world.community && world.community.burned || 0,
     burns: world.log ? world.log.length : 0,
-    community: communityCopy(world.community),
+    community: communityCopy(world.community, world),
     cold: coldCopy(world),
     leaderboard: (world.community && world.community.leaderboard || []).slice(0, 20),
     wagmi: copy(world.wagmi) || {}
@@ -230,7 +234,7 @@ function streakAt(p, tip) {
  *  - best: each wallet's best pet by rarity then stage (WAGMI and burn boards) for the wallets those boards can show,
  *  - pets: the rank rows of every pet named above and every tokenized pet (dead ones too, so Proof Parade can leave them out).
  * The page shows the first rows from it and reads rank.json only when someone asks for more (species, Show more, Find, a week). */
-const LEAD_SHARD = '99900', LEAD_TOP = 300;
+const LEAD_SHARD = '99900', LEAD_TOP = 300, SHOP_SHARD = '99901';
 function leadFile(rows, hashes, tip, rsig, who, deedIds) {
   const RW = [1, 3, 10, 33], WEEK = 1008, live = rows.filter(r => !r.dead && !r.rel && (r.id | 0) !== 1765);
   const want = new Set(), tops = {}, players = {}, counts = {};
@@ -412,7 +416,7 @@ function write(dir, world, meta) {
     pageSize: PAGE,
     burned: world.community && world.community.burned || 0,
     burns: world.log ? world.log.length : 0,
-    community: communityCopy(world.community),
+    community: communityCopy(world.community, world),
     cold: coldCopy(world),
     leaderboard: (world.community && world.community.leaderboard || []).slice(0, 20),
     wagmi: copy(world.wagmi) || {},
@@ -547,4 +551,36 @@ function write(dir, world, meta) {
   });
   });
 }
-module.exports = { liveBreedReqs, LEAD_SHARD, leadFile, PET_SHARD, PAGE, COLD_KEYS, ownerKey, ownerShard, petShard, fromWorld, write, itemRec, petRec, fieldsOf, isHybRec, deedRec, ownerSide };
+/* Spam City shelves (Nov 24 2026): the order book pack the shop page needs (listings, the pets they name, their pet tokens, the dex
+ * orders), written with every published world. Same fields as checker.js shop() and js/v2-orderbook-worker.js. The page shows it at
+ * once and reads the newest blocks before any wallet window, so the live /xp/v1/shop (down while a world builds) is no longer the
+ * only fast path. Display only. */
+function shopPet(p) {
+  const o = {};
+  for (const k of Object.keys(p)) {
+    const v = p[k];
+    if (v == null || typeof v === 'number' || typeof v === 'string' || typeof v === 'boolean') { o[k] = v; continue; }
+    if (k === 'gear') { o.gear = new Array((v && v.length) || 0); continue; }
+    if (Array.isArray(v)) { if (v.every(x => !(x && typeof x === 'object'))) o[k] = v.slice(); continue; }
+    if (typeof v === 'object') { const c = {}; let ok = true; for (const kk of Object.keys(v)) { const vv = v[kk]; if (vv && typeof vv === 'object') { ok = false; break; } c[kk] = vv; } if (ok) o[k] = c; }
+  }
+  return o;
+}
+function shopPack(world, V, orders, tip, rsig) {
+  const w = world, listings = w.listings || [], ids = {}, pets = [], deeds = {};
+  listings.forEach(S => { if (S && S.petId != null) ids[S.petId] = 1; });
+  Object.keys(ids).forEach(id => { const p = w.byId && w.byId[id]; if (p) pets.push(shopPet(p)); });
+  pets.forEach(pet => { if (pet.deed && w.deeds && w.deeds[pet.deed]) deeds[pet.deed] = w.deeds[pet.deed]; });
+  listings.forEach(S => { if (S && S.give && w.deeds && w.deeds[S.give]) deeds[S.give] = w.deeds[S.give]; });
+  let open = 0; listings.forEach(S => { try { if (V && V.saleState(w, S, (tip || 0) + 1) === 'open') open++; } catch (e) { } });
+  return JSON.parse(JSON.stringify({ v: 1, ok: true, tip: tip, rsig: rsig, listings: listings, pets: pets, deeds: deeds, orders: orders || [], n: (w.pets || []).length, open: open }));
+}
+function writeShop(dir, world, meta) {
+  const tip = meta && meta.tip != null ? meta.tip : (world.tip || 0);
+  const V = meta && meta.ctx && meta.ctx.V2Rules;
+  const pack = shopPack(world, V, meta && meta.orders, tip, meta && meta.rsig || '');
+  /* p/99901.json: the running server only serves view files it knows (summary/zombies/rank/owners/o/own/p), and a new name would
+   * need a server repair; the p/ shard name works today, like the lead file (p/99900.json). Pet shards hold 2,000 ids each. */
+  return { file: 'view/p/' + SHOP_SHARD + '.json', bytes: writeJson(path.join(dir, 'p', SHOP_SHARD + '.json'), pack), listings: pack.listings.length, open: pack.open };
+}
+module.exports = { shopPack, writeShop, SHOP_SHARD, liveBreedReqs, LEAD_SHARD, leadFile, PET_SHARD, PAGE, COLD_KEYS, ownerKey, ownerShard, petShard, fromWorld, write, itemRec, petRec, fieldsOf, isHybRec, deedRec, ownerSide };
