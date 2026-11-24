@@ -9,7 +9,7 @@ m._compile(fs.readFileSync(R, 'utf8') + '\nmodule.exports.salesIo = salesIo;', R
 const { blank, tick } = require('./sync-server/follow');
 const boot = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'api', 'boot.json'), 'utf8'));
 (async () => {
-  try { const h = await (await fetch('https://node.xcpets.fun/xp/v1/health?cb=' + Date.now())).json(); delete h.upstream;
+  if (process.env.PROBE_SKIP_HEALTH !== '1') try { const h = await (await fetch('https://node.xcpets.fun/xp/v1/health?cb=' + Date.now())).json(); delete h.upstream;
     console.log('live health:', JSON.stringify({ tip: h.tip, coreHeight: h.coreHeight, ready: h.ready, lag: h.lag, lastBlockAt: h.lastBlockAt, lastSnapshotTip: h.lastSnapshotTip, loop: h.loop, rules: h.rules, builder: h.builder })); }
   catch (e) { console.log('live health not answering'); }
   if (process.env.PROBE_HEALTH_ONLY === '1') return;

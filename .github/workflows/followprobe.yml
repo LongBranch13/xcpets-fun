@@ -16,3 +16,14 @@ jobs:
         with: { node-version: '20' }
       - name: One follow step
         run: node tools/followprobe.js
+      - name: Same step with the server's older js/v2-boot-sync.js (Nov 11 copy)
+        if: always()
+        run: |
+          git fetch -q --depth=1 origin cacdf4c1726b0ac4227f32501b199223e51f9812
+          git checkout cacdf4c1726b0ac4227f32501b199223e51f9812 -- js/v2-boot-sync.js
+          PROBE_SKIP_HEALTH=1 node tools/followprobe.js
+      - name: Same step with the older boot-sync, chain and sales scripts
+        if: always()
+        run: |
+          git checkout cacdf4c1726b0ac4227f32501b199223e51f9812 -- js/v2-chain.js js/v2-sales.js
+          PROBE_SKIP_HEALTH=1 node tools/followprobe.js
