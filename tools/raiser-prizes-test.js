@@ -6,7 +6,9 @@ let pass = 0, fail = 0; const ok = (c, m) => { if (c) pass++; else { fail++; con
 const ctx = S.workerFns(); S.replayWorld(ctx, [], {}, 980000, null); const V = ctx.V2Rules;
 ok(V.ACTIVATE_RAISERS_BLOCK === null || typeof V.ACTIVATE_RAISERS_BLOCK === 'number', 'gate exported');
 ok(V.RAISER_PRIZES.rabbit && V.RAISER_PRIZES.rabbit.all === 'wr-golden-carrot' && V.RAISER_PRIZES.rabbit.top === 'wr-mad-hatter', 'White Rabbit prizes');
-const gear = ctx.V2Gear || ctx.window && ctx.window.V2Gear; ok(gear && gear.WR_RAISER_GEAR && gear.WR_RAISER_GEAR.length === 2, 'render maps exported');
+const gear = ctx.V2Gear || ctx.window && ctx.window.V2Gear; ok(V.RAISER_PRIZES.groyper && V.RAISER_PRIZES.groyper.all === 'gp-cocoa-mug' && V.RAISER_PRIZES.groyper.top === 'gp-lily-crown', 'Groyper prizes (Nov 24 2026)');
+const prizeIds = [].concat.apply([], Object.keys(V.RAISER_PRIZES).map(k => [V.RAISER_PRIZES[k].all, V.RAISER_PRIZES[k].top]));
+ok(gear && gear.WR_RAISER_GEAR && gear.WR_RAISER_GEAR.length === prizeIds.length && prizeIds.every(id => gear.WR_RAISER_GEAR.some(x => x[0] === id)), 'render maps exported for every prize');
 const mkW = () => ({ items: {}, nextItem: 1, log: [], pets: [], rabbitMythic: { block: 981000, tx: 't', total: 6906900, by: { A: 5000, B: 9000, C: 9000, D: 70, E: 68.99, F: 100 } } });
 const live = V.ACTIVATE_RAISERS_BLOCK;
 V._setRaisersActivation(null); let w = mkW(); V._grantRaisers(w, 981001); ok(!Object.keys(w.items).length && !w.raiserGrants, 'gate null: nothing granted');
