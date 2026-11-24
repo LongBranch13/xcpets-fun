@@ -102,8 +102,11 @@
       else if (/tear/.test(gk)) set(A.ex0 + 1, A.ey1 + 1, g0);
       else if (/cig|pipe|cigar|joint|straw|lolli/.test(gk)) { var my = Math.min(29, A.ey1 + 4); set(A.fx1 - 1, my, g0); set(A.fx1, my, g0); set(A.fx1 + 1, my, g1); }
       else { set(A.ex0 - 1, A.ey1 + 1, g0); set(A.ex1 + 1, A.ey1 + 1, g0); } }
-    if (iid('head') === 'hard-hat') { var tt = A.fy0, l0 = A.fx0, r0 = A.fx1 - 3; for (var yt = tt - 3; yt <= tt + 1; yt++) for (var xt = l0 + (yt <= tt - 2 ? 2 : 0) + (yt === tt - 3 ? 1 : 0); xt <= r0 - (yt <= tt - 2 ? 2 : 0) - (yt === tt - 3 ? 1 : 0); xt++) set(xt, yt, xt === Math.round((l0 + r0) / 2) ? HPC.h : HPC.H); for (var xr = l0 - 1; xr <= r0 + 1; xr++) set(xr, tt + 2, HPC.h); }
-    else if (Gr.head) { var hk = kind('head'), h0 = col('head'), h1 = col('head', 1), ht = A.fy0;
+    /* sprite-qa 2026-11-24 (display only): a Mythic Homer's head reaches the top row, so hats and crowns drawn above it left the canvas (a 1px line on
+     * three frames, nothing on the bob frame). Lower every headwear piece by just enough that its top row fits on the highest frame, so it bobs with him. */
+    var hTop = Math.min(anchors(stage, 0).fy0, anchors(stage, 1).fy0, anchors(stage, 3).fy0), hNeed = iid('head') === 'hard-hat' ? 3 : (Gr.head && /crown|tiara/.test(kind('head'))) ? 2 : (Gr.head && /band|hachimaki|halo|bandana|headband/.test(kind('head'))) ? 0 : (fw > 9 ? 2 : 1), hLift = Math.max(0, hNeed - hTop);
+    if (iid('head') === 'hard-hat') { var tt = A.fy0 + hLift, l0 = A.fx0, r0 = A.fx1 - 3; for (var yt = tt - 3; yt <= tt + 1; yt++) for (var xt = l0 + (yt <= tt - 2 ? 2 : 0) + (yt === tt - 3 ? 1 : 0); xt <= r0 - (yt <= tt - 2 ? 2 : 0) - (yt === tt - 3 ? 1 : 0); xt++) set(xt, yt, xt === Math.round((l0 + r0) / 2) ? HPC.h : HPC.H); for (var xr = l0 - 1; xr <= r0 + 1; xr++) set(xr, tt + 2, HPC.h); }
+    else if (Gr.head) { var hk = kind('head'), h0 = col('head'), h1 = col('head', 1), ht = A.fy0 + hLift;
       if (/crown|tiara/.test(hk)) { for (var xc = A.fx0 + 2; xc <= A.fx1 - 4; xc++) { set(xc, ht - 1, h0); if ((xc - A.fx0) % 2) set(xc, ht - 2, h0); } set(cx - 1, ht - 1, h1); }
       else if (/band|hachimaki|halo|bandana|headband/.test(hk)) { for (var xh = A.fx0; xh <= A.fx1 - 3; xh++) set(xh, /halo/.test(hk) ? Math.max(0, A.top - 1) : ht + 2, h0); }
       else { var hh = fw > 9 ? 3 : 2; for (var yh = ht - hh + 1; yh <= ht + 1; yh++) for (var xk = A.fx0 + 1; xk <= A.fx1 - 4; xk++) set(xk, yh, (yh === ht - hh + 1 && (xk === A.fx0 + 1 || xk === A.fx1 - 4)) ? null : h0);
