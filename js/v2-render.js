@@ -849,7 +849,20 @@
     if (window.V2ClownHair && stage && clownWanted(itemIds, extraOv)) fr = window.V2ClownHair.apply(fr, art, stage | 0);
     if (art && art.hybrid && stage && !hatBusy) fr = keptTopHat(fr, art, stage, itemIds, extraOv, cap, baseGo);
     if (art && art.hybrid && stage && Array.isArray(art.hybrid.parts) && art.hybrid.parts.some(function (q) { return q.sp === 'dodo' && q.part === 'beak'; })) fr = dodoBeak(fr, art, stage);
-    if (art && art.hybrid && art.hybrid.shape === 'kek' && stage && Array.isArray(art.hybrid.parts) && art.hybrid.parts.some(function (q) { return q.sp === 'nakamoto' && q.part === 'glasses'; })) fr = kekGlassArms(fr, art, stage); return fr; }
+    if (art && art.hybrid && art.hybrid.shape === 'kek' && stage && Array.isArray(art.hybrid.parts) && art.hybrid.parts.some(function (q) { return q.sp === 'nakamoto' && q.part === 'glasses'; })) fr = kekGlassArms(fr, art, stage);
+    if (art && art.hybrid && art.hybrid.shape === 'kek' && stage && Array.isArray(art.hybrid.parts) && art.hybrid.parts.some(function (q) { return q.sp === 'orangedragon' && q.part === 'wings'; })) fr = kekDragonWings(fr, art, stage); return fr; }
+  /* sprite-qa 2026-11-24 (potential-hybrid sweep): on a Kek body the Orange Dragon wings part erased Kek's own wings on the wings-down frames and
+   * drew a stub (half of it past the canvas edge), so the pet flickered between two full wings and a stub; on the other frames the part already looks
+   * like Kek's wings. Display only: every frame shows the wings as the body draws them without the part, so both wings stay and flap together. */
+  function kekDragonWings(fr, art, stage) {
+    try { var nh = Object.assign({}, art.hybrid, { parts: art.hybrid.parts.filter(function (q) { return !(q.sp === 'orangedragon' && q.part === 'wings'); }) });
+      var RW = framesWithB(art, stage, [], []), RN = framesWithB(Object.assign({}, art, { hybrid: nh }), stage, [], []); /* the bare pet with and without the part, on its real background */
+      return fr.map(function (F, f) { var w = RW[f % RW.length].data, n = RN[f % RN.length].data, D = F.data, d = null;
+        for (var i = 0; i < 1024; i++) { var q = i * 4; if (w[q] === n[q] && w[q + 1] === n[q + 1] && w[q + 2] === n[q + 2]) continue;
+          if (D[q] !== w[q] || D[q + 1] !== w[q + 1] || D[q + 2] !== w[q + 2]) continue; /* gear drawn here: leave it */
+          if (!d) d = new Uint8ClampedArray(D); d[q] = n[q]; d[q + 1] = n[q + 1]; d[q + 2] = n[q + 2]; d[q + 3] = 255; }
+        return d ? Object.assign({}, F, { data: d }) : F; });
+    } catch (e) { return fr; } }
   /* sprite-qa 2026-11-24: on a Kek body the rules run the Nakamoto glasses' side arms along the whole row, so a black line crossed both wings
    * (#46072, #46074). Display only: the arms stop 3 px past the lenses (the edge of the face) and the wing pixels under the rest come back. */
   function kekGlassArms(fr, art, stage) {
