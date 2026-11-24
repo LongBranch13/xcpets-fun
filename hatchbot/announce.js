@@ -240,6 +240,12 @@ async function main() {
      saved after every post, so a run that crashes, hangs or is cancelled halfway never posts the same thing again. */
   const save = () => { S.posted = Array.from(seen).slice(-5000); S.at = new Date().toISOString(); if (!DRY) fs.writeFileSync(STATE, JSON.stringify(S)); };
   const sent = new Set();
+  /* FOMO (Nov 24 2026, hatchbot/fomo.mjs): one true urgency line under each event post (community pet % to Mythic and raiser
+     prizes, the next feature gate, pets hatched so far). Off with auto-config.json "fomo": false. Never on hand-written update series. */
+  let fomoOn = true; try { fomoOn = JSON.parse(fs.readFileSync(path.join(__dirname, 'auto-config.json'), 'utf8')).fomo !== false; } catch (e) {}
+  if (fomoOn) try { const F = await import('./fomo.mjs'), c = w.community || {}, cur = c.current || null;
+    const s = { tip, cm: cur ? { current: cur, fed: +(c[cur + 'Fed'] || 0) } : null, hatched: w.pets.reduce((m, p) => (p && p.id > m ? p.id : m), 0) };
+    posts.forEach(p => { p.text = F.add(p.text, s, p.key, 1000); }); } catch (e) { console.log('fomo skipped: ' + (e && e.message)); }
   for (const p of posts) {
     if (seen.has(p.key) || sent.has(p.text)) continue;
     seen.add(p.key); (p.keys || []).forEach(k => seen.add(k)); sent.add(p.text); save();
