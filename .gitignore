@@ -19,3 +19,4 @@ hatchbot/tokens.json
 /petshell/shells/out/.render/
 /petshell/shells/out/.*-asm.stl
 /petshell/firmware/.pio/
+/petshell/shells/__pycache__/
