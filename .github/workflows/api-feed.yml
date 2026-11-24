@@ -11,7 +11,7 @@ name: api-feed
 on:
   # schedule (cron */10) REMOVED Oct 27, 2026 (cx23 step 9, owner approved): the feed now runs on Hetzner xcpets-bot-1 (xcpets-feed.timer). Start by hand with workflow_dispatch if the server is down.
   workflow_dispatch: {}
-permissions: { contents: write }
+permissions: { contents: write, actions: write }
 concurrency: { group: api-feed, cancel-in-progress: false }
 jobs:
   build:
@@ -30,12 +30,16 @@ jobs:
       # sale-cache-feed: optional, never fails the feed (a failed read leaves the old file; the browser then checks blocks on a :4000 node or reads in full)
       - run: node tools/recent-events.js --out api --blocks 60 || echo "recent-events failed, skipping"
       - name: Commit if changed
+        id: commit
         env: { FRESH_BLOCKS: '2' }
         run: |
           OLD=$(git show HEAD:api/boot.json 2>/dev/null | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{console.log(JSON.parse(s).tip||0)}catch(e){console.log(0)}})")
           NEW=$(node -p "require('./api/boot.json').tip||0")
           if [ $((NEW - OLD)) -ge "$FRESH_BLOCKS" ]; then echo "tip $OLD -> $NEW: refreshing boot copy"; FRESH=1; else FRESH=; fi
           if [ -z "$FRESH" ] && git diff --quiet -- api/pets.json api/ties.json t && [ -z "$(git ls-files --others --exclude-standard api/ties.json)" ] && [ -z "$(git ls-files --others --exclude-standard t)" ] && ! git diff -U0 -- api/meta.json | grep -E '^[+-] ' | grep -v generatedAt | grep -q .; then echo "no change"; exit 0; fi
+          # GitHub refuses any file over 100 MB, and one such file blocks the whole push (Nov 24 2026: recent-events.json at 114 MB
+          # stopped the feed for 16 hours). Keep the committed copy of an oversized file and publish the rest.
+          for f in api/*.json; do [ -f "$f" ] || continue; if [ "$(stat -c %s "$f")" -gt 95000000 ]; then echo "::warning::$f is $(stat -c %s "$f") bytes (GitHub's limit is 100 MB): keeping the committed copy"; git checkout -q HEAD -- "$f" 2>/dev/null || rm -f "$f"; fi; done
           git config user.name "xcpets-api-bot"; git config user.email "actions@users.noreply.github.com"
           git add api/pets.json api/meta.json api/boot.json t
           git add api/recent-events.json 2>/dev/null || true
@@ -60,8 +64,14 @@ jobs:
               git commit --no-edit -q
               echo "merge conflict on feed files resolved with our newer block $ours (main was $theirs)"
             fi
-            if git push origin HEAD:main; then echo "pushed"; exit 0; fi
+            if git push origin HEAD:main; then echo "pushed"; echo "pushed=1" >> "$GITHUB_OUTPUT"; exit 0; fi
             git reset -q --hard $FEED
             sleep $((i * 10))
           done
           echo "push failed after retries"; exit 1
+      # Nov 24 2026: a push made with GITHUB_TOKEN does not start pages.yml, so a backup feed reached main but not xcpets.fun
+      # (HatchBot /burns and the site read the published copy). Ask for a Pages deploy by hand; it queues behind a running one.
+      - name: Publish the new feed to the site
+        if: steps.commit.outputs.pushed == '1'
+        env: { GH_TOKEN: '${{ github.token }}' }
+        run: gh workflow run pages.yml -R "$GITHUB_REPOSITORY" --ref main && echo "Started a Pages deploy for the new feed."

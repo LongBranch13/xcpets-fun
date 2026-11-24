@@ -120,6 +120,10 @@ function stallServer() {
   ok('server watch: healthy', SW.judge({ tip: 977289, lastSnapshotTip: 977285, loop: { stepSec: 3 } }, 977289) === null);
   ok('server watch: crash loop', SW.judge({ tip: 977289, lastSnapshotTip: 977289, loop: { stepSec: 1, restarts1h: 4 } }, 977289).code === 'crashloop');
   ok('server watch: world far behind', SW.judge({ tip: 977289, lastSnapshotTip: 977260 }, 977289).code === 'world');
+  ok('server watch: feed far behind (Nov 24: feed at 977,257, server fine)', SW.judge({ tip: 977329, lastSnapshotTip: 977328, loop: { stepSec: 2 } }, 977329, 977257).code === 'feed');
+  ok('server watch: feed a few blocks behind is fine', SW.judge({ tip: 977329, lastSnapshotTip: 977328 }, 977329, 977320) === null);
+  ok('server watch: server problems come before the feed', SW.judge({ tip: 977257, lastSnapshotTip: 977257 }, 977329, 977257).code === 'behind');
+  ok('server watch: feed tip from meta.json', await SW.readFeedTip(async u => /api\/meta\.json/.test(u) ? { blockHeight: 977257 } : null) === 977257);
   const mem = new Map(), store = { get: async k => mem.has(k) ? mem.get(k) : null, put: async (k, v) => { mem.set(k, v); } };
   const sent = [], tg = async (e, m, b) => { sent.push(b); return { ok: true }; };
   const envW = { TELEGRAM_ALERT_CHAT_ID: '111' };
