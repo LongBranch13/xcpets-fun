@@ -834,7 +834,42 @@
   if (V) { V._rareTierPaint = rareTierPaint; V._rareTierFrames = rareTierFrames; V._dynastPaint = dynastPaint; V._dynastFrames = dynastFrames; }
   function clownWanted(ids, ov) { var a = (ids || []).concat(ov || []), i; for (i = 0; i < a.length; i++) if (a[i] === 'v2-honk') return true; return false; }
   function framesWith(art, stage, itemIds, extraOv, cap, baseGo) { var fr = framesWithB(art, stage, itemIds, extraOv, cap, baseGo); if (!(art && art.cross && art.cross.body && window.ContestSprite && ContestSprite.CROSS)) { /* 1 OF 1 CROSS body already carries its look */ if (art && art.boMark && !art.boLook) fr = boMarkFrames(fr, art, stage); if (art && art.rpMark && !art.rpLook) fr = rpMarkFrames(fr, art, stage); if (art && (art.rpLook || art.boLook)) fr = oneOfOneLookFrames(fr, art, stage); if (art && art.rareTier) fr = rareTierFrames(fr, art, stage, itemIds, extraOv, cap, baseGo); if (art && !stage && art.rareHatch) fr = rareEggFrames(fr, art, itemIds, extraOv, cap, baseGo); }
-    if (window.V2ClownHair && stage && clownWanted(itemIds, extraOv)) fr = window.V2ClownHair.apply(fr, art, stage | 0); return fr; }
+    if (window.V2ClownHair && stage && clownWanted(itemIds, extraOv)) fr = window.V2ClownHair.apply(fr, art, stage | 0);
+    if (art && art.hybrid && stage && !hatBusy) fr = keptTopHat(fr, art, stage, itemIds, extraOv, cap, baseGo); return fr; }
+  /* sprite-qa 2026-11-24 (Jake: "yes if it fits right"): a hybrid that keeps a parent's top (Wizard hat, FUNTRUMP hair, Kek nemes) drew no worn
+   * headwear at all: the kept top covered it or the body's gear layer skipped it (5 living pets: a laurel, a party hat, three crowns). When a worn
+   * head piece changes no pixel, a small version is drawn on the pet's own top on every frame, measured on that frame, so it bobs with the pet:
+   * crowns/tiaras/laurels sit where the top first gets wide enough (a crowned Wizard hat, a crown on the hair), bands wrap that row, other hats
+   * get a small cone. Display only. */
+  var hatBusy = false;
+  function keptTopHat(fr, art, stage, itemIds, extraOv, cap, baseGo) {
+    var heads = (itemIds || []).filter(function (id) { var it = V.GEAR_BY_ID[id]; return it && it.slot === 'head' && id !== 'wizard-hat'; }); if (!heads.length || !fr || !fr.length || (fr[0].width || 32) !== 32) return fr;
+    hatBusy = true; try {
+      var key = Object.assign({}, art, { background: 'solid', bgColor: '#ff00ff', pattern: 'none' }), rest = (itemIds || []).filter(function (id) { return heads.indexOf(id) < 0; });
+      var id = heads[0], it = V.GEAR_BY_ID[id] || {}, lab = String(it.label || id).toLowerCase(), cols = itemCols(id), m = /\b(gold|golden|silver|brown|black|white|red|green|blue|midnight|purple|pink|orange|iron|wooden|denim)\b/i.exec(lab); if (m) cols = [WORD_COL[m[1].toLowerCase()]].concat(cols);
+      var keptTop = ((art.hybrid && art.hybrid.parts) || []).some(function (q) { var d0 = V.partDef && V.partDef(q.sp, q.part); return (d0 && d0.kind === 'top') || q.part === 'hat' || q.part === 'nemes'; });
+      var K0 = framesWith(key, stage, rest, extraOv, cap, baseGo), K1 = framesWith(key, stage, itemIds, extraOv, cap, baseGo), hits = 0, diff = 0, f, i, pal = cols.slice(0, 4).map(hexRgbR);
+      /* shown = the piece's own colours appear where it changed pixels (a crown under FUNTRUMP hair only nudges the hair colours) */
+      for (f = 0; f < 1; f++) for (i = 0; i < 4096; i += 4) { var A1 = K1[f].data, A0 = K0[f].data; if (A1[i] === A0[i] && A1[i + 1] === A0[i + 1] && A1[i + 2] === A0[i + 2]) continue; diff++;
+        if (pal.some(function (c) { return Math.abs(c[0] - A1[i]) + Math.abs(c[1] - A1[i + 1]) + Math.abs(c[2] - A1[i + 2]) < 60; })) hits++; }
+      if (hits >= 4 || (diff && !keptTop)) return fr; /* drawn and visible, or drawn on a hybrid with no kept top: leave it */
+      var c0 = hexRgbR(cols[0] || '#ffd23f'), c1 = hexRgbR(cols[1] || cols[0] || '#c49a1a'), ink = [20, 16, 24], laurel = /laurel|wreath/.test(lab), crown = laurel || /crown|tiara|circlet/.test(lab), band = /band|bandana|hachimaki|scarf/.test(lab);
+      if (laurel) { c0 = [255, 210, 63]; c1 = [120, 200, 70]; } /* golden laurel: a green one vanished into the green Mythic glow */
+      return fr.map(function (F, fi) { var k = K0[fi % K0.length].data, isS = function (x, y) { if (x < 0 || y < 0 || x > 31 || y > 31) return false; var q = (y * 32 + x) * 4; return !(k[q] > 240 && k[q + 1] < 16 && k[q + 2] > 240); };
+        var span = function (y) { var l = -1, r = -1; for (var x = 2; x < (y < 7 ? 25 : 30); x++) if (isS(x, y)) { if (l < 0) l = x; r = x; } return [l, r]; }; /* x 25-31 on the top rows = the hybrid DNA badge */
+        var top = -1, y, row = -1, sp; for (y = 0; y < 26 && top < 0; y++) if (span(y)[0] >= 0) top = y; if (top < 0) return F;
+        var need = crown ? 7 : 6; for (y = top; y < Math.min(top + 12, 26); y++) { sp = span(y); if (sp[0] >= 0 && sp[1] - sp[0] + 1 >= need) { row = y; break; } } if (row < 0) return F;
+        var d = Array.isArray(F.data) ? F.data.slice() : new F.data.constructor(F.data), o = Object.assign({}, F, { data: d }), put = {};
+        var set = function (x, yy, c) { if (x < 0 || yy < 0 || x > 31 || yy > 31) return; var q = (yy * 32 + x) * 4; d[q] = c[0]; d[q + 1] = c[1]; d[q + 2] = c[2]; d[q + 3] = 255; put[yy * 32 + x] = 1; };
+        var cx = Math.round((sp[0] + sp[1]) / 2), w = Math.min(sp[1] - sp[0] + 1, crown ? 9 : 8), x0 = cx - Math.floor(w / 2), x;
+        if (crown) { var by = Math.max(1, row); for (x = x0; x < x0 + w; x++) { set(x, by, c0); if (laurel ? (x - x0) % 2 === 0 : ((x - x0) % 2 === 0)) set(x, by - 1, laurel ? c1 : c0); } if (!laurel) set(cx, by, c1); }
+        else if (band) { for (x = sp[0]; x <= sp[1]; x++) set(x, row + 1, c0); set(sp[1] + 1, row + 2, c1); }
+        else { var hy = Math.max(3, row); for (var h = 0; h < 4; h++) for (x = cx - (3 - h); x <= cx + (3 - h); x++) set(x, hy - h, h === 0 ? c1 : ((x + h) % 2 ? c0 : c1)); set(cx, hy - 4, [255, 255, 255]); }
+        Object.keys(put).forEach(function (j) { j = +j; var px = j % 32, py = (j / 32) | 0; [[1, 0], [-1, 0], [0, -1]].forEach(function (q) { var X = px + q[0], Y = py + q[1]; if (X >= 0 && Y >= 0 && X < 32 && Y < 32 && !put[Y * 32 + X] && !isS(X, Y)) set2(X, Y); }); });
+        function set2(X, Y) { var q = (Y * 32 + X) * 4; d[q] = ink[0]; d[q + 1] = ink[1]; d[q + 2] = ink[2]; d[q + 3] = 255; }
+        return o; });
+    } catch (e) { return fr; } finally { hatBusy = false; } }
+  function hexRgbR(h) { h = String(h || '#000').replace('#', ''); if (h.length === 3) h = h.split('').map(function (c) { return c + c; }).join(''); return [parseInt(h.slice(0, 2), 16) || 0, parseInt(h.slice(2, 4), 16) || 0, parseInt(h.slice(4, 6), 16) || 0]; }
   /* dj-sign (display only, 2026-11-11): DjPepeSprite paints signature Grip/Headwear and a one-row Guise tint.
    * It never paints Drip. A banner (Number go up, Burn it, WAGMI, HODL, the other signs and flags) can be
    * equipped and still be missing on the sprite. Draw that one class with the same BonusGear banner pass
