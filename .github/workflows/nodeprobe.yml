@@ -32,6 +32,22 @@ jobs:
               t = Date.now(); const s = await fetch(B + '/xp/v1/shop?cb=' + Date.now()).then(r => r.json()).catch(e => ({ error: e.message }));
               console.log('shop', (Date.now() - t) + ' ms', JSON.stringify({ ok: s.ok, tip: s.tip, rsig: s.rsig, listings: (s.listings || []).length, pets: (s.pets || []).length, orders: (s.orders || []).length, open: s.open, error: s.error }));
             })();"
+      - name: Spam City shelves (published shop pack) and live files
+        run: |
+          node -e "
+            const B = 'https://node.xcpets.fun', get = u => fetch(u + (u.includes('?') ? '&' : '?') + 'cb=' + Date.now(), { cache: 'no-store' });
+            const md5 = t => require('crypto').createHash('md5').update(t).digest('hex');
+            (async () => {
+              const l = await (await get(B + '/xp/v1/world/latest.json')).json(); const dir = l.manifest.replace(/manifest\\.json$/, '');
+              const m = await (await get(B + l.manifest)).json();
+              const r = await get(B + dir + 'view/p/99901.json'); const j = r.ok ? await r.json() : null;
+              console.log('latest tip', l.tip, 'rsig', l.rsig, 'manifest view.shop', m.view && m.view.shop);
+              console.log('shop pack', r.status, j ? JSON.stringify({ ok: j.ok, tip: j.tip, rsigMatch: j.rsig === l.rsig, listings: j.listings.length, pets: j.pets.length, orders: j.orders.length, open: j.open }) : 'missing');
+              for (const f of ['js/v2-sales.js', 'js/v2-split.js', 'js/v2-shop-scene.js', 'shop.html']) {
+                const live = await (await get('https://xcpets.fun/' + f)).text(), main = await (await get('https://raw.githubusercontent.com/LongBranch13/xcpets-fun/main/' + f)).text();
+                console.log(f, md5(live) === md5(main) ? 'SAME' : 'DIFF', md5(live));
+              }
+            })().catch(e => console.log('shelves probe failed:', e.message));"
       - name: Raids in the slim view
         run: |
           node -e "
