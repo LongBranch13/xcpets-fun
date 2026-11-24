@@ -38,7 +38,7 @@
     var altar = w && w.cem && w.cem.altars && w.cem.altars[p.id];
     return {
       id: p.id, name: p.name || ('#' + p.id), species: p.species,
-      spl: V && V.speciesLabel ? V.speciesLabel(p.species) : (p.species || ''),
+      spl: V && V.petSpeciesLabel ? V.petSpeciesLabel(p) : (p.species || ''),
       tier: tier, stage: stage, stageName: V && V.stageLabelOf ? V.stageLabelOf(p) : (p.stageName || ''),
       owner: p.owner || '', gear: 0, power: power, born: p.hatchBlock != null ? p.hatchBlock : null, died: d0,
       fed: p.lastFed != null ? p.lastFed : null, hybrid: V && V.isHybrid ? !!V.isHybrid(p.species) : !!p.hybrid,

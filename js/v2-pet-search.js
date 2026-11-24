@@ -32,7 +32,7 @@
     el.dispatchEvent(new Event('input', { bubbles: true }));
   }); }
   function hay(p, w, ks, fs) { var V2 = V(), out = [p.name, '#' + p.id, p.species];
-    try { out.push(V2.speciesLabel(p.species)); } catch (e) { }
+    try { out.push((V2.petSpeciesLabel ? V2.petSpeciesLabel(p) : V2.speciesLabel(p.species))); } catch (e) { }
     var hyb = !!(p.hybrid || (p.art && p.art.hybrid) || (V2.isHybrid && V2.isHybrid(p.species)));
     if (hyb) out.push('hybrid'); if (p.parents && p.parents.length) out.push('bred'); else out.push('hatched');
     out.push(TL[p.tier] || ''); if (p.stage >= 5) out.push('mythic'); if (p.resurrected) out.push('god', 'gods');

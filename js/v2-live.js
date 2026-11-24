@@ -49,7 +49,7 @@
             add({ block: b, tx: l.tx, cat: 'birth', icon: '🌟', pet: ap.id, t: [title ? title + ': ' : '', { pet: ap.id }, ' arrived as an egg' + (ap.supreme || ap.contest ? ' (1 of 1)' : '')],
               anim: { lib: 'life', ev: { kind: 'arrival', ids: [ap.id], n: 1, ed: ap.burnLord ? 'BURN LORD ' + ap.burnLord.n + '/' + ap.burnLord.of : '1 OF 1!', title: title, gear: [], ng: 0, egg: true, block: b } } }); continue; }
           ids = /#\d+-#\d+/.test(l.msg || '') ? range(l.msg) : [l.petId || nums(l.msg)[0]]; var L = best(w, ids); if (!L.length) continue; var top = L[0], tc = tierCounts(V, L), elec = /Electric/.test(l.msg || '');
-          var tl = ((V && V.TIER_LABELS) || [])[tierOf(top)] || '', spl = V && V.speciesLabel ? V.speciesLabel(top.species) : top.species;
+          var tl = ((V && V.TIER_LABELS) || [])[tierOf(top)] || '', spl = V && V.petSpeciesLabel ? V.petSpeciesLabel(top) : top.species;
           /* rare-discover-1107: Legend / weird hatches (art.rareHatch, via V2Render.rareInfo) get a highlighted row and their own reveal; same share key as before */
           var RI = root.V2Render && root.V2Render.rareInfo, rares = RI ? L.filter(function (q) { return RI(q); }).slice(0, 12) : [], ti = RI && RI(top);
           if (ti && L.length === 1) { add({ block: b, tx: l.tx, cat: 'birth', icon: ti.icon, pet: top.id, hot: true, rare: ti, ids: ids, t: [{ pet: top.id }, ' hatched from ' + (ti.legend ? 'a Legend egg: ' + ti.name + '!' : 'a weird egg: ' + ti.label.replace(/^Weird · /, '').toLowerCase() + '!')],

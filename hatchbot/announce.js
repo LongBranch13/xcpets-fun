@@ -122,7 +122,7 @@ function replay() {
 
 /* ---------------------------------------------------------------- events */
 function petName(w, id, V) { const p = w.byId[id]; if (!p) return '#' + id;
-  let sp = p.species; try { sp = V.speciesLabel(p.species); } catch (e) {}
+  let sp = p.species; try { sp = (V.petSpeciesLabel ? V.petSpeciesLabel(p) : V.speciesLabel(p.species)); } catch (e) {}
   return (p.name || 'Pet') + ' #' + id + (sp ? ' the ' + sp : '') + petEmoji(p.species); }
 const link = id => 'xcpets.fun/pet.html?id=' + id;
 const isMythic = p => !!p && (p.mythicCare || p.stage >= 5);
