@@ -333,6 +333,15 @@ function godsOf(world) {
   return (world.pets || []).filter(p => p && p.resurrected && !p.dead).map(p => ({ id: p.id, name: p.name || '', owner: p.owner || '', block: p.resurrected.block || 0 }))
     .sort((a, b) => b.block - a.block || a.id - b.id);
 }
+/* Nov 24 2026 (Jake: "This says snibby still"): cross pets (art.cross, the 1 of 1 mixes like Star-Lord Pigeon) show a name that is not
+ * their stored species. Pages that load the rules call V2Rules.petSpeciesLabel; the Telegram mini app does not load the rules, so the
+ * summary carries the shown name of each cross pet (id -> label), made by the same rules function. A handful of tiny records. */
+function crossNamesOf(world, V) {
+  const out = {};
+  if (!V || typeof V.petSpeciesLabel !== 'function') return out;
+  (world.pets || []).forEach(p => { if (p && p.art && p.art.cross) { try { const l = V.petSpeciesLabel(p); if (l) out[p.id] = l; } catch (e) { /* label only */ } } });
+  return out;
+}
 function rankPet(p, rec, tip, hof, bits) {
   const s = p.stats || {}, st = streakAt(p, tip);
   const row = {
@@ -460,6 +469,7 @@ function write(dir, world, meta) {
   }
   /* before spill(): it frees world.pets as it goes (memory), so anything read from the pets must be taken first */
   const gods = godsOf(world);
+  const crossNames = crossNamesOf(world, meta && meta.ctx && meta.ctx.V2Rules);
   return spill().then(() => {
   const summary = {
     v: 3, tip: tip, rsig: rsig, n: n, alive: alive, dead: dead, released: released,
@@ -489,7 +499,9 @@ function write(dir, world, meta) {
     breedReqs: liveBreedReqs(world, tip),
     /* Nov 24 2026 (fastcheck): the cemetery's Gods door counted only the Gods a fast page happened to load (0, 2 or 6 instead of 19).
      * Every living Resurrected pet rides here (id, name, owner, block): a few dozen tiny records. */
-    gods: gods
+    gods: gods,
+    /* shown species name of each cross pet (see crossNamesOf) */
+    crossNames: crossNames
   };
   /* the biggest burners by XCPETS burned (the Top burners board), not the community pet's feeders list this used to read */
   const leadBurners = Object.keys(summary.burnBy || {}).map(a => ({ address: a, amount: summary.burnBy[a][0] })).sort((a, b) => b.amount - a.amount || (a.address < b.address ? -1 : 1));
@@ -648,4 +660,4 @@ function writeShop(dir, world, meta) {
    * need a server repair; the p/ shard name works today, like the lead file (p/99900.json). Pet shards hold 2,000 ids each. */
   return { file: 'view/p/' + SHOP_SHARD + '.json', bytes: writeJson(path.join(dir, 'p', SHOP_SHARD + '.json'), pack), listings: pack.listings.length, open: pack.open };
 }
-module.exports = { burnTotals, weekWins, shopPack, writeShop, SHOP_SHARD, liveBreedReqs, godsOf, LEAD_SHARD, leadFile, PET_SHARD, PAGE, COLD_KEYS, ownerKey, ownerShard, petShard, fromWorld, write, itemRec, petRec, fieldsOf, isHybRec, deedRec, ownerSide };
+module.exports = { burnTotals, weekWins, crossNamesOf, shopPack, writeShop, SHOP_SHARD, liveBreedReqs, godsOf, LEAD_SHARD, leadFile, PET_SHARD, PAGE, COLD_KEYS, ownerKey, ownerShard, petShard, fromWorld, write, itemRec, petRec, fieldsOf, isHybRec, deedRec, ownerSide };
