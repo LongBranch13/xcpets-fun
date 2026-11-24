@@ -528,6 +528,14 @@
   WR_BATCH.forEach(function (x) { var ex = x[4];
     DEFS[x[0]] = { slot: x[2], tier: x[3], label: x[1], at: x[6], dy: x[7] == null ? undefined : x[7], behind: false, map: x[8], origin: 'rabbit', exclusive: ex, species: ex ? 'rabbit' : undefined, kind: x[5], sig: ex };
     ITEMS.push({ id: x[0], label: x[1], slot: x[2], tier: x[3], origin: 'rabbit', exclusive: ex, legendary: ex, kind: x[5], sig: ex, overlay: true, since: 'rabbit' }); });
+  /* COMMUNITY RAISER PRIZES (owner Nov 23 2026: White Rabbit first, "do something like that for future community pets too"). RENDER-ONLY maps, same pattern
+   * as BO_GEAR. NOT in ITEMS, so never in any roll pool or drop; V2Rules (RAISER_PRIZES) grants them only when a community pet reaches Mythic: one piece
+   * to every raiser, a rarer one to the top 3. White Rabbit: Golden carrot / Mad Hatter top hat. Add the next pet's two pieces here. Wearable by any pet. [id, label, slot, anchor, dy, kind, map, tier] Map keys = BonusGear COLORS. */
+  var WR_RAISER_GEAR = [
+    ['wr-golden-carrot', 'Golden carrot', 'hand', 'handR', null, 'held', ['M.M..', '.MM..', '.gGG.', 'ggGG.', '.gGG.', '.ggG.', '..gG.', '..G..'], 2],
+    ['wr-mad-hatter', 'Mad Hatter top hat', 'head', 'head', 2, 'hat', ['..jjjjjjj..', '...jjjjjPP.', '...jjjjjPn.', '...jjjjjPP.', '...jjjjj...', '...iiiii...', '...jjjjj...', '.jjjjjjjjj.'], 3]
+  ];
+  WR_RAISER_GEAR.forEach(function (x) { DEFS[x[0]] = { slot: x[2], tier: x[7], label: x[1], at: x[3], dy: x[4] == null ? undefined : x[4], map: x[6], origin: null, exclusive: false, kind: x[5], wrRaiser: true }; });
   /* DJ PEPE GEAR (owner Nov 6 2026 2:01 PM CT, branch djpepe-7): Gold Chain = SIGNATURE Grip (★ tier 3, DJ Pepe + DJ Pepe hybrids only, like hp-donut / wr-pocket-watch).
    * Map keys = BonusGear COLORS: G/g gold, Q RED Bitcoin B (#da291c), n ink. item.since 'djpepe' = OFF until the future hatch gate. Append-only. */
   var DJ_BATCH = [
@@ -578,5 +586,5 @@
     ['sig-dodo-face', 'v2-bobo-face', '2026-10-14', 'Black-swan eye mask removed -> nearest eyewear (same as the retired Dodo face alias)'],
     ['v2-nakamoto-face', 'beam-eyes', '2026-10-14', 'Laser eyes removed (redundant) -> the regular Beam eyes']
   ];
-  return { BO_GEAR: BO_GEAR, RP_GEAR: RP_GEAR, FT_BATCH: FT_BATCH, FT_FLAGS: FT_FLAGS, WIZ_BATCH: WIZ_BATCH, WIZ_STAFF: WIZ_STAFF, STAR_BATCH: STAR_BATCH, SIG_SHUFFLE: SIG_SHUFFLE, RETIRED: RETIRED, CAST_KITS: CAST_KITS, reworkNakamoto: reworkNakamoto, NAKA_MAPS: NAKA_MAPS, ALIAS: ALIAS, SIG: SIG, SIG_MAPS: SIG_MAPS, isSig: isSig, sigKindOf: sigKindOf, HEAD_REDO: HEAD_REDO, EYE_GEAR: EYE_GEAR, SHADES: SHADES, SIG_HAT: SIG_HAT, SHARED_CROWNS: SHARED_CROWNS, FACE_MAPS: FACE_MAPS, FEET_MAPS: FEET_MAPS, JEWELRY: JEWELRY, BANNERS: BANNERS, BODY_MAPS: BODY_MAPS, REDRAW: REDRAW, REMOVED: REMOVED, DEFS: DEFS, ITEMS: ITEMS, LIST: LIST, KINDS: KINDS, KIND_SLOT: KIND_SLOT, PAL: PAL, install: install };
+  return { BO_GEAR: BO_GEAR, RP_GEAR: RP_GEAR, WR_RAISER_GEAR: WR_RAISER_GEAR, FT_BATCH: FT_BATCH, FT_FLAGS: FT_FLAGS, WIZ_BATCH: WIZ_BATCH, WIZ_STAFF: WIZ_STAFF, STAR_BATCH: STAR_BATCH, SIG_SHUFFLE: SIG_SHUFFLE, RETIRED: RETIRED, CAST_KITS: CAST_KITS, reworkNakamoto: reworkNakamoto, NAKA_MAPS: NAKA_MAPS, ALIAS: ALIAS, SIG: SIG, SIG_MAPS: SIG_MAPS, isSig: isSig, sigKindOf: sigKindOf, HEAD_REDO: HEAD_REDO, EYE_GEAR: EYE_GEAR, SHADES: SHADES, SIG_HAT: SIG_HAT, SHARED_CROWNS: SHARED_CROWNS, FACE_MAPS: FACE_MAPS, FEET_MAPS: FEET_MAPS, JEWELRY: JEWELRY, BANNERS: BANNERS, BODY_MAPS: BODY_MAPS, REDRAW: REDRAW, REMOVED: REMOVED, DEFS: DEFS, ITEMS: ITEMS, LIST: LIST, KINDS: KINDS, KIND_SLOT: KIND_SLOT, PAL: PAL, install: install };
 });
