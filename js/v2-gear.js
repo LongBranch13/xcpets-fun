@@ -551,7 +551,7 @@
     DEFS[x[0]] = { slot: x[2], tier: x[3], label: x[1], at: x[6], dy: x[7] == null ? undefined : x[7], behind: false, map: x[8], origin: 'djpepe', exclusive: ex, species: ex ? 'djpepe' : undefined, kind: x[5], sig: ex };
     ITEMS.push({ id: x[0], label: x[1], slot: x[2], tier: x[3], origin: 'djpepe', exclusive: ex, legendary: ex, kind: x[5], sig: ex, overlay: true, since: 'djpepe' }); });
   /* GROYPER GEAR (PREVIEW, community pet #7, Nov 24 2026): original pixel art, no logos, text or symbols. item.since 'groyper' = OFF (never in any roll pool,
-   * never wearable) until V2Rules.ACTIVATE_GROYPER_BLOCK is set (null now) -> replay SAME. Appended at the END of ITEMS (append-only pools).
+   * never wearable) until V2Rules.gpLive: gate set AND the White Rabbit in Cold Storage. Appended at the END of ITEMS (append-only pools).
    * Lily pad = his SIGNATURE Footwear (★ tier 3, Groyper + Groyper hybrids only): he sits on it. GroyperSprite draws its own versions (by item id) on him;
    * these maps are for every other body. Map keys = BonusGear COLORS. [id, label, slot, tier, exclusive, kind, anchor, dy, map] */
   var GP_BATCH = [
