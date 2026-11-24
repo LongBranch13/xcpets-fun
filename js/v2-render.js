@@ -847,7 +847,37 @@
   function clownWanted(ids, ov) { var a = (ids || []).concat(ov || []), i; for (i = 0; i < a.length; i++) if (a[i] === 'v2-honk') return true; return false; }
   function framesWith(art, stage, itemIds, extraOv, cap, baseGo) { var fr = framesWithB(art, stage, itemIds, extraOv, cap, baseGo); if (!(art && art.cross && art.cross.body && window.ContestSprite && ContestSprite.CROSS)) { /* 1 OF 1 CROSS body already carries its look */ if (art && art.boMark && !art.boLook) fr = boMarkFrames(fr, art, stage); if (art && art.rpMark && !art.rpLook) fr = rpMarkFrames(fr, art, stage); if (art && (art.rpLook || art.boLook)) fr = oneOfOneLookFrames(fr, art, stage); if (art && art.rareTier) fr = rareTierFrames(fr, art, stage, itemIds, extraOv, cap, baseGo); if (art && !stage && art.rareHatch) fr = rareEggFrames(fr, art, itemIds, extraOv, cap, baseGo); }
     if (window.V2ClownHair && stage && clownWanted(itemIds, extraOv)) fr = window.V2ClownHair.apply(fr, art, stage | 0);
-    if (art && art.hybrid && stage && !hatBusy) fr = keptTopHat(fr, art, stage, itemIds, extraOv, cap, baseGo); return fr; }
+    if (art && art.hybrid && stage && !hatBusy) fr = keptTopHat(fr, art, stage, itemIds, extraOv, cap, baseGo);
+    if (art && art.hybrid && stage && Array.isArray(art.hybrid.parts) && art.hybrid.parts.some(function (q) { return q.sp === 'dodo' && q.part === 'beak'; })) fr = dodoBeak(fr, art, stage); return fr; }
+  /* sprite-qa 2026-11-24 (Jake: "that kekdodo beak doesnt look great", Chafokak #89552): the Dodo beak hybrid part is drawn by the rules on a front-facing
+   * face as a flat 7-px red triangle, which read as a bib or a gem, not a beak (22 living pets, every body shape). Display only: that drawing is found by
+   * rendering the same hybrid with and without the beak part, covered with the face's skin, and a real beak goes in its place: a hooked bill in a
+   * three-quarter view with a lit top, an open-mouth line and a dark tip, in the same beak colour. Gear drawn over the face stays on top. */
+  var beakMemo = {};
+  function dodoBeak(fr, art, stage) {
+    try { if (!fr || !fr.length || (fr[0].width || 32) !== 32) return fr;
+      var mk = JSON.stringify([art, stage]), plan = beakMemo[mk];
+      if (!plan) { var key = Object.assign({}, art, { background: 'solid', bgColor: '#ff00ff', pattern: 'none' }), nb = Object.assign({}, key, { hybrid: Object.assign({}, key.hybrid, { parts: key.hybrid.parts.filter(function (q) { return !(q.sp === 'dodo' && q.part === 'beak'); }) }) });
+        var KW = framesWithB(key, stage, [], []), KN = framesWithB(nb, stage, [], []); /* the same body path as the pet (Kek, Wizard, Viking bodies have their own) */
+        plan = beakMemo[mk] = KW.map(function (w, f) { var a = w.data, b = KN[f].data, red = {}, ms = [], rx0 = 99, rx1 = -1, ry0 = 99, i, cnt = {}, best = null, sk = {}, skin = null;
+          for (i = 0; i < 1024; i++) { var q = i * 4; if (a[q] === b[q] && a[q + 1] === b[q + 1] && a[q + 2] === b[q + 2]) continue; ms.push(i);
+            if (a[q] > 70 && a[q] > a[q + 1] * 1.6 && a[q] > a[q + 2] * 1.6) { /* every shade of the beak (its dark tip too) */ red[i] = 1; rx0 = Math.min(rx0, i & 31); rx1 = Math.max(rx1, i & 31); ry0 = Math.min(ry0, i >> 5); var c = a[q] + ',' + a[q + 1] + ',' + a[q + 2]; cnt[c] = (cnt[c] || 0) + (a[q] > 150 ? 1 : 0.01); if (!best || cnt[c] > cnt[best]) best = c; } }
+          if (!best) return null; var dark = function (q) { return a[q] + a[q + 1] + a[q + 2] < 120; }, clr = [];
+          ms.forEach(function (j) { var q = j * 4; if (red[j]) { clr.push(j); return; } if (dark(q) && (red[j + 1] || red[j - 1] || red[j + 32] || red[j - 32])) { clr.push(j); return; } var c = a[q] + ',' + a[q + 1] + ',' + a[q + 2]; if (!dark(q)) { sk[c] = (sk[c] || 0) + 1; if (!skin || sk[c] > sk[skin]) skin = c; } });
+          var A = best.split(',').map(Number), S = skin ? skin.split(',').map(Number) : A;
+          var rows = rx1 - rx0 + 1 >= 6 ? ['.hhhh..', 'hAAAAAd', 'hAAAAdt', 'nnnnntt', '.AAAd.t', '..dd...'] : ['.hhh.', 'hAAAt', 'nnntt', '.Ad..'];
+          /* a dodo's bill: bone-pale with a dark hooked tip, so the face reads "beak", not "red lips" */
+          var pal = { A: [232, 208, 140], h: [255, 242, 196], d: [176, 136, 78], t: [112, 76, 44], n: [20, 16, 24] };
+          var w0 = rows[0].length, x0 = Math.round((rx0 + rx1) / 2 - (w0 - 1) / 2), y0 = ry0, put = [], on = {};
+          rows.forEach(function (r, yy) { for (var xx = 0; xx < w0; xx++) { var ch = r.charAt(xx), X = x0 + xx, Y = y0 + yy; if (ch === '.' || X < 0 || Y < 0 || X > 31 || Y > 31) continue; on[Y * 32 + X] = 1; put.push([Y * 32 + X, pal[ch]]); } });
+          put.slice().forEach(function (p) { [1, -1, 32, -32].forEach(function (d) { var n = p[0] + d, q = n * 4; if (n < 0 || n > 1023 || on[n] || Math.abs((n & 31) - (p[0] & 31)) > 1) return; if (b[q] > 240 && b[q + 1] < 16 && b[q + 2] > 240) return; on[n] = 1; put.push([n, pal.n]); }); });
+          return { w: a, clr: clr, skin: S, put: put }; }); }
+      return fr.map(function (F, f) { var P = plan[f % plan.length]; if (!P) return F; var d = new Uint8ClampedArray(F.data), w = P.w, same = function (j) { var q = j * 4; return d[q] === w[q] && d[q + 1] === w[q + 1] && d[q + 2] === w[q + 2]; }, ok = {};
+        P.clr.concat(P.put.map(function (p) { return p[0]; })).forEach(function (j) { ok[j] = same(j); }); /* only pixels the gear layer left as the bare face */
+        P.clr.forEach(function (j) { if (ok[j]) { var q = j * 4; d[q] = P.skin[0]; d[q + 1] = P.skin[1]; d[q + 2] = P.skin[2]; } });
+        P.put.forEach(function (p) { if (ok[p[0]]) { var q = p[0] * 4; d[q] = p[1][0]; d[q + 1] = p[1][1]; d[q + 2] = p[1][2]; d[q + 3] = 255; } });
+        return Object.assign({}, F, { data: d }); });
+    } catch (e) { return fr; } }
   /* sprite-qa 2026-11-24 (Jake: "yes if it fits right"): a hybrid that keeps a parent's top (Wizard hat, FUNTRUMP hair, Kek nemes) drew no worn
    * headwear at all: the kept top covered it or the body's gear layer skipped it (5 living pets: a laurel, a party hat, three crowns). When a worn
    * head piece changes no pixel, a small version is drawn on the pet's own top on every frame, measured on that frame, so it bobs with the pet:
