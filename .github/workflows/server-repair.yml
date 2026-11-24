@@ -17,7 +17,7 @@ on:
       diagnose_only: { description: 'Only look: print the diagnosis and change nothing on the disk', type: boolean, default: false }
       sync_rules: { description: 'Install the 12 rule files from main (the rsig files) and rebuild the world if its rsig differs from main', type: boolean, default: false }
       enable_builder: { description: 'Turn the world builder in the sync service back on (XP_SNAPSHOT=0 becomes 1; a .bak copy is kept)', type: boolean, default: false }
-      sync_memory: { description: 'Raise the sync service memory limit to MemoryHigh 2800M / MemoryMax 3200M so the burn check service fits (a drop-in file; delete it to undo)', type: boolean, default: false }
+      sync_memory: { description: 'Size the sync service for the 8 GB server: MemoryHigh 5000M / MemoryMax 5600M and a 3.5 GB JavaScript heap (a drop-in file; delete it to undo)', type: boolean, default: false }
       node_watchdog: { description: 'Install the node cache watchdog (restarts the cache when it stops answering) and let the sync service restart itself', type: boolean, default: false }
       sync_watchdog: { description: 'Install the game server watchdog (restarts the sync service when it stops answering or its follow step is stuck) and a time limit on the feed job', type: boolean, default: true }
 permissions: { contents: read }
@@ -113,6 +113,8 @@ jobs:
             echo "tick failures in 2 days: $(journalctl -D "$J" -u xcpets-sync --since -2d --no-pager -o cat 2>/dev/null | grep -c 'sync tick failed')"
             echo "--- service lines around the last good build (Nov 22 12:30-14:30 UTC, last 30) ---"
             journalctl -D "$J" -u xcpets-sync --since '2026-11-22 12:30' --until '2026-11-22 14:30' --no-pager -o short-iso 2>/dev/null | grep -v 'tick failed' | tail -30 | scrub | cut -c1-220
+            echo "heap flag in ExecStart: $(printf '%s\n' "$ALL" | grep -m1 '^ExecStart=' | grep -oE 'max-old-space-size=[0-9]+' || echo none)"
+            echo "why the service stopped in 2 h (counts): heap $(journalctl -D "$J" -u xcpets-sync --since -2h --no-pager -o cat 2>/dev/null | grep -ci 'heap out of memory'), oom-kill $(journalctl -D "$J" -u xcpets-sync --since -2h --no-pager -o cat 2>/dev/null | grep -ci 'oom-kill\|memory.max'), exits $(journalctl -D "$J" -u xcpets-sync --since -2h --no-pager -o cat 2>/dev/null | grep -oE 'status=[0-9]+/[A-Z]*|code=[a-z]+, status=[0-9A-Z/]+' | sort | uniq -c | tr '\n' ' '), watchdog restarts $(journalctl -D "$J" -u xcpets-sync-watchdog --since -2h --no-pager -o cat 2>/dev/null | grep -ci restart)"
             echo "--- service lines since the repair (last 30) ---"
             journalctl -D "$J" -u xcpets-sync --since -2h --no-pager -o short-iso 2>/dev/null | tail -30 | scrub | cut -c1-220
             echo "---"
@@ -231,8 +233,10 @@ jobs:
             # Nov 23 2026 (Jake approved): the burn check service (~1 GB) runs inside this service next to the follower (~0.7-0.9 GB).
             # A drop-in read after the unit's own lines; the checker still waits for 1,200 MB free on the machine and stops during builds.
             mkdir -p /mnt/r/etc/systemd/system/xcpets-sync.service.d
-            printf '[Service]\nMemoryHigh=2800M\nMemoryMax=3200M\n' > /mnt/r/etc/systemd/system/xcpets-sync.service.d/zz-check-memory.conf
-            echo "sync memory raised: $(grep -oE '^Memory(High|Max)=[^ ]+' /mnt/r/etc/systemd/system/xcpets-sync.service.d/zz-check-memory.conf | tr '\n' ' ')(drop-in zz-check-memory.conf; delete it to undo)"
+            # Nov 24 2026: the server is now 8 GB (CPX22). Node sizes its heap from the service's memory limit (~1 GB here), and the
+            # service crash-looped about once a minute after the upgrade (65 starts in an hour, heap limit 984 MB). Give it room.
+            printf '[Service]\nMemoryHigh=5000M\nMemoryMax=5600M\nEnvironment=NODE_OPTIONS=--max-old-space-size=3584\n' > /mnt/r/etc/systemd/system/xcpets-sync.service.d/zz-check-memory.conf
+            echo "sync memory raised: $(grep -oE '^(Memory(High|Max)|Environment)=[^ ]+' /mnt/r/etc/systemd/system/xcpets-sync.service.d/zz-check-memory.conf | tr '\n' ' ')(drop-in zz-check-memory.conf; delete it to undo)"
           fi
           if [ "$UPDATE" = "true" ]; then
             T="/mnt/r$ROOT/tools"; B="sync-server.before-$(date -u +%Y%m%d%H%M)"
