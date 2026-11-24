@@ -45,8 +45,8 @@ for (const f of fs.readdirSync(path.join(__dirname, 'figurine/samples'))) {
   const im = R.still(fig, { size: 120 }); ok(im.w === 120 && im.d.length === 120 * 120 * 4, f + ' preview renders');
 }
 /* species check: hybrids take the strictest parent */
-ok(M.speciesLevel('funtrump').level === 'stop', 'FUNTRUMP is stop');
-ok(M.speciesLevel('hyb:dodo:funtrump').level === 'stop', 'a FUNTRUMP hybrid is stop');
+ok(M.speciesLevel('funtrump').level === 'ok' && M.speciesLevel('starlordkek').level === 'ok', 'FUNTRUMP and Star-Lord Kek are ok (Jake: every game species)');
+ok(M.speciesLevel('hyb:dodo:newthing').level === 'ask', 'a hybrid with an unlisted parent is ask');
 ok(M.speciesLevel('dodo').level === 'ok', 'Dodo is ok');
 ok(M.speciesLevel('hyb3:dodo:snibby:pepe').level === 'ok', 'a Pepe three-way hybrid is ok (Jake: game pets are the product)');
 ok(M.speciesLevel('somethingnew').level === 'ask', 'an unlisted species is ask');
