@@ -314,6 +314,10 @@ jobs:
             if [ -f /mnt/r/etc/systemd/system/xcpets-feed.service ]; then
               mkdir -p /mnt/r/etc/systemd/system/xcpets-feed.service.d && printf '[Service]\nTimeoutStartSec=40min\nRuntimeMaxSec=40min\n' > /mnt/r/etc/systemd/system/xcpets-feed.service.d/time-limit.conf
               echo "feed job: 40-minute time limit set (drop-in time-limit.conf)"
+              # Nov 24 2026: the feed job died with 'JavaScript heap out of memory' (exit 134, in JSON.parse of the big issuance
+              # reads) at 16:09 and 16:35 UTC, after the server moved to 8 GB too. Give its node a 4 GB heap.
+              printf '[Service]\nEnvironment=NODE_OPTIONS=--max-old-space-size=4096\n' > /mnt/r/etc/systemd/system/xcpets-feed.service.d/heap.conf
+              echo "feed job: 4 GB JavaScript heap set (drop-in heap.conf)"
             fi
             [ -x /mnt/r/usr/bin/curl ] && echo "sync watchdog installed (port from the service settings: $([ "$SPORT" = 8787 ] && echo default || echo custom))" || echo "WARNING: curl is missing on the server, the sync watchdog cannot check"
           fi
