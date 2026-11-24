@@ -80,3 +80,7 @@ the chain from the public Counterparty nodes (`tools/followprobe.js`, workflow `
   The sales read now gives heavy pages 60 s for the headers (`XP_SALES_FETCH_MS`), records each failed sales request per node in
   health `loop.salesNet` (public API host names only, else `other`; `http 429`, `headers timeout`, `body idle timeout`, error code),
   and adds the game's own node (`https://node.xcpets.fun/v2`, the pages' read path) as the last read source (`XP_SALES_CACHE=0`: off).
+
+## Pet share links (Nov 24 2026)
+
+`GET /xp/v1/pet/<id>` is the link the site's Share button and the Telegram mini app hand out. It is a tiny page with the og/twitter tags X and Telegram read for the link preview, then it sends people on to `https://xcpets.fun/pet.html?id=<id>`. Its og:image is `GET /xp/v1/pet/<id>.png`, a 1200x630 card drawn by the burn check service (`checker.js` asks `card.js`, which draws the pet with the site's own renderer through `hatchbot/art.js`). `share.js` keeps cards in `<XP_DATA>/cards/` (redrawn after 3 hours, at most 2 drawn at once, 6,000 kept) and serves the copy on disk while the check service is busy or between builds; with no card at all the picture redirects to the site's generic `img/og.png`. `hatchbot/art.js` and the sprite scripts come with the server-repair install (not the rules follower, because every followed-file change restarts the service), so a new species or sprite reaches the cards with the next server-repair run.
