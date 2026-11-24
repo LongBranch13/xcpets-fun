@@ -18,6 +18,7 @@
   function paintChip() {
     if (!chip) return; var a = me(), vo = viewOnly() || /[?&]addr=/.test(location.search), txt, cls, tip;
     if (a && vo) { txt = '👀 ' + short(a); cls = 'hd-view'; tip = 'Viewing ' + a + ' (view only). Tap for My Pets.'; }
+    else if (a && w.XcpHandoff && XcpHandoff.on()) { txt = '📲 ' + short(a); cls = 'hd-view'; tip = 'Picking burns for ' + a + ' on this phone. You sign them on your computer. Tap for My Pets.'; } /* phone plan mode (js/handoff.js) */
     else if (a) { txt = '🟢 ' + short(a); cls = 'hd-on'; tip = 'Connected: ' + a + '. Tap for My Pets.'; }
     else { txt = '🔌 Connect'; cls = 'hd-off'; tip = 'Connect your wallet (XCP Wallet on a computer, Casa Tookan on a phone)'; }
     if (chip.textContent !== txt) chip.textContent = txt; chip.className = 'hd-wallet ' + cls; chip.title = tip; chip.setAttribute('aria-label', tip);
