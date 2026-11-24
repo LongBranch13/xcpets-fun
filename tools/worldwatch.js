@@ -20,6 +20,10 @@ const SITE = process.env.WW_SITE || 'https://xcpets.fun', NODE = process.env.WW_
 const RULES = ['rjs/config.js', 'rjs/pet-core.js', 'rjs/game-core.js', 'rjs/bonus-gear.js', 'rjs/real-core.js', 'rjs/chain.js', 'js/pet-core.js', 'js/bonus-gear.js', 'js/v2-gear.js', 'js/v2-fit.js', 'js/v2-rules.js', 'js/v2-replay-worker.js'];
 const BEHIND_MAX = +(process.env.WW_BEHIND_MAX || 18);   /* blocks (~3 h). Pages stop using a world 48 blocks behind; builds run every 6. */
 const FEED_BEHIND_MAX = +(process.env.WW_FEED_BEHIND_MAX || 12);
+/* Nov 24 2026: the follower froze at 977,257 for hours and every check here said fine, because "chain tip" was the server's own
+ * (frozen) tip. The chain height now comes from outside (mempool.space, then blockstream.info), and the server's own tip is
+ * checked against it. */
+const FOLLOW_BEHIND_MAX = +(process.env.WW_FOLLOW_BEHIND_MAX || 3);
 const A = process.argv.slice(2), opt = k => { const i = A.indexOf(k); return i >= 0 ? A[i + 1] : null; };
 
 function rulesSig(bufs) {
@@ -43,6 +47,25 @@ async function liveRsig() {
   const live = await Promise.all(RULES.map(f => get(SITE + '/' + f, 'buf').catch(() => null)));
   return live.every(Boolean) ? rulesSig(live) : null;
 }
+async function realHeight() {
+  for (const u of ['https://mempool.space/api/blocks/tip/height', 'https://blockstream.info/api/blocks/tip/height']) {
+    try { const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 15000);
+      try { const r = await fetch(u, { signal: ctl.signal, headers: { 'User-Agent': 'xcpets-worldwatch' } }); const n = parseInt((await r.text()).trim(), 10); if (r.ok && n > 0) return n; } finally { clearTimeout(t); }
+    } catch (e) { }
+  }
+  return null;
+}
+/* the game server's own follower: does it keep up with the chain, and is its follow loop moving? */
+function followProblems(h, real) {
+  const out = [];
+  if (!h || h.__err) return out;
+  const tip = h.tip || 0, loop = h.loop || null;
+  if (loop && loop.stepSec >= 600) out.push('The game server\'s chain follower has been stuck on one step for ' + Math.round(loop.stepSec / 60) + ' minutes (tip ' + tip + '). It restarts itself after 10 minutes; if this stays, run Actions > server-restart.');
+  if (loop && loop.restarts1h >= 3) out.push('The game server\'s sync service keeps restarting (' + loop.restarts1h + ' times in the last hour; it was at block ' + tip + ', heap ' + (loop.heapMB || '?') + ' of ' + (loop.heapLimitMB || '?') + ' MB). Usually it runs out of memory.');
+  if (real && tip && real - tip >= FOLLOW_BEHIND_MAX) out.push('The game server stopped following the chain: it is at block ' + tip + ', the chain is at ' + real + ' (' + (real - tip) + ' behind)' +
+    (loop && loop.errorRun ? ', its last ' + loop.errorRun + ' reads failed (' + (loop.lastError || 'error') + ')' : '') + '. New burns do not show until it catches up.');
+  return out;
+}
 async function check() {
   const out = { at: new Date().toISOString(), problems: [], notes: [] };
   out.liveRsig = await liveRsig();
@@ -53,7 +76,13 @@ async function check() {
   out.nodeCache = cache && !cache.__err ? 'ok' : (cache && cache.__err) || 'not answering';
   if (out.nodeCache !== 'ok') out.problems.push('The node cache (node.xcpets.fun/v2) is ' + out.nodeCache + '. Pages fall back to the slower public Counterparty nodes and the feed and recap cannot be built. Last time the node cache had hung: Actions > server-restart (type RESTART) fixed it.');
   if (h.__err) out.problems.push('The game server (node.xcpets.fun) health check is ' + h.__err + '. Pages fall back to the slow load.');
-  out.chainTip = h.tip || null; out.builder = h.builder || null; out.follow = h.rules || null;
+  out.serverTip = h.tip || null; out.realTip = await realHeight();
+  out.chainTip = Math.max(h.tip || 0, out.realTip || 0) || null; out.builder = h.builder || null; out.follow = h.rules || null; out.loop = h.loop || null;
+  const fp = followProblems(h, out.realTip); fp.forEach(p => out.problems.push(p));
+  /* what worldwatch-alert.js may heal by itself when it lasts (a reboot through server-restart): the server not answering at all, or
+   * a follower that stays stuck after the server's own guard and watchdog had their chance */
+  /* a crash loop alone is not healed by a reboot (memory); only a server that does not answer or a follower that stays behind */
+  out.heal = h.__err ? 'down' : followProblems(Object.assign({}, h, { loop: Object.assign({}, h.loop || {}, { restarts1h: 0 }) }), out.realTip).length ? 'stuck' : null;
   if (!out.liveRsig) out.problems.push('Could not read the rule files from the live site.');
   let world = latest && !latest.__err ? latest : null;
   out.latestRsig = world && world.rsig || null; out.latestTip = world && world.tip || null;
@@ -86,7 +115,7 @@ async function check() {
 function report(r) {
   const lines = [(r.problems.length ? '### ⚠️ World watch: players may get the slow load' : '### ✅ World watch: fast load is working'), '',
     '| | |', '|---|---|',
-    '| Chain tip | ' + (r.chainTip || '?') + ' |', '| World players use | ' + (r.worldTip || 'none') + (r.behind != null ? ' (' + r.behind + ' behind)' : '') + ' |',
+    '| Chain tip (outside) / game server tip | ' + (r.realTip || '?') + ' / ' + (r.serverTip || '?') + ' |', '| World players use | ' + (r.worldTip || 'none') + (r.behind != null ? ' (' + r.behind + ' behind)' : '') + ' |',
     '| Live rules / main rules | ' + (r.liveRsig || '?') + ' / ' + (r.mainRsig || '?') + ' |', '| latest.json rules | ' + (r.latestRsig || '?') + ' |',
     '| Server follows main | ' + (r.follow ? (r.follow.follow ? 'yes, ' + (r.follow.sha || '?') + ' ' + (r.follow.rsig || '') : 'off') : 'not installed yet') + ' |',
     '| Feed tip | ' + (r.feedTip || '?') + ' |', '| Node cache (/v2) | ' + (r.nodeCache || '?') + ' |', ''];
@@ -96,7 +125,7 @@ function report(r) {
   console.log(md);
 }
 const sleep = ms => new Promise(r => setTimeout(r, ms));
-(async () => {
+if (require.main === module) (async () => {
   if (A.includes('--rsig-of-checkout')) { console.log(checkoutRsig()); return; }
   const waitMin = +(opt('--wait') || 0), until = Date.now() + waitMin * 60000;
   const want = opt('--wait-for-rsig');
@@ -126,3 +155,4 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   if (opt('--json')) fs.writeFileSync(opt('--json'), JSON.stringify(r, null, 1));
   process.exit(r.problems.length ? 1 : 0);
 })().catch(e => { console.error('worldwatch failed: ' + (e && e.message || e)); if (!A.includes('--wait-for-rsig')) process.exit(1); });
+module.exports = { followProblems, FOLLOW_BEHIND_MAX };

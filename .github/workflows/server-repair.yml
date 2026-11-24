@@ -19,6 +19,7 @@ on:
       enable_builder: { description: 'Turn the world builder in the sync service back on (XP_SNAPSHOT=0 becomes 1; a .bak copy is kept)', type: boolean, default: false }
       sync_memory: { description: 'Raise the sync service memory limit to MemoryHigh 2800M / MemoryMax 3200M so the burn check service fits (a drop-in file; delete it to undo)', type: boolean, default: false }
       node_watchdog: { description: 'Install the node cache watchdog (restarts the cache when it stops answering) and let the sync service restart itself', type: boolean, default: false }
+      sync_watchdog: { description: 'Install the game server watchdog (restarts the sync service when it stops answering or its follow step is stuck) and a time limit on the feed job', type: boolean, default: true }
 permissions: { contents: read }
 concurrency: { group: server-restart, cancel-in-progress: false }
 jobs:
@@ -65,7 +66,7 @@ jobs:
           done
           echo "The rescue system did not answer within 10 minutes."; exit 1
       - name: Diagnose and repair
-        env: { UPDATE: '${{ github.event.inputs.update_code }}', LOOK: '${{ github.event.inputs.diagnose_only }}', BUILD: '${{ github.event.inputs.enable_builder }}', RULES: '${{ github.event.inputs.sync_rules }}', DOG: '${{ github.event.inputs.node_watchdog }}', SMEM: '${{ github.event.inputs.sync_memory }}' }
+        env: { UPDATE: '${{ github.event.inputs.update_code }}', LOOK: '${{ github.event.inputs.diagnose_only }}', BUILD: '${{ github.event.inputs.enable_builder }}', RULES: '${{ github.event.inputs.sync_rules }}', DOG: '${{ github.event.inputs.node_watchdog }}', SDOG: '${{ github.event.inputs.sync_watchdog }}', SMEM: '${{ github.event.inputs.sync_memory }}' }
         run: |
           echo "::add-mask::$IP"
           S="ssh -i $RUNNER_TEMP/k -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR root@$IP"
@@ -76,7 +77,7 @@ jobs:
           echo "main rsig: $MAINRSIG"
           scp -i "$RUNNER_TEMP/k" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR "$RUNNER_TEMP/rules.tgz" root@"$IP":/root/rules.tgz
           scp -i "$RUNNER_TEMP/k" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR "$RUNNER_TEMP/ss.tgz" root@"$IP":/root/ss.tgz
-          $S "UPDATE=$UPDATE LOOK=$LOOK BUILD=$BUILD RULES=$RULES DOG=$DOG SMEM=$SMEM MAINRSIG=$MAINRSIG bash -s" <<'EOS'
+          $S "UPDATE=$UPDATE LOOK=$LOOK BUILD=$BUILD RULES=$RULES DOG=$DOG SDOG=${SDOG:-true} SMEM=$SMEM MAINRSIG=$MAINRSIG bash -s" <<'EOS'
           set -u
           scrub() { sed -E 's/[A-Za-z0-9.-]*\.(sslip|nip|xip)\.io/<host>/g; s/[0-9]{1,3}(-[0-9]{1,3}){3}/<ip>/g; s/[a-z2-7]{16,56}\.onion/<onion>/g; s/[0-9]{1,3}(\.[0-9]{1,3}){3}/<ip>/g; s#[a-z]+://[^ ]+#<url>#g; s/[0-9a-f]{0,4}(:[0-9a-f]{0,4}){3,7}/<ip6>/g'; }
           # the server's disk: the biggest ext4/xfs partition
@@ -257,6 +258,44 @@ jobs:
               grep -q "indexOf('.onion')" "$NCJS" && echo "node cache: onion check made linear (old copy kept as .bak)"
             fi
             [ -x /mnt/r/usr/bin/curl ] && echo "watchdog installed (curl present on the server)" || echo "WARNING: curl is missing on the server, the watchdog cannot check"
+          fi
+          if [ "${SDOG:-true}" = "true" ] && [ "$LOOK" != "true" ]; then
+            # Nov 24 2026 (never freeze): Nov 23 the sync service answered health for hours while its follow loop was stuck, so
+            # systemd saw nothing wrong. The service now stops itself when one follow step runs past 10 minutes; this watchdog is the
+            # outside half: every minute it asks the service directly. Three misses in a row (no answer within 15 s), or a follow step
+            # stuck for 15 minutes (the service's own guard did not fire), restart it. The published world stays on disk and is served
+            # again within seconds. Restarts are logged to the journal (xcpets-sync-watchdog) and counted in /run.
+            SPORT=$(printf '%s\n' "$ALL" | grep -oE 'XP_PORT=[0-9]+' | head -1 | cut -d= -f2); SPORT=${SPORT:-8787}
+            cat > /mnt/r/usr/local/bin/xcpets-sync-watchdog.sh <<WD
+          #!/bin/sh
+          # restart the sync service when it stops answering or its follow loop is stuck (installed by server-repair)
+          command -v curl >/dev/null 2>&1 || exit 0
+          systemctl is-active --quiet xcpets-sync.service || { systemctl is-enabled --quiet xcpets-sync.service && echo "sync service not running: starting it" && systemctl start --no-block xcpets-sync.service; exit 0; }
+          F=/run/xcpets-sync-watchdog.miss
+          B=\$(curl -s -m 15 http://127.0.0.1:$SPORT/xp/v1/health 2>/dev/null)
+          if [ -z "\$B" ]; then
+            N=\$(( \$(cat \$F 2>/dev/null || echo 0) + 1 )); echo \$N > \$F
+            if [ \$N -ge 3 ]; then rm -f \$F; echo "sync service did not answer 3 times in a row: restarting it"; date -u +%FT%TZ >> /run/xcpets-sync-watchdog.restarts; systemctl restart xcpets-sync.service; else echo "sync service did not answer (\$N)"; fi
+            exit 0
+          fi
+          rm -f \$F
+          S=\$(printf '%s' "\$B" | grep -oE '"stepSec":[0-9]+' | head -1 | cut -d: -f2)
+          if [ -n "\$S" ] && [ "\$S" -ge 900 ]; then echo "sync follow step stuck for \$S s: restarting the service"; date -u +%FT%TZ >> /run/xcpets-sync-watchdog.restarts; systemctl restart xcpets-sync.service; fi
+          exit 0
+          WD
+            sed -i 's/^          //' /mnt/r/usr/local/bin/xcpets-sync-watchdog.sh; chmod 755 /mnt/r/usr/local/bin/xcpets-sync-watchdog.sh
+            printf '[Unit]\nDescription=XCPETS sync service watchdog\n[Service]\nType=oneshot\nExecStart=/usr/local/bin/xcpets-sync-watchdog.sh\n' > /mnt/r/etc/systemd/system/xcpets-sync-watchdog.service
+            printf '[Unit]\nDescription=XCPETS sync service watchdog, every minute\n[Timer]\nOnBootSec=4min\nOnUnitActiveSec=1min\nAccuracySec=10s\n[Install]\nWantedBy=timers.target\n' > /mnt/r/etc/systemd/system/xcpets-sync-watchdog.timer
+            mkdir -p /mnt/r/etc/systemd/system/timers.target.wants && ln -sf /etc/systemd/system/xcpets-sync-watchdog.timer /mnt/r/etc/systemd/system/timers.target.wants/xcpets-sync-watchdog.timer
+            # systemd must always start the service again (its own stall guard exits with 70, a rules update with 75)
+            mkdir -p /mnt/r/etc/systemd/system/xcpets-sync.service.d && printf '[Unit]\nStartLimitIntervalSec=0\n[Service]\nRestart=always\nRestartSec=5\n' > /mnt/r/etc/systemd/system/xcpets-sync.service.d/restart.conf
+            # The feed job (api/boot.json every ~20 min) hung the same way on Nov 23 (stuck at 977,257). A oneshot job has no time
+            # limit by default, and its timer never starts a new run while one hangs. Now a run is stopped after 40 minutes.
+            if [ -f /mnt/r/etc/systemd/system/xcpets-feed.service ]; then
+              mkdir -p /mnt/r/etc/systemd/system/xcpets-feed.service.d && printf '[Service]\nTimeoutStartSec=40min\nRuntimeMaxSec=40min\n' > /mnt/r/etc/systemd/system/xcpets-feed.service.d/time-limit.conf
+              echo "feed job: 40-minute time limit set (drop-in time-limit.conf)"
+            fi
+            [ -x /mnt/r/usr/bin/curl ] && echo "sync watchdog installed (port from the service settings: $([ "$SPORT" = 8787 ] && echo default || echo custom))" || echo "WARNING: curl is missing on the server, the sync watchdog cannot check"
           fi
           echo "disk after: $(df -m /mnt/r | awk 'NR==2{print $4" MB free"}')"
           sync; umount /mnt/r

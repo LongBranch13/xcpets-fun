@@ -8,6 +8,7 @@ import MEMES from './memes.json';
 import TOKENS from './tokens.json';
 import AUTO from './auto-config.json'; /* automatic posts: every switch defaults to off */
 import { autoTick, preview as autoPreview } from './auto.js';
+import { serverWatch, statusText, toggleAlerts } from './serverwatch.js'; /* game server watch + /status, /alerts (Nov 24 2026) */
 const TOKEN_IDS = TOKENS.map(m => m.id); /* every pet with a 512x512 picture (hatchbot/build-memes.js) */
 
 var SITE = "https://xcpets.fun";
@@ -482,7 +483,7 @@ async function command(env, msg) {
   if (!m) return null;
   if (m[2]) { const me = await botUsername(env); if (me && m[2].toLowerCase() !== me.toLowerCase()) return null; }
   const cmd = "/" + m[1].toLowerCase(), args = (m[3] || "").trim().slice(0, 60), name = cmd.slice(1);
-  const KNOWN = ["/help", "/start", "/play", "/app", "/chatid", "/chainday", "/season", "/meme", "/pet", "/burns", "/whosthat", "/breed", "/battle", "/bug"].concat(RATE_ON ? ["/rate"] : []);
+  const KNOWN = ["/help", "/start", "/play", "/app", "/chatid", "/status", "/alerts", "/chainday", "/season", "/meme", "/pet", "/burns", "/whosthat", "/breed", "/battle", "/bug"].concat(RATE_ON ? ["/rate"] : []);
   if (!KNOWN.includes(cmd)) return null;
   const now = Date.now(), age = msg.date ? Math.floor(now / 1e3) - msg.date : 0, late = age > LIMITS.lateS;
   if (late && (age > LIMITS.lateMaxS || ["/meme", "/chainday", "/season", "/whosthat", "/play", "/app"].includes(cmd))) return null;
@@ -497,6 +498,8 @@ async function command(env, msg) {
     return reply(HELP);
   if (cmd === "/chatid")
     return reply("This chat id is " + chat);
+  if (cmd === "/status") return reply(await statusText());
+  if (cmd === "/alerts") return reply(msg.chat.type === "private" ? await toggleAlerts(env, chat) : "Send /alerts to me in a private chat to get game server alerts.");
   if (cmd === "/chainday") {
     const b = await tipNow();
     if (!b)
@@ -555,6 +558,8 @@ async function scheduled(env) {
       if (r.ok) await env.DB.prepare("INSERT OR REPLACE INTO kv(k, v) VALUES (?, ?)").bind(k, new Date().toISOString()).run();
     }
   } catch (e) { console.log("menu set failed", e && e.message); }
+  /* Game server watch (hatchbot/serverwatch.js): every 4 minutes, alerts to TELEGRAM_ALERT_CHAT_ID and /alerts subscribers */
+  try { const r = await serverWatch(env, tg, Date.now()); if (r && (r.alert || r.remind || r.clear || r.bad)) console.log("serverwatch", JSON.stringify(r)); } catch (e) { console.log("serverwatch failed", e && e.message); }
   /* Automatic chain posts (hatchbot/auto.js). Does nothing unless auto-config.json has announce:true and a feature switched on. */
   try { const r = await autoTick(env, AUTO, tg, Date.now(), { pets: autoPets }); if (r && !r.off && (r.sent || r.queued || r.error)) console.log("auto", JSON.stringify(r)); } catch (e) { console.log("auto failed", e && e.message); }
 }

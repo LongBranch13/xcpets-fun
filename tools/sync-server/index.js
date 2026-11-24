@@ -11,7 +11,9 @@
  *   XP_SNAPSHOT_EVERY  build when the published snapshot is at least this many blocks behind (default 6)
  *   XP_SNAPSHOT_HEAP   Node heap cap in MB for the builder (default 1536)
  *   XP_SNAPSHOT_MAX_MIN  stop a build that runs longer than this many minutes (default 30) so one hung build can't stop every later one
- *   XP_FETCH_MS    per-request upstream timeout in ms (default 15000)
+ *   XP_FETCH_MS    per-request upstream timeout in ms, body included (default 15000)
+ *   XP_TICK_MAX_MIN  a follow step (one tick) that runs longer than this many minutes is stuck: the service writes stall.json and
+ *                  exits so systemd starts it again (default 10). Nov 23 2026: one tick hung for hours and nothing noticed.
  *   XP_RULES_BASE  optional http(s) prefix for rule-file bytes. Default: this repo.
  *   XP_RULES_FOLLOW=0  do not follow main (see rules-follow.js). By default the world builder runs from a copy of main's
  *                  files that this service downloads itself, so a rules change on main reaches the server without anyone logging in.
@@ -64,7 +66,12 @@ function salesIo(bases, boot, root) {
   const { getJson, hashOf, mempool, mempoolHeight, upstreamOf } = makeIo(bases);
   const limitedFetch = (u, o) => timedFetch(u, o, FETCH_MS);
   const wrapped = LIM.makeFetch(limitedFetch, { conc: 1, rps: +(process.env.XP_RPS || 2), timeoutMs: FETCH_MS, match: () => true });
-  const store = {}; const ls = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; } };
+  /* the pages' localStorage, in memory. Nov 24 2026: it used to grow for as long as the service ran (every address scan the sales
+   * read cached here); past 40 MB of text it now starts empty again, which only costs a re-read. */
+  let store = {}, storeChars = 0; const STORE_MAX = 40 * 1048576;
+  const ls = { getItem: k => (k in store ? store[k] : null),
+    setItem: (k, v) => { v = String(v); storeChars += v.length - (k in store ? store[k].length : 0); store[k] = v; if (storeChars > STORE_MAX) { store = {}; storeChars = 0; } },
+    removeItem: k => { if (k in store) { storeChars -= store[k].length; delete store[k]; } } };
   const win = { console, localStorage: ls, sessionStorage: ls, location: { search: '', hostname: 'xcpets.fun', href: 'https://xcpets.fun/' }, navigator: { userAgent: 'xcpets-sync' },
     setTimeout, clearTimeout, URLSearchParams: global.URLSearchParams, URL: global.URL, TextEncoder, TextDecoder, AbortController: global.AbortController, fetch: wrapped,
     addEventListener() {}, dispatchEvent() { return true; }, CustomEvent: function CustomEvent(type, o) { this.type = type; this.detail = o && o.detail; }, XCPETS_PATIENT: 1, XCPETS_TOUCH_MAX: 400, XCPETS_MINT_SCAN: 1, XCPETS_DEX_MS: 15 * 60 * 1000 };
@@ -236,33 +243,98 @@ function ckShop(state) {
     try { CK.proc.send({ cmd: 'shop', id: id }); } catch (e) { clearTimeout(t); CK.pend.delete(id); res({ ok: false, error: 'not ready' }); }
   });
 }
+/* Nov 24 2026 (never freeze): the follow loop's heartbeat. Nov 23 2026 the first follow step after a restart never finished (an
+ * upstream answer that stalled mid-body), so the service kept answering health with the boot file's tip, built nothing and logged
+ * nothing for hours. Now every step is timed: one that runs past XP_TICK_MAX_MIN writes stall.json and exits, and systemd starts the
+ * service again (Restart=always). The published world stays on disk and is served again as soon as the new process listens, which
+ * it now does before it loads the rules. Health shows the heartbeat (loop) so outside watchers can tell a frozen follower. */
+const LOOP = { startedAt: Date.now(), starts: [Date.now()], resumedFrom: null, savedTip: 0, runningSince: 0, lastDoneAt: 0, lastOkAt: 0, steps: 0, errors: 0, errorRun: 0, lastError: null, stall: null };
+function loopInfo() {
+  const now = Date.now();
+  return { upSec: Math.round((now - LOOP.startedAt) / 1000), stepSec: LOOP.runningSince ? Math.round((now - LOOP.runningSince) / 1000) : 0,
+    lastStepAgoSec: LOOP.lastDoneAt ? Math.round((now - LOOP.lastDoneAt) / 1000) : null, lastOkAgoSec: LOOP.lastOkAt ? Math.round((now - LOOP.lastOkAt) / 1000) : null,
+    steps: LOOP.steps, errors: LOOP.errors, errorRun: LOOP.errorRun, lastError: LOOP.lastError, maxMin: tickMaxMs() / 60000,
+    lastStall: LOOP.stall ? { at: LOOP.stall.at, tip: LOOP.stall.tip, sec: LOOP.stall.sec } : null,
+    restarts1h: LOOP.starts.filter(t => now - t < 3600e3).length - 1, restarts24h: LOOP.starts.filter(t => now - t < 86400e3).length - 1,
+    resumedFrom: LOOP.resumedFrom, heapMB: Math.round(process.memoryUsage().heapUsed / 1048576), heapLimitMB: HEAP_LIMIT_MB };
+}
+const HEAP_LIMIT_MB = (() => { try { return Math.round(require('v8').getHeapStatistics().heap_size_limit / 1048576); } catch (e) { return null; } })();
+/* Nov 24 2026: the service also died of "JavaScript heap out of memory" 9 times in 3.5 hours on Nov 23, and every restart began
+ * again from the boot file (the feed's api/boot.json, itself stuck at 977,257), so each new process had the same 30+ block catch-up
+ * to do and the restarts looked like one long freeze. Now: every start is recorded (health: restarts1h / restarts24h, so watchers can
+ * call a crash loop by its name) and the follower's own state is saved after every new tip, so a restart resumes where it was. */
+function recordStart(dataDir) {
+  const f = path.join(dataDir, 'starts.json'), now = Date.now();
+  let a = []; try { a = JSON.parse(fs.readFileSync(f, 'utf8')); } catch (e) { a = []; }
+  a = (Array.isArray(a) ? a : []).filter(t => typeof t === 'number' && now - t < 86400e3).slice(-200); a.push(now);
+  try { fs.mkdirSync(dataDir, { recursive: true }); fs.writeFileSync(f + '.tmp', JSON.stringify(a)); fs.renameSync(f + '.tmp', f); } catch (e) { }
+  return a;
+}
+const FOLLOW_KEYS = ['tip', 'tipHash', 'rows', 'hashes', 'dex', 'dexTip', 'dexHash', 'dexAssets'];
+function saveFollow(dataDir, state) {
+  if (!state.ready || !state.tip || !Array.isArray(state.rows)) return false;
+  const o = { v: 1, at: new Date().toISOString() }; FOLLOW_KEYS.forEach(k => { o[k] = state[k]; });
+  const f = path.join(dataDir, 'follow-state.json');
+  try { fs.mkdirSync(dataDir, { recursive: true }); fs.writeFileSync(f + '.tmp', JSON.stringify(o)); fs.renameSync(f + '.tmp', f); return true; } catch (e) { return false; }
+}
+function readFollow(dataDir) {
+  try { const j = JSON.parse(fs.readFileSync(path.join(dataDir, 'follow-state.json'), 'utf8'));
+    return j && j.v === 1 && j.tip > 0 && Array.isArray(j.rows) && j.hashes && typeof j.hashes === 'object' ? j : null; } catch (e) { return null; }
+}
+function tickMaxMs() { return Math.max(2, +(process.env.XP_TICK_MAX_MIN || 10)) * 60000; }
+/* short error codes only (no URLs, no addresses) */
+function errCode(e) { const m = String(e && e.message || e || 'error'); return /^upstream \w+$|^tip$|^missing hash(es)?$|^burn page cursor$|^timeout after \d+ ms$|^base too old$/.test(m) ? m : (e && e.name === 'TimeoutError' ? 'timeout' : 'error'); }
+function readStall(dataDir) { try { const j = JSON.parse(fs.readFileSync(path.join(dataDir, 'stall.json'), 'utf8')); return j && j.at ? j : null; } catch (e) { return null; } }
+function stallCheck(state, dataDir, exit) {
+  if (!LOOP.runningSince) return false;
+  const sec = Math.round((Date.now() - LOOP.runningSince) / 1000);
+  if (sec * 1000 < tickMaxMs()) return false;
+  const rec = { at: new Date().toISOString(), tip: state.tip || 0, coreHeight: state.coreHeight || 0, sec: sec };
+  try { fs.mkdirSync(dataDir, { recursive: true }); fs.writeFileSync(path.join(dataDir, 'stall.json'), JSON.stringify(rec)); } catch (e) { }
+  console.error('sync: a follow step has run ' + sec + ' s (stuck at tip ' + rec.tip + ', chain ' + rec.coreHeight + '); restarting the service');
+  try { ckStop('off'); } catch (e) { }
+  (exit || (code => process.exit(code)))(70);
+  return true;
+}
 function main() {
   const bases = upstreams(); const dataDir = process.env.XP_DATA || path.join(os.tmpdir(), 'xcpets-sync');
   const boot = process.env.XP_BOOT_CACHE ? readBoot(process.env.XP_BOOT_CACHE) : null;
   const state = blank(); if (boot && boot.hashes) Object.keys(boot.hashes).forEach(k => { if (+k <= boot.tip - 6) state.hashes[k] = boot.hashes[k]; });
   if (boot && boot.rows && boot.tip) { state.rows = boot.rows; state.tip = boot.tip; state.dex = boot.dex || null; state.dexTip = boot.dexTip || 0; state.dexHash = boot.dexHash || ''; state.dexAssets = boot.dexAssets || []; }
+  /* resume from the follower's own saved state when it is newer than the boot file (same fields, same shapes) */
+  const saved = readFollow(dataDir);
+  if (saved && saved.tip > (state.tip || 0)) {
+    state.hashes = {}; Object.keys(saved.hashes).forEach(k => { if (+k <= saved.tip - 6) state.hashes[k] = saved.hashes[k]; });
+    state.rows = saved.rows; state.tip = saved.tip; state.dex = saved.dex || null; state.dexTip = saved.dexTip || 0; state.dexHash = saved.dexHash || ''; state.dexAssets = saved.dexAssets || [];
+    LOOP.resumedFrom = 'saved'; LOOP.savedTip = saved.tip;
+  } else LOOP.resumedFrom = boot && boot.tip ? 'boot' : 'empty';
+  LOOP.starts = recordStart(dataDir);
+  LOOP.stall = readStall(dataDir);
+  console.log('sync: starting at tip ' + (state.tip || 0) + ' (' + LOOP.resumedFrom + '), heap limit ' + HEAP_LIMIT_MB + ' MB, ' + (LOOP.starts.filter(t => Date.now() - t < 3600e3).length - 1) + ' restarts in the last hour');
+  { const l0 = readLatest(dataDir); if (l0 && l0.tip) state.world = { ready: true, rsig: l0.rsig, tip: l0.tip, manifest: l0.manifest }; }
+  state.loop = loopInfo; state.check = ckInfo; state.mem = memInfo; state.snap = snapState;
+  /* listen first: the published world on disk is served again within a second of a restart, before the rules (a few seconds) load */
+  const httpd = createServer({ getState: () => state, dataDir: dataDir, check: body => ckAsk(state, body), shop: () => ckShop(state) });
+  const port = +(process.env.XP_PORT || 8787);
+  httpd.server.listen(port, '127.0.0.1');
   const rules = follower(dataDir);
   let io0 = null;
   try { io0 = rules.dir() ? salesIo(bases, boot, rules.dir()) : null; } catch (e) { console.error('rules: main copy did not load, using the installed files'); io0 = null; }
   if (!io0) io0 = salesIo(bases, boot);
   state.gates = io0.gates;
   const io = Object.assign({}, io0, { upstream: 'public', seed: io0.seed });
-  state.snap = snapState; state.rules = rules.info;
+  state.rules = rules.info;
   backfillRsigLatest(dataDir);
   /* After the builder's files changed on main: the gates and the chain merge must come from the new copy too. Nov 22 2026: loading
    * a second rules context in this process (and its sales data) ran the service out of heap within minutes, every time main moved.
    * Now the service restarts itself instead (systemd starts it again and it loads the new copy once), but never during a build. */
   let restartWanted = null;
   function adopt(r) { if (!r || !r.changed) return; restartWanted = r.rsig || 'new files'; console.log('rules: builder files changed (' + restartWanted + '); restarting the service once no build runs'); }
-  state.check = ckInfo; state.mem = memInfo;
-  const httpd = createServer({ getState: () => state, dataDir: dataDir, check: body => ckAsk(state, body), shop: () => ckShop(state) });
-  const port = +(process.env.XP_PORT || 8787);
-  httpd.server.listen(port, '127.0.0.1');
   let timer = null, held = false;
   const every = Math.max(1, +(process.env.XP_SNAPSHOT_EVERY || 6));
-  const loop = singleFlight(async function () { try {
+  const loop = singleFlight(async function () { LOOP.runningSince = Date.now(); let ok = false; try {
     if (restartWanted && !startSnapshot.running) { console.log('rules: restarting to load ' + restartWanted); clearInterval(timer); ckStop('off'); setTimeout(() => process.exit(75), 200); return; }
-    if (!(process.env.XP_HOLD === '1' && held)) { io.upstream = io0.upstreamOf(); await tick(state, io); state.upstream = io.upstream === 'private' ? 'private' : 'public'; if (process.env.XP_HOLD === '1' && state.ready) held = true; }
+    if (!(process.env.XP_HOLD === '1' && held)) { io.upstream = io0.upstreamOf(); await tick(state, io); ok = true; state.upstream = io.upstream === 'private' ? 'private' : 'public'; if (process.env.XP_HOLD === '1' && state.ready) held = true; }
     const latest = readLatest(dataDir); if (latest && latest.tip) state.world = { ready: true, rsig: latest.rsig, tip: latest.tip, manifest: latest.manifest };
     const behindSnap = state.world && state.world.tip ? state.tip - state.world.tip : state.tip;
     const cooled = !startSnapshot.failAt || Date.now() - startSnapshot.failAt > 10 * 60 * 1000;
@@ -271,10 +343,14 @@ function main() {
     if (process.env.XP_SNAPSHOT !== '0' && state.ready && state.lag < 2 && cooled && (!state.world || !state.world.tip || behindSnap >= every || newRules)) { ckStop('paused'); startSnapshot(state, dataDir, rules.dir()); }
     ckTick(state, dataDir, rules.dir());
     rules.poll().then(adopt, () => {});
-  } catch (e) { console.error('sync tick failed'); } });
+    if (ok || held) { LOOP.lastOkAt = Date.now(); LOOP.errorRun = 0; }
+    if (ok && state.ready && state.tip > LOOP.savedTip) { if (saveFollow(dataDir, state)) LOOP.savedTip = state.tip; console.log('sync: tip ' + state.tip + ', heap ' + Math.round(process.memoryUsage().heapUsed / 1048576) + ' MB of ' + HEAP_LIMIT_MB); }
+  } catch (e) { LOOP.errors++; LOOP.errorRun++; LOOP.lastError = errCode(e); if (LOOP.errorRun === 1 || LOOP.errorRun % 30 === 0) console.error('sync tick failed (' + LOOP.lastError + ', ' + LOOP.errorRun + ' in a row)'); }
+  finally { LOOP.runningSince = 0; LOOP.lastDoneAt = Date.now(); LOOP.steps++; } });
   loop(); timer = setInterval(loop, 10000);
+  const guard = setInterval(() => stallCheck(state, dataDir), 30000); if (guard.unref) guard.unref();
   console.log('xcpets-sync on 127.0.0.1:' + port + ' upstreams ' + bases.map(hostKind).join(','));
-  return { server: httpd.server, state, stop() { clearInterval(timer); httpd.server.close(); } };
+  return { server: httpd.server, state, stop() { clearInterval(timer); clearInterval(guard); httpd.server.close(); } };
 }
 if (require.main === module) main();
-module.exports = { main, chainFns, seedHashes, writeLatest, backfillRsigLatest, PUBLIC, memInfo, ckInfo, _CK: CK, ckTick, ckAsk, ckShop, ckStop };
+module.exports = { main, loopInfo, stallCheck, errCode, saveFollow, readFollow, recordStart, _LOOP: LOOP, chainFns, seedHashes, writeLatest, backfillRsigLatest, PUBLIC, memInfo, ckInfo, _CK: CK, ckTick, ckAsk, ckShop, ckStop };
