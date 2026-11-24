@@ -8,7 +8,7 @@ Output (committed next to this file):
 
 Run: python3 hatchbot/stickers/make-images.py /path/to/launch-kit/stickers
 """
-import sys, os, glob, math
+import sys, os, glob, math, json
 from functools import reduce
 from PIL import Image
 
@@ -64,9 +64,36 @@ def fit(sm, box, pad, crisp):
     c.alpha_composite(big, ((box - big.size[0]) // 2, (box - big.size[1]) // 2))
     return c
 
+# Species order, fallback emoji, label and game species id (file names use whiterabbit for the game's rabbit).
+SPECIES = [["pepe", "🐸", "Pepe", "pepe"], ["peepo", "🥲", "Peepo", "peepo"], ["wojak", "😐", "Wojak", "wojak"], ["chud", "🤓", "Chud", "chud"], ["bobo", "🐻", "Bobo", "bobo"], ["mumu", "🐮", "Mumu", "mumu"], ["doge", "🐶", "Doge", "doge"], ["sarutobi", "🐵", "Sarutobi", "sarutobi"], ["lenny", "😏", "Lenny", "lenny"], ["snibby", "🐥", "Snibby", "snibby"], ["kevin", "🗿", "KEVIN", "kevin"], ["dodo", "🦤", "Dodo", "dodo"], ["nakamoto", "🕵️", "Nakamoto", "nakamoto"], ["wizard", "🧙", "Bitcoin Wizard", "wizard"], ["kek", "👑", "Lord Kek", "kek"], ["chad", "😎", "Chad", "chad"], ["homer", "🍩", "Homer Pepe", "homer"], ["funtrump", "🍊", "FUNTRUMP", "funtrump"], ["djpepe", "🎧", "DJ Pepe", "djpepe"], ["bojackson", "🏈", "Bo Jackson", "bojackson"], ["rarepigeon", "🐦", "Rarepigeon", "rarepigeon"], ["jacksonpepe", "🎩", "Old Hickory Pepe", "jacksonpepe"], ["viking", "🪓", "Viking", "viking"], ["orangedragon", "🐉", "Orange Dragon", "orangedragon"], ["starlordkek", "⭐", "Star-Lord Kek", "starlordkek"], ["gooby", "🐧", "Gooby", "gooby"], ["lukespam", "🧢", "Luke Spam Junior", "lukespam"], ["whiterabbit", "🐇", "White Rabbit", "rabbit"]]
+NOTE = "HatchBot Telegram packs (Nov 24 2026). Order = emoji pack order (every species bare first). The sticker pack groups the same files by species. Made by make-images.py; uploaded by hatchbot/stickers/packs.js (workflow telegram-packs)."
+
+def write_manifest(files):
+    """pets.json from the images actually present, so dropping or adding a look in the source folder is all it takes."""
+    have = set(files); pets = []
+    for look in ('no', 'some', 'full'):
+        for sp, emo, label, gid in SPECIES:
+            f = '%s-%s-gear.png' % (sp, look)
+            if f in have:
+                pets.append({'file': f, 'species': gid, 'label': label, 'look': look,
+                             'emoji': [emo] + (['\U0001F60E'] if look != 'no' and emo != '\U0001F60E' else []),
+                             'keywords': [label.lower(), 'xcpets', 'pet']})
+    missing = sorted(have - {p['file'] for p in pets})
+    if missing: raise SystemExit('unknown species in: ' + ', '.join(missing) + ' (add it to SPECIES)')
+    if not any(p['look'] == 'no' for p in pets): raise SystemExit('no bare pets found')
+    with open(os.path.join(OUT, 'pets.json'), 'w', encoding='utf-8') as fh:
+        json.dump({'note': NOTE, 'pets': pets}, fh, ensure_ascii=False, indent=0)
+    return pets
+
 def main(src):
     os.makedirs(os.path.join(OUT, 'sticker'), exist_ok=True); os.makedirs(os.path.join(OUT, 'emoji'), exist_ok=True)
-    for f in sorted(glob.glob(os.path.join(src, '*.png'))):
+    files = sorted(glob.glob(os.path.join(src, '*.png')))
+    names = [os.path.basename(f) for f in files]
+    for sub in ('sticker', 'emoji'):  # drop images whose source is gone
+        for old in os.listdir(os.path.join(OUT, sub)):
+            if old.endswith('.png') and old not in names: os.remove(os.path.join(OUT, sub, old))
+    write_manifest(names)
+    for f in files:
         name = os.path.basename(f)
         sm = strip_outline(native(Image.open(f).convert('RGBA')))
         fit(sm, 512, 8, True).save(os.path.join(OUT, 'sticker', name), optimize=True)
