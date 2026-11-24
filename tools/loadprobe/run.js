@@ -189,6 +189,13 @@ async function wire() {
       const r = await get(dir + f, 'br, gzip'); const b = Buffer.from(await r.arrayBuffer());
       out.push(f + ': ' + (r.headers.get('content-encoding') || 'not compressed') + ', ' + (r.headers.get('content-length') || '?') + ' bytes on the wire, ' + b.length + ' bytes');
     }
+    try {
+      const sm = await (await get(dir + 'view/summary.json')).json();
+      const sh = sm.shardSig ? Object.keys(sm.shardSig).length : 0;
+      const crypto = require('crypto'), key = crypto.createHash('sha256').update('bc1qtke38j72qv4d8eljn7pccaykypw8luytfwdn7q').digest('hex');
+      const o = await (await get(dir + 'view/own/' + key + '.json')).json();
+      out.push('world ' + latest.tip + ' ' + latest.rsig + ': shardSig ' + (sh ? sh + ' shards' : 'MISSING') + ', big wallet page 0 ord ' + (o && o.ord ? 'present' : 'MISSING'));
+    } catch (e) { out.push('device-copy check failed: ' + String(e.message || e).slice(0, 80)); }
     return out.join(' · ');
   } catch (e) { return 'wire check failed: ' + String(e.message || e).slice(0, 80); }
 }
