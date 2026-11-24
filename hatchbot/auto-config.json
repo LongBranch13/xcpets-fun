@@ -22,5 +22,6 @@
   },
   "recap": true,
   "recap_hour_ct": 8,
-  "commands": { "rate": false }
+  "commands": { "rate": false },
+  "custom_emoji": true
 }

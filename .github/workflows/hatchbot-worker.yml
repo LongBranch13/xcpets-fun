@@ -7,7 +7,7 @@ name: hatchbot-worker
 on:
   push:
     branches: [main]
-    paths: ['hatchbot/worker.js', 'hatchbot/auto.js', 'hatchbot/serverwatch.js', 'hatchbot/auto-config.json', 'hatchbot/bugs-to-issues.js', 'hatchbot/captions.json', 'hatchbot/wrangler.toml', 'hatchbot/build-memes.js', '.github/workflows/hatchbot-worker.yml']
+    paths: ['hatchbot/worker.js', 'hatchbot/auto.js', 'hatchbot/serverwatch.js', 'hatchbot/auto-config.json', 'hatchbot/bugs-to-issues.js', 'hatchbot/captions.json', 'hatchbot/wrangler.toml', 'hatchbot/build-memes.js', 'hatchbot/stickers/pets.json', '.github/workflows/hatchbot-worker.yml']
   workflow_dispatch:
     inputs:
       subdomain: { description: 'Optional: give the account a neutral workers.dev subdomain (only when hatchbot is the only worker)', required: false, default: '' }
@@ -88,7 +88,7 @@ jobs:
           SECRET=$(node -e "console.log(require('crypto').createHash('sha256').update('hatchbot:'+process.env.TELEGRAM_BOT_TOKEN).digest('hex').slice(0,48))")
           API="https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN"
           curl -fsS "$API/setWebhook" -d "url=$URL" -d "secret_token=$SECRET" -d "drop_pending_updates=true" -o /dev/null
-          CMDS='[{"command":"play","description":"Open the XCPETS app inside Telegram"},{"command":"pet","description":"Pet card: /pet, /pet 123, /pet <name>, /pet <species>"},{"command":"season","description":"The current XCPETS season and its countdown"},{"command":"burns","description":"XCPETS burned all time and today"},{"command":"whosthat","description":"Guess the pet from its silhouette"},{"command":"breed","description":"A real breed from the chain (/breed <pet>)"},{"command":"battle","description":"A real arena battle (/battle <pet>)"},{"command":"meme","description":"A random XCPETS meme"},{"command":"chainday","description":"Current 144-block game day and blocks left"},{"command":"bug","description":"Report a bug to the XCPETS team"},{"command":"help","description":"List HatchBot commands"}]'
+          CMDS='[{"command":"play","description":"Open the XCPETS app inside Telegram"},{"command":"pet","description":"Pet card: /pet, /pet 123, /pet <name>, /pet <species>"},{"command":"season","description":"The current XCPETS season and its countdown"},{"command":"burns","description":"XCPETS burned all time and today"},{"command":"whosthat","description":"Guess the pet from its silhouette"},{"command":"breed","description":"A real breed from the chain (/breed <pet>)"},{"command":"battle","description":"A real arena battle (/battle <pet>)"},{"command":"meme","description":"A random XCPETS meme"},{"command":"chainday","description":"Current 144-block game day and blocks left"},{"command":"stickers","description":"XCPETS stickers and emoji of every pet"},{"command":"bug","description":"Report a bug to the XCPETS team"},{"command":"help","description":"List HatchBot commands"}]'
           CMDS=$(node -e "const c=JSON.parse(process.argv[1]);if(require('./hatchbot/auto-config.json').commands.rate===true)c.splice(5,0,{command:'rate',description:'HatchBot rates a pet (/rate <pet>)'});console.log(JSON.stringify(c))" "$CMDS")
           for SCOPE in '{"type":"default"}' '{"type":"all_group_chats"}' '{"type":"all_private_chats"}'; do
             curl -fsS "$API/deleteMyCommands" --data-urlencode "scope=$SCOPE" -o /dev/null || true
@@ -104,7 +104,7 @@ jobs:
           SUB=$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>console.log(JSON.parse(s).result.subdomain))")
           KEY=$(node -e "process.stdout.write(require('crypto').createHash('sha256').update('hbtest:'+process.env.TELEGRAM_BOT_TOKEN).digest('hex').slice(0,40))")
           sleep 5
-          for T in /help /play /pet "/pet 1765" "/pet dodo" /breed /battle /burns /chainday /season /meme; do
+          for T in /help /play /pet "/pet 1765" "/pet dodo" /breed /battle /burns /chainday /season /meme /stickers; do
             OUT=$(curl -sS -m 30 -X POST -H "X-HB-Test: $KEY" -H 'content-type: application/json' -d "{\"text\":\"$T\",\"chat\":0}" "https://hatchbot.$SUB.workers.dev/selftest" || echo '{"err":"request failed"}')
             echo "$OUT" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{let j;try{j=JSON.parse(s)}catch(e){console.log(process.argv[1]+' -> not JSON: '+s.slice(0,160));return}const o=(j.out||[]).map(x=>x.method+': '+String((x.body&&(x.body.text||x.body.caption))||'').split('\\n')[0].slice(0,70));console.log(process.argv[1]+' -> '+j.ms+' ms'+(j.err?' ERROR '+j.err:'')+' | '+o.join(' / '))})" "$T"
           done

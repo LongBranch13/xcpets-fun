@@ -9,11 +9,12 @@ import TOKENS from './tokens.json';
 import AUTO from './auto-config.json'; /* automatic posts: every switch defaults to off */
 import { autoTick, preview as autoPreview } from './auto.js';
 import { serverWatch, statusText, toggleAlerts } from './serverwatch.js'; /* game server watch + /status, /alerts (Nov 24 2026) */
+import PACK_PETS from './stickers/pets.json'; /* XCPETS sticker + custom emoji packs (Nov 24 2026, hatchbot/stickers) */
 const TOKEN_IDS = TOKENS.map(m => m.id); /* every pet with a 512x512 picture (hatchbot/build-memes.js) */
 
 var SITE = "https://xcpets.fun";
-var HELP = "\u{1F438} HatchBot commands\n/pet \xB7 a random pet (/pet 123, /pet <name>, /pet <species>)\n/burns \xB7 XCPETS burned all time and today, and how many burners\n/whosthat \xB7 guess the pet from its silhouette (reply to the photo)\n/breed \xB7 a real breed from the chain (/breed <pet>)\n/battle \xB7 a real arena battle (/battle <pet>)\n/meme \xB7 a random XCPETS meme\n/chainday \xB7 the current 144-block game day and blocks left\n/season \xB7 the current XCPETS season and its countdown\n/bug <what happened> \xB7 report a bug to the XCPETS team (pet numbers help!)\n/play \xB7 open the XCPETS app right here in Telegram (your pets + live feed)\n/help \xB7 this list\n\nPlay at xcpets.fun";
-var BOT_COMMANDS = [["play", "Open the XCPETS app inside Telegram"], ["pet", "Pet card: /pet, /pet 123, /pet <name>, /pet <species>"], ["burns", "XCPETS burned all time and today"], ["whosthat", "Guess the pet from its silhouette"], ["breed", "A real breed from the chain (/breed <pet>)"], ["battle", "A real arena battle (/battle <pet>)"], ["meme", "A random XCPETS meme"], ["chainday", "Current 144-block game day and blocks left"], ["bug", "Report a bug to the XCPETS team"], ["help", "List HatchBot commands"]];
+var HELP = "\u{1F438} HatchBot commands\n/pet \xB7 a random pet (/pet 123, /pet <name>, /pet <species>)\n/burns \xB7 XCPETS burned all time and today, and how many burners\n/whosthat \xB7 guess the pet from its silhouette (reply to the photo)\n/breed \xB7 a real breed from the chain (/breed <pet>)\n/battle \xB7 a real arena battle (/battle <pet>)\n/meme \xB7 a random XCPETS meme\n/chainday \xB7 the current 144-block game day and blocks left\n/season \xB7 the current XCPETS season and its countdown\n/bug <what happened> \xB7 report a bug to the XCPETS team (pet numbers help!)\n/play \xB7 open the XCPETS app right here in Telegram (your pets + live feed)\n/stickers \xB7 XCPETS sticker pack and emoji of every pet\n/help \xB7 this list\n\nPlay at xcpets.fun";
+var BOT_COMMANDS = [["play", "Open the XCPETS app inside Telegram"], ["pet", "Pet card: /pet, /pet 123, /pet <name>, /pet <species>"], ["burns", "XCPETS burned all time and today"], ["whosthat", "Guess the pet from its silhouette"], ["breed", "A real breed from the chain (/breed <pet>)"], ["battle", "A real arena battle (/battle <pet>)"], ["meme", "A random XCPETS meme"], ["chainday", "Current 144-block game day and blocks left"], ["stickers", "XCPETS stickers and emoji of every pet"], ["bug", "Report a bug to the XCPETS team"], ["help", "List HatchBot commands"]];
 var RATE_ON = !!(AUTO.commands && AUTO.commands.rate === true);
 if (RATE_ON) { HELP = HELP.replace("\n/meme ", "\n/rate \xB7 HatchBot rates a pet (/rate 42, /rate <name>)\n/meme "); BOT_COMMANDS.splice(5, 0, ["rate", "HatchBot rates a pet (/rate <pet>)"]); }
 /* /rate, ported from the old VPS HatchBot (commands.js). Sabo #1765 stays alive through view(). */
@@ -278,6 +279,59 @@ async function botUsername(env) {
   return ME;
 }
 
+// ---------- XCPETS stickers and custom emoji (Nov 24 2026) ----------
+// Two packs made by HatchBot from the game's own sprites (hatchbot/stickers, workflow telegram-packs):
+//   t.me/addstickers/xcpets_pets_by_<bot> and t.me/addemoji/xcpets_emoji_by_<bot>.
+// Telegram shows a bot's custom emoji only in a group whose emoji pack is XCPETS Emoji (Chat.custom_emoji_sticker_set_name),
+// or anywhere once the bot's owner has Telegram Premium (Bot API 9.4); set auto-config.json "custom_emoji": true for that.
+// Everywhere else each pet shows as its plain fallback emoji (pets.json), so text never breaks.
+var PACKS = null, EMOJI_CHATS = new Map();
+var PACK_SPECIES = PACK_PETS.pets.filter((p) => p.look === "no");
+async function petPacks(env) {
+  if (PACKS && Date.now() - PACKS.t < 36e5) return PACKS;
+  const me = await botUsername(env);
+  const out = { t: Date.now(), me, stickers: "xcpets_pets_by_" + me, emoji: "xcpets_emoji_by_" + me, ids: {}, stickerIds: [] };
+  if (!me) return out;
+  try { const j = await (await tg(env, "getStickerSet", { name: out.emoji })).json(); if (j.ok) PACK_PETS.pets.forEach((p, i) => { const st = j.result.stickers[i]; if (st && p.look === "no" && st.custom_emoji_id) out.ids[p.species] = st.custom_emoji_id; }); } catch (e) {}
+  try { const j = await (await tg(env, "getStickerSet", { name: out.stickers })).json(); if (j.ok) out.stickerIds = j.result.stickers.map((st) => st.file_id); } catch (e) {}
+  return PACKS = out;
+}
+async function customEmojiOk(env, chat) {
+  if (AUTO.custom_emoji === true) return true;
+  if (!chat || env.__dry) return false;
+  const c = EMOJI_CHATS.get(String(chat));
+  if (c && Date.now() - c.t < 36e5) return c.ok;
+  const P = await petPacks(env); let ok = false;
+  try { const j = await (await tg(env, "getChat", { chat_id: chat })).json(); ok = !!(j.ok && j.result.custom_emoji_sticker_set_name === P.emoji); } catch (e) {}
+  EMOJI_CHATS.set(String(chat), { t: Date.now(), ok });
+  return ok;
+}
+/** petEmojiText(env, chat, text): turns {pepe}, {wojak}, {rabbit}... into each pet's emoji. Returns { text, entities }:
+ *  XCPETS custom emoji where Telegram allows them in this chat, the plain fallback emoji otherwise. Spread it into sendMessage. */
+async function petEmojiText(env, chat, text) {
+  const by = {}; for (const p of PACK_SPECIES) by[p.species] = p;
+  const use = /\{[a-z]+\}/.test(text) && await customEmojiOk(env, chat), ids = use ? (await petPacks(env)).ids : {};
+  let out = "", entities = [];
+  const re = /\{([a-z]+)\}/g; let m, last = 0;
+  while (m = re.exec(text)) {
+    const p = by[m[1]]; if (!p) continue;
+    out += text.slice(last, m.index); last = re.lastIndex;
+    const ch = p.emoji[0];
+    if (ids[p.species]) entities.push({ type: "custom_emoji", offset: out.length, length: ch.length, custom_emoji_id: ids[p.species] });
+    out += ch;
+  }
+  out += text.slice(last);
+  return entities.length ? { text: out, entities } : { text: out };
+}
+async function cmdStickers(env, chat, replyTo, pre) {
+  const P = await petPacks(env);
+  const row = PACK_SPECIES.map((p) => "{" + p.species + "}").join("");
+  const body = await petEmojiText(env, chat, (pre || "") + "XCPETS stickers and emoji of every pet " + row + "\n\nStickers: https://t.me/addstickers/" + P.stickers + "\nEmoji: https://t.me/addemoji/" + P.emoji + "\n\nTap a link, then Add.");
+  const r = await tg(env, "sendMessage", Object.assign({ chat_id: chat, reply_to_message_id: replyTo, disable_web_page_preview: true }, body));
+  if (P.stickerIds.length) await tg(env, "sendSticker", { chat_id: chat, sticker: P.stickerIds[Math.floor(Math.random() * P.stickerIds.length)] });
+  return r;
+}
+
 // ---------- sending helpers ----------
 async function sendCard(env, chat, replyTo, text, ids) {
   const urls = [];
@@ -410,9 +464,9 @@ async function cmdBurns(env) {
   const ofSupply = supplySats ? pct(s.allSats, supplySats) : null, ofAll = pct(s.daySats, s.allSats), ofWallets = pct(s.dayWallets, s.allWallets);
   const L = [
     "\u{1F525} XCPETS burned all time: " + fmtXcp(s.allSats) + (ofSupply ? " (" + ofSupply + " of all XCPETS ever made)" : ""),
-    "\u{1F438} Burners all time: " + fmt0(s.allWallets),
+    "{pepe} Burners all time: " + fmt0(s.allWallets),
     "\u{1F95A} Burned today: " + fmtXcp(s.daySats) + (ofAll ? " (" + ofAll + " of all time)" : ""),
-    "\u{1F423} Burners today: " + fmt0(s.dayWallets) + (ofWallets ? " (" + ofWallets + " of all burners)" : ""),
+    "{peepo} Burners today: " + fmt0(s.dayWallets) + (ofWallets ? " (" + ofWallets + " of all burners)" : ""),
     "\u26D3\uFE0F Today = chain day " + fmt(s.day) + ", since block " + fmt(s.dayStart) + "."
   ];
   if (chainTip - feedTip > 12) L.push("\u26A0\uFE0F The burn feed is " + fmt(chainTip - feedTip) + " blocks behind, so the newest burns may be missing.");
@@ -503,7 +557,7 @@ async function command(env, msg) {
   if (!m) return null;
   if (m[2]) { const me = await botUsername(env); if (me && m[2].toLowerCase() !== me.toLowerCase()) return null; }
   const cmd = "/" + m[1].toLowerCase(), args = (m[3] || "").trim().slice(0, 60), name = cmd.slice(1);
-  const KNOWN = ["/help", "/start", "/play", "/app", "/chatid", "/status", "/alerts", "/chainday", "/season", "/meme", "/pet", "/burns", "/whosthat", "/breed", "/battle", "/bug"].concat(RATE_ON ? ["/rate"] : []);
+  const KNOWN = ["/help", "/start", "/play", "/app", "/chatid", "/status", "/alerts", "/chainday", "/season", "/meme", "/pet", "/burns", "/whosthat", "/breed", "/battle", "/bug", "/stickers", "/emoji"].concat(RATE_ON ? ["/rate"] : []);
   if (!KNOWN.includes(cmd)) return null;
   const now = Date.now(), age = msg.date ? Math.floor(now / 1e3) - msg.date : 0, late = age > LIMITS.lateS;
   if (late && (age > LIMITS.lateMaxS || ["/meme", "/chainday", "/season", "/whosthat", "/play", "/app"].includes(cmd))) return null;
@@ -546,7 +600,9 @@ async function command(env, msg) {
     const p = pick(MEMES);
     return tg(env, "sendPhoto", { chat_id: chat, photo: p.url, caption: p.caption, reply_to_message_id: msg.message_id });
   }
-  if (cmd === "/burns") { const r = await cmdBurns(env); return reply(r.text); }
+  if (cmd === "/stickers" || cmd === "/emoji") return cmdStickers(env, chat, msg.message_id, pre);
+  if (cmd === "/burns") { const r = await cmdBurns(env); /* pet emoji: XCPETS custom emoji where the chat allows them (petEmojiText) */
+    return tg(env, "sendMessage", Object.assign({ chat_id: chat, reply_to_message_id: msg.message_id, disable_web_page_preview: true }, await petEmojiText(env, chat, capText(pre + r.text, 4e3)))); }
   let S;
   try { S = await loadPets(); } catch (e) { console.log("pets load failed", e && e.message); return reply("I couldn't load the pet list right now. Try again in a minute. " + SITE); }
   let r;
