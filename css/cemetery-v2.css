@@ -110,3 +110,39 @@ html.hw .tomb.gtomb::after{display:none}
 /* no visible scrollbars on swipe rows (Jake Nov 23 2026); they still swipe */
 #rkSpecies .rksp,#rkTabsHost .rktabs,.cemv2bar .cv2-quick{scrollbar-width:none}
 #rkSpecies .rksp::-webkit-scrollbar,#rkTabsHost .rktabs::-webkit-scrollbar,.cemv2bar .cv2-quick::-webkit-scrollbar{display:none}
+
+/* cem-raise-easy (Nov 24 2026, Jake: finding pets to raise "is not great"): three steps in pictures, big shelf tabs, one search box, simpler cards */
+.cemv2bar .cv2-fh{font-family:var(--meme,Bangers),Impact,sans-serif;font-size:26px;letter-spacing:.05em;color:#ffc93c;text-shadow:2px 2px 0 #000;text-align:center}
+.cv2-how3{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.cv2-how3 li{position:relative;display:flex;align-items:center;gap:8px;background:#1c1830;border:3px solid #000;box-shadow:3px 3px 0 #000;padding:6px 8px;color:#f3ecd8;font-family:var(--meme,Bangers),Impact,sans-serif;font-size:18px;letter-spacing:.04em;line-height:1.05}
+.cv2-how3 li>b{font-family:var(--pixel);font-size:9px;color:#140f24;background:#ffc93c;border:2px solid #000;padding:3px 5px;flex:0 0 auto}
+.cv2-how3 li>span{display:flex;flex-direction:column;min-width:0}.cv2-how3 small{font-family:inherit;font-size:13px;letter-spacing:0;color:#b9b4d0;font-family:system-ui,sans-serif}
+.cv2-how3 li:not(:last-child)::after{content:"";position:absolute;right:-13px;top:50%;width:12px;height:4px;background:#ffc93c;box-shadow:0 2px 0 #000}
+.cv2-how3 .cem-art{flex:0 0 auto}
+.cv2-shelves{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+.cv2-shelf{flex:1 1 0;min-width:120px;white-space:nowrap;font-family:var(--meme,Bangers),Impact,sans-serif;font-size:18px;letter-spacing:.04em;line-height:1;background:#2f2a4a;color:#f3ecd8;border:3px solid #000;box-shadow:3px 3px 0 #000;padding:8px 6px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px}
+.cv2-shelf small{font-family:system-ui,sans-serif;font-size:12px;letter-spacing:0;color:#b9b4d0}
+.cv2-shelf[aria-pressed=true]{background:#ffc93c;color:#221400}.cv2-shelf[aria-pressed=true] small{color:#4a3500}
+.cv2-shelf:active{transform:translate(2px,2px);box-shadow:1px 1px 0 #000}.cv2-shelf:focus-visible{outline:3px solid #fff3b0;outline-offset:2px}
+.cemv2bar .cv2-search{flex-wrap:nowrap}.cemv2bar .cv2-search input{flex:1 1 auto;min-height:42px;font-size:16px;padding:6px 10px;border:3px solid #000}
+.cemv2bar #cemMsg{text-align:center}
+.tomb.gtomb .cv2-power{font-weight:800;font-size:16px;color:#ffc93c;margin:6px 0 4px}.tomb.gtomb .cv2-power small{font-size:12px;font-weight:400;color:#b9b4d0}
+.cv2-need{display:inline-block;line-height:1.5;border:2px solid #000;padding:3px 7px;font-size:13px;background:#1c1824;color:#e9e3ff}
+.cv2-need.d-easy b{color:#7dff6a}.cv2-need.d-medium b{color:#ffc93c}.cv2-need.d-hard b{color:#ff7a7a}
+.tomb.gtomb .cv2-raise{display:block;width:100%;font-size:18px;padding:8px 10px;margin-top:8px}
+.cv2-tmore{margin-top:8px;text-align:left}.cv2-tmore>summary{cursor:pointer;font-size:12px;color:#9fe8ff}.cv2-tmore[open]>summary{margin-bottom:4px}
+.cv2-wait{text-align:center;padding:18px 8px}
+.cem-back{text-align:center;margin-top:14px}
+@media (max-width:640px){.cv2-how3{grid-template-columns:1fr;gap:6px}.cv2-how3 li:not(:last-child)::after{display:none}.cv2-how3 li{font-size:16px}
+  .cv2-shelves{flex-wrap:nowrap;overflow-x:auto;justify-content:flex-start;padding-bottom:4px;scrollbar-width:none}.cv2-shelves::-webkit-scrollbar{display:none}.cv2-shelf{flex:0 0 auto;min-width:104px;font-size:17px}}
+/* Doom 2 red-candle stones (js/doom-week.js): on the cemetery they sat on the altar, the candle circle and Mort. Here they stand back in the
+ * middle rows, clear of everything you can tap, and scale with the scene. */
+#cemScene .dw-stone{width:3%;height:auto;aspect-ratio:28/36;min-width:10px;box-shadow:inset 0 3px 0 #c8102e,inset -2px 0 0 #1a1020,0 0 0 1px #1a1020}
+#cemScene .dw-stone::after{left:40%;width:22%;top:-35%;height:35%}
+#cemScene .dw-stone:nth-of-type(1){left:7%!important;top:47%!important}
+#cemScene .dw-stone:nth-of-type(2){left:38%!important;top:43%!important}
+#cemScene .dw-stone:nth-of-type(3){left:61%!important;top:48%!important}
+#cemScene .dw-stone:nth-of-type(4){left:73%!important;top:54%!important}
+#cemScene .dw-stone:nth-of-type(5){left:23%!important;top:53%!important}
+.cemv2bar{min-width:0;max-width:100%}.cemv2bar>*{min-width:0;max-width:100%}.cemv2bar .cv2-search input{min-width:0}
+@media (max-width:640px){.cv2-how3{grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}.cv2-how3 li{flex-direction:column;text-align:center;gap:2px;padding:4px 2px;font-size:14px}.cv2-how3 li>b{display:none}.cv2-how3 small{font-size:11px}.cemv2bar .cv2-fh{font-size:22px}#cemPagerTop{display:none}}

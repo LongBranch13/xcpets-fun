@@ -91,8 +91,9 @@ html.dw #invPanel, html.dw #raidPanel, html.dw #pantheon, html.dw .tg8, html.dw 
 .dw-ashbit { width: 2px; height: 2px; background: #c8102e; left: 40%; top: 22px; box-shadow: 18px 8px 0 #8e0b20, 36px -4px 0 #ff2a2a; }
 .dw-b2 { left: 62%; top: 12px; }
 .dw-circus .dw-pennant { left: 10px; top: 8px; } .dw-rare .dw-pennant { left: 50%; top: 8px; transform: translateX(-50%); }
-.dw-motel .dw-pennant { left: 12px; top: 10px; } .dw-raid .dw-pennant { left: 8px; top: 8px; }
-.dw-pantheon .dw-pennant { right: 8px; left: auto; top: 6px; } .dw-tokens .dw-pennant { left: 8px; top: 8px; }
+.dw-motel .dw-pennant { left: 46%; top: 10px; } /* doom-board-overlap (Nov 24 2026): was on top of the motel sign; now in the empty sky */ .dw-raid .dw-pennant { left: 8px; top: 8px; }
+.dw-pantheon .dw-pennant { right: 8px; left: auto; top: 6px; }
+.dw-pantheon .dw-pchart { right: 92px; } .dw-pantheon .dw-p2 { right: 110px; } .dw-pantheon .dw-parrow { right: 128px; } .dw-pantheon .dw-a2 { right: 140px; } /* chart and arrow sat on the right-hand pennant */ .dw-tokens .dw-pennant { left: 8px; top: 8px; }
 .dw-live .dw-pennant { left: 8px; top: 8px; } .dw-spam .dw-pennant { display: none; }
 .dw-cempen { left: 8px; top: 8px; } .dw-cemch { left: auto; right: 18px; top: 10px; } .dw-cemar { right: 40px; top: 12px; }
 .dw-cardfx { height: 62%; bottom: auto; }

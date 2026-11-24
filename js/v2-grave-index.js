@@ -97,8 +97,15 @@
     for (k in q) if (Object.prototype.hasOwnProperty.call(q, k) && q[k] !== '' && q[k] != null && q[k] !== false) { v = q[k] === true ? '1' : String(q[k]); parts.push(encodeURIComponent(k) + '=' + encodeURIComponent(v)); }
     return parts.join('&');
   }
-  function fetchJson(url) {
-    return fetch(url, { method: 'GET' }).then(function (r) { if (!r.ok) throw new Error('graves ' + r.status); return r.json(); });
+  /* cem-raise-easy (Nov 24 2026, Jake: "0 pets showing in the cemetery"): a page read that hangs (server busy or restarting) used to wait forever
+   * or fail once and drop the page to an empty in-memory list. Each read now gives up after 12 s, and a failed page read is tried twice more. */
+  function fetchJson(url, ms) {
+    var ac = typeof AbortController === 'function' ? new AbortController() : null, t = ac ? setTimeout(function () { try { ac.abort(); } catch (e) {} }, ms || 12000) : 0;
+    return fetch(url, ac ? { method: 'GET', signal: ac.signal } : { method: 'GET' }).then(function (r) { if (!r.ok) throw new Error('graves ' + r.status); return r.json(); })
+      .then(function (j) { clearTimeout(t); return j; }, function (e) { clearTimeout(t); throw e; });
+  }
+  function retry(fn, tries, wait) {
+    return fn().catch(function (e) { if (tries <= 1) throw e; return new Promise(function (res) { setTimeout(res, wait); }).then(function () { return retry(fn, tries - 1, wait * 2); }); });
   }
   function counts(syncBase) {
     if (!syncBase) return Promise.reject(new Error('no sync'));
@@ -106,7 +113,8 @@
   }
   function fetchPage(syncBase, q) {
     if (!syncBase) return Promise.reject(new Error('no sync'));
-    return fetchJson(String(syncBase).replace(/\/+$/, '') + '/xp/v1/graves?' + qs(q));
+    var url = String(syncBase).replace(/\/+$/, '') + '/xp/v1/graves?' + qs(q);
+    return retry(function () { return fetchJson(url); }, 3, 1500);
   }
   var api = { PHONE: PHONE, DESK: DESK, per: per, base: base, compactPet: compactPet, compact: compact, query: query, countsOf: countsOf, counts: counts, fetchPage: fetchPage, SORTS: SORTS };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
