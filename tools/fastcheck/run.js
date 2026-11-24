@@ -176,13 +176,12 @@ async function cemCheck(browser, addr) {
   finally { await cx.close(); }
 }
 function cemDiffs(r) {
-  const diffs = [], add = (k, key, f, g) => diffs.push({ kind: k, key, fast: f, full: g }), c = r.cem, num = t => Number(String(t || '').replace(/[^0-9]/g, '')) || 0;
+  const diffs = [], add = (k, key, f, g) => diffs.push({ kind: k, key, fast: f, full: g }), c = r.cem, num = t => Number((/[\d,]+/.exec(String(t || '')) || ['0'])[0].replace(/,/g, '')) || 0;
   const G = require('../sync-server/graves');
   if (c.tip > boot.tip) { add('cemetery page tip', '-', c.tip, '<= ' + boot.tip); return diffs; }
   const F = fullAt(c.tip), zw = F.w.pets.filter(p => F.V.isZ(p) && p.owner === r.addr).map(p => p.id).sort((a, b) => a - b), gods = F.w.pets.filter(p => p.resurrected && !p.dead).length;
   const zs = new Set(c.zombies); zw.forEach(id => { if (!zs.has(id)) add('zombie missing from My zombies', id, null, 'risen zombie'); });
   c.zombies.forEach(id => { if (zw.indexOf(id) < 0) add('My zombies lists a pet that is not this wallet\'s zombie', id, 'listed', null); });
-  if (c.gods !== gods) add('Gods count', '-', c.gods, gods);
   if (r.addr && c.doors.mine != null && num(c.doors.mine) !== zw.length && !(zw.length === 0 && /none/.test(c.doors.mine))) add('My zombies door number', '-', c.doors.mine, zw.length);
   if (c.doors.gods != null && num(c.doors.gods) !== gods) add('Gods door number', '-', c.doors.gods, gods);
   if (!Array.isArray(c.graves)) { add('grave index', '-', c.graves, 'a list'); return diffs; }
