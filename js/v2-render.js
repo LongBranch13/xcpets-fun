@@ -110,6 +110,7 @@
   /* gear-fit 2026-11-23 (Jake: "these glasses don't fit", Poyofu #23620 Wojak Mythic, Pope #4528 Nakamoto Mythic): Rabbit-hole shades and the Teardrop gem
    * had no eye trace (v2-gear.js EYE_GEAR is a rule file, so it is set here, render only), so they were stamped as a fixed 9-px map at a guessed eye row:
    * a black blob between/above the eyes on tall or off-centre faces. Now traced on the real eyes like every other pair of shades. The map stays the icon. */
+  if (BonusGear.DEFS['sig-nakamoto-face']) BonusGear.DEFS['sig-nakamoto-face'].v2eye = { s: 'shadow' }; /* sprite-qa 2026-11-24: traced hood shadow (drawEyeGear 'shadow'); the map below stays the icon + fallback */
   [['wr-shades', { s: 'glasses', f: 'n', l: ['n', 'Z'], drop: 1, up: 1, wide: 1 }], ['v2-teardrop-gem', { s: 'tear' }]].forEach(function (e) { var d0 = BonusGear.DEFS[e[0]]; if (d0 && !d0.v2eye) BonusGear.DEFS[e[0]] = Object.assign({}, d0, { v2eye: e[1] }); });
   /* shadow-face-1123 (Jake Nov 23 2026: "this black spot is like a shadowed face... it could look way cooler"): Nakamoto's ★ Shadowed face
    * was a flat grey-black block. Same size and slot, drawn here at render time only (the rule file v2-gear.js keeps its map, so no rsig change):
@@ -448,6 +449,17 @@
     if (g.s === 'shiner') { injure(img, a.isSil, B, a); return; }
     if (g.s === 'bags') { B.forEach(function (b) { for (x = b.x0; x <= b.x1; x++) put(x, b.y1 + 1, g.f); }); return; }
     var ecy = Math.round(E.reduce(function (t, e) { return t + e[1]; }, 0) / E.length), top = Math.max(ecy - 1, Math.min.apply(null, B.map(function (b) { return b.y0; }))) - (g.up || 0), bot = Math.min(ecy + 1, Math.max.apply(null, B.map(function (b) { return b.y1; }))) + (g.drop || 0); // lenses stay on the eye line (tall eyes, e.g. Peepo, are not boxed whole)
+    if (g.s === 'shadow') { /* sprite-qa 2026-11-24 (Jake: "it doesnt work whatever it is", Yetememi #114875): Nakamoto's Shadowed face was a 7x8 block over the
+       * whole face. Now the pet's own face sinks into the hood's shadow: the brow and eye rows go near-black and fade out over the cheeks, the eyes become
+       * two glowing Bitcoin-orange embers, and the mouth stays in the half-light. Traced on this frame's real eyes, so it fits every face and bobs with it. */
+      var sx0 = B[0].x0 - 2, sx1 = B[B.length - 1].x1 + 2, y0s = Math.max(a.minY + 1, top - 2), y1s = Math.min(31, bot + 2), cxs = (sx0 + sx1) / 2, rx = (sx1 - sx0) / 2 + 0.6, ry = (y1s - y0s) / 2 + 0.6, cys = (y0s + y1s) / 2 - 0.5;
+      for (y = y0s; y <= y1s; y++) for (x = Math.max(0, sx0); x <= Math.min(31, sx1); x++) { if (!a.isSil(x, y)) continue; /* a rounded pool of shadow, darkest at the brow, soft at its rim */
+        var e2 = Math.pow((x - cxs) / rx, 2) + Math.pow((y - cys) / ry, 2); if (e2 > 1.05) continue; var f = e2 > 0.72 ? 0.55 : y > bot ? 0.38 : 0.16;
+        var q = (y * 32 + x) * 4; D[q] = Math.round(D[q] * f + 14 * (1 - f)); D[q + 1] = Math.round(D[q + 1] * f + 8 * (1 - f)); D[q + 2] = Math.round(D[q + 2] * f + 24 * (1 - f)); }
+      var glow = function (x2, y2, c) { if (x2 < 0 || y2 < 0 || x2 > 31 || y2 > 31 || !a.isSil(x2, y2)) return; var q = (y2 * 32 + x2) * 4; D[q] = c[0]; D[q + 1] = c[1]; D[q + 2] = c[2]; };
+      B.forEach(function (b) { var w = b.x1 - b.x0 + 1, cx = Math.round((b.x0 + b.x1) / 2), gy = Math.max(b.y0, Math.min(b.y1, ecy)), x2 = w >= 3 ? cx - (w >= 4 ? 1 : 0) : cx;
+        glow(x2 - 1, gy, [120, 40, 8]); glow(x2 + (w >= 4 ? 2 : 1), gy, [120, 40, 8]); glow(x2, gy, [255, 176, 46]); if (w >= 4) glow(x2 + 1, gy, [255, 214, 120]); glow(x2, gy + 1, [150, 60, 10]); });
+      return; }
     if (spid === 'chud' && (g.s === 'glasses' || g.s === 'visor')) { /* Chud's built-in dark-framed glasses: equipped eyewear covers them whole (no double frame) */
       var bx0 = B[0].x0, bx1 = B[B.length - 1].x1, cx2 = Math.round((bx0 + bx1) / 2), rowDark = function (yy) { var n2 = 0; for (var xx = bx0; xx <= bx1; xx++) if (dk(xx, yy)) n2++; return n2 >= (bx1 - bx0 + 1) * 0.5; };
       while (top - 1 > a.minY && rowDark(top - 1) && ecy - top < 2) top--; while (bot + 1 < a.maxY && rowDark(bot + 1) && bot - ecy < 3) bot++;
