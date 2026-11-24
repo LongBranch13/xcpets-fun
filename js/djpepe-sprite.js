@@ -354,7 +354,31 @@
       set(nx - 1, ny, 'y'); set(nx + 1, ny, 'y'); set(nx, ny + 1, 'y'); set(nx - 1, ny + 1, 'o'); set(nx + 1, ny + 1, 'o');
     }
     if (Gr.face) for (var xf = A.ex0 - 1; xf <= A.ex1; xf++) set(xf, A.ey, col('face'));
+    /* sprite-qa 2026-11-24 (display only): every Armor, Drip, Footwear and Grip other than his two signature pieces drew NOTHING on DJ Pepe at any
+     * stage (30 living DJ Pepes; one wore an outfit, socks, a cape and a sats stack and looked bare). Same simple gear layer as Homer/FUNTRUMP:
+     * outfit recolours his black shirt, a cape peeks out behind both sides, shoes recolour his feet on the decks, a held piece sits right of the
+     * decks (a long one stands upright), a weapon stands on the left. Signature pieces above keep their own art. */
+    drawRest(g, A, Gr, stage, frame);
     return g;
+  }
+  function drawRest(g, A, Gr, stage, frame) {
+    var orig = g.map(function (r) { return r.slice(); }), put = {};
+    function set(x, y, k) { if (x >= 0 && y >= 0 && x < N && y < N && k) { g[y][x] = k; put[y * N + x] = 1; } }
+    function under(x, y, k) { if (x >= 0 && y >= 0 && x < N && y < N && !g[y][x]) set(x, y, k); }
+    function col(sl, i) { var c = Gr[sl] && Gr[sl].cols; return (c && (c[i || 0] || c[0])) || (i ? '#c98a00' : '#ffd23f'); }
+    function iid(sl) { return Gr[sl] && Gr[sl].item; }
+    function kind(sl) { return Gr[sl] ? String(Gr[sl].label || Gr[sl].item || '').toLowerCase() : ''; }
+    var x, y, mid = Math.round((A.bx0 + A.bx1) / 2), deck = A.by1 - 4;
+    function edge(row, right) { var r = g[row] || []; if (right) { for (var i = N - 1; i >= 0; i--) if (r[i]) return i; } else { for (var j = 0; j < N; j++) if (r[j]) return j; } return -1; }
+    if (Gr.back) { var c0 = col('back'), c1 = col('back', 1); for (y = A.by0; y < deck - 1; y++) { var fl = Math.min(2, Math.round((y - A.by0) / 3)), L = edge(y, false), R = edge(y, true); if (L < 0) continue; for (var d = 1; d <= 1 + fl; d++) { under(L - d, y, d === 1 + fl ? c1 : c0); under(R + d, y, d === 1 + fl ? c1 : c0); } } }
+    if (Gr.body) { var b0 = col('body'), b1 = col('body', 1), arm = /armor|armour|plate|mail|chest/.test(kind('body'));
+      for (y = A.by0; y <= A.by1; y++) for (x = A.bx0; x <= A.bx1; x++) if (SUIT[g[y][x]]) set(x, y, arm ? ((y - A.by0) % 3 === 0 ? b1 : b0) : ((x - A.bx0) % 3 === 0 ? b1 : b0)); }
+    if (Gr.feet) { var f0 = col('feet'), f1 = col('feet', 1); for (y = deck - 1; y <= A.by1; y++) for (x = 0; x < N; x++) if (SKIN[g[y][x]] && Math.abs(x - mid) >= 4) set(x, y, (y === A.by1 || !SKIN[(g[y + 1] || [])[x]]) ? f1 : f0); }
+    if (Gr.weapon) { var wx = Math.max(1, A.bx0 - 1), wy = Math.min(29, A.by1); set(wx, wy, 'n'); set(wx - 1, wy - 2, 'C'); set(wx, wy - 2, 'C'); set(wx + 1, wy - 2, 'C'); set(wx, wy - 1, 'n'); for (var t = 3; t < 12; t++) set(wx, wy - t, t === 11 ? 'W' : '#c8d0da'); }
+    var hi = iid('hand'); if (Gr.hand && hi !== 'dj-gold-chain' && hi !== 'dj-vinyl') { var hy = Math.min(29, deck - 1), hx = Math.min(29, Math.max(A.bx1 - 1, edge(hy - 1, true) + 2)), ak = kind('hand'), a0 = col('hand'), a1 = col('hand', 1);
+      if (/sword|staff|stick|dagger|wand|torch|spear|candle|bat|banner|flag|axe|hammer|pole|rod|lance|scepter|sceptre|quill|sign/.test(ak)) { for (var t2 = 0; t2 < 9; t2++) set(hx + 1, hy - t2, t2 > 6 ? a1 : a0); }
+      else { for (x = hx - 1; x <= hx + 1; x++) for (y = hy - 2; y <= hy; y++) set(x, y, a0); set(hx, hy - 2, a1); set(hx + 1, hy - 2, a1); } }
+    Object.keys(put).forEach(function (j) { j = +j; var px = j % N, py = (j / N) | 0; [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(function (q) { var X = px + q[0], Y = py + q[1]; if (X >= 0 && Y >= 0 && X < N && Y < N && !g[Y][X] && !orig[Y][X]) g[Y][X] = 'n'; }); });
   }
 
   function render(stage, frame, bg, gear, opts) {
