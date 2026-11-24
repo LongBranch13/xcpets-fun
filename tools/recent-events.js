@@ -15,6 +15,18 @@ const nodes = args.reduce((a, x, i) => (x === '--node' ? a.concat(args[i + 1]) :
 const NODES = nodes.length ? nodes : ['https://api.counterparty.io:4000/v2', 'https://api.unspendablelabs.com:4000/v2'];
 const KEEP_RE = /"A[1-9][0-9]{16,19}"/, KEEP_EV = /ORDER|MATCH|CANCEL|EXPIR|BTC_PAY/;
 const keep = (e) => KEEP_EV.test(String(e.event || '')) || KEEP_RE.test(JSON.stringify(e));
+/* Nov 24 2026: issuances of pet-number-like tokens with ~750 KB descriptions (inscribed data) made this file 114 MB. GitHub refuses
+ * files over 100 MB, so every feed push was rejected and the feed (api/boot.json, meta.json) stopped at 977,257 for 16 hours. A pet
+ * token's description is short (xcpets.fun/t/<id>.json or 'xcpets pet #<id>', see V.mintId/deedDescOk), so a long one can never
+ * match: it is cut to its first 64 characters (description_trimmed = the original length). The browser reads the same answer. */
+const DESC_MAX = 512;
+const slimEv = (e) => { const d = e && e.params && e.params.description; if (typeof d !== 'string' || d.length <= DESC_MAX) return e;
+  return Object.assign({}, e, { params: Object.assign({}, e.params, { description: d.slice(0, 64) + '\u2026', description_trimmed: d.length }) }); };
+/* and a hard size cap: the oldest blocks go first (a block missing from the file is read from a node, as before) */
+const MAX_BYTES = Math.max(1, +(process.env.RECENT_MAX_MB || 40)) * 1e6;
+function capSize(j) { let s = JSON.stringify(j); const bs = Object.keys(j.blocks).map(Number).sort((a, b) => a - b); let dropped = 0;
+  while (s.length > MAX_BYTES && bs.length > 1) { delete j.blocks[bs.shift()]; dropped++; j.from = bs[0]; s = JSON.stringify(j); }
+  return { s, dropped }; }
 const wait = (ms) => new Promise((ok) => setTimeout(ok, ms));
 async function getJ(u, tries = 7) {
   for (let n = 0; ; n++) {
@@ -32,11 +44,11 @@ async function onNode(base, prev) {
   let k = 0, reused = 0;
   async function one(b) {
     const h = H[b], p = prev && prev.blocks && prev.blocks[b];
-    if (p && p.hash === h && p.complete === true) { blocks[b] = p; reused++; return; }
+    if (p && p.hash === h && p.complete === true && Array.isArray(p.events)) { blocks[b] = Object.assign({}, p, { events: p.events.map(slimEv) }); reused++; return; }
     let out = [], cur = null, pg = 0;
     do { const j = await getJ(base + '/blocks/' + b + '/events?limit=1000' + (cur ? '&cursor=' + encodeURIComponent(cur) : '')); if (!Array.isArray(j.result)) throw new Error('bad events ' + b);
       out = out.concat(j.result); cur = j.next_cursor; if (++pg > 50) throw new Error('too many event pages ' + b); } while (cur);
-    blocks[b] = { hash: h, complete: true, total: out.length, events: out.filter(keep) };
+    blocks[b] = { hash: h, complete: true, total: out.length, events: out.filter(keep).map(slimEv) };
     await wait(250); /* gentle: the public nodes answer 429 to bursts */
   }
   async function worker() { while (k < list.length) await one(list[k++]); }
@@ -48,8 +60,9 @@ async function onNode(base, prev) {
   const file = path.join(OUT, 'recent-events.json'); let prev = null; try { prev = JSON.parse(fs.readFileSync(file, 'utf8')); } catch (e) { }
   for (const base of NODES) {
     try { const t0 = Date.now(), j = await onNode(base.replace(/\/+$/, ''), prev), reused = j.reused; delete j.reused;
-      if (OUT === '-') { process.stdout.write(JSON.stringify(j) + '\n'); return; }
-      fs.writeFileSync(file, JSON.stringify(j) + '\n'); console.log('recent-events: ' + j.from + '..' + j.tip + ' from ' + j.node + ' (' + reused + ' reused) in ' + (Date.now() - t0) + ' ms'); return; }
+      const c = capSize(j);
+      if (OUT === '-') { process.stdout.write(c.s + '\n'); return; }
+      fs.writeFileSync(file, c.s + '\n'); console.log('recent-events: ' + j.from + '..' + j.tip + ' from ' + j.node + ' (' + reused + ' reused' + (c.dropped ? ', ' + c.dropped + ' oldest blocks left out to stay under ' + (MAX_BYTES / 1e6) + ' MB' : '') + ', ' + (c.s.length / 1e6).toFixed(1) + ' MB) in ' + (Date.now() - t0) + ' ms'); return; }
     catch (e) { console.error('recent-events: ' + base + ' failed: ' + e.message); }
   }
   console.log('recent-events: every node failed; file left unchanged');
