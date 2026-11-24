@@ -15,7 +15,7 @@
   function load(k, d) { try { var v = JSON.parse(localStorage.getItem(LSK + '-' + k)); return v == null ? d : v; } catch (e) { return d; } }
   function store(k, v) { try { localStorage.setItem(LSK + '-' + k, JSON.stringify(v)); } catch (e) { } }
   function pill(t, p) { if (p && p.resurrected) return '<span class="pill tier tier-god">God</span>'; return '<span class="pill tier tier-' + TID[t] + '">' + TL[t] + '</span>'; }
-  function spL(id) { return V.speciesLabel(id); }
+  function spL(id) { return id && typeof id === 'object' ? (V.petSpeciesLabel ? V.petSpeciesLabel(id) : V.speciesLabel(id.species)) : V.speciesLabel(id); } /* a pet object: its shown name (cross pets) */
   function power(p) { var s = p.stats || {}; return STATS.reduce(function (a, k) { return a + (s[k] || 0); }, 0); }
   function canvasFor(p, w, cls) { var c = document.createElement('canvas'); c.width = c.height = 32; c.className = cls || 'sprite'; R.lazy(c, function () { return R.petFrames(p, w); }, true); return c; }
   var lastW = null;
@@ -111,9 +111,9 @@
   UXB.spsOn = function () { return F.sps.length > 0; }; UXB.spsKey = function () { return F.sps.slice().sort().join(','); }; UXB.shownSel = function (ids) { return spsShown(ids); }; /* mypets-species-filter */
   UXB.power = power; /* My Pets 'Power' sort: same measure as the ranking Power board and the fighter picker */
   UXB.filters = function () { var q = String(F.q || '').trim().toLowerCase().replace(/^#/, ''), SM = window.V2PetSearch && String(F.q || '').trim() ? V2PetSearch.matcher(F.q, lastW || U.world()) : null; /* species-ranks-split: free-text AND search, or an exact id list (js/v2-pet-search.js) */
-    return { flip: !!F.flip, spKey: function (p) { return isHyb(p) ? '~' + spL(p.species).toLowerCase() : spL(p.species).toLowerCase(); }, keep: function (p) { if (p.tier < (F.min || 0)) return false; if (F.origin !== 'all' && originOf(p) !== F.origin) return false; if (F.sp && F.sp !== 'all' && spOf(p) !== F.sp) return false; if (F.sps.length && F.sps.indexOf(spOf(p)) < 0) return false;
+    return { flip: !!F.flip, spKey: function (p) { return isHyb(p) ? '~' + spL(p).toLowerCase() : spL(p).toLowerCase(); }, keep: function (p) { if (p.tier < (F.min || 0)) return false; if (F.origin !== 'all' && originOf(p) !== F.origin) return false; if (F.sp && F.sp !== 'all' && spOf(p) !== F.sp) return false; if (F.sps.length && F.sps.indexOf(spOf(p)) < 0) return false;
       if (SM) return SM(p);
-      if (q) { if (/^\d+$/.test(q)) return Number(p.id) === parseInt(q, 10); return String(p.name || '').toLowerCase().indexOf(q) >= 0 || spL(p.species).toLowerCase().indexOf(q) >= 0; } return true; } }; };
+      if (q) { if (/^\d+$/.test(q)) return Number(p.id) === parseInt(q, 10); return String(p.name || '').toLowerCase().indexOf(q) >= 0 || spL(p).toLowerCase().indexOf(q) >= 0; } return true; } }; };
   function bindControls() {
     $('fSort').value = F.sort; $('fTier').value = F.tier; $('fMin').value = String(F.min); $('fOrigin').value = F.origin; $('fSearch').value = F.q; $('fHide').value = '-1'; if ($('fSpecies')) $('fSpecies').value = F.sp || 'all';
     function upd() { F.sort = $('fSort').value; F.tier = $('fTier').value; F.min = Number($('fMin').value) || 0; F.origin = $('fOrigin').value; F.q = $('fSearch').value; if ($('fSpecies')) F.sp = $('fSpecies').value; saveF(); U.render(); }
@@ -140,7 +140,7 @@
 
   // ================================================================ F. origin badges
   UXB.origin = function (p, w) { var o = originOf(p), par = p.parents || [];
-    function lk(id) { var q = w.byId[id]; return '<a href="pet.html?id=' + id + '" data-jump="' + id + '">#' + id + '</a>' + (o === 'hybrid' && q ? ' ' + esc(spL(q.species)) : ''); }
+    function lk(id) { var q = w.byId[id]; return '<a href="pet.html?id=' + id + '" data-jump="' + id + '">#' + id + '</a>' + (o === 'hybrid' && q ? ' ' + esc(spL(q)) : ''); }
     /* glitch-display-1102: quest jackpot eggs, grant eggs and Electric Eggs get their own origin chip (they were 'Hybrid' or 'Hatched from an egg burn') */
     var og = window.V2Render && V2Render.originOf ? V2Render.originOf(w, p) : null;
     if (og && og.kind !== 'bred' && og.kind !== 'hybrid' && og.kind !== 'hatched' && og.kind !== 'live') return '<span class="chip origin" title="' + esc(og.title) + '">' + esc(og.chip) + (p.jackpot ? ' ' + lk(p.jackpot.from) : '') + '</span>';
@@ -222,7 +222,7 @@
     var spins = plans.filter(function (x) { return x.tag === 'pet:spin'; }); if (spins.length) { var pool = V.wheelPool ? V.wheelPool(w, ME) : [], WW = V.WHEEL_W || [1, 2, 4, 8], tw = pool.reduce(function (t, q) { return t + WW[q.tier || 0]; }, 0), pc = function (k) { return tw ? (WW[k] / tw * 100).toPrecision(2) + '%' : '—'; }; out += '<div class="small grwhat"><b>🎡 Pepe Wheel:</b> ' + (spins.length === 1 ? 'one random gear piece' : spins.length + ' random gear pieces') + ' for a <b>random pet of yours</b> (' + pool.length.toLocaleString('en-US') + ' living pets with an open slot; rarer pets are likelier: Common 1 · Uncommon 2 · Rare 4 · Legendary 8, so each Common pet ' + pc(0) + ', each Legendary ' + pc(3) + ' per spin). The piece is rolled for that pet like a normal roll and worn right away. The wheel shows who got what once the burn confirms, usually in about 10 minutes.</div>'; }
     if (plans.some(function (x) { return /^pet:c:roll/.test(x.tag); })) out += '<div class="small grwhat"><b>🎲 What you get:</b> the community pet gets one random gear piece and wears it right away. A new piece replaces the one in that slot. It shows once the burn confirms, usually in about 10 minutes.</div>';
     var rel = plans.filter(function (x) { return /^pet:rel/.test(x.tag); });
-    if (rel.length) { var S = U.S(), names = S.sel.map(function (id) { var p = w.byId[id]; return p ? '#' + id + ' ' + esc(p.name) + ' (' + (p && p.resurrected ? 'God' : TL[p.tier]) + ' ' + esc(spL(p.species)) + ')' : '#' + id; });
+    if (rel.length) { var S = U.S(), names = S.sel.map(function (id) { var p = w.byId[id]; return p ? '#' + id + ' ' + esc(p.name) + ' (' + (p && p.resurrected ? 'God' : TL[p.tier]) + ' ' + esc(spL(p)) + ')' : '#' + id; });
       out += '<div class="relwarn"><b>🔥 Releasing ' + names.length + ' pet' + (names.length === 1 ? '' : 's') + ':</b> ' + names.slice(0, 30).join(', ') + (names.length > 30 ? ' … +' + (names.length - 30) + ' more' : '') + '<br><b>Burns are final.</b> Released pets are gone for good and cannot be restored.</div>'; }
     return out; };
 
@@ -264,7 +264,7 @@
    * (newest first when not filtering) and always keeps the selected pet. Display only. */
   var PET_OPT_MAX = 300;
   function petMatch(q, f) { if (!f) return true; var t = f.replace(/^#/, ''); if (/^\d+$/.test(t)) return String(q.id).indexOf(t) === 0;
-    var k = t.toLowerCase(); return String(q.name || '').toLowerCase().indexOf(k) >= 0 || String(spL(q.species) || q.species || '').toLowerCase().indexOf(k) >= 0; }
+    var k = t.toLowerCase(); return String(q.name || '').toLowerCase().indexOf(k) >= 0 || String(spL(q) || q.species || '').toLowerCase().indexOf(k) >= 0; }
   function petOpts(pets, sel, f, tierTxt) { f = String(f || '').trim(); var L = pets.filter(function (q) { return petMatch(q, f); });
     if (!f && L.length > PET_OPT_MAX) L = L.slice().sort(function (a, b) { return b.id - a.id; });
     var out = L.slice(0, PET_OPT_MAX); if (sel != null && !out.some(function (q) { return q.id === sel; })) { var sp = pets.filter(function (q) { return q.id === sel; })[0]; if (sp) out.unshift(sp); }
@@ -356,7 +356,7 @@
   function side(p, w, mine, other) { if (!p) return '<button type="button" class="fside empty" data-side="' + (mine ? 'a' : 'b') + '"><span class="big">＋</span><span>' + (mine ? 'Pick your pet' : 'Pick an opponent') + '</span></button>';
     var g = V.wornOf(w, p.id), why = whyNot(p, w);
     var FT = window.V2FightTag; /* fight-owner-labels */
-    return '<button type="button" class="fside t' + p.tier + (why ? ' no' : '') + (FT && FT.mine(p) ? ' fme' : '') + '" data-side="' + (mine ? 'a' : 'b') + '" aria-label="' + (mine ? 'Change your pet' : 'Change opponent') + '">' + (FT ? FT.html(p, other) : '') + '<span class="fsp" data-fsp="' + p.id + '"></span><span class="fn"><b>' + esc(p.name) + '</b> <span class="muted">#' + p.id + '</span>' + (p.blackEye ? ' 🤕' : '') + '</span><span class="small">' + pill(p.tier, p) + ' ' + esc(spL(p.species)) + ' · ' + p.stageName + '</span><span class="fpow"' + ptA(p) + '>⚡ ' + power(p) + ' Power</span>' +
+    return '<button type="button" class="fside t' + p.tier + (why ? ' no' : '') + (FT && FT.mine(p) ? ' fme' : '') + '" data-side="' + (mine ? 'a' : 'b') + '" aria-label="' + (mine ? 'Change your pet' : 'Change opponent') + '">' + (FT ? FT.html(p, other) : '') + '<span class="fsp" data-fsp="' + p.id + '"></span><span class="fn"><b>' + esc(p.name) + '</b> <span class="muted">#' + p.id + '</span>' + (p.blackEye ? ' 🤕' : '') + '</span><span class="small">' + pill(p.tier, p) + ' ' + esc(spL(p)) + ' · ' + p.stageName + '</span><span class="fpow"' + ptA(p) + '>⚡ ' + power(p) + ' Power</span>' +
       '<span class="fstats">' + STATS.map(function (k) { var v = (p.stats || {})[k] || 0, o = other ? (other.stats || {})[k] || 0 : 0; return '<span class="fst"><span class="sk">' + k.slice(0, 3).toUpperCase() + '</span><span class="fb"><i class="' + (other && v > o ? 'up' : other && v < o ? 'dn' : '') + '" style="width:' + Math.min(100, 100 * v / 35).toFixed(0) + '%"></i></span><b>' + v + '</b></span>'; }).join('') + '</span>' +
       '<span class="fgear">' + (g.length ? g.map(function (x) { return '<span class="gi" data-icon="' + esc(x.item) + '" title="' + esc(x.label) + (x.legendary ? ' ★ (safe)' : '') + '"></span>'; }).join('') : '<span class="small muted">no gear worn</span>') + '</span>' + (why ? '<span class="small warn">✋ ' + esc(why) + '</span>' : '') + (mine ? '<span class="fchg">✎ Change</span>' : '') + '</button>'; }
   function paintFace(w) { var box = $('faceoff'); if (!box) return; var mine = U.mine(w).filter(function (p) { return !p.dead; });
@@ -404,7 +404,7 @@
     function draw() { var q = $('fpQ').value.trim().toLowerCase().replace(/^#/, ''), s = $('fpS').value, ok = pf.ok;
       var X = L.filter(function (p) { return (!q || String(p.id).indexOf(q) === 0 || String(p.name || '').toLowerCase().indexOf(q) >= 0) && (!ok || !WN(p, w)) && (!pf.sp || p.species === pf.sp) && (pf.tier < 0 || p.tier === pf.tier) && (!pf.sc || scoreOf(p) >= pf.sc) && (!pf.pw || power(p) >= pf.pw); });
       X.sort(function (a, b) { return s === 'score' ? scoreOf(b) - scoreOf(a) || power(b) - power(a) : s === 'pow' ? power(b) - power(a) : s === 'tier' ? b.tier - a.tier || rbits(b) - rbits(a) || power(b) - power(a) : s === 'stage' ? b.stage - a.stage || power(b) - power(a) : a.id - b.id; });
-      $('fpG').innerHTML = X.slice(0, 120).map(function (p) { var why = WN(p, w); return '<button type="button" class="fpc t' + p.tier + (why ? ' no' : '') + '" data-pk="' + p.id + '"' + (why ? ' aria-disabled="true"' : '') + '><span class="fsp" data-fsp="' + p.id + '"></span><b>#' + p.id + ' ' + esc(p.name) + '</b><span class="small">' + TL[p.tier] + ' ' + esc(spL(p.species)) + ' · ' + p.stageName + '</span><span class="small"><span' + ptA(p) + '>⚡ ' + power(p) + '</span>' + (window.PetScore ? ' · ⭐ ' + scoreOf(p) : '') + (p.blackEye ? ' · 🤕' : '') + '</span>' + (why ? '<span class="small warn">' + esc(why) + '</span>' : '') + '</button>'; }).join('') + (X.length > 120 ? '<p class="small muted">Showing 120 of ' + X.length + '. Search to narrow down.</p>' : '') + (X.length ? '' : '<p class="small muted">No pet matches.</p>');
+      $('fpG').innerHTML = X.slice(0, 120).map(function (p) { var why = WN(p, w); return '<button type="button" class="fpc t' + p.tier + (why ? ' no' : '') + '" data-pk="' + p.id + '"' + (why ? ' aria-disabled="true"' : '') + '><span class="fsp" data-fsp="' + p.id + '"></span><b>#' + p.id + ' ' + esc(p.name) + '</b><span class="small">' + TL[p.tier] + ' ' + esc(spL(p)) + ' · ' + p.stageName + '</span><span class="small"><span' + ptA(p) + '>⚡ ' + power(p) + '</span>' + (window.PetScore ? ' · ⭐ ' + scoreOf(p) : '') + (p.blackEye ? ' · 🤕' : '') + '</span>' + (why ? '<span class="small warn">' + esc(why) + '</span>' : '') + '</button>'; }).join('') + (X.length > 120 ? '<p class="small muted">Showing 120 of ' + X.length + '. Search to narrow down.</p>' : '') + (X.length ? '' : '<p class="small muted">No pet matches.</p>');
       $('fpG').querySelectorAll('[data-fsp]').forEach(function (s2) { s2.appendChild(canvasFor(w.byId[s2.getAttribute('data-fsp')], w, 'sprite')); });
       $('fpG').querySelectorAll('[data-pk]').forEach(function (b) { b.onclick = function () { if (b.getAttribute('aria-disabled')) return; m.remove(); if (o && o.onPick) return o.onPick(Number(b.dataset.pk)); FO[sideId] = Number(b.dataset.pk); paintFace(U.world()); }; }); }
     $('fpQ').oninput = draw; $('fpS').onchange = draw; chips(); $('fpX').onclick = function () { m.remove(); }; m.onclick = function (e) { if (e.target === m) m.remove(); }; draw(); $('fpQ').focus(); }

@@ -94,7 +94,7 @@
     facts: function () { var w = S.w; if (!w) return []; if (G.ft === w) return G.f; var V = window.V2Rules || {}, tip = w.tip || 0, out = [];
       var kids = bredKids(w);
       var today = 0; for (var ti = 0; ti < kids.length; ti++) if (tip && tip - (kids[ti].hatchBlock || 0) <= 144) today++; var live = (w.breedReqs || []).filter(function (r) { return !r.used && (!tip || tip - r.block <= (V.BREED_WINDOW || 144)); });
-      if (kids[0]) { var k = kids[0], hy = V.isHybrid && V.isHybrid(k.species); out.push('Newest egg: ' + G.nm(k) + ', ' + (V.speciesLabel ? V.speciesLabel(k.species) : k.species) + (hy ? ' hybrid!' : '.')); }
+      if (kids[0]) { var k = kids[0], hy = V.isHybrid && V.isHybrid(k.species); out.push('Newest egg: ' + G.nm(k) + ', ' + (V.petSpeciesLabel ? V.petSpeciesLabel(k) : k.species) + (hy ? ' hybrid!' : '.')); }
       out.push(today ? today + (today === 1 ? ' egg' : ' eggs') + ' checked out today.' : 'No eggs today. Slow night, pls.');
       if (live.length) out.push(live.length + (live.length === 1 ? ' guest is' : ' guests are') + ' waiting on a date.');
       var O = others(w); if (O[0]) out.push('Room 101: ' + G.nm(O[0][0]) + ' + ' + G.nm(O[0][1]) + '.');
@@ -243,7 +243,7 @@
   function shortA(a) { a = String(a || ''); return a.length > 12 ? a.slice(0, 4) + '\u2026' + a.slice(-3) : a; }
   function ownerBadge(p, ME) { return p.owner && p.owner === ME ? '<em class="bk-own me">My Pets</em>' : '<em class="bk-own" title="' + esc(p.owner || '') + '">Other Pets<br>' + esc(shortA(p.owner)) + '</em>'; }
   function breedChip(w, ME) { var V = window.V2Rules, TL = V.TIER_LABELS || ['Common', 'Uncommon', 'Rare', 'Legendary'], TID = ['common', 'uncommon', 'rare', 'legendary'];
-    return function (r, sort) { var p = r.pets[0], sc = window.PetScore && PetScore.of(w, p), sp = V.speciesLabel ? V.speciesLabel(p.species) : p.species;
+    return function (r, sort) { var p = r.pets[0], sc = window.PetScore && PetScore.of(w, p), sp = V.petSpeciesLabel ? V.petSpeciesLabel(p) : p.species;
       return '<b>#' + p.id + '</b><span class="bk-nm">' + esc(p.name || '') + '</span>' + ownerBadge(p, ME) + '<span class="bk-sp">' + esc(sp) + '</span>' +
         '<span class="bk-row"><span class="pill tier tier-' + (p.resurrected ? 'god' : TID[p.tier] || 'common') + '">' + esc((p.resurrected ? 'God' : TL[p.tier]) || '') + '</span>' + (sort === 'power' ? '<span class="bk-sc"' + ptA(p) + '>⚡ ' + (window.UXB && UXB.power ? UXB.power(p) : window.V2Picker ? V2Picker.pow(p) : '–') : '<span class="bk-sc" title="Pet Score (display only)">⭐ ' + (sc ? sc.score : '–')) + '</span></span>' + /* fix-display-mismatch: number follows the sort */
         (V.breedsLeft ? '<span class="bk-br" title="Lifetime breeds used">💞 ' + V.breedsLeft(p, w.tip).used + '/' + V.BREED_CAP_V2 + '</span>' : '') + ''; }; }
@@ -365,7 +365,7 @@
     gbMarkSeen(topId);
     var reg = BK.ch === 'reg', pages = reg ? 1 : Math.max(1, Math.ceil(L.length / per)); BK.page = Math.min(BK.page, pages - 1); var P = reg ? [] : L.slice(BK.page * per, BK.page * per + per);
     var tabs = [['all', '📖', 'All stays', all.length], ['wow', '🎉', 'Big moments', wowN], ['hyb', '🧬', 'Hybrids', hyb]].concat(ME ? [['mine', '⭐', 'My stays', all.filter(myStay).length]] : []).concat([['reg', '🏆', 'Regulars', null]]);
-    var stay = function (c) { var hy = isHy(c), sp = V.speciesLabel ? V.speciesLabel(c.species) : c.species, nw = fresh(c);
+    var stay = function (c) { var hy = isHy(c), sp = V.petSpeciesLabel ? V.petSpeciesLabel(c) : c.species, nw = fresh(c);
       return '<div class="gb-row gb-stay' + (nw ? ' gb-isnew' : '') + (isWow(c) ? ' gb-gold' : '') + '">' + (nw ? '<span class="gb-new">NEW</span>' : '') +
         '<div class="gb-pics">' + gbSpr(w.byId[c.parents[0]]) + '<span class="gb-op">♥</span>' + gbSpr(w.byId[c.parents[1]]) + '<span class="gb-op gb-arw">→</span><span class="gb-kidpic">' + gbSpr(c, true) + gbStamp(w, c, V) + '</span></div>' +
         '<div class="gb-txt"><span class="gb-kid">🥚 <a href="pet.html?id=' + c.id + '">#' + c.id + (c.name ? ' ' + esc(c.name) : '') + '</a> · ' + esc(sp) + ' <span class="pill tier tier-' + (c.resurrected ? 'god' : TID[c.tier] || 'common') + '">' + esc((c.resurrected ? 'God' : TL[c.tier]) || '') + '</span>' + (hy && !/hybrid/i.test(sp) ? ' <span class="gb-hyb">🧬 Hybrid</span>' : '') + (mineP(c.id) ? ' <em class="bk-own me">My Pets</em>' : '') + '</span>' +
@@ -450,7 +450,7 @@
   function eggPop(w, k) { if (!k || document.getElementById('eggPop')) return; var V = window.V2Rules, R = window.V2Render, TID = ['common', 'uncommon', 'rare', 'legendary'], sc = window.PetScore && PetScore.of(w, k), A = w.byId[k.parents[0]], B = w.byId[k.parents[1]];
     var nm = function (p, id) { return '#' + id + (p ? ' ' + esc(p.name || '') : ''); }, d = document.createElement('div'); d.id = 'eggPop'; d.className = 'eggpop' + (reduced() ? ' rm' : ''); d.setAttribute('role', 'dialog'); d.setAttribute('aria-label', 'New egg hatched');
     d.innerHTML = '<div class="ep-box"><div class="ep-fx" aria-hidden="true">💞 ✨ 🥚 ✨ 💞</div><b class="ep-h">IT\u2019S AN EGG!</b><span class="ep-sp"></span><div class="ep-nm">#' + k.id + ' ' + esc(k.name || '') + '</div>' +
-      '<div>' + esc(V.speciesLabel(k.species)) + ' <span class="pill tier tier-' + (TID[k.tier] || 'common') + '">' + esc((V.TIER_LABELS || [])[k.tier] || '') + '</span> <span class="ep-sc">⭐ ' + (sc ? sc.score : '–') + '</span></div>' +
+      '<div>' + esc((V.petSpeciesLabel ? V.petSpeciesLabel(k) : V.speciesLabel(k.species))) + ' <span class="pill tier tier-' + (TID[k.tier] || 'common') + '">' + esc((V.TIER_LABELS || [])[k.tier] || '') + '</span> <span class="ep-sc">⭐ ' + (sc ? sc.score : '–') + '</span></div>' +
       '<div class="small">Parents: ' + nm(A, k.parents[0]) + ' × ' + nm(B, k.parents[1]) + '</div><div class="row" style="justify-content:center;margin-top:8px"><a class="btn" href="pet.html?id=' + k.id + '">See #' + k.id + '</a><button type="button" class="q" id="epClose">Close</button></div></div>';
     document.body.appendChild(d); if (R && R.lazy) { var c = document.createElement('canvas'); c.width = c.height = 32; c.className = 'sprite'; d.querySelector('.ep-sp').appendChild(c); R.lazy(c, function () { return R.petFrames(k, w); }, true); }
     var x = function () { d.remove(); }; d.querySelector('#epClose').onclick = x; d.onclick = function (e) { if (e.target === d) x(); }; }

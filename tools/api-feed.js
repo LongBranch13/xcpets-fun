@@ -98,7 +98,7 @@ function build(ctx, input, nowIso) {
     const hyb = V.isHybrid ? V.isHybrid(p.species) : /^hyb:/.test(String(p.species)), s = sc.byId[p.id];
     const tierName = p.art && p.art.tier ? p.art.tier[0].toUpperCase() + p.art.tier.slice(1) : (['Common', 'Uncommon', 'Rare', 'Legendary'][p.tier] || null);
     return {
-      id: p.id, name: p.name, species: p.species, speciesLabel: V.speciesLabel(p.species), hybrid: !!hyb,
+      id: p.id, name: p.name, species: p.species, speciesLabel: V.petSpeciesLabel ? V.petSpeciesLabel(p) : V.speciesLabel(p.species), hybrid: !!hyb,
       tier: ['Common', 'Uncommon', 'Rare', 'Legendary'][p.tier] || tierName, rarityScore: s ? s.score : null, rarityRank: s ? s.rank : null,
       stage: p.stage, stageName: STAGES[p.stage] || p.stageName, care: p.care,
       status: p.released ? 'released' : p.dead ? 'dead' : 'alive', usedUp: p.usedUp || null, community: !!(p.community || (p.art && p.art.community)),
