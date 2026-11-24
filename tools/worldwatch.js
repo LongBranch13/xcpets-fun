@@ -63,7 +63,7 @@ function followProblems(h, real) {
   if (loop && loop.stepSec >= 600) out.push('The game server\'s chain follower has been stuck on one step for ' + Math.round(loop.stepSec / 60) + ' minutes (tip ' + tip + '). It restarts itself after 10 minutes; if this stays, run Actions > server-restart.');
   if (loop && loop.restarts1h >= 3) out.push('The game server\'s sync service keeps restarting (' + loop.restarts1h + ' times in the last hour; it was at block ' + tip + ', heap ' + (loop.heapMB || '?') + ' of ' + (loop.heapLimitMB || '?') + ' MB). Usually it runs out of memory.');
   if (real && tip && real - tip >= FOLLOW_BEHIND_MAX) out.push('The game server stopped following the chain: it is at block ' + tip + ', the chain is at ' + real + ' (' + (real - tip) + ' behind)' +
-    (loop && loop.errorRun ? ', its last ' + loop.errorRun + ' reads failed (' + (loop.lastError || 'error') + ')' : '') + '. New burns do not show until it catches up.');
+    (loop && loop.errorRun ? ', its last ' + loop.errorRun + ' reads failed (' + (loop.lastError || 'error') + (loop.lastStep ? ', at the ' + loop.lastStep + ' step' : '') + ')' : '') + '. New burns do not show until it catches up.');
   return out;
 }
 async function check() {

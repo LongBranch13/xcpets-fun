@@ -57,6 +57,8 @@ function stallServer() {
   idx._LOOP.runningSince = 0;
   ok('errCode keeps short codes and hides anything else', idx.errCode(new Error('upstream down')) === 'upstream down' && idx.errCode(new Error('fetch http://10.0.0.1:4000 failed')) === 'error');
 
+  ok('errCode names sales-read failures without their details', idx.errCode(new Error('balance check failed for PETTOKEN1')) === 'sales: balance check failed' && idx.errCode(new Error('DEX API 503: busy at http://x')) === 'sales: dex api 503');
+  ok('errCode names code faults by their kind only', idx.errCode(new TypeError('cannot read properties of undefined (reading bc1qsecret)')) === 'code: TypeError');
   /* 2b. saved follower state and the restart counter */
   const dd2 = fs.mkdtempSync(path.join(os.tmpdir(), 'xp-follow-'));
   ok('saveFollow refuses a follower that is not ready', idx.saveFollow(dd2, { ready: false, tip: 5, rows: [] }) === false);
@@ -134,6 +136,8 @@ function stallServer() {
   const outside = [];
   svc.forEach(f => { const src = fs.readFileSync(path.join(__dirname, 'sync-server', f), 'utf8'); (src.match(/require\('(\.\.?\/[^']+)'\)/g) || []).forEach(m => { const rel = m.slice(9, -2); if (rel === '../..') return; const abs = path.resolve(__dirname, 'sync-server', rel); if (!abs.startsWith(path.join(__dirname, 'sync-server')) && !abs.startsWith(path.join(__dirname, 'lib')) && !abs.startsWith(path.join(ROOT, 'js'))) outside.push(f + ' -> ' + rel); }); });
   ok('service requires stay inside what server-repair installs (tools/sync-server, tools/lib, js/)', outside.length === 0, outside.join(', '));
+  { const rp = fs.readFileSync(path.join(__dirname, '..', '.github', 'workflows', 'server-repair.yml'), 'utf8');
+    ok('server-repair also installs the page scripts the service reads from its own folder (the server copy was from Nov 11)', ['js/v2-boot-sync.js', 'js/v2-chain.js', 'js/block-hashes.js', 'js/v2-grave-index.js'].every(f => new RegExp('ss\\.tgz" tools/sync-server tools/lib[^\\n]*' + f.replace(/[./]/g, '\\$&')).test(rp))); }
   ok('net.js does not depend on a tools/lib helper the server may not have yet', !/require\('\.\.\/lib/.test(fs.readFileSync(path.join(__dirname, 'sync-server', 'net.js'), 'utf8')));
   const repair = fs.readFileSync(path.join(ROOT, '.github/workflows/server-repair.yml'), 'utf8');
   ok('server-repair installs the sync watchdog timer, the feed time limit and tools/lib', /ss\.tgz" tools\/sync-server tools\/lib/.test(repair) && /xcpets-sync-watchdog\.timer/.test(repair) && /TimeoutStartSec=40min/.test(repair) && /"stepSec":\[0-9\]\+/.test(repair));
