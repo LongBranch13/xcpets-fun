@@ -244,39 +244,46 @@
     var badges = function (p) { var R2 = window.V2Render, x = []; try { x = R2 && R2.badgesOf ? R2.badgesOf(w, p) : Vr.breederBadges ? Vr.breederBadges(w, p) : []; } catch (e) { x = []; } return x.length ? x.map(function (q) { return '<span title="' + esc(q.name + ': ' + q.tip) + '">' + q.icon + '</span>'; }).join('') : ''; };
     var scoreOf = function (p) { var r = window.PetScore && PetScore.peek ? PetScore.peek(w, p) : null; return r ? r.score : null; }; /* peek: never scores a big world inside a paint */
     var NOLINE = { '': 1, pow: 1, sc: 1, bl: 1, gen: 1, mate: 1, egg: 1, 'egg-': 1, pass: 1 };
-    var info = function (p, k) { var sc = scoreOf(p), bl = v2 && Vr.breedsLeft ? Vr.breedsLeft(p, T + 1) : null, g = gen(p), bd = badges(p), PS = window.PetSort, gn = PS && PS.gain ? PS.gain(p) : 0, sl = null;
-      if (k && !NOLINE[String(k).replace(/-$/, '')] && PS && PS.line) try { sl = PS.line(w, p, k, T + 1); } catch (e) { sl = null; }
+    var info = function (p) { var sc = scoreOf(p), bl = v2 && Vr.breedsLeft ? Vr.breedsLeft(p, T + 1) : null, g = gen(p), bd = badges(p), PS = window.PetSort, gn = PS && PS.gain ? PS.gain(p) : 0;
       return [(sc != null ? '⭐ ' + sc + ' · ' : '') + 'Gen ' + g + (bd ? ' ' + bd : '') + (gn ? ' · <small class="hs-g">+' + gn + ' to gain</small>' : ''),
-        bl ? '💞 ' + bl.left + ' of ' + bl.cap + ' breeds left' : '💞 bred ' + (p.breeds || 0) + ' times'].concat(sl ? [esc(sl)] : []); };
+        bl ? '💞 ' + bl.left + ' of ' + bl.cap + ' breeds left' : '💞 bred ' + (p.breeds || 0) + ' times']; };
+    /* stat-sort-search: the value the list is sorted by (📊 Grit 30, 🌱 Adult, 🏆 12 wins...) leads the card's line in every view. It used to sit
+     * in the Detailed lines only, so in Simple view a Grit sort showed nothing but ⚡ total numbers and looked like a Power sort. */
+    var sline = function (p, k) { var PS = window.PetSort, sl = null; if (k && !NOLINE[String(k).replace(/-$/, '')] && PS && PS.line) try { sl = PS.line(w, p, k, T + 1); } catch (e) { sl = null; } return sl ? '<b class="pk2-sv">' + esc(sl) + '</b> · ' : ''; };
     var tierL = function (p) { return p.resurrected ? 'God' : TL[p.tier] || ''; };
-    var allA = memo(w, ['pkA', ME, T, L.mine.length].join('|'), function () { return L.mine.filter(function (x) { return x.p.stage >= 1 && !x.p.dead; }).map(function (x) { return { p: x.p, why: notReady(x), k: pw(x.p) }; })
-      .sort(function (x, y) { return (!!x.why - !!y.why) || y.k - x.k || x.p.id - y.p.id; }); }); /* power worked out once per pet (big wallets) */
+    /* stat-sort-search (Nov 24 2026, Evan: "Grit high to low sorts by total first"): the search results, 📋 All my pets and the Favorites / Recent
+     * picks are built from allA / allB. Those were always in Power order, so typing in the search box (or opening All) dropped the sort the player
+     * picked and showed the pets by total stats. They now follow the chosen sort too (ready pets first, then the rest, each in sort order). */
+    var cpx = function (c) { return c.p; };
+    var bySort = function (list, k) { if (k == null || k === 'pow') return list.sort(function (x, y) { return (!!x.why - !!y.why) || y.k - x.k || x.p.id - y.p.id; }); /* Power: the old cheap order (no Pet Score on every pet) */
+      var o = psort(w, list, k, cpx, T + 1); return o.filter(function (x) { return !x.why; }).concat(o.filter(function (x) { return x.why; })); };
+    var allA = memo(w, ['pkA', ME, T, L.mine.length, s.sa].join('|'), function () { return bySort(L.mine.filter(function (x) { return x.p.stage >= 1 && !x.p.dead; }).map(function (x) { return { p: x.p, why: notReady(x), k: pw(x.p) }; }), s.sa); }); /* power worked out once per pet (big wallets) */
     var bestA = memo(w, ['pkAb', s.sa, s.fsp, s.fst, s.frar, s.fslot ? 1 : 0, T, ME].join('|'), function () { return psort(w, L.mine.filter(function (x) { return !x.why && x.p.stage >= 3 && fok(s, x.p); }), s.sa, px, T + 1).map(function (x) { return { p: x.p }; }); });
-    var statA = function (c) { c.stat = '<span' + ptA(c.p) + '>⚡ ' + pw(c.p) + '</span>'; c.line = esc(spL(c.p.species)) + ' · ' + esc(tierL(c.p)); c.lines = info(c.p, s.sa); return c; };
+    var statA = function (c) { c.stat = '<span' + ptA(c.p) + '>⚡ ' + pw(c.p) + '</span>'; c.line = sline(c.p, s.sa) + esc(spL(c.p.species)) + ' · ' + esc(tierL(c.p)); c.lines = info(c.p); return c; };
     var egK = EGGK.some(function (e) { return e[0] === s.sb; });
-    var allB = memo(w, ['pkB', A ? A.id : 0, T, lookRev(), ME].join('|'), function () {
+    var allB = memo(w, ['pkB', A ? A.id : 0, T, lookRev(), ME, egK ? '~egg' : s.sb].join('|'), function () {
       var raw = L.partners.filter(function (x) { return x.p.stage >= 1 && !x.p.dead && !resX(x.p) && (!A || x.p.id !== A.id); });
-      return raw.map(function (x) { var k = kin(x.p); return { p: x.p, why: k ? k + ' (no inbreeding)' : notReady(x), k: pw(x.p) }; }).sort(function (x, y) { return (!!x.why - !!y.why) || y.k - x.k || x.p.id - y.p.id; }); });
+      return bySort(raw.map(function (x) { var k = kin(x.p); return { p: x.p, why: k ? k + ' (no inbreeding)' : notReady(x), k: pw(x.p) }; }), egK ? null : s.sb); }); /* egg sorts: Power order here (the egg math runs on the ready dates only) */
     var bestB = memo(w, ['pkBb', A ? A.id : 0, s.sb, s.fsp, s.fst, s.frar, s.fslot ? 1 : 0, T, lookRev(), ME].join('|'), function () {
       var raw = L.partners.filter(function (x) { return !x.why && x.p.stage >= 3 && !resX(x.p) && !kin(x.p) && (!A || x.p.id !== A.id) && fok(s, x.p); });
       raw = A && window.EggPower && (!s.sb || egK) ? eggSort(raw, egK ? s.sb : 'mate', A, px, T + 1) : psort(w, raw, egK ? '' : s.sb, px, T + 1);
       return raw.map(function (x) { return { p: x.p }; }); });
     var statB = function (c) { var e = A && c.p.id !== A.id ? eggOf(A, c.p, T + 1) : null; c.stat = e ? '🥚 ⚡' + Math.round(e.exp) : '<span' + ptA(c.p) + '>⚡ ' + pw(c.p) + '</span>';
-      c.line = esc(spL(c.p.species)) + ' · ' + esc(tierL(c.p)) + (c.p.owner !== ME ? ' · 👤 ' + esc(short(c.p.owner)) : ' · yours');
-      c.lines = (e ? [eggLine(e), eggTags(e), 'its own ⚡ ' + pw(c.p)] : []).filter(Boolean).concat(info(c.p, egK ? '' : s.sb)); return c; };
+      c.line = sline(c.p, egK ? '' : s.sb) + esc(spL(c.p.species)) + ' · ' + esc(tierL(c.p)) + (c.p.owner !== ME ? ' · 👤 ' + esc(short(c.p.owner)) : ' · yours');
+      c.lines = (e ? [eggLine(e), eggTags(e), 'its own ⚡ ' + pw(c.p)] : []).filter(Boolean).concat(info(c.p)); return c; };
     var per = PK.perOf ? PK.perOf(PK.viewMode()) : 24;
     var dec = function (list, f, n) { return list.slice(0, n).map(function (c) { return f(Object.assign({}, c)); }).concat(list.slice(n)); };
     var SORT_A = [['pow', '⚡ Power'], ['sc', '⭐ Score'], ['rar', '💎 Rarity'], ['bl', '💞 Breeds left'], ['gen', '🌳 Gen'], ['', '🐣 Oldest']];
     var SORT_B = (A && window.EggPower ? [['mate', '🥚 Best egg'], ['egg', '🥚 Egg power'], ['pass', '🧬 Traits']] : []).concat([['pow', '⚡ Power'], ['sc', '⭐ Score'], ['rar', '💎 Rarity']]);
     var asks = reqs.map(function (r) { var Y = w.byId[r.a], X = w.byId[r.b], k = r.b + ':' + r.a, kw = v2 && Vr.kinWhy ? Vr.kinWhy(X, Y) : null, rw = Vr.resPairWhy ? Vr.resPairWhy(X, Y, T + 1) : null, e = eggOf(Y, X, T + 1);
       return { p: Y, key: 'r' + k, why: kw ? kw + ' (no inbreeding)' : rw || null, tag: 'asks your ' + esc(X.name) + ' #' + X.id, tagMe: true, stat: '<span' + ptA(Y) + '>⚡ ' + pw(Y) + '</span>',
-        line: esc(spL(Y.species)) + ' · ' + esc(tierL(Y)) + ' · 👤 ' + esc(short(Y.owner)), lines: ['⏳ until block ' + fmt(r.block + (Vr.BREED_WINDOW || 144)) + (T ? ' (~' + Math.max(1, Math.round(Math.max(0, r.block + (Vr.BREED_WINDOW || 144) - T) / 6)) + ' h left)' : '')].concat(e ? [eggLine(e)] : []).concat(info(Y, '')), noStar: false }; });
+        line: esc(spL(Y.species)) + ' · ' + esc(tierL(Y)) + ' · 👤 ' + esc(short(Y.owner)), lines: ['⏳ until block ' + fmt(r.block + (Vr.BREED_WINDOW || 144)) + (T ? ' (~' + Math.max(1, Math.round(Math.max(0, r.block + (Vr.BREED_WINDOW || 144) - T) / 6)) + ' h left)' : '')].concat(e ? [eggLine(e)] : []).concat(info(Y)), noStar: false }; });
     var sideCfg = function (sd) { var st = sd === 'A' ? (s.pa = s.pa || {}) : (s.pb = s.pb || {}), nShow = Math.max(st.n || 0, per), shelves, shelf, cfgList;
       if (sd === 'A') {
         shelves = [{ id: 'best', label: '⭐ Best', list: bestA, why: 'Your pets that can breed right now.', empty: L.mine.length ? 'None of your pets can breed right now (Adult+, fed, off cooldown). Try 📋 All my pets to see why.' : 'No living pets at this address yet.' },
           { id: 'fav', label: '★ Favorites', list: PK.favOf(allA), sort: false, why: 'Tap the ☆ on any pet to keep it here.', empty: 'No favorites yet. Tap the ☆ on a pet.' },
           { id: 'recent', label: '🕘 Recent', list: PK.recentOf(allA), sort: false, why: 'Pets you picked lately, here and in other places.', empty: 'Nothing picked yet.' },
-          { id: 'all', label: '📋 All my pets', list: allA, sort: false, why: fmt(bestA.length) + ' of ' + fmt(allA.length) + ' can breed now. The rest say why.', empty: 'No living pets at this address yet.' }];
+          { id: 'all', label: '📋 All my pets', list: allA, why: fmt(bestA.length) + ' of ' + fmt(allA.length) + ' can breed now. The rest say why.', empty: 'No living pets at this address yet.' }];
         shelf = s.shA || 'best'; cfgList = allA; }
       else {
         var mineB = bestB.filter(function (c) { return c.p.owner === ME; }), otherB = bestB.filter(function (c) { return c.p.owner !== ME; });
@@ -290,7 +297,9 @@
       if (!shelves.some(function (x) { return x.id === shelf; })) shelf = shelves[0].id;
       var deco = sd === 'A' ? statA : statB;
       shelves.forEach(function (x) { if (x.id !== 'asks') x.list = dec(x.list, deco, nShow); });
-      var searchList = st.q ? dec(cfgList.filter(function (c) { return PK.match(c.p, st.q, spL); }), deco, nShow) : null;
+      var hits = st.q ? cfgList.filter(function (c) { return PK.match(c.p, st.q, spL); }) : null;
+      if (hits && sd === 'B' && egK && A && window.EggPower) hits = eggSort(hits.filter(function (c) { return !c.why; }), s.sb, A, function (c) { return c.p; }, T + 1).concat(hits.filter(function (c) { return c.why; })); /* stat-sort-search: egg sorts too */
+      var searchList = hits ? dec(hits, deco, nShow) : null;
       return { st: st, shelves: shelves, shelf: shelf, searchList: searchList, sorts: sd === 'A' ? SORT_A : SORT_B, sortOn: sd === 'A' ? s.sa : s.sb,
         searchPh: sd === 'A' ? 'Search ' + fmt(allA.length) + ' pets: name, #number, species' : 'Search dates: name, #number, species', selected: sd === 'A' ? (A ? A.id : '') : (s.req ? 'r' + s.req : Bp ? Bp.id : ''),
         prompt: sd === 'A' ? (dual ? '1 · Your pet' : 'Pick your pet') : (shelf === 'asks' ? (dual ? '2 · ' : '') + 'Pick a request' : (dual ? '2 · The date' : 'Pick a date') + (A ? ' for ' + (A.name || '#' + A.id) : '')) }; };

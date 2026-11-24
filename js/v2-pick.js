@@ -91,7 +91,7 @@
       x.sh = x.shelves.filter(function (s) { return s.id === x.shelf; })[0] || x.shelves[0];
       x.q = String(x.st.q || '').trim(); x.list = x.q ? (x.searchList || x.sh.list).filter(function (c) { return match(c.p, x.q, spL); }) : x.sh.list; x.view = x.list.slice(0, x.st.n); });
     var pickHtml = function (side, x, first) { var sh = x.sh, q = x.q, list = x.list, view = x.view, selId = String(x.selected || '');
-      var sortable = x.sorts && x.sorts.length && !q && sh.sort !== false;
+      var sortable = x.sorts && x.sorts.length && (q ? !!x.searchList : sh.sort !== false); /* stat-sort-search: the search results follow the sort too, so the chips stay */
       return '<div class="pk2-pick' + (side ? ' pk2-side' + (cfg.active === side ? ' live' : '') : '') + '" data-pk2side="' + side + '"><div class="pk2-pr">' + esc(x.prompt || '') + ' <span aria-hidden="true">⬇</span></div>' +
         '<div class="pk2-tabs" role="tablist" aria-label="Suggestions">' + x.shelves.map(function (s) { var on = s.id === sh.id && !q;
           return '<button type="button" role="tab" class="pk2-tab' + (on ? ' on' : '') + (s.hot ? ' hot' : '') + '" data-pk2shelf="' + esc(s.id) + '" aria-selected="' + on + '">' + s.label + '</button>'; }).join('') + '</div>' +
@@ -203,7 +203,7 @@
   CSS += '.pk2-alert{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;width:100%;max-width:720px;margin:0 auto 8px;padding:10px 12px;border:3px solid #000;box-shadow:4px 4px 0 #000;background:#ff9ad5;color:#2a1530;font:inherit;font-weight:700;font-size:15px;text-align:left;cursor:pointer;animation:pk2ping 1.4s ease-in-out infinite}' +
     '.pk2-alert b{font-family:Bangers,Impact,sans-serif;font-weight:400;font-size:22px;letter-spacing:1px}.pk2-alert .pk2-ago{flex:1 1 220px;font-size:13px}.pk2-alert .pk2-go{font-family:"Press Start 2P",monospace;font-size:9px;background:#2a1530;color:#ffd1ec;padding:8px;border:2px solid #000}' +
     '@keyframes pk2ping{50%{box-shadow:4px 4px 0 #000,0 0 0 4px #ff4fd8}}.pk2-alert:hover{filter:brightness(1.06)}' +
-    '.pk2-sorts{display:flex;align-items:center;gap:5px;overflow-x:auto;padding:0 2px 6px;-webkit-overflow-scrolling:touch}.pk2-sl2{flex:none;font-size:12px;color:#c9bff0}' +
+    '.pk2-sv{color:#ffd166}.pk2-c.on .pk2-sv{color:#140f24}.pk2-sorts{display:flex;align-items:center;gap:5px;overflow-x:auto;padding:0 2px 6px;-webkit-overflow-scrolling:touch}.pk2-sl2{flex:none;font-size:12px;color:#c9bff0}' +
     '.pk2-so{flex:none;min-height:34px;padding:3px 10px;font:inherit;font-size:13px;font-weight:700;border:2px solid #000;background:#120e22;color:#f3eefe;cursor:pointer;white-space:nowrap}.pk2-so.on{background:#ffd166;color:#140f24}' +
     '.pk2-qrow{display:flex;flex-wrap:wrap;gap:6px;align-items:flex-start}.pk2-qrow .pk2-q{flex:1 1 220px}.pk2-views{display:flex;flex:none;margin-bottom:8px}' +
     '.pk2-vw{min-height:44px;padding:4px 8px;font:inherit;font-size:12px;font-weight:700;border:2px solid #000;background:#2b2350;color:#f3eefe;cursor:pointer;white-space:nowrap}.pk2-vw+.pk2-vw{border-left:0}.pk2-vw.on{background:#9fe8ff;color:#140f24}' +
