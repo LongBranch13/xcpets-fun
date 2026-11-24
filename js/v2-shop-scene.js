@@ -224,6 +224,7 @@
   root.addEventListener('click', function (e) { var b = e.target.closest('[data-cs]'); if (b) act(b.getAttribute('data-cs')); });
 
   document.addEventListener('v2sales:ready', function () { label(); draw(); kick(); if (location.hash === '#press') setTimeout(function () { act('press'); }, 300); });
+  document.addEventListener('v2sales:fresh', function () { label(); draw(); }); /* spam-city-shelves: the newest book replaced the published one */
   var sx = $('csSfx'); if (sx && window.V2Sfx && V2Sfx.toggle) sx.innerHTML = V2Sfx.toggle('cs-sfx');
   root.classList.add('cs-on'); draw(); kick();
   window.V2ShopScene = { act: act, openBinder: openBinder, _st: ST };

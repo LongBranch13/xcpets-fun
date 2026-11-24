@@ -64,6 +64,15 @@ const tagText = h => /^[0-9a-f]+$/i.test(h || '') && (h.length % 2 === 0) ? Buff
     sh.pets.every(p => fw.byId[p.id] && fw.byId[p.id].owner === p.owner) && JSON.stringify(sh.orders) === JSON.stringify((view.dex && view.dex.orders) || []),
     'the shop pack matches a full replay (' + sh.listings.length + ' listings, ' + sh.pets.length + ' pets, ' + sh.orders.length + ' orders)');
   ok((await I.ckShop(state)) === sh, 'the shop pack is built once per checker world');
+  /* Spam City shelves (Nov 24 2026): every published world carries the same pack (view/p/99901.json), so the page has it while the
+   * checker is paused for a build or reloading after a block */
+  const SPL = require('./sync-server/split');
+  const pubB = SPL.shopPack(fw, full.V2Rules, (view.dex && view.dex.orders) || [], B, rsig), shNo = Object.assign({}, sh); delete shNo.id; delete shNo.cmd;
+  ok(JSON.stringify(Object.assign({}, pubB, { v: undefined })) === JSON.stringify(Object.assign({}, shNo, { v: undefined })), 'the published shop pack is the same as the checker\'s for the same world');
+  const pf = path.join(wdir, 'view', 'p', SPL.SHOP_SHARD + '.json'), pj = fs.existsSync(pf) ? JSON.parse(fs.readFileSync(pf, 'utf8')) : null;
+  const mf = JSON.parse(fs.readFileSync(path.join(wdir, 'manifest.json'), 'utf8'));
+  ok(pj && pj.ok === true && pj.tip === A && pj.rsig === rsig && Array.isArray(pj.listings) && Array.isArray(pj.pets) && JSON.stringify(pj.orders) === JSON.stringify((boot.dex && boot.dex.orders) || []) && mf.view && mf.view.shop === 'view/p/99901.json',
+    'a world build writes the shop pack beside its view (' + (pj ? pj.listings.length + ' listings at ' + pj.tip : 'missing') + ')');
   ok((await I.ckShop(Object.assign({}, state, { tip: B + 1 }))).ok === false, 'a checker behind the follower sends no shop pack');
   I.ckStop('off'); ok(I._CK.proc === null, 'stopping the checker (before a world build) ends its process');
 
@@ -91,9 +100,9 @@ const tagText = h => /^[0-9a-f]+$/i.test(h || '') && (h.length % 2 === 0) ? Buff
   const sp = fs.readFileSync(path.join(ROOT, 'js/v2-split.js'), 'utf8'), wl = fs.readFileSync(path.join(ROOT, 'js/v2-wallet.js'), 'utf8');
   ok(/function checkPlans\(plans\) \{\s*return serverCheck\(plans\)\.then\(function \(out\) \{ return out \|\| deviceCheck\(plans\); \}\);/.test(sp), 'checkPlans asks the server, then falls back to the device check');
   ok(/!\(j\.tip >= need\)/.test(sp) && /SERVER_MS = 3000/.test(sp), 'a server answer is used only within 3 s and at least as new as every tip the page knows');
-  ok(/j\.rsig !== rsig/.test(sp) && /function serverShop\(\)/.test(sp) && (sp.match(/j\.rsig !== rsig/g) || []).length === 2, 'the page uses server answers and the shop pack only when they come from its own rule files');
+  ok(/j\.rsig !== rsig/.test(sp) && /function serverShop\(\)/.test(sp) && (sp.match(/j\.rsig !== rsig/g) || []).length === 3 && /function publishedShop\(\)/.test(sp), 'the page uses server answers and the shop packs only when they come from its own rule files');
   const sa = fs.readFileSync(path.join(ROOT, 'js/v2-sales.js'), 'utf8');
-  ok(/V2Split\.serverShop\(\)/.test(sa) && /if \(pack\) \{ window\.__xcpShopSrc = 'server'; applyBook\(pack\); return; \}[^]*bookInputs\(\)\.then\(replayBook\)\.then\(applyBook\)/.test(sa), 'Spam City takes the server order book, and replays in the browser only without it');
+  ok(/SP\.serverShop\(\)/.test(sa) && /SP\.publishedShop\(\)/.test(sa) && /function deviceBook\(\) \{[^\n]*bookInputs\(\)\.then\(replayBook\)/.test(sa), 'Spam City takes the server order book or the published one, and replays in the browser only without both');
   ok(/if \(ready \|\| off\(\)/.test(sp), 'a finished device check is used directly');
   ok(/serverReady \|\| !last/.test(sp), 'the device check does not warm up while the server check is ready');
   ok(/var viewGate = !!\(VS && VS\.view && !VS\.stale && window\.V2Split && V2Split\.checkPlans\);/.test(wl) && /!VS\.verified && !viewGate/.test(wl), 'the wallet lets the published view through to checkPlans');
