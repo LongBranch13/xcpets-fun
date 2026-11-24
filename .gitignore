@@ -14,3 +14,6 @@
 /var/
 hatchbot/memes.json
 hatchbot/tokens.json
+
+# HatchBot worker dependencies (installed by the hatchbot-worker workflow with npm ci)
+/hatchbot/node_modules/

@@ -9,11 +9,12 @@ import TOKENS from './tokens.json';
 import AUTO from './auto-config.json'; /* automatic posts: every switch defaults to off */
 import { autoTick, preview as autoPreview } from './auto.js';
 import { serverWatch, statusText, toggleAlerts } from './serverwatch.js'; /* game server watch + /status, /alerts (Nov 24 2026) */
+import { cmdLink, cmdUnlink, cmdPlayers, cmdTell, linkPost, linkPreflight, walletsOf } from './link.js'; /* opt-in wallet links (Nov 24 2026) */
 const TOKEN_IDS = TOKENS.map(m => m.id); /* every pet with a 512x512 picture (hatchbot/build-memes.js) */
 
 var SITE = "https://xcpets.fun";
-var HELP = "\u{1F438} HatchBot commands\n/pet \xB7 a random pet (/pet 123, /pet <name>, /pet <species>)\n/burns \xB7 community burns and community pet progress\n/whosthat \xB7 guess the pet from its silhouette (reply to the photo)\n/breed \xB7 a real breed from the chain (/breed <pet>)\n/battle \xB7 a real arena battle (/battle <pet>)\n/meme \xB7 a random XCPETS meme\n/chainday \xB7 the current 144-block game day and blocks left\n/season \xB7 the current XCPETS season and its countdown\n/bug <what happened> \xB7 report a bug to the XCPETS team (pet numbers help!)\n/play \xB7 open the XCPETS app right here in Telegram (your pets + live feed)\n/help \xB7 this list\n\nPlay at xcpets.fun";
-var BOT_COMMANDS = [["play", "Open the XCPETS app inside Telegram"], ["pet", "Pet card: /pet, /pet 123, /pet <name>, /pet <species>"], ["burns", "Community burns and community pet progress"], ["whosthat", "Guess the pet from its silhouette"], ["breed", "A real breed from the chain (/breed <pet>)"], ["battle", "A real arena battle (/battle <pet>)"], ["meme", "A random XCPETS meme"], ["chainday", "Current 144-block game day and blocks left"], ["bug", "Report a bug to the XCPETS team"], ["help", "List HatchBot commands"]];
+var HELP = "\u{1F438} HatchBot commands\n/pet \xB7 a random pet (/pet 123, /pet <name>, /pet <species>)\n/burns \xB7 community burns and community pet progress\n/whosthat \xB7 guess the pet from its silhouette (reply to the photo)\n/breed \xB7 a real breed from the chain (/breed <pet>)\n/battle \xB7 a real arena battle (/battle <pet>)\n/meme \xB7 a random XCPETS meme\n/chainday \xB7 the current 144-block game day and blocks left\n/season \xB7 the current XCPETS season and its countdown\n/bug <what happened> \xB7 report a bug to the XCPETS team (pet numbers help!)\n/play \xB7 open the XCPETS app right here in Telegram (your pets + live feed)\n/link \xB7 link your wallet privately so the team can reach you about your pets (/unlink removes it)\n/help \xB7 this list\n\nPlay at xcpets.fun";
+var BOT_COMMANDS = [["play", "Open the XCPETS app inside Telegram"], ["pet", "Pet card: /pet, /pet 123, /pet <name>, /pet <species>"], ["burns", "Community burns and community pet progress"], ["whosthat", "Guess the pet from its silhouette"], ["breed", "A real breed from the chain (/breed <pet>)"], ["battle", "A real arena battle (/battle <pet>)"], ["meme", "A random XCPETS meme"], ["chainday", "Current 144-block game day and blocks left"], ["bug", "Report a bug to the XCPETS team"], ["link", "Link your wallet privately (team can reach you)"], ["help", "List HatchBot commands"]];
 var RATE_ON = !!(AUTO.commands && AUTO.commands.rate === true);
 if (RATE_ON) { HELP = HELP.replace("\n/meme ", "\n/rate \xB7 HatchBot rates a pet (/rate 42, /rate <name>)\n/meme "); BOT_COMMANDS.splice(5, 0, ["rate", "HatchBot rates a pet (/rate <pet>)"]); }
 /* /rate, ported from the old VPS HatchBot (commands.js). Sabo #1765 stays alive through view(). */
@@ -483,7 +484,7 @@ async function command(env, msg) {
   if (!m) return null;
   if (m[2]) { const me = await botUsername(env); if (me && m[2].toLowerCase() !== me.toLowerCase()) return null; }
   const cmd = "/" + m[1].toLowerCase(), args = (m[3] || "").trim().slice(0, 60), name = cmd.slice(1);
-  const KNOWN = ["/help", "/start", "/play", "/app", "/chatid", "/status", "/alerts", "/chainday", "/season", "/meme", "/pet", "/burns", "/whosthat", "/breed", "/battle", "/bug"].concat(RATE_ON ? ["/rate"] : []);
+  const KNOWN = ["/help", "/start", "/play", "/app", "/chatid", "/status", "/alerts", "/chainday", "/season", "/meme", "/pet", "/burns", "/whosthat", "/breed", "/battle", "/bug", "/link", "/unlink", "/players", "/tell"].concat(RATE_ON ? ["/rate"] : []);
   if (!KNOWN.includes(cmd)) return null;
   const now = Date.now(), age = msg.date ? Math.floor(now / 1e3) - msg.date : 0, late = age > LIMITS.lateS;
   if (late && (age > LIMITS.lateMaxS || ["/meme", "/chainday", "/season", "/whosthat", "/play", "/app"].includes(cmd))) return null;
@@ -492,6 +493,11 @@ async function command(env, msg) {
   await rateHit(env, msg.from && msg.from.id || chat, chat, name, now);
   const pre = late ? SORRY + "\n" : "";
   const reply = (t) => tg(env, "sendMessage", { chat_id: chat, text: capText(pre + t, 4e3), reply_to_message_id: msg.message_id, disable_web_page_preview: true });
+  const LD = { tg, botUsername, reply, host: SELF_HOST, petCounter, sendFile };
+  if (cmd === "/link" || (cmd === "/start" && /^link$/i.test(args))) return cmdLink(env, msg, LD);
+  if (cmd === "/unlink") return cmdUnlink(env, msg, args, LD);
+  if (cmd === "/players") return cmdPlayers(env, msg, args, LD);
+  if (cmd === "/tell") return cmdTell(env, msg, text.replace(/^\/tell(@\S+)?\s*/i, ""), LD);
   if (cmd === "/play" || cmd === "/app" || (cmd === "/start" && (msg.chat.type === "private" || /^app$/i.test(args))))
     return playButton(env, msg, cmd === "/start" ? HELP : "");
   if (cmd === "/help" || cmd === "/start")
@@ -518,9 +524,9 @@ async function command(env, msg) {
     if (n >= 5)
       return reply("Thanks! You have sent 5 reports this hour. Please wait a little before sending more.");
     await env.BUGS.put(rk, String(n + 1), { expirationTtl: 3600 });
-    const key = "bug:" + Date.now() + ":" + msg.message_id;
-    await env.BUGS.put(key, JSON.stringify({ text: body.slice(0, 3e3), quoted: String(quoted).slice(0, 1500), name: (msg.from && msg.from.first_name || "A player").slice(0, 40), at: new Date((msg.date || Date.now() / 1e3) * 1e3).toISOString(), photo: !!(msg.reply_to_message && msg.reply_to_message.photo) }), { expirationTtl: 14 * 86400 });
-    return reply("\u{1F41E} Thanks, got it! Your report is logged for the XCPETS team (it shows on GitHub with your first name only).");
+    const key = "bug:" + Date.now() + ":" + msg.message_id, wallets = await walletsOf(env, who);
+    await env.BUGS.put(key, JSON.stringify({ wallets, text: body.slice(0, 3e3), quoted: String(quoted).slice(0, 1500), name: (msg.from && msg.from.first_name || "A player").slice(0, 40), at: new Date((msg.date || Date.now() / 1e3) * 1e3).toISOString(), photo: !!(msg.reply_to_message && msg.reply_to_message.photo) }), { expirationTtl: 14 * 86400 });
+    return reply("\u{1F41E} Thanks, got it! Your report is logged for the XCPETS team (it shows on GitHub with your first name" + (wallets.length ? " and your linked wallet" : " only") + ")." + (wallets.length ? "" : "\nTip: /link your wallet in my private chat so the team can check your pets and reach you."));
   }
   if (cmd === "/meme") {
     const p = pick(MEMES);
@@ -563,6 +569,19 @@ async function scheduled(env) {
   /* Automatic chain posts (hatchbot/auto.js). Does nothing unless auto-config.json has announce:true and a feature switched on. */
   try { const r = await autoTick(env, AUTO, tg, Date.now(), { pets: autoPets }); if (r && !r.off && (r.sent || r.queued || r.error)) console.log("auto", JSON.stringify(r)); } catch (e) { console.log("auto failed", e && e.message); }
 }
+/* /link helpers: who owns how many living pets (public pets.json), and sending the private /players file */
+var SELF_HOST = "";
+async function petCounter() {
+  const S = await loadPets(), di = S.d.owner, n = new Map();
+  for (const r of S.rows) if (r[8] === 0 && !r[10]) { const o = di[r[11]]; if (o) n.set(o, (n.get(o) || 0) + 1); }
+  return (a) => n.get(a) || 0;
+}
+async function sendFile(env, chat, name, text, caption) {
+  const form = new FormData();
+  form.append("chat_id", String(chat)); form.append("caption", caption.slice(0, 1000));
+  form.append("document", new Blob([text], { type: "text/csv" }), name);
+  return tgForm(env, "sendDocument", form, { caption, file: name, bytes: text.length });
+}
 async function autoPets() { const S = await loadPets(); return { tip: S.tip, d: S.d, rows: S.rows, maxId: S.rows.length ? S.rows[S.rows.length - 1][0] : 0 }; }
 /* Page error reports (owner Nov 22 2026: "hatchbot worker"). Every xcpets.fun page carries a tiny reporter (tools/build-err-report.js)
  * that sends ONLY {k, m, f, l, c, b, p}: kind, message (addresses, long hex and emails already cut), script path, line, column,
@@ -571,11 +590,25 @@ async function autoPets() { const S = await loadPets(); return { tip: S.tip, d: 
  * hatchbot/bugs-to-issues.js turns each finished day into one GitHub issue labelled 'page-errors' and deletes the keys. */
 const ERR_SEEN = new Map();
 function clip(v, n) { return String(v == null ? '' : v).replace(/\b(bc1|tb1)[a-z0-9]{20,90}\b/gi, '<addr>').replace(/\b[13mn2][a-km-zA-HJ-NP-Z1-9]{25,34}\b/g, '<addr>').replace(/\b[0-9a-f]{40,}\b/gi, '<hex>').replace(/[^\s@]+@[^\s@]+\.[a-z]{2,}/gi, '<email>').slice(0, n); }
+/* Anonymous "which wallet app connected" count (owner Nov 24 2026). Pages send {k:'wallet', w:<app name>, d:phone|desktop} once per
+ * browser per day. One KV key per day + app + device with a count; bugs-to-issues.js adds them to the daily digest. No address. */
+const WAL_HELD = new Map();
+async function walletCount(o, env) {
+  const w = ['XCP Wallet', 'Casa Tookan', 'Horizon Wallet'].includes(o.w) ? o.w : 'Other', dv = o.d === 'phone' ? 'phone' : 'desktop';
+  const key = 'wal:' + new Date().toISOString().slice(0, 10) + ':' + w + '|' + dv;
+  /* same isolate: fold bursts into one write per minute per key (KV free plan write budget) */
+  const now = Date.now(), h = WAL_HELD.get(key) || { n: 0, at: 0 }; h.n++;
+  if (now - h.at < 60 * 1000) { WAL_HELD.set(key, h); return; }
+  WAL_HELD.set(key, { n: 0, at: now }); if (WAL_HELD.size > 200) WAL_HELD.clear();
+  const cur = +(await env.BUGS.get(key) || 0);
+  await env.BUGS.put(key, String(cur + h.n), { expirationTtl: 21 * 86400 });
+}
 async function pageError(raw, env) {
   if (!env.BUGS) return;
   if (!raw || raw.length > 4000) return;
   let o; try { o = JSON.parse(raw); } catch (e) { return; }
   if (!o || typeof o !== 'object') return;
+  if (o.k === 'wallet') return walletCount(o, env);
   const r = { k: o.k === 'rejection' ? 'rejection' : 'error', m: clip(o.m, 300), f: clip(o.f, 120), l: o.l | 0, c: o.c | 0, b: clip(o.b, 12), p: clip(o.p, 80) };
   if (!r.m) return;
   const sigTxt = [r.k, r.m, r.f, r.l, r.b].join('|'), d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(sigTxt));
@@ -592,6 +625,9 @@ async function pageError(raw, env) {
 const worker = {
   async fetch(req, env, ctx) {
     const url = new URL(req.url);
+    if (/^hatchbot\.[a-z0-9-]+\.workers\.dev$/.test(url.hostname)) SELF_HOST = url.hostname;
+    if (url.pathname === "/link" && req.method === "OPTIONS") return linkPreflight();
+    if (url.pathname === "/link" && req.method === "POST") return linkPost(req, env, { tg, petCounter });
     if (req.method === "GET" && url.pathname === "/")
       return new Response("HatchBot is awake \u{1F438}");
     if (req.method === "POST" && url.pathname === "/e") {

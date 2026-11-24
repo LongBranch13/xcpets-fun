@@ -4,7 +4,8 @@
  * It sends ONLY {k: error|rejection, m: message, f: script path, l: line, c: col, b: build id, p: page path} to the collector on
  * xcpets-bot-1 (https://2-31-126-156.sslip.io/e). Never a wallet address (bc1/1/3 addresses, long hex and emails are cut from the
  * message), never a query string (?addr= stays home), no cookies, no storage. Deduped (same report once per page load), at most 5 per
- * page load, nothing while a page is only prerendered (sent when opened), cross-origin "Script error." skipped. Read the log on the box:
+ * page load, nothing while a page is only prerendered (sent when opened), cross-origin "Script error." skipped. Also window.XcpCount
+ * (Nov 24 2026): an anonymous daily 'which wallet app connected' count (wallet name and phone/desktop only). Read the log on the box:
  * node /workspace/xcpets/tools/page-errors.js. Display/monitoring only: no game rule, read or wallet path changes.
  *   node tools/build-err-report.js          write the snippet into every root page + templates/game.html (practice pages: build-practice-page.js)
  *   node tools/build-err-report.js --check  exit 1 if a page lacks the current snippet */
@@ -18,6 +19,9 @@ const JS = "(function(){try{var U='" + URL_ + "',seen={},n=0,q=[],W=window,D=doc
   "function go(o){try{var b=JSON.stringify(o);if(!(navigator.sendBeacon&&navigator.sendBeacon(U,b)))fetch(U,{method:'POST',body:b,mode:'no-cors',keepalive:true})}catch(e){}}" +
   "function rep(k,m,f,l,c){m=cut(m,300);if(!m||/^Script error\\.?$/.test(m)||n>=5)return;var o={k:k,m:m,f:pth(f),l:l|0,c:c|0,b:bid(),p:location.pathname},key=[k,m,o.f,o.l].join('|');if(seen[key])return;seen[key]=1;n++;" +
   "if(D.prerendering){if(!q.length)D.addEventListener('prerenderingchange',function(){q.splice(0).forEach(go)},{once:true});q.push(o)}else go(o)}" +
+  /* wallet-count (owner Nov 24 2026): js/v2-wallet.js calls XcpCount(<wallet app name>, <is phone>) once per browser per day after a
+   * wallet connects. Sends ONLY {k:'wallet', w:'XCP Wallet'|'Casa Tookan'|'Horizon Wallet', d:'phone'|'desktop'}: no address. */
+  "W.XcpCount=function(w,ph){go({k:'wallet',w:String(w||'?').replace(/[^A-Za-z ]/g,'').slice(0,20),d:ph?'phone':'desktop'})};" +
   "W.addEventListener('error',function(e){if(!e||!e.message)return;rep('error',e.message,e.filename,e.lineno,e.colno)});" +
   "W.addEventListener('unhandledrejection',function(e){var r=e&&e.reason,f='',l=0,c=0,s=r&&r.stack&&String(r.stack).split('\\n'),i,m;" +
   "for(i=0;s&&i<s.length;i++){m=/(https?:\\/\\/[^\\s)]+?):(\\d+):(\\d+)/.exec(s[i]);if(m){f=m[1];l=+m[2];c=+m[3];break}}" +

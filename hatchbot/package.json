@@ -1,0 +1,10 @@
+{
+  "name": "hatchbot",
+  "private": true,
+  "description": "HatchBot Cloudflare Worker. Only dependencies: audited noble/scure crypto, used to check wallet ownership signatures for /link.",
+  "dependencies": {
+    "@noble/curves": "1.9.7",
+    "@noble/hashes": "1.8.0",
+    "@scure/base": "1.2.6"
+  }
+}

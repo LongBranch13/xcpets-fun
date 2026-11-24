@@ -132,6 +132,10 @@
   function mk(f) { return new Wallet.Wallet(f.kind === 'webxcp' ? { kind: 'webxcp', label: f.label, p: f.p, broadcast: broadcast } : { kind: f.kind, label: f.label, p: f.p }); }
   /** the event source for accountsChanged/disconnect: XCP Wallet itself; in Casa Tookan its window.unisat emitter (casa switch) */
   function evp(f) { return f.kind === 'webxcp' ? (win.casaTookan && win.unisat && win.unisat.on ? win.unisat : null) : f.p; }
+  /* wallet-count (owner Nov 24 2026): one anonymous 'which wallet app' count per browser per day (wallet name + phone/desktop, never the
+   * address) through the page error reporter's window.XcpCount (tools/build-err-report.js). */
+  function countWallet(L) { try { var k = 'xcpets-wallet-counted', day = new Date().toISOString().slice(0, 10) + ':' + L; if (!win.XcpCount || store.getItem(k) === day) return; store.setItem(k, day);
+    win.XcpCount(L, /Android|iPhone|iPad|iPod|Mobile/i.test(win.navigator && win.navigator.userAgent || '')); } catch (e) { } }
   function getWallet() {
     if (wallet) return locked ? unlock() : Promise.resolve(wallet);
     if (connecting) return connecting;
@@ -144,6 +148,7 @@
           if (n && n !== NET && !(NET !== 'mainnet' && /test|signet/.test(n))) throw new Error(L + ' is on ' + n + ' but this page is on ' + NET + '. Switch one of them.');
           wallet = guard(x); locked = false; setMe(x.address); loadSpent(x.address);
           hook(evp(f)); remember(f.kind); emit();
+          countWallet(L);
           return x;
         });
       });
