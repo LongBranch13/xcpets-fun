@@ -253,7 +253,7 @@ function loopInfo() {
   const now = Date.now();
   return { upSec: Math.round((now - LOOP.startedAt) / 1000), stepSec: LOOP.runningSince ? Math.round((now - LOOP.runningSince) / 1000) : 0,
     lastStepAgoSec: LOOP.lastDoneAt ? Math.round((now - LOOP.lastDoneAt) / 1000) : null, lastOkAgoSec: LOOP.lastOkAt ? Math.round((now - LOOP.lastOkAt) / 1000) : null,
-    steps: LOOP.steps, errors: LOOP.errors, errorRun: LOOP.errorRun, lastError: LOOP.lastError, lastStep: LOOP.lastError ? LOOP.lastStep || null : null, maxMin: tickMaxMs() / 60000,
+    steps: LOOP.steps, errors: LOOP.errors, errorRun: LOOP.errorRun, fallback: !!LOOP.fallback, lastError: LOOP.lastError, lastStep: LOOP.lastError ? LOOP.lastStep || null : null, maxMin: tickMaxMs() / 60000,
     lastStall: LOOP.stall ? { at: LOOP.stall.at, tip: LOOP.stall.tip, sec: LOOP.stall.sec } : null,
     restarts1h: LOOP.starts.filter(t => now - t < 3600e3).length - 1, restarts24h: LOOP.starts.filter(t => now - t < 86400e3).length - 1,
     resumedFrom: LOOP.resumedFrom, heapMB: Math.round(process.memoryUsage().heapUsed / 1048576), heapLimitMB: HEAP_LIMIT_MB };
@@ -334,6 +334,12 @@ function main() {
   if (!io0) io0 = salesIo(bases, boot);
   state.gates = io0.gates;
   const io = Object.assign({}, io0, { upstream: 'public', seed: io0.seed });
+  /* Nov 24 2026: after the second never-freeze repair every step failed on the server while the same code followed the chain from the
+   * public Counterparty nodes (tools/followprobe.js). When the configured nodes fail 6 steps in a row, the follower reads from the
+   * public nodes instead (the same chain and the same checks) and stays there, trying its own nodes again every 30th step. XP_PUBLIC_FALLBACK=0 turns this off. */
+  const pubOn = process.env.XP_PUBLIC_FALLBACK !== '0' && bases.join(',') !== PUBLIC.join(',');
+  let ioPub = null;
+  function pubIo() { if (!ioPub) { let p0 = null; try { p0 = rules.dir() ? salesIo(PUBLIC, boot, rules.dir()) : null; } catch (e) { p0 = null; } if (!p0) p0 = salesIo(PUBLIC, boot); ioPub = Object.assign({}, p0, { upstream: 'public', seed: p0.seed }); } return ioPub; }
   state.rules = rules.info;
   backfillRsigLatest(dataDir);
   /* After the builder's files changed on main: the gates and the chain merge must come from the new copy too. Nov 22 2026: loading
@@ -345,7 +351,8 @@ function main() {
   const every = Math.max(1, +(process.env.XP_SNAPSHOT_EVERY || 6));
   const loop = singleFlight(async function () { LOOP.runningSince = Date.now(); let ok = false; try {
     if (restartWanted && !startSnapshot.running) { console.log('rules: restarting to load ' + restartWanted); clearInterval(timer); ckStop('off'); setTimeout(() => process.exit(75), 200); return; }
-    if (!(process.env.XP_HOLD === '1' && held)) { io.upstream = io0.upstreamOf(); await tick(state, io); ok = true; state.upstream = io.upstream === 'private' ? 'private' : 'public'; if (process.env.XP_HOLD === '1' && state.ready) held = true; }
+    if (!(process.env.XP_HOLD === '1' && held)) { const usePub = pubOn && (LOOP.errorRun >= 6 || LOOP.pubSticky) && LOOP.steps % 30 !== 0; LOOP.fallback = usePub;
+      if (usePub) { await tick(state, pubIo()); LOOP.pubSticky = true; } else { io.upstream = io0.upstreamOf(); await tick(state, io); LOOP.pubSticky = false; } ok = true; state.upstream = usePub ? 'public' : io.upstream === 'private' ? 'private' : 'public'; if (process.env.XP_HOLD === '1' && state.ready) held = true; }
     const latest = readLatest(dataDir); if (latest && latest.tip) state.world = { ready: true, rsig: latest.rsig, tip: latest.tip, manifest: latest.manifest };
     const behindSnap = state.world && state.world.tip ? state.tip - state.world.tip : state.tip;
     const cooled = !startSnapshot.failAt || Date.now() - startSnapshot.failAt > 10 * 60 * 1000;

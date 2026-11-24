@@ -16,4 +16,3 @@ jobs:
         with: { node-version: '20' }
       - name: One follow step
         run: node tools/followprobe.js
-        env: { PROBE_HEALTH_ONLY: '1' }
