@@ -76,3 +76,7 @@ the chain from the public Counterparty nodes (`tools/followprobe.js`, workflow `
   server (GitHub's faster network read them fine), and js/v2-sales.js then marks those nodes dead for the life of the process. Now
   the body has its own idle limit (`XP_BODY_IDLE_MS`, 30 s without a byte; `XP_BODY_MAX_MS` 5 min in all), and after 4 sales
   failures in a row the service restarts itself for fresh node state (`XP_SALES_RESTART=0` turns that off).
+- After PR 218 the hint stayed "new pet tokens could not be read" even right after a restart, so it is not only the dead-node marks.
+  The sales read now gives heavy pages 60 s for the headers (`XP_SALES_FETCH_MS`), records each failed sales request per node in
+  health `loop.salesNet` (public API host names only, else `other`; `http 429`, `headers timeout`, `body idle timeout`, error code),
+  and adds the game's own node (`https://node.xcpets.fun/v2`, the pages' read path) as the last read source (`XP_SALES_CACHE=0`: off).
