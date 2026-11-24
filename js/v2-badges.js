@@ -41,9 +41,9 @@
     ['rip', 'PRESS F', 'Gone but not forgotten.', 'A pet in the Pet Cemetery', 'common', 1],
     ['old-money', OLD_MONEY_NAME, 'Paid full freight. Rarer: bred when breeding cost 690.', OLD_MONEY_RULE, 'rare', 1],
     ['day-one-degen', 'DAY ONE DEGEN', 'First five through the door. WAGMI.', 'One of the first five wallets to say WAGMI on a chain day', 'uncommon'],
-    /* OG BACKER (owner Nov 24 2026): wallets holding the owner's XCPETS.FUN.D sub-asset (sold from its dispenser) = early backers of the game.
+    /* OG BACKER (owner Nov 24 2026; art = a mini replica of the XCPETS token, no flavour quote): wallets holding the owner's XCPETS.FUN.D sub-asset (sold from its dispenser) = early backers of the game.
      * Read from Counterparty balances (not the burns), so it is passed in as extra.backers; display only, lost if the asset is sent away. */
-    ['og-backer', 'OG BACKER', 'Backed the game before it was cool. Diamond hands, brother.', 'Holds ' + 'XCPETS.FUN.D' + ' (bought from the dispenser)', 'legendary']
+    ['og-backer', 'OG BACKER', '', 'Holds ' + 'XCPETS.FUN.D' + ' (bought from the dispenser)', 'legendary']
   ];
   var BACKER_ASSET = 'XCPETS.FUN.D';
   var DEF = {}; DEFS.forEach(function (d, i) { DEF[d[0]] = { id: d[0], name: d[1], flavour: d[2], rule: d[3], kind: d[4], pet: !!d[5], order: i }; });
@@ -147,8 +147,8 @@
         backers = b; memo.w = null; last = null; try { localStorage.setItem(BKEY, JSON.stringify({ at: Date.now(), b: b })); } catch (e) {} paint(); }).catch(function () { on(i + 1); }); })(0); }
   function get() { var M = root.V2Mock; if (!M || !M.world) return null; var w = M.peek ? M.peek() : M.world(); /* page-load-freeze: never force a main-thread replay */ if (!w || !w.pets || !w.pets.length) return null; if (memo.w !== w || memo.b !== backers) { memo.w = w; memo.b = backers; memo.r = compute(w, (M.state() || {}).rows || [], undefined, backers ? { backers: backers } : null); } return memo.r; }
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
-  function chip(b, i) { return '<button type="button" class="bdg bdg-' + b.rarity + '" data-i="' + i + '" title="' + esc(label(b) + ': ' + DEF[b.id].flavour) + '"><img src="' + img(b) + '" alt="' + esc(label(b)) + '" width="32" height="32"></button>'; }
-  function detailHtml(b) { var d = DEF[b.id]; return '<img src="' + img(b) + '" alt="" width="64" height="64"><div><b>' + esc(label(b)) + '</b><i>\u201c' + esc(d.flavour) + '\u201d</i><span>' + esc(ruleText(b)) + (b.block ? ' \u00b7 block ' + Number(b.block).toLocaleString('en-US') : '') + (b.petId ? ' \u00b7 <a href="pet.html?id=' + b.petId + '">#' + b.petId + '</a>' : '') + '</span></div>'; }
+  function chip(b, i) { return '<button type="button" class="bdg bdg-' + b.rarity + '" data-i="' + i + '" title="' + esc(label(b) + (DEF[b.id].flavour ? ': ' + DEF[b.id].flavour : '')) + '"><img src="' + img(b) + '" alt="' + esc(label(b)) + '" width="32" height="32"></button>'; }
+  function detailHtml(b) { var d = DEF[b.id]; return '<img src="' + img(b) + '" alt="" width="64" height="64"><div><b>' + esc(label(b)) + '</b>' + (d.flavour ? '<i>\u201c' + esc(d.flavour) + '\u201d</i>' : '') + '<span>' + esc(ruleText(b)) + (b.block ? ' \u00b7 block ' + Number(b.block).toLocaleString('en-US') : '') + (b.petId ? ' \u00b7 <a href="pet.html?id=' + b.petId + '">#' + b.petId + '</a>' : '') + '</span></div>'; }
   function strip(el, list, title) { var all = el.getAttribute('data-all') === '1', narrow = root.matchMedia && root.matchMedia('(max-width:600px)').matches, max = narrow && !all ? 8 : 999;
     if (!list || !list.length) { el.innerHTML = '<span class="bdg-none small muted">' + esc(title) + ': none yet. Feed, fight and breed to earn some.</span>'; return; }
     el.innerHTML = '<div class="bdg-head"><b>' + esc(title) + '</b> <span class="muted small">' + list.length + '</span></div><div class="bdg-row">' + list.slice(0, max).map(chip).join('') +
