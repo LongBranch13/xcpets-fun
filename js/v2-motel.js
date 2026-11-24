@@ -221,7 +221,7 @@
   var PK = { w: null, k: '', v: null };
   function picker(w, owner, tip, selA, pend) { var V = window.V2Rules; if (!V || !V.breedPicker || !w) return { mine: [], partners: [] };
     var pk = ''; if (pend) { var ks = Object.keys(pend); if (ks.length) pk = ks.sort().join(','); }
-    var k = (tip || 0) + '|' + (owner || '') + '|' + (selA == null ? '' : selA) + '|' + pk;
+    var k = (tip || 0) + '|' + (owner || '') + '|' + (selA == null ? '' : selA) + '|' + pk + '|' + (window.V2Lookup ? V2Lookup.rev() : 0) + '|' + (w.pets ? w.pets.length : 0); /* one-search (Nov 24 2026): a looked-up pet is pushed into this same world object, so the cache must notice it (it used to keep the old partner list, and the pet never showed) */
     if (PK.w === w && PK.k === k && PK.v) return PK.v;
     PK = { w: w, k: k, v: V.breedPicker(w, owner, tip, selA, pend) }; return PK.v; }
   /* One newest-first list of bred pets per world. The guest book, Gooby's facts and the other-room windows used to each sort every egg. */

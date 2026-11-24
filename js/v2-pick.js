@@ -37,6 +37,49 @@
   function match(p, q, spL) { if (!q) return true; q = String(q).toLowerCase().trim().replace(/^#/, ''); if (!q) return true;
     return String(p.id).indexOf(q) === 0 || String(p.name || '').toLowerCase().indexOf(q) >= 0 || (spL ? String(spL(p.species) || '') : String(p.species || '')).toLowerCase().indexOf(q) === 0 || (q.length >= 4 && String(p.owner || '').toLowerCase().indexOf(q) === 0); }
 
+  /* one-search (Nov 24 2026, Evan: "there seem to be 2 search windows, and entering a pet id shows it registers ... but the pet doesn't show up
+   * at the top or at all"). The date / opponent side used to have the picker's search box AND a separate "Look up a mate" box. The lookup loaded
+   * the pet into the world, but nothing put it on screen: the shelf it landed on was sorted by egg power (so it sat somewhere down a list of
+   * hundreds) and a pet that could not breed right now was left off the shelf altogether. Now there is ONE box. Typing a pet number or a full
+   * wallet address in it also looks that pet / wallet up (side cfg `look`), and the search results always put an exact #number first, then that
+   * wallet's pets. A typed pet that is loaded but can't be picked on this side still shows on top, greyed, with the reason (side cfg `missWhy`). */
+  var LKT = null;
+  function lookParse(q) { var L = root.V2Lookup; if (!L || !L.parse) return null; var r = L.parse(q); return r && r.ok ? r : null; }
+  function autoLook(cfg, x, now) {
+    var q = String(x.st.q || '').trim(), L = root.V2Lookup, r = x.look && q ? lookParse(q) : null; if (LKT) { clearTimeout(LKT); LKT = null; }
+    if (!r || !L || !L.load) return;
+    var lk = x.st.lk; if (lk && lk.q === r.query && (lk.busy || lk.done)) return; /* this one is loading or loaded already */
+    var w = cfg.w; if (r.kind === 'pet' && w && w.byId && w.byId[r.id] && !now) { x.st.lk = { q: r.query, done: true, have: true }; return; } /* already on this page */
+    var run = function () { LKT = null; var st = x.st; if (String(st.q || '').trim().replace(/^#/, '') !== String(q).replace(/^#/, '')) return;
+      var tok = st.lk = { q: r.query, busy: true }; paintLook(cfg, x);
+      L.load(q).then(function (res) { if (st.lk !== tok) return; st.lk = { q: r.query, done: true, res: res };
+        var sel = '.pk2[data-pk2id="' + cfg.id + '"] [data-pk2q]', had = root.document && document.activeElement && document.activeElement.matches && document.activeElement.matches(sel);
+        var u = U(); if (u && u.render) u.render(); else if (cfg.onRedraw) cfg.onRedraw();
+        if (had) { var j = document.querySelector(sel); if (j && document.activeElement !== j) { j.focus(); try { j.setSelectionRange(j.value.length, j.value.length); } catch (e) { } } } }); };
+    if (now) run(); else LKT = setTimeout(run, r.kind === 'wallet' ? 250 : 700); /* a pet number waits for the typing to stop */
+  }
+  function lookLine(x) { var lk = x.st && x.st.lk, q = String(x.q || ''); if (!x.look) return '';
+    if (!q) return '<p class="pk2-lk" data-pk2lk>' + esc('Tip: type a pet number or a wallet address to find anyone’s pet.') + '</p>';
+    var r = lookParse(q); if (!r || !lk || lk.q !== r.query) return '<p class="pk2-lk" data-pk2lk></p>';
+    if (lk.busy) return '<p class="pk2-lk busy" data-pk2lk>🔎 Looking up ' + esc(r.kind === 'pet' ? '#' + r.id : short(r.addr)) + '…</p>';
+    var res = lk.res; if (!res) return '<p class="pk2-lk" data-pk2lk></p>';
+    if (!res.ok) return '<p class="pk2-lk bad" data-pk2lk>' + esc(res.error || res.note || 'Nothing found.') + '</p>';
+    if (r.kind === 'pet') { var p = res.pets && res.pets[0]; return '<p class="pk2-lk ok" data-pk2lk>✅ Found ' + esc(p ? (p.name || 'Pet') + ' #' + p.id : '#' + r.id) + '. It’s at the top.</p>'; }
+    return '<p class="pk2-lk ok" data-pk2lk>✅ ' + esc(res.note || 'Loaded.') + ' Their pets are below.</p>'; }
+  function paintLook(cfg, x) { if (!root.document) return; var el = document.querySelector('.pk2[data-pk2id="' + cfg.id + '"]'); if (!el) return;
+    el.querySelectorAll('[data-pk2lk]').forEach(function (n) { var tmp = document.createElement('div'); tmp.innerHTML = lookLine(x); if (tmp.firstChild) n.replaceWith(tmp.firstChild); }); }
+  /** found(w, x, hits): search hits with an exact #number first, then a typed wallet's pets; a loaded pet typed by number that this side
+   * can't pick is added on top, greyed, with the reason. */
+  function found(w, x, hits) {
+    var q = String(x.q || '').trim().replace(/^#/, ''), id = /^\d{1,9}$/.test(q) ? +q : 0, addr = !id && q.length >= 25 ? q.toLowerCase() : '';
+    if (!id && !addr) return hits;
+    var top = [], rest = [], i, c;
+    for (i = 0; i < hits.length; i++) { c = hits[i]; if (id ? c.p.id === id : String(c.p.owner || '').toLowerCase() === addr) top.push(c); else rest.push(c); }
+    if (id && !top.length && w && w.byId && w.byId[id]) { var p = w.byId[id], why = null; try { why = x.missWhy ? x.missWhy(p) : null; } catch (e) { why = null; }
+      top.push({ p: p, key: 'x' + id, why: why || (p.dead ? 'Not a living pet' : 'Can’t be picked here'), line: esc(short(p.owner)), noStar: true }); }
+    return top.length ? top.concat(rest) : hits;
+  }
+
   /* ---- markup ---- */
   function pill(p) { return '<span class="pill tier tier-' + (p.resurrected ? 'god' : TID[p.tier] || 'common') + '">' + esc((p.resurrected ? 'God' : TL[p.tier]) || '') + '</span>'; }
   function slotHtml(s, on) {
@@ -86,10 +129,10 @@
     if (!el) return;
     var mode = cfg.views ? viewMode() : 'cards', per = perOf(mode);
     var spL = root.V2Rules && V2Rules.speciesLabel ? function (s) { return V2Rules.speciesLabel(s); } : null;
-    var sides = cfg.dual ? [['A', cfg.dual.A], ['B', cfg.dual.B]] : [['', { prompt: cfg.prompt, shelves: cfg.shelves, shelf: cfg.shelf, searchList: cfg.searchList, searchPh: cfg.searchPh, selected: cfg.selected, sorts: cfg.sorts, sortOn: cfg.sortOn, st: st }]];
+    var sides = cfg.dual ? [['A', cfg.dual.A], ['B', cfg.dual.B]] : [['', { prompt: cfg.prompt, shelves: cfg.shelves, shelf: cfg.shelf, searchList: cfg.searchList, searchPh: cfg.searchPh, selected: cfg.selected, sorts: cfg.sorts, sortOn: cfg.sortOn, st: st, look: cfg.look, missWhy: cfg.missWhy }]];
     sides.forEach(function (sd) { var x = sd[1]; x.st = x.st || {}; if (!(x.st.n > 0) || x.st.mode !== mode) { x.st.n = per; x.st.mode = mode; }
       x.sh = x.shelves.filter(function (s) { return s.id === x.shelf; })[0] || x.shelves[0];
-      x.q = String(x.st.q || '').trim(); x.list = x.q ? (x.searchList || x.sh.list).filter(function (c) { return match(c.p, x.q, spL); }) : x.sh.list; x.view = x.list.slice(0, x.st.n); });
+      x.q = String(x.st.q || '').trim(); x.list = x.q ? found(cfg.w, x, (x.searchList || x.sh.list).filter(function (c) { return match(c.p, x.q, spL); })) : x.sh.list; x.view = x.list.slice(0, x.st.n); });
     var pickHtml = function (side, x, first) { var sh = x.sh, q = x.q, list = x.list, view = x.view, selId = String(x.selected || '');
       var sortable = x.sorts && x.sorts.length && (q ? !!x.searchList : sh.sort !== false); /* stat-sort-search: the search results follow the sort too, so the chips stay */
       return '<div class="pk2-pick' + (side ? ' pk2-side' + (cfg.active === side ? ' live' : '') : '') + '" data-pk2side="' + side + '"><div class="pk2-pr">' + esc(x.prompt || '') + ' <span aria-hidden="true">⬇</span></div>' +
@@ -98,9 +141,9 @@
         '<p class="pk2-why0">' + (q ? 'Search: ' + fmt(list.length) + ' match' + (list.length === 1 ? '' : 'es') + ' for "' + esc(q) + '"' : (sh.why || '')) + '</p>' +
         (sortable ? '<div class="pk2-sorts" role="group" aria-label="Sort"><span class="pk2-sl2">Sort</span>' + x.sorts.map(function (o) { var on = String(x.sortOn || '') === o[0];
           return '<button type="button" class="pk2-so' + (on ? ' on' : '') + '" data-pk2sort="' + esc(o[0]) + '" aria-pressed="' + on + '">' + o[1] + '</button>'; }).join('') + '</div>' : '') +
-        '<div class="pk2-qrow"><label class="pk2-q"><span class="pk2-mag" aria-hidden="true">🔎</span><span class="pk2-vh">Search</span><input type="search" data-pk2q autocomplete="off" value="' + esc(x.st.q || '') + '" placeholder="' + esc(x.searchPh || 'Name, #number or species') + '"></label>' +
+        '<div class="pk2-qrow"><label class="pk2-q"><span class="pk2-mag" aria-hidden="true">🔎</span><span class="pk2-vh">Search</span><input type="search" data-pk2q autocomplete="off" value="' + esc(x.st.q || '') + '" placeholder="' + esc(x.searchPh || 'Name, #number or species') + '"' + (x.look ? ' enterkeyhint="search"' : '') + '></label>' +
         (cfg.views && first ? '<div class="pk2-views" role="group" aria-label="How pets are shown">' + VIEWS.map(function (v) { return '<button type="button" class="pk2-vw' + (mode === v[0] ? ' on' : '') + '" data-pk2view="' + v[0] + '" aria-pressed="' + (mode === v[0]) + '">' + v[1] + '</button>'; }).join('') + '</div>' : '') + '</div>' +
-        (sh.top && !q ? sh.top : '') +
+        lookLine(x) + (sh.top && !q ? sh.top : '') +
         '<div class="pk2-grid' + (mode === 'list' ? ' pk2-list' : '') + '" role="list">' + (view.map(function (c) { return card(c, selId && String(c.key || c.p.id) === selId, mode); }).join('') ||
           '<p class="pk2-empty">' + (q ? 'No pet matches. Try a name, a #number or a species.' : esc(sh.empty || 'No pets here yet.')) + '</p>') + '</div>' +
         (list.length > view.length ? '<button type="button" class="pk2-more" data-pk2more="1">Show ' + fmt(Math.min(per, list.length - view.length)) + ' more · ' + fmt(list.length - view.length) + ' left</button>' : '') +
@@ -124,7 +167,8 @@
       box.querySelectorAll('[data-pk2shelf]').forEach(function (b) { b.onclick = function () { x.st.q = ''; x.st.n = per; if (cfg.onShelf) cfg.onShelf(b.dataset.pk2shelf, side || null); }; });
       box.querySelectorAll('[data-pk2sort]').forEach(function (b) { b.onclick = function () { x.st.n = per; if (cfg.onSort) cfg.onSort(b.dataset.pk2sort, side || null); }; });
       var more = box.querySelector('[data-pk2more]'); if (more) more.onclick = function () { x.st.n += per; redraw(); };
-      var qi = box.querySelector('[data-pk2q]'); if (qi) qi.oninput = function () { x.st.q = qi.value; x.st.n = per; var pos = qi.selectionStart; redraw(); var j = document.querySelector('.pk2[data-pk2id="' + cfg.id + '"] .pk2-pick[data-pk2side="' + side + '"] [data-pk2q]'); if (j && j !== qi) /* the caller may rebuild the box: find the new one */ { j.focus(); try { j.setSelectionRange(pos, pos); } catch (e) { } } };
+      var qi = box.querySelector('[data-pk2q]'); if (qi) { qi.oninput = function () { x.st.q = qi.value; x.st.n = per; var pos = qi.selectionStart; autoLook(cfg, x, false); redraw(); var j = document.querySelector('.pk2[data-pk2id="' + cfg.id + '"] .pk2-pick[data-pk2side="' + side + '"] [data-pk2q]'); if (j && j !== qi) /* the caller may rebuild the box: find the new one */ { j.focus(); try { j.setSelectionRange(pos, pos); } catch (e) { } } };
+        qi.onkeydown = function (e) { if (e.key === 'Enter') { e.preventDefault(); x.st.q = qi.value; autoLook(cfg, x, true); redraw(); } }; }
       var byKey = {}; x.view.forEach(function (c) { byKey[String(c.key || c.p.id)] = c; });
       var tap = function (b, slotKey) { var c = byKey[b.dataset.pk2]; if (!c) return; if (c.why) { var u = U(); if (u && u.toast) u.toast('#' + c.p.id + ' can’t go yet: ' + c.why); return; } if (cfg.onPick) cfg.onPick(c, slotKey || side || null); };
       box.querySelectorAll('[data-pk2]').forEach(function (b) { b.onclick = function () { if (DR.moved) { DR.moved = false; return; } tap(b); }; b.addEventListener('pointerdown', function (e) { dragStart(e, b, el, cfg, tap); }); }); });
@@ -182,6 +226,7 @@
     '.pk2-tab.on{background:#3ddc84;color:#04130a}.pk2-tab.hot:not(.on){background:#ff9ad5;color:#2a1530}' +
     '.pk2-why0{margin:2px 0 6px;font-size:13px;color:#c9bff0}' +
     '.pk2-q{display:flex;align-items:center;gap:8px;background:#0e0a1c;border:2px solid #4b3f7a;padding:0 10px;min-height:44px;margin-bottom:8px}.pk2-q input{flex:1;min-width:0;background:transparent;border:0;color:#f3eefe;font:inherit;font-weight:700;font-size:15px;min-height:40px;outline:none}' +
+    '.pk2-lk{margin:-4px 0 8px;font-size:12px;color:#9fe8ff;min-height:0}.pk2-lk:empty{display:none}.pk2-lk.ok{color:#3ddc84;font-weight:700}.pk2-lk.bad{color:#ff8fa3}.pk2-lk.busy{color:#ffd166}' +
     '.pk2-mag{font-size:16px;line-height:1;flex:none}.pk2-q:focus-within{border-color:#9fe8ff}.pk2-vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}' +
     '.pk2-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:8px}' +
     '.pk2-cw{position:relative;min-width:0}' +
