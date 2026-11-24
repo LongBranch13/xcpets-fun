@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><!--err-report-1102--><script>/* err-report-1102: page errors -> message, file, line, build, page only (no wallet, no query string); see tools/build-err-report.js */(function(){try{var U='https://2-31-126-156.sslip.io/e',seen={},n=0,q=[],W=window,D=document;function cut(s,k){return String(s==null?'':s).replace(/\b(bc1|tb1)[a-z0-9]{20,90}\b/gi,'<addr>').replace(/\b[13mn2][a-km-zA-HJ-NP-Z1-9]{25,34}\b/g,'<addr>').replace(/\b[0-9a-f]{40,}\b/gi,'<hex>').replace(/[^\s@]+@[^\s@]+\.[a-z]{2,}/gi,'<email>').slice(0,k)}function pth(u){try{var x=new URL(u,location.href);return x.origin===location.origin?x.pathname:x.origin}catch(e){return ''}}function bid(){var s=D.querySelector('script[src*="?v="]'),m=s&&/[?&]v=([0-9a-f]{6,12})/.exec(s.src);return m?m[1]:'?'}function go(o){try{var b=JSON.stringify(o);if(!(navigator.sendBeacon&&navigator.sendBeacon(U,b)))fetch(U,{method:'POST',body:b,mode:'no-cors',keepalive:true})}catch(e){}}function rep(k,m,f,l,c){m=cut(m,300);if(!m||/^Script error\.?$/.test(m)||n>=5)return;var o={k:k,m:m,f:pth(f),l:l|0,c:c|0,b:bid(),p:location.pathname},key=[k,m,o.f,o.l].join('|');if(seen[key])return;seen[key]=1;n++;if(D.prerendering){if(!q.length)D.addEventListener('prerenderingchange',function(){q.splice(0).forEach(go)},{once:true});q.push(o)}else go(o)}W.addEventListener('error',function(e){if(!e||!e.message)return;rep('error',e.message,e.filename,e.lineno,e.colno)});W.addEventListener('unhandledrejection',function(e){var r=e&&e.reason,f='',l=0,c=0,s=r&&r.stack&&String(r.stack).split('\n'),i,m;for(i=0;s&&i<s.length;i++){m=/(https?:\/\/[^\s)]+?):(\d+):(\d+)/.exec(s[i]);if(m){f=m[1];l=+m[2];c=+m[3];break}}rep('rejection',r&&r.message?(r.name&&r.name!=='Error'?r.name+': ':'')+r.message:String(r),f,l,c)})}catch(e){}})();</script><!--err-report-1102-->
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Set up your Pet Shell · XCPETS</title>
+<meta name="description" content="Set up an XCPETS Pet Shell handheld: put the software on, pick your pet and connect Wi-Fi, all over one USB cable. The Pet Shell never holds a wallet key.">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0e0b16">
+<link rel="icon" href="../img/favicon.png">
+<link rel="preconnect" href="https://node.xcpets.fun" crossorigin>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bangers&family=Comic+Neue:wght@400;700&family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0e0b16;--card:#141a2e;--ink:#f4f4f4;--dim:#9aa3c7;--gold:#ffd166;--green:#4fd18b;--red:#ff6b6b;--line:#000}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 'Comic Neue',system-ui,sans-serif}
+main{max-width:760px;margin:0 auto;padding:16px 16px 60px}
+header{display:flex;align-items:center;gap:12px;padding:14px 16px;max-width:760px;margin:0 auto}
+header a{color:var(--gold);text-decoration:none;font-family:'Press Start 2P',monospace;font-size:12px}
+h1{font-family:'Bangers',system-ui;font-size:44px;letter-spacing:1px;margin:8px 0 4px;color:var(--gold);text-shadow:3px 3px 0 #000}
+h2{font-family:'Press Start 2P',monospace;font-size:13px;line-height:1.6;color:var(--gold);margin:0 0 10px}
+.lead{color:var(--dim);margin:0 0 18px}
+.card{background:var(--card);border:3px solid var(--line);box-shadow:5px 5px 0 #000;border-radius:6px;padding:16px;margin:0 0 18px}
+.sub{color:var(--dim);font-size:14px;margin:6px 0}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+input[type=text],input[type=password],input[type=number]{font:inherit;font-size:16px;padding:9px 10px;border:2px solid #000;border-radius:4px;background:#0b1020;color:var(--ink);min-width:0;flex:1 1 220px}
+button,.btn{font:inherit;font-weight:700;font-size:15px;min-height:42px;padding:8px 16px;background:#1f2a48;color:#fff;border:2px solid #000;box-shadow:3px 3px 0 #000;border-radius:4px;cursor:pointer}
+button:disabled{opacity:.55;cursor:default}
+.go{background:var(--green);color:#08130c}
+.msg{margin:10px 0 0;font-size:14px}.msg.bad{color:var(--red)}
+.pets{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;margin-top:12px}
+.pet{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px;min-height:0;box-shadow:2px 2px 0 #000;font-weight:400}
+.pet.on{outline:3px solid var(--gold);background:#2a2440}
+.pet .art{width:64px;height:64px;display:block}.pet canvas,#pickCv{width:64px;height:64px;image-rendering:pixelated;display:block}
+.pet b{font-size:13px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pet i{font-size:11px;color:var(--dim);font-style:normal}
+#picked{display:flex;gap:12px;align-items:center;margin-top:12px}#pickCv{width:96px;height:96px}
+.warn{background:#3a1d1d;border-color:#000;color:#ffd0d0}
+.safe{border-left:6px solid var(--green)}
+ol.steps{margin:6px 0 0;padding-left:20px}ol.steps li{margin:4px 0}
+esp-web-install-button button{background:var(--gold);color:#1a1300}
+label.chk{display:flex;gap:8px;align-items:center;font-size:14px;color:var(--dim)}
+esp-web-install-button:not(:defined) [slot=unsupported],esp-web-install-button:not(:defined) [slot=not-allowed]{display:none}
+.shells{width:100%;height:auto;border-radius:4px;border:2px solid #000;display:block}
+</style>
+<script type="module" src="https://unpkg.com/esp-web-tools@10.4.0/dist/web/install-button.js?module"></script>
+</head>
+<body>
+<header><a href="../">← XCPETS</a></header>
+<main>
+  <h1>Set up your Pet Shell</h1>
+  <p class="lead">Your pet, live, in your hand. Four steps, one USB-C cable, about five minutes. Use <b>Chrome or Edge on a computer</b>.</p>
+
+  <div class="card safe">
+    <h2>🔒 No keys inside</h2>
+    <p class="sub" style="margin:0">The Pet Shell only <b>looks</b>: it reads your pet from the public game files. It never holds a wallet key, never signs and never sends anything. Feeding shows a QR code: scan it with your phone and <b>your own wallet</b> signs the burn on xcpets.fun, with all the usual checks. This page never asks for a seed phrase or private key. Never type one anywhere.</p>
+  </div>
+
+  <div class="card warn" id="noSerial" hidden>
+    <b>This browser can't talk to USB devices.</b> Open this page in Chrome or Edge on a Windows, Mac or Linux computer.
+  </div>
+
+  <div class="card">
+    <h2>1 · Put the software on</h2>
+    <ol class="steps">
+      <li>Plug the Pet Shell into this computer with a USB-C cable that carries data (some cheap cables only charge).</li>
+      <li>Click the button and pick the Pet Shell in the list (often called <i>USB JTAG/serial debug unit</i>).</li>
+      <li>Click <b>Install</b>. It takes about a minute.</li>
+    </ol>
+    <p><esp-web-install-button manifest="firmware/manifest.json"><button slot="activate" class="go">⚡ Install Pet Shell software</button><span slot="unsupported">Your browser can't do this. Use Chrome or Edge on a computer.</span><span slot="not-allowed">This page must be opened over https.</span></esp-web-install-button></p>
+    <p class="sub">Stuck on "Failed to connect"? Hold the <b>BOOT</b> button on the board, tap <b>RST</b>, let go of BOOT, then try again. Already installed? Go straight to step 2.</p>
+  </div>
+
+  <div class="card">
+    <h2>2 · Pick your pet</h2>
+    <p class="sub">Paste your wallet <b>address</b> (public, starts with bc1, 1 or 3). Then tap the pet that should live in this Pet Shell.</p>
+    <div class="row"><input type="text" id="addr" placeholder="bc1… your wallet address" autocomplete="off" spellcheck="false"><button type="button" id="loadPets">Show my pets</button></div>
+    <p class="msg" id="walletMsg" hidden></p>
+    <div class="pets" id="pets"></div>
+    <p class="row" style="margin-top:10px"><button type="button" id="morePets" hidden>Show 24 more</button>
+      <input type="number" id="petId" placeholder="or type a pet # " style="flex:0 1 170px"><button type="button" id="findPet">Find</button></p>
+    <div id="picked"></div>
+  </div>
+
+  <div class="card">
+    <h2>3 · Wi-Fi</h2>
+    <p class="sub">The Pet Shell checks on your pet over Wi-Fi every 10 minutes. It needs a <b>2.4 GHz</b> network (most home Wi-Fi has one). The password is stored only on the Pet Shell.</p>
+    <div class="row"><input type="text" id="ssid" placeholder="Wi-Fi name" autocomplete="off"><input type="password" id="pass" placeholder="Wi-Fi password" autocomplete="off"></div>
+    <label class="chk"><input type="checkbox" id="showPass"> show password</label>
+    <div class="row" style="margin-top:10px"><input type="number" id="num" min="1" max="21" placeholder="Shell number (on the back, optional)" style="flex:0 1 300px"></div>
+    <label class="chk"><input type="checkbox" id="flip"> picture upside down (you can also hold a button for 6 seconds on the Pet Shell)</label>
+  </div>
+
+  <div class="card">
+    <h2>4 · Send to my Pet Shell</h2>
+    <p class="sub">Keep it plugged in. Click the button, pick the Pet Shell in the list, and wait for the 🎉.</p>
+    <button type="button" class="go" id="sendBtn">📟 Send to my Pet Shell</button>
+    <p class="msg" id="sendMsg" hidden></p>
+  </div>
+
+  <div class="card">
+    <h2>Using it</h2>
+    <ul class="sub" style="padding-left:20px">
+      <li><b>Press</b> either button: next screen (your pet → feed QR → info).</li>
+      <li><b>Hold</b> a button for 1.5 seconds: check for news now.</li>
+      <li>Hungry? Open the feed QR, scan it with your phone, then sign it in your wallet on xcpets.fun.</li>
+      <li>On battery it dims after a minute and sleeps after five. Press <b>KEY</b> to wake it.</li>
+      <li>New pet or new Wi-Fi? Come back here and do steps 2 to 4 again.</li>
+    </ul>
+  </div>
+</main>
+<script src="setup.js?v=ps1124a"></script>
+</body>
+</html>

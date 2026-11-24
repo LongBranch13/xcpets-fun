@@ -14,3 +14,8 @@
 /var/
 hatchbot/memes.json
 hatchbot/tokens.json
+
+# Pet Shell build output (petshell/shells/make_shells.py, preview.py; PlatformIO)
+/petshell/shells/out/.render/
+/petshell/shells/out/.*-asm.stl
+/petshell/firmware/.pio/
