@@ -1,0 +1,16 @@
+{
+  "name": "XCPETS Pet Shell",
+  "version": "1.0.0",
+  "new_install_prompt_erase": true,
+  "builds": [
+    {
+      "chipFamily": "ESP32-S3",
+      "parts": [
+        {
+          "path": "petshell.bin",
+          "offset": 0
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,62 @@
+# Pet Shell firmware (petshell/firmware, LilyGO T-Display-S3). Builds it with PlatformIO, merges the parts into one image and commits
+# it as shell/firmware/petshell.bin on the same branch, so https://xcpets.fun/shell/ can flash it from the browser once that
+# branch is merged. Runs on a push to any branch other than main that changes the firmware (firmware changes go through a pull
+# request), and by hand (Actions > petshell-firmware > Run workflow). Nothing here signs or holds a key; no secrets are used.
+name: petshell-firmware
+on:
+  push:
+    branches-ignore: [main, hatchbot-state]
+    paths: ['petshell/firmware/**', '.github/workflows/petshell-firmware.yml']
+  workflow_dispatch: {}
+permissions:
+  contents: write
+concurrency:
+  group: petshell-firmware-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - name: Logic test (the helpers the device uses, compiled for this computer)
+        run: |
+          g++ -std=c++17 -O1 -x c++ - -o /tmp/logic-test <<'EOF'
+          #include "petshell/firmware/src/logic.h"
+          #include <cassert>
+          int main() {
+            assert(xp::sha256hex("abc") == "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
+            assert(xp::amountText(69) == "69" && xp::amountText(0.5) == "0.5" && xp::amountText(1.23456789) == "1.23456789");
+            assert(xp::petShardName(4207) == "00002");
+            return 0;
+          }
+          EOF
+          /tmp/logic-test && echo "logic ok"
+      - name: Install PlatformIO
+        run: pip install -q platformio==6.1.16
+      - name: Build
+        run: pio run -d petshell/firmware
+      - name: Merge into one image (flashed at offset 0 by ESP Web Tools)
+        run: |
+          B=petshell/firmware/.pio/build/petshell
+          APP0=$(find ~/.platformio/packages/framework-arduinoespressif32 -name boot_app0.bin | head -1)
+          pip install -q esptool==4.8.1
+          mkdir -p shell/firmware
+          python -m esptool --chip esp32s3 merge_bin -o shell/firmware/petshell.bin --flash_mode keep --flash_freq keep --flash_size 16MB \
+            0x0 $B/bootloader.bin 0x8000 $B/partitions.bin 0xe000 "$APP0" 0x10000 $B/firmware.bin
+          ls -la shell/firmware/petshell.bin
+          V=$(grep -o 'FW_VERSION = "[^"]*"' petshell/firmware/src/main.cpp | cut -d'"' -f2)
+          node -e "const fs=require('fs');const p='shell/firmware/manifest.json';const m=JSON.parse(fs.readFileSync(p,'utf8'));m.version='$V';fs.writeFileSync(p,JSON.stringify(m,null,2)+'\n')"
+      - uses: actions/upload-artifact@v4
+        with: { name: petshell-firmware, path: shell/firmware/ }
+      - name: Commit the image to this branch
+        run: |
+          git config user.name "petshell-firmware[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add shell/firmware/petshell.bin shell/firmware/manifest.json
+          if git diff --cached --quiet; then echo "no change"; exit 0; fi
+          git commit -m "Pet Shell firmware image (built from ${GITHUB_SHA::7})"
+          for i in 1 2 3; do git pull --rebase -q origin "${GITHUB_REF_NAME}" && git push origin "HEAD:${GITHUB_REF_NAME}" && exit 0; sleep 5; done
+          exit 1
