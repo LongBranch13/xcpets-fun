@@ -4,7 +4,7 @@ Owner picked him Nov 4 2026 (brief: groyper-brief.zip, owner drawing). A comfy m
 No political symbols, slogans or movement references in art, names, lore or prizes.
 
 ## Status
-PREVIEW. Everything is behind `ACTIVATE_GROYPER_BLOCK = null` (and `ACTIVATE_GP_BREED_BLOCK = null`) in `js/v2-rules.js`. Replay output unchanged (rebuild-bench SAME).
+ON (owner Nov 24 2026): `ACTIVATE_GROYPER_BLOCK = ACTIVATE_GP_BREED_BLOCK = 977,400`. The gate alone changes nothing: `gpLive(b)` (gate reached AND the White Rabbit in Cold Storage, `b >= WR_POOL_FROM`) keeps his gear out of roll pools and his parts out of 3-way hybrids until he is the community pet. Replay output unchanged (rebuild-bench SAME).
 
 ## Launch (owner: "he goes live when the rabbit goes to cold storage")
 Set both gates to deploy tip + ~6, one rules PR on its own, merged BEFORE the White Rabbit reaches Mythic. Then the hand-off is automatic:
