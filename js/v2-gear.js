@@ -533,9 +533,12 @@
    * to every raiser, a rarer one to the top 3. White Rabbit: Golden carrot / Mad Hatter top hat. Add the next pet's two pieces here. Wearable by any pet. [id, label, slot, anchor, dy, kind, map, tier] Map keys = BonusGear COLORS. */
   var WR_RAISER_GEAR = [
     ['wr-golden-carrot', 'Golden carrot', 'hand', 'handR', null, 'held', ['M.M..', '.MM..', '.gGG.', 'ggGG.', '.gGG.', '.ggG.', '..gG.', '..G..'], 2],
-    ['wr-mad-hatter', 'Mad Hatter top hat', 'head', 'head', 2, 'hat', ['..jjjjjjj..', '...jjjjjPP.', '...jjjjjPn.', '...jjjjjPP.', '...jjjjj...', '...iiiii...', '...jjjjj...', '.jjjjjjjjj.'], 3]
+    ['wr-mad-hatter', 'Mad Hatter top hat', 'head', 'head', 2, 'hat', ['..jjjjjjj..', '...jjjjjPP.', '...jjjjjPn.', '...jjjjjPP.', '...jjjjj...', '...iiiii...', '...jjjjj...', '.jjjjjjjjj.'], 3],
+    /* GROYPER (PREVIEW, community pet #7): Cozy cocoa mug for every raiser (a steaming mug, held), Golden lily crown for the top 3 (gold, a lily-green gem) */
+    ['gp-cocoa-mug', 'Cozy cocoa mug', 'hand', 'handR', null, 'held', ['.s.s..', 's.s...', 'PPPP..', 'PXXPPP', 'PXXP.P', 'PPPPPP', 'PPPP..'], 2],
+    ['gp-lily-crown', 'Golden lily crown', 'head', 'head', 2, 'hat', ['g...g...g', 'gg.gMg.gg', 'ggggggggg', 'GGGGGGGGG'], 3]
   ];
-  WR_RAISER_GEAR.forEach(function (x) { DEFS[x[0]] = { slot: x[2], tier: x[7], label: x[1], at: x[3], dy: x[4] == null ? undefined : x[4], map: x[6], origin: null, exclusive: false, kind: x[5], wrRaiser: true }; });
+  WR_RAISER_GEAR.forEach(function (x) { DEFS[x[0]] = { slot: x[2], tier: x[7], label: x[1], at: x[3], dy: x[4] == null ? undefined : x[4], map: x[6], origin: null, exclusive: false, kind: x[5], wrRaiser: true, behind: x[8] ? true : undefined }; }); /* x[8] = drawn behind the body (a blanket / cape) */
   /* DJ PEPE GEAR (owner Nov 6 2026 2:01 PM CT, branch djpepe-7): Gold Chain = SIGNATURE Grip (★ tier 3, DJ Pepe + DJ Pepe hybrids only, like hp-donut / wr-pocket-watch).
    * Map keys = BonusGear COLORS: G/g gold, Q RED Bitcoin B (#da291c), n ink. item.since 'djpepe' = OFF until the future hatch gate. Append-only. */
   var DJ_BATCH = [
@@ -547,6 +550,18 @@
   DJ_BATCH.forEach(function (x) { var ex = x[4];
     DEFS[x[0]] = { slot: x[2], tier: x[3], label: x[1], at: x[6], dy: x[7] == null ? undefined : x[7], behind: false, map: x[8], origin: 'djpepe', exclusive: ex, species: ex ? 'djpepe' : undefined, kind: x[5], sig: ex };
     ITEMS.push({ id: x[0], label: x[1], slot: x[2], tier: x[3], origin: 'djpepe', exclusive: ex, legendary: ex, kind: x[5], sig: ex, overlay: true, since: 'djpepe' }); });
+  /* GROYPER GEAR (PREVIEW, community pet #7, Nov 24 2026): original pixel art, no logos, text or symbols. item.since 'groyper' = OFF (never in any roll pool,
+   * never wearable) until V2Rules.ACTIVATE_GROYPER_BLOCK is set (null now) -> replay SAME. Appended at the END of ITEMS (append-only pools).
+   * Lily pad = his SIGNATURE Footwear (★ tier 3, Groyper + Groyper hybrids only): he sits on it. GroyperSprite draws its own versions (by item id) on him;
+   * these maps are for every other body. Map keys = BonusGear COLORS. [id, label, slot, tier, exclusive, kind, anchor, dy, map] */
+  var GP_BATCH = [
+    ['gp-lily-pad', 'Lily pad', 'feet', 3, true, 'feet', 'feetBoth', null, ['.mmmmmmmm.', 'mMMmMMMMMm', '.mmmmmmmm.']],
+    ['gp-cattail', 'Cattail', 'hand', 2, false, 'held', 'handR', null, ['.X.', 'XXl', 'XXl', 'XXl', 'XXl', '.m.', '.m.', 'mm.', '.m.']],
+    ['gp-bucket-hat', 'Pond bucket hat', 'head', 1, false, 'hat', 'head', 2, ['..PPPPP..', '..PPPPP..', '..FFFFF..', 'TTTTTTTTT']]
+  ];
+  GP_BATCH.forEach(function (x) { var ex = x[4];
+    DEFS[x[0]] = { slot: x[2], tier: x[3], label: x[1], at: x[6], dy: x[7] == null ? undefined : x[7], behind: false, map: x[8], origin: 'groyper', exclusive: ex, species: ex ? 'groyper' : undefined, kind: x[5], sig: ex };
+    ITEMS.push({ id: x[0], label: x[1], slot: x[2], tier: x[3], origin: 'groyper', exclusive: ex, legendary: ex, kind: x[5], sig: ex, overlay: true, since: 'groyper' }); });
   EYE_GEAR_FT = { 'ft-aviators': { s: 'glasses', f: 'g', l: ['Z', 'Z'], drop: 1, up: 1, wide: 1 } };
   /** install(BonusGear): adds the v2 maps to BonusGear.DEFS (render only) and the 'eyes' anchor support is in bonus-gear.js. */
   function install(BG) { if (BG && BG.COLORS) { BG.COLORS.I = '#da291c'; BG.COLORS.f = '#8f1a12'; } /* sig-nakamoto-cape icon only. Shared E (#f7931a) and e (#c46a00) stay. */ if (BG && BG.DEFS) Object.keys(DEFS).forEach(function (k) { if (!BG.DEFS[k]) BG.DEFS[k] = DEFS[k]; }); if (BG && BG.DEFS) Object.keys(REDRAW).forEach(function (k) { if (!DEFS[k] && BG.DEFS[k] && !BG.DEFS[k].v2redraw) BG.DEFS[k] = Object.assign({}, BG.DEFS[k], { map: REDRAW[k].slice(), v2redraw: true }); }); if (BG && BG.DEFS) Object.keys(HEAD_REDO).forEach(function (k) { var o = HEAD_REDO[k]; if (!DEFS[k] && BG.DEFS[k] && !BG.DEFS[k].v2head) BG.DEFS[k] = Object.assign({}, BG.DEFS[k], { map: o.map.slice(), v2head: true }, o.dy != null ? { dy: o.dy } : {}, o.at ? { at: o.at } : {}, o.label ? { label: o.label } : {}, o.snug ? { v2snug: true } : {}); }); // headwear redo: v2 runtime only
@@ -586,5 +601,5 @@
     ['sig-dodo-face', 'v2-bobo-face', '2026-10-14', 'Black-swan eye mask removed -> nearest eyewear (same as the retired Dodo face alias)'],
     ['v2-nakamoto-face', 'beam-eyes', '2026-10-14', 'Laser eyes removed (redundant) -> the regular Beam eyes']
   ];
-  return { BO_GEAR: BO_GEAR, RP_GEAR: RP_GEAR, WR_RAISER_GEAR: WR_RAISER_GEAR, FT_BATCH: FT_BATCH, FT_FLAGS: FT_FLAGS, WIZ_BATCH: WIZ_BATCH, WIZ_STAFF: WIZ_STAFF, STAR_BATCH: STAR_BATCH, SIG_SHUFFLE: SIG_SHUFFLE, RETIRED: RETIRED, CAST_KITS: CAST_KITS, reworkNakamoto: reworkNakamoto, NAKA_MAPS: NAKA_MAPS, ALIAS: ALIAS, SIG: SIG, SIG_MAPS: SIG_MAPS, isSig: isSig, sigKindOf: sigKindOf, HEAD_REDO: HEAD_REDO, EYE_GEAR: EYE_GEAR, SHADES: SHADES, SIG_HAT: SIG_HAT, SHARED_CROWNS: SHARED_CROWNS, FACE_MAPS: FACE_MAPS, FEET_MAPS: FEET_MAPS, JEWELRY: JEWELRY, BANNERS: BANNERS, BODY_MAPS: BODY_MAPS, REDRAW: REDRAW, REMOVED: REMOVED, DEFS: DEFS, ITEMS: ITEMS, LIST: LIST, KINDS: KINDS, KIND_SLOT: KIND_SLOT, PAL: PAL, install: install };
+  return { BO_GEAR: BO_GEAR, RP_GEAR: RP_GEAR, WR_RAISER_GEAR: WR_RAISER_GEAR, GP_BATCH: GP_BATCH, FT_BATCH: FT_BATCH, FT_FLAGS: FT_FLAGS, WIZ_BATCH: WIZ_BATCH, WIZ_STAFF: WIZ_STAFF, STAR_BATCH: STAR_BATCH, SIG_SHUFFLE: SIG_SHUFFLE, RETIRED: RETIRED, CAST_KITS: CAST_KITS, reworkNakamoto: reworkNakamoto, NAKA_MAPS: NAKA_MAPS, ALIAS: ALIAS, SIG: SIG, SIG_MAPS: SIG_MAPS, isSig: isSig, sigKindOf: sigKindOf, HEAD_REDO: HEAD_REDO, EYE_GEAR: EYE_GEAR, SHADES: SHADES, SIG_HAT: SIG_HAT, SHARED_CROWNS: SHARED_CROWNS, FACE_MAPS: FACE_MAPS, FEET_MAPS: FEET_MAPS, JEWELRY: JEWELRY, BANNERS: BANNERS, BODY_MAPS: BODY_MAPS, REDRAW: REDRAW, REMOVED: REMOVED, DEFS: DEFS, ITEMS: ITEMS, LIST: LIST, KINDS: KINDS, KIND_SLOT: KIND_SLOT, PAL: PAL, install: install };
 });
