@@ -113,6 +113,38 @@ function ownerSide(rows, world) {
     rise: rise
   };
 }
+/* Rankings boards that are not about pets (Nov 24 2026, Jake: "Top burners not showing in rankings"). Root cause: the Top burners
+ * board and Battle wins "This week" were counted on the page from the chain burn list and the fight list, and a fast-loaded page
+ * has neither (it paints from these view files), so both boards were empty for everyone on the fast path. The server already has
+ * both lists, so it counts them here with exactly the page's own rules and the page reads them from the summary:
+ *  - burnBy: { address: [all time, this week] } XCPETS burned. Same as the page's tally(): valid rows only, amount or quantity / 1e8,
+ *    "this week" = block > tip - 1,008. Falls back to the replay's own world.burnedBy (all time) when no rows are given.
+ *  - winsWk: { petId: wins } battles won this week (done fights whose accept block is > tip - 1,008), keyed by the winning pet. */
+const WEEK_BLOCKS = 1008;
+const r8 = v => Math.round((Number(v) || 0) * 1e8) / 1e8;
+function burnTotals(world, tip, rows) {
+  const all = {}, wk = {}, out = {};
+  if (Array.isArray(rows) && rows.length) {
+    const seen = new Set();
+    for (const r of rows) {
+      if (!r || !r.source || (r.tx_hash && seen.has(r.tx_hash))) continue;
+      if (r.tx_hash) seen.add(r.tx_hash);
+      if (r.status != null && String(r.status).toLowerCase() !== 'valid') continue;
+      const b = Number(r.block_index);
+      if (tip && b > tip) continue;
+      const a = r.amount != null ? Number(r.amount) || 0 : (Number(r.quantity) || 0) / 1e8;
+      all[r.source] = (all[r.source] || 0) + a;
+      if (b > tip - WEEK_BLOCKS) wk[r.source] = (wk[r.source] || 0) + a;
+    }
+  } else if (world && world.burnedBy) Object.keys(world.burnedBy).forEach(a => { all[a] = world.burnedBy[a]; });
+  Object.keys(all).forEach(a => { if (all[a] > 0 || wk[a] > 0) out[a] = [r8(all[a]), r8(wk[a] || 0)]; });
+  return out;
+}
+function weekWins(world, tip) {
+  const out = {};
+  (world && world.fights || []).forEach(f => { if (f && f.status === 'done' && f.acceptBlock != null && f.acceptBlock > tip - WEEK_BLOCKS && f.winner != null) out[f.winner] = (out[f.winner] || 0) + 1; });
+  return out;
+}
 function communityCopy(c, world) {
   if (!c) return null;
   const o = copy(c) || {};
@@ -172,7 +204,9 @@ function fromWorld(world) {
     community: communityCopy(world.community, world),
     cold: coldCopy(world),
     leaderboard: (world.community && world.community.leaderboard || []).slice(0, 20),
-    wagmi: copy(world.wagmi) || {}
+    wagmi: copy(world.wagmi) || {},
+    burnBy: burnTotals(world, world.tip || 0, null),
+    winsWk: weekWins(world, world.tip || 0)
   };
   return { summary: summary, owners: owners, pets: pets };
 }
@@ -431,6 +465,9 @@ function write(dir, world, meta) {
     cold: coldCopy(world),
     leaderboard: (world.community && world.community.leaderboard || []).slice(0, 20),
     wagmi: copy(world.wagmi) || {},
+    /* Rankings: XCPETS burned per wallet and this week's battle wins per pet (see burnTotals). A few KB. */
+    burnBy: burnTotals(world, tip, meta && meta.rows),
+    winsWk: weekWins(world, tip),
     /* Nov 22 2026: raids were missing from the slim view, so the Raid page said 'waiting for the opening block hash' on every
      * fast load and the catch-up sweep could not rebuild them (it needs raid 1's old opening hash). A few small records. */
     raids: copy(world.raids) || [],
@@ -445,7 +482,8 @@ function write(dir, world, meta) {
      * inside the 144-block window plus the page's 48-block staleness margin) ride here; a few small records. */
     breedReqs: liveBreedReqs(world, tip)
   };
-  const leadBurners = (world.community && world.community.leaderboard) || [];
+  /* the biggest burners by XCPETS burned (the Top burners board), not the community pet's feeders list this used to read */
+  const leadBurners = Object.keys(summary.burnBy || {}).map(a => ({ address: a, amount: summary.burnBy[a][0] })).sort((a, b) => b.amount - a.amount || (a.address < b.address ? -1 : 1));
   /* every pet that was ever tied to a token (a destroyed token too), so Proof Parade gives the same answer as from rank.json */
   const leadDeeds = new Set(); Object.keys(world.deeds || {}).forEach(a => { const d = world.deeds[a]; if (d && d.petId != null) leadDeeds.add(d.petId | 0); });
   function end(stream) { return new Promise(res => { stream.on('finish', res); stream.end(); }); }
@@ -601,4 +639,4 @@ function writeShop(dir, world, meta) {
    * need a server repair; the p/ shard name works today, like the lead file (p/99900.json). Pet shards hold 2,000 ids each. */
   return { file: 'view/p/' + SHOP_SHARD + '.json', bytes: writeJson(path.join(dir, 'p', SHOP_SHARD + '.json'), pack), listings: pack.listings.length, open: pack.open };
 }
-module.exports = { shopPack, writeShop, SHOP_SHARD, liveBreedReqs, LEAD_SHARD, leadFile, PET_SHARD, PAGE, COLD_KEYS, ownerKey, ownerShard, petShard, fromWorld, write, itemRec, petRec, fieldsOf, isHybRec, deedRec, ownerSide };
+module.exports = { burnTotals, weekWins, shopPack, writeShop, SHOP_SHARD, liveBreedReqs, LEAD_SHARD, leadFile, PET_SHARD, PAGE, COLD_KEYS, ownerKey, ownerShard, petShard, fromWorld, write, itemRec, petRec, fieldsOf, isHybRec, deedRec, ownerSide };

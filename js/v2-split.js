@@ -166,6 +166,7 @@
       seasons: summary.seasons || {}, /* season eggs sold, points and tiers ride in the summary too; older summaries have none */
       pantry: summary.pantry || undefined, pantryDay: summary.pantryDay != null ? summary.pantryDay : undefined, /* Pantry (gated): balances and lists */
       grind: summary.grind || undefined, /* Meat Grinder (gated): meat meters; older summaries have none */
+      _burnBy: summary.burnBy || null, _winsWk: summary.winsWk || null, /* Rankings (Nov 24 2026): XCPETS burned per wallet [all, week] and this week's wins per pet; a view has no burn or fight list. Older summaries have none */
       _view: 1, _counts: { n: summary.n, alive: summary.alive, dead: summary.dead, burned: summary.burned, burns: summary.burns }
     };
     if (pack && pack.roster) w._roster = pack.roster;

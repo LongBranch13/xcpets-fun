@@ -49,6 +49,15 @@ function check(world, label) {
   return built;
 }
 check(toy(10), 'tip 10');
+{ const tb = split.burnTotals({ burnedBy: { alice: 3.5, bob: 0 } }, 2000, null);
+  ok(JSON.stringify(tb) === JSON.stringify({ alice: [3.5, 0] }), 'burnTotals falls back to the replay\'s burnedBy');
+  const rows = [{ tx_hash: 'a', source: 'alice', quantity: 150000000, block_index: 100, status: 'valid' }, { tx_hash: 'a', source: 'alice', quantity: 150000000, block_index: 100, status: 'valid' },
+    { tx_hash: 'b', source: 'bob', quantity: 1, block_index: 1999, status: 'valid' }, { tx_hash: 'c', source: 'bob', quantity: 9e8, block_index: 1999, status: 'invalid: x' }, { tx_hash: 'd', source: 'carol', amount: 2, block_index: 2001 }];
+  ok(JSON.stringify(split.burnTotals({}, 2000, rows)) === JSON.stringify({ alice: [1.5, 0], bob: [1e-8, 1e-8] }), 'burnTotals: valid rows up to the tip, duplicates once, this week = the last 1,008 blocks');
+  ok(JSON.stringify(split.weekWins({ fights: [{ status: 'done', acceptBlock: 1500, winner: 7 }, { status: 'done', acceptBlock: 900, winner: 7 }, { status: 'open', winner: 8 }] }, 2000)) === '{"7":1}', 'weekWins counts this week\'s finished fights by winning pet');
+  const v2p = fs.readFileSync(path.join(__dirname, '..', 'js/v2-pages.js'), 'utf8'), v2s = fs.readFileSync(path.join(__dirname, '..', 'js/v2-split.js'), 'utf8');
+  ok(/_burnBy: summary\.burnBy/.test(v2s) && /_winsWk: summary\.winsWk/.test(v2s), 'the fast view world carries the burn and weekly-win totals');
+  ok(/pubB = w\._view && w\._burnBy/.test(v2p) && /tallyGap\.burn/.test(v2p), 'Rankings reads them on a fast load and says so when they are missing'); }
 check(toy(20), 'tip 20');
 ok(/fights: \[\]/.test(fs.readFileSync(path.join(__dirname, '..', 'js/v2-split.js'), 'utf8')), 'a view world has a fights list');
 ok(/\(w\.fights \|\| \[\]\)/.test(fs.readFileSync(path.join(__dirname, '..', 'js/v2.js'), 'utf8')), 'fight notices tolerate a view with no fights');
@@ -112,7 +121,7 @@ async function prove(name) {
   const petN = world.pets.length, petTip = world.tip;
   const hadSeasons = 'seasons' in world;
   if (!hadSeasons) world.seasons = { 1: { n: 1, id: 'kekmas', sold: 3, pts: { bc1qtest: 15 }, legends: [], settled: false } };
-  const meta = await split.write(out, world, { tip: world.tip, rsig: rulesSig(loadBytes()) });
+  const meta = await split.write(out, world, { tip: world.tip, rsig: rulesSig(loadBytes()), rows: snap.rows });
   const wantSeasons = JSON.stringify(world.seasons);
   if (!hadSeasons) delete world.seasons;
   const summary = JSON.parse(fs.readFileSync(path.join(out, 'summary.json'), 'utf8'));
@@ -131,6 +140,20 @@ async function prove(name) {
   ok(lead && lead.tops.power[0] === pMax.id && lead.counts.power === live.filter(r => pw(r) > 0).length, name + ' lead: strongest pet ' + pMax.id + ' first on the power board');
   ok(lead && lead.players.pets[0][1] === byO[topO] && lead.counts['players:pets'] === Object.keys(byO).length, name + ' lead: most pets ' + byO[topO] + ', ' + Object.keys(byO).length + ' wallets');
   ok(lead && lead.tops.power.concat(lead.tops.old, lead.tops.wins, lead.tops.wagmi).every(id => have.has(id)) && lead.pets.filter(r => r.dd).length === deeds, name + ' lead: carries every listed pet and all ' + deeds + ' tokenized pets');
+  /* Rankings boards that are not about pets (Nov 24 2026, Top burners was empty on every fast load): the summary must carry XCPETS burned
+   * per wallet and this week's wins, counted exactly as the page counts them from a full replay (js/v2-pages.js tally()). */
+  const WEEK = 1008, pageAll = {}, pageWk = {}, pageWins = {};
+  snap.rows.forEach(r => { if (r.status != null && String(r.status).toLowerCase() !== 'valid') return; const a = r.amount != null ? Number(r.amount) || 0 : (Number(r.quantity) || 0) / 1e8;
+    pageAll[r.source] = (pageAll[r.source] || 0) + a; if (r.block_index > world.tip - WEEK) pageWk[r.source] = (pageWk[r.source] || 0) + a; });
+  (world.fights || []).forEach(f => { if (f.status === 'done' && f.acceptBlock > world.tip - WEEK) pageWins[f.winner] = (pageWins[f.winner] || 0) + 1; });
+  const BB = summary.burnBy || {}, r8 = v => Math.round(v * 1e8) / 1e8, burners = Object.keys(pageAll).filter(a => pageAll[a] > 0);
+  const offB = burners.filter(a => !BB[a] || BB[a][0] !== r8(pageAll[a]) || BB[a][1] !== r8(pageWk[a] || 0));
+  ok(burners.length > 0 && Object.keys(BB).length === burners.length && !offB.length, name + ' summary burnBy: ' + burners.length + ' burners, all time and this week match the page tally (' + offB.length + ' differ)');
+  const sumB = Object.keys(BB).reduce((a, k) => a + BB[k][0], 0);
+  ok(Math.abs(sumB - (world.community.burned || 0)) < 1e-4, name + ' burnBy adds up to every XCPETS burned (' + Math.round(sumB) + ' vs ' + Math.round(world.community.burned || 0) + ')');
+  ok(JSON.stringify(summary.winsWk || null) === JSON.stringify(pageWins), name + ' summary winsWk: ' + Object.keys(pageWins).length + ' pets with wins this week, same as the page');
+  const topB = burners.sort((a, b) => pageAll[b] - pageAll[a])[0], topI = rank.owners.indexOf(topB);
+  ok(topI < 0 || (lead && lead.best[topI]), name + ' lead: the top burner\'s best pet is in the lead file');
   const lb = fs.statSync(leadPath).size, rb = fs.statSync(path.join(out, 'rank.json')).size;
   ok(lb < rb / 4 || lb < 400e3, name + ' lead file ' + Math.round(lb / 1024) + ' KB vs rank.json ' + Math.round(rb / 1024) + ' KB');
   return { ms: ms, n: petN, files: meta.files, bytes: meta.bytes, rss: process.memoryUsage().rss };

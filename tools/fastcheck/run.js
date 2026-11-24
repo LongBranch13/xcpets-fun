@@ -85,6 +85,57 @@ async function fastDump(browser, addr) {
   finally { await cx.close(); }
 }
 
+/* ---------------------------------------------------------------- Rankings boards (Nov 24 2026)
+ * Top burners was empty on every fast load and nothing noticed: the board counted from a burn list the fast page never has.
+ * Open the live Rankings page (no wallet), visit every board (all time, and This week where it has one) and flag:
+ *  - an all-time board with no rows, or a board that says its totals did not load,
+ *  - a This week board that is empty while the full replay has burns / battle wins that week,
+ *  - Top burners whose first wallets or totals differ from the full replay's own count. */
+const RANK_BOARDS = [['wagmi'], ['pets'], ['pets', 1], ['power'], ['rare'], ['rare', 1], ['burn'], ['burn', 1], ['wins'], ['wins', 1], ['leg'], ['leg', 1], ['old']];
+async function rankCheck(browser) {
+  const cx = await browser.newContext({ viewport: { width: 1280, height: 900 } }), pg = await cx.newPage(), out = { boards: {}, burnTop: null, errors: [] };
+  pg.on('pageerror', e => out.errors.push(String(e.message || e).slice(0, 200)));
+  const t0 = Date.now(), state = () => pg.evaluate(() => { const w = window.V2Mock && V2Mock.world && V2Mock.world();
+    return { tip: w && w.tip, rows: document.querySelectorAll('#board table.board td.rk').length, empty: ((document.querySelector('#board > p.muted:not(.rknote)') || {}).textContent || '').slice(0, 160),
+      top: Array.from(document.querySelectorAll('#board table.board tr[id^="rk"]')).slice(0, 5).map(tr => { const b = tr.querySelector('b[title]'), c = tr.querySelectorAll('td'); return [b ? b.getAttribute('title') : '', c.length ? c[c.length - 1].textContent : '']; }) }; });
+  const settle = async ms => { let st; const t1 = Date.now(); while (Date.now() - t1 < ms) { await pg.waitForTimeout(1500); st = await state(); if (st.rows || st.empty) break; } return st; };
+  try {
+    await pg.goto(SITE + '/ranking.html?board=wagmi&fastcheck=' + Date.now(), { waitUntil: 'domcontentloaded', timeout: 90000 });
+    await settle(MAX_WAIT);
+    /* the board repaints itself (tabs included) when more data lands, so click by selector and try again if the button was replaced */
+    const tap = async sel => { for (let i = 0; i < 4; i++) { try { if (!(await pg.$(sel))) return false; await pg.click(sel, { timeout: 10000 }); return true; } catch (e) { await pg.waitForTimeout(800); } } return false; };
+    for (const [id, wk] of RANK_BOARDS) {
+      const key = id + (wk ? ':week' : '');
+      if (!(await tap('[data-board="' + id + '"]'))) { out.boards[key] = { rows: 0, empty: 'never painted (no tab)' }; continue; }
+      await pg.waitForTimeout(300); await tap('[data-span="' + (wk ? 'week' : 'all') + '"]');
+      const st = await settle(120000);
+      out.boards[key] = { rows: st ? st.rows : 0, empty: st ? st.empty : 'never painted' }; out.tip = st && st.tip;
+      if (key === 'burn') out.burnTop = st ? st.top : [];
+    }
+  } catch (e) { out.error = String(e.message || e).slice(0, 300); }
+  finally { await cx.close(); }
+  out.secs = (Date.now() - t0) / 1000;
+  return out;
+}
+function rankDiffs(rk) {
+  const diffs = [], add = (k, key, f, g) => diffs.push({ kind: k, key, fast: f, full: g });
+  if (rk.error) { add('rankings page', '-', rk.error, 'loads'); return diffs; }
+  const tip = rk.tip, all = {}, wk = {}, wins = {};
+  if (!(tip <= boot.tip)) { add('rankings page tip', '-', tip, '<= ' + boot.tip); return diffs; }
+  ROWS.forEach(r => { if (r.block_index > tip || (r.status != null && String(r.status).toLowerCase() !== 'valid')) return; const a = r.amount != null ? Number(r.amount) || 0 : (Number(r.quantity) || 0) / 1e8;
+    all[r.source] = (all[r.source] || 0) + a; if (r.block_index > tip - 1008) wk[r.source] = (wk[r.source] || 0) + a; });
+  (fullAt(tip).w.fights || []).forEach(f => { if (f.status === 'done' && f.acceptBlock > tip - 1008) wins[f.winner] = 1; });
+  const want = { 'burn:week': Object.keys(wk).some(a => wk[a] > 0), 'wins:week': Object.keys(wins).length > 0 };
+  Object.keys(rk.boards).forEach(k => { const b = rk.boards[k];
+    if (/did not load|never painted/.test(b.empty)) add('rankings board did not load', k, b.empty, 'rows');
+    else if (!b.rows && (!/:week$/.test(k) || want[k])) add('rankings board is empty', k, b.empty || 0, 'rows'); });
+  const order = Object.keys(all).filter(a => all[a] > 0).sort((a, b) => all[b] - all[a] || (a < b ? -1 : 1));
+  (rk.burnTop || []).forEach((row, i) => { const v = Number(String(row[1]).replace(/[^0-9.]/g, ''));
+    if (row[0] !== order[i]) add('Top burners order', '#' + (i + 1), row[0], order[i]);
+    else if (Math.abs(v - all[order[i]]) > 0.01) add('Top burners total', '#' + (i + 1), v, Math.round(all[order[i]] * 100) / 100); });
+  return diffs;
+}
+
 /* ---------------------------------------------------------------- compare */
 const J = v => JSON.stringify(v);
 function compare(fast, full, partial) {
@@ -125,9 +176,14 @@ function compare(fast, full, partial) {
     if (r.dump) { const F = fullAt(r.dump.tip), full = dump(F.w, F.V, addr, r.dump.tip, r.dump.ids); r.diffs = compare(r.dump, full, r.partial); r.fullPets = Object.keys(full.pets).length; }
     delete r.dump; results.push(r);
   }
+  const rk = await rankCheck(browser); rk.diffs = rankDiffs(rk);
+  log('rankings: tip ' + rk.tip + ', ' + Object.keys(rk.boards).length + ' boards, ' + rk.diffs.length + ' problems in ' + rk.secs + ' s' + (rk.error ? ' (' + rk.error + ')' : ''));
   await browser.close();
   /* report */
   let md = '# Fast vs full check\n\nSite ' + SITE + ' · feed tip ' + boot.tip + ' · ' + new Date().toISOString() + '\n\n', bad = 0;
+  md += '## Rankings boards' + (rk.diffs.length ? ' ❌ ' + rk.diffs.length + ' problems' : ' ✅ every board has rows, Top burners matches') + '\n\n' +
+    Object.keys(rk.boards).map(k => k + ' ' + (rk.boards[k].rows || 0)).join(' · ') + '\n\n' + rk.diffs.map(d => '- **' + d.kind + '** ' + d.key + ': page=' + J(d.fast) + ' full=' + J(d.full)).join('\n') + (rk.diffs.length ? '\n\n' : '');
+  if (rk.diffs.length) bad++;
   results.forEach(r => { const short = r.addr.slice(0, 10) + '…' + r.addr.slice(-6);
     if (r.error) { bad++; md += '## ' + short + '\n\n❌ ' + r.error + '\n\n'; return; }
     md += '## ' + short + (r.diffs.length ? ' ❌ ' + r.diffs.length + ' differences' : ' ✅ matches') + '\n\n' + r.fullPets + ' pets in the full game' + (r.partial ? ' · fast page only partly loaded (too big to load in the background)' : '') + ' · loaded in ' + r.secs.toFixed(0) + ' s' + (r.errors.length ? ' · page errors: ' + r.errors.slice(0, 3).join(' | ') : '') + '\n\n';
@@ -136,7 +192,7 @@ function compare(fast, full, partial) {
         const rs = Object.keys(rng).length > 1 ? ' (ids ' + Object.keys(rng).map(b => b + 'k+: ' + rng[b]).join(', ') + ')' : '';
         md += '- **' + k + '** × ' + g[k].length + rs + ': ' + g[k].slice(0, 3).map(d => '#' + d.key + ' fast=' + J(d.fast) + ' full=' + J(d.full)).join(' · ').slice(0, 600) + '\n'; }); md += '\n'; } });
   fs.mkdirSync(OUT, { recursive: true });
-  fs.writeFileSync(path.join(OUT, 'fastcheck-report.md'), md); fs.writeFileSync(path.join(OUT, 'fastcheck-report.json'), JSON.stringify(results, null, 1));
+  fs.writeFileSync(path.join(OUT, 'fastcheck-report.md'), md); fs.writeFileSync(path.join(OUT, 'fastcheck-report.json'), JSON.stringify(results.concat([{ rankings: rk }]), null, 1));
   if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, md);
   console.log(md); process.exit(bad ? 1 : 0);
 })().catch(e => { console.error(e); process.exit(2); });

@@ -453,9 +453,19 @@
     var q = new URLSearchParams(location.search), st = { board: q.get('board') || 'wagmi', mode: q.get('mode') || null, span: q.get('span') === 'week' ? 'week' : 'all', n: STEP, sp: (q.get('species') || (/^#[a-z0-9:_-]+$/i.test(location.hash) ? location.hash.slice(1) : '')).toLowerCase(), base: 'wagmi' };
     if (!BOARDS.some(function (x) { return x.id === st.board; })) st.board = 'wagmi';
     if (st.board !== 'hof') st.base = st.board;
-    function tally() { burned = {}; burnedWk = {}; winsWk = {};
-      (M.state().rows || []).forEach(function (r) { if (r.status != null && String(r.status).toLowerCase() !== 'valid') return; var a = r.amount != null ? Number(r.amount) || 0 : (Number(r.quantity) || 0) / 1e8; /* chain rows carry raw quantity (1e8 units), not amount */ burned[r.source] = (burned[r.source] || 0) + a; if (inWeek(r.block_index)) burnedWk[r.source] = (burnedWk[r.source] || 0) + a; });
-      (w.fights || []).forEach(function (f) { if (f.status === 'done' && inWeek(f.acceptBlock)) winsWk[f.winner] = (winsWk[f.winner] || 0) + 1; }); }
+    /* rank-burners-1124 (Jake: 'Top burners not showing in rankings'): a fast-loaded page paints from the published view, which has no
+     * burn list (M.state().rows is empty) and no fight list, so Top burners and Battle wins 'This week' were empty for everyone. The
+     * server now counts both with the same rules (tools/sync-server/split.js burnTotals / weekWins) and the view world carries them
+     * (w._burnBy, w._winsWk). A full replay still counts from its own rows. tallyGap = no source at all: say so instead of an empty board. */
+    var tallyGap = {};
+    function tally() { burned = {}; burnedWk = {}; winsWk = {}; tallyGap = {};
+      var rowsIn = M.state().rows || [], pubB = w._view && w._burnBy, pubW = w._view && w._winsWk;
+      if (pubB) Object.keys(pubB).forEach(function (o) { var v = pubB[o] || []; if (v[0]) burned[o] = v[0]; if (v[1]) burnedWk[o] = v[1]; });
+      else if (!rowsIn.length) tallyGap.burn = 1;
+      if (pubW) Object.keys(pubW).forEach(function (id) { winsWk[id] = pubW[id]; });
+      else if (w._view && !(w.fights || []).length) tallyGap.winsWk = 1;
+      if (!pubB) rowsIn.forEach(function (r) { if (r.status != null && String(r.status).toLowerCase() !== 'valid') return; var a = r.amount != null ? Number(r.amount) || 0 : (Number(r.quantity) || 0) / 1e8; /* chain rows carry raw quantity (1e8 units), not amount */ burned[r.source] = (burned[r.source] || 0) + a; if (inWeek(r.block_index)) burnedWk[r.source] = (burnedWk[r.source] || 0) + a; });
+      if (!pubW) (w.fights || []).forEach(function (f) { if (f.status === 'done' && inWeek(f.acceptBlock)) winsWk[f.winner] = (winsWk[f.winner] || 0) + 1; }); }
     tally();
     /* rankings-species-1107: '' = the existing overall board. 'hybrid' = every hybrid. Any other value is one species id. */
     function speciesMatch(p, sp) { if (!p || !sp) return !sp; if (sp === 'hybrid') return !!(V.isHybrid && V.isHybrid(p.species)); return p.species === sp; }
@@ -585,7 +595,8 @@
       var f5 = ''; if (B.id === 'wagmi') { var fd = Math.floor(tip / 144), F5 = V.wagmiFirst ? V.wagmiFirst(w, fd) : [], pOn = V.wagmiPrizeOn && V.wagmiPrizeOn(tip + 1); /* wagmi-daily: Today's first five (replay w.wagmiFirst) */
         f5 = '<div class="wf5" id="wagmiFirst5"><b>🌅 Today\'s first five</b> <span class="small muted">' + (pOn ? 'Day One Degen: the first 5 wallets to say WAGMI each chain day get +1 saved Pepe Wheel spin.' : 'Day One Degen prizes start at block ' + fmt(V.ACTIVATE_WAGMI_PRIZE_BLOCK) + '.') + '</span><ol>' +
           [0, 1, 2, 3, 4].map(function (i) { var a = F5[i]; return '<li' + (a && a === ME ? ' class="me"' : '') + '>' + (a ? '<b title="' + esc(a) + '">' + esc(short(a)) + '</b>' + (a === ME ? ' (you)' : '') : '<span class="muted">open</span>') + '</li>'; }).join('') + '</ol></div>'; }
-      var empty = st.sp ? 'No living ' + esc(crewOne(st.sp)) + ' on this board yet.' : (B.id === 'wagmi' ? '🚀 Nobody has said WAGMI yet. Say it once a chain day on the <a href="play.html#petsPanel">My Pets</a> 🔥 bar and you\u2019re first on the board.' : 'Nobody on this board yet.');
+      var gap = (B.id === 'burn' && tallyGap.burn) || (B.id === 'wins' && wk && tallyGap.winsWk);
+      var empty = gap ? 'This board\u2019s totals did not load with the fast copy of the game. Reload in a minute; they come with the next published world.' : st.sp ? 'No living ' + esc(crewOne(st.sp)) + ' on this board yet.' : (B.id === 'wagmi' ? '🚀 Nobody has said WAGMI yet. Say it once a chain day on the <a href="play.html#petsPanel">My Pets</a> 🔥 bar and you\u2019re first on the board.' : 'Nobody on this board yet.');
       $('board').innerHTML = tabs + ctl + f5 + (rows.length ? '<div class="tw"><table class="board">' + head + body + foot + '</table></div>' : '<p class="muted small">' + empty + '</p>');
       var bAll = $('boardAll'), tot = c0.total || rows.length; bAll.style.display = tot > st.n ? '' : 'none'; bAll.textContent = 'Show more (' + fmt(tot - st.n) + ' left)';
       dressCanvases($('board'), w);
