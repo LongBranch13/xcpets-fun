@@ -76,7 +76,7 @@
     if (!ME) return '<div class="rd-atk"><p>Connect your wallet to attack with your pets.</p></div>';
     var all = hitters(w, b, ME); if (!all.length) return '<div class="rd-atk"><p>You have no pets yet. <a href="play.html">Hatch one</a> to join the raid.</p></div>';
     var min = V.raidPlan(0, w, b, 0).amount;
-    return '<div class="rd-atk"><h3 class="rd-h">Attack</h3><div id="rdPick"></div><p><label>Burn <input id="rdAmt" type="number" min="' + min + '" step="any" value="' + (PS.amt || min) + '"> XCPETS</label> <button class="btn" id="rdGo">' + (R.boss.champion ? '⚔️ Help Lord Kek' : '⚔️ Attack') + '</button></p><p class="small muted" id="rdEst">Pick a pet.</p></div>'; }
+    return '<div class="rd-atk"><h3 class="rd-h">Attack</h3><div id="rdPick"></div><div class="rd-bar"><p><label>Burn <input id="rdAmt" type="number" min="' + min + '" step="any" value="' + (PS.amt || min) + '"> XCPETS</label> <button class="btn" id="rdGo">' + (R.boss.champion ? '⚔️ Attack (with Lord Kek)' : '⚔️ Attack ' + esc(R.boss.name)) + '</button></p><p class="small muted" id="rdEst">Pick a pet.</p></div></div>'; }
   function pick(w, b, ME, R) { var el = $('rdPick'), PK = window.V2Pick, V = window.V2Rules; if (!el) return; if (!PK) { setTimeout(function () { last = ''; draw(); }, 400); return; } /* the picker script loads after this one */ var all = hitters(w, b, ME), p = selPet && w.byId[selPet], amt = $('rdAmt'), a = amt ? amt.value : V.raidPlan(0, w, b, 0).amount;
     var ready = all.filter(function (x) { return !x.why; }), deco = function (c) { c = Object.assign({}, c); c.stat = '× ' + (c.m / 100).toFixed(2); c.line = STAGE[c.p.stage] + ' · ⚡ ' + (window.UXB && UXB.power ? UXB.power(c.p) : ''); return c; };
     var n = PS.st.n || 24, dec = function (L) { return L.slice(0, n).map(deco).concat(L.slice(n)); };
@@ -93,18 +93,35 @@
       drop: [document.getElementById('raidScene')], onRedraw: function () { pick(w, b, ME, R); },
       onSlot: function () { }, onClear: function () { selPet = null; last = ''; draw(); },
       onShelf: function (id) { PS.shelf = id; pick(w, b, ME, R); },
-      onPick: function (c) { selPet = c.p.id; PK.used(c.p.id, true); PS.st.q = ''; last = ''; draw(); } }, PS.st); }
+      onPick: function (c) { selPet = c.p.id; PK.used(c.p.id, true); PS.st.q = ''; last = ''; draw(); } }, PS.st);
+    /* attack-tap (Nov 24 2026, Jake: 'pressed attack, nothing happened'): the boss card is locked in the picker, so tapping it did nothing. It attacks like the button. */
+    var bs = el.querySelector('[data-pk2slot="B"]'); if (bs && !bs._rdAtk) { bs._rdAtk = 1; bs.style.cursor = 'pointer'; bs.title = 'Attack the boss with your picked pet'; bs.addEventListener('click', function () { attack(); }); } }
+  /* attack-tap (Nov 24 2026): every 'why not' answer of the Attack button used to go into the small grey line under it, which the
+   * 3-second redraw wiped. It now also pops up as a toast and stays on the line for 10 seconds. */
+  var said = null;
+  function say(msg) { said = { msg: msg, at: Date.now() }; var est = $('rdEst'); if (est) { est.textContent = msg; est.classList.add('rd-say'); }
+    var U = window.V2UI; if (U && U.toast) try { U.toast('⚔️ ' + esc(msg)); } catch (e) { } }
+  /** attack(): what the scene's TAP TO ATTACK, the boss card and the Attack button all do. No pet picked yet: show the picker and say so. */
+  function attack() { var go = $('rdGo'), box = document.querySelector('#raidBox .rd-atk');
+    if (!go) { if (box) box.scrollIntoView({ behavior: 'smooth', block: 'start' }); else say('Connect your wallet to attack with your pets.'); return; }
+    if (!selPet) { var pk = $('rdPick') || box; if (pk) pk.scrollIntoView({ behavior: 'smooth', block: 'start' }); say('First tap the pet that should hit the boss, then press Attack.'); return; }
+    go.click(); }
   function bind(el, w, b, R) { var V = window.V2Rules, go = $('rdGo'), amt = $('rdAmt'), est = $('rdEst'); if (!go) return; pick(w, b, me(), R);
-    function upd() { var p = selPet && w.byId[selPet], a = Number(amt.value) || 0; PS.amt = amt.value; est.textContent = p ? 'Hit for about ' + fmt(Math.floor(a * V.raidMult(p) / 100)) + ' damage, ' + fmt(Math.floor(a * V.raidMult(p) / 100) * 2) + ' on a crit, ' + fmt(Math.floor(a * V.raidMult(p) / 100) * 3) + ' on a mega crit.' : 'Pick a pet.';
+    function upd() { var p = selPet && w.byId[selPet], a = Number(amt.value) || 0; PS.amt = amt.value; if (said && Date.now() - said.at < 10000) { est.textContent = said.msg; est.classList.add('rd-say'); } else est.textContent = p ? 'Hit for about ' + fmt(Math.floor(a * V.raidMult(p) / 100)) + ' damage, ' + fmt(Math.floor(a * V.raidMult(p) / 100) * 2) + ' on a crit, ' + fmt(Math.floor(a * V.raidMult(p) / 100) * 3) + ' on a mega crit.' : 'Pick a pet.';
       var vb = el.querySelector('#rdPick .pk2-v b'), vs = el.querySelector('#rdPick .pk2-v span'); if (p && vb) { vb.textContent = 'HITS FOR ABOUT ' + fmt(dmg(p, a)); if (vs) vs.textContent = fmt(dmg(p, a) * 2) + ' on a crit, ' + fmt(dmg(p, a) * 3) + ' on a mega crit. Older and rarer pets hit harder.'; } }
     amt.oninput = upd; upd();
-    go.onclick = function () { var p = selPet && w.byId[selPet]; if (!p) { est.textContent = 'Pick a pet first.'; return; } var pl = V.raidPlan(p.id, w, b, amt.value), why = V.raidWhy(w, p, me(), pl.amount, b);
-      if (why) { est.textContent = 'Not now: ' + why; return; }
-      if (!window.V2UI || !V2UI.confirmPlans) { est.textContent = 'The game is still loading.'; return; }
+    go.onclick = function () { var p = selPet && w.byId[selPet]; if (!p) { say('First tap the pet that should hit the boss, then press Attack.'); return; } var pl = V.raidPlan(p.id, w, b, amt.value), why = V.raidWhy(w, p, me(), pl.amount, b);
+      if (why) { say('#' + p.id + ' can\u2019t attack now: ' + why + '.'); return; }
+      if (!window.V2UI || !V2UI.confirmPlans) { say('The game is still loading. Try again in a moment.'); return; }
+      said = null;
       V2UI.confirmPlans('Raid attack on ' + R.boss.name, [pl]); }; }
   function boot() { if (!$('raidBox')) return; draw(); setInterval(draw, 3000); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
-  window.V2Raid = { draw: function () { last = ''; draw(); },
+  /* attack-tap: the Attack bar stays at the bottom of the screen while the pet shelves scroll (phones had this already, css/phone.css 7) */
+  (function () { if (document.getElementById('rdAtkCss')) return; var st = document.createElement('style'); st.id = 'rdAtkCss';
+    st.textContent = '#raidBox .rd-atk .rd-bar{position:sticky;bottom:0;z-index:7;background:#fff4d6;margin:8px -12px -12px;padding:8px 12px max(8px,env(safe-area-inset-bottom));border-top:3px solid #1a0d1f}#raidBox .rd-atk .rd-bar p{margin:4px 0}#raidBox .rd-atk .rd-bar p:has(#rdGo){position:static;margin:0;border:0;padding:0}#raidBox .rd-atk #rdGo{font-size:1.05em}#raidBox #rdEst.rd-say{color:#8a1f12;font-weight:bold;opacity:1}';
+    (document.head || document.documentElement).appendChild(st); })();
+  window.V2Raid = { attack: attack, draw: function () { last = ''; draw(); },
     /* preview / recording helper: play one effect on the current stage. kind = hit | crit2 | crit3 | defeat | escape */
     play: function (kind) { var A = window.V2RaidAnim, wrap = document.querySelector('#raidBox .ra-wrap'); if (!A || !wrap) return;
       if (kind === 'defeat') return A.defeat(wrap); if (kind === 'escape') return A.escape(wrap);

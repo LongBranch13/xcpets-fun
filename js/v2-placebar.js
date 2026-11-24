@@ -43,7 +43,11 @@
     if (!R || !R.live) return paint(el, { what: what, chips: [I.nextOpen ? 'next raid at block <b>' + fmt(I.nextOpen) + '</b>' : 'no raid open'], btn: 'HOW RAIDS WORK', on: function () { go('#raidBox'); } });
     var my = 0; if (ME) (R.board || []).forEach(function (x) { if (x.owner === ME) my += x.dmg || 0; });
     paint(el, { what: what, chips: [esc(R.boss && R.boss.name || 'Boss') + ' <b>' + Math.ceil(R.left / R.hp * 100) + '%</b>', '<b>' + fmt(Math.max(0, R.end - b + 1)) + '</b> blocks left'].concat(ME ? ['you: <b>' + fmt(my) + '</b> dmg'] : []),
-      btn: ME ? 'ATTACK' : 'HOW RAIDS WORK', on: function () { go('#raidBox'); } }); }
+      btn: ME ? 'ATTACK' : 'HOW RAIDS WORK', on: function () { attack(); } }); }
+  /* attack-tap (Nov 24 2026, Jake: 'pressed ATTACK, nothing happened'): ATTACK only scrolled to #raidBox, which starts right under this bar,
+   * so the page barely moved. It now runs the raid page's own attack (js/v2-raid.js V2Raid.attack: picked pet = the usual confirm sheet,
+   * no pet yet = jump to the pet picker and say so). Nothing is signed here. */
+  function attack() { if (window.V2Raid && V2Raid.attack && document.getElementById('rdGo')) return V2Raid.attack(); go(document.querySelector('#raidBox .rd-atk') ? '#raidBox .rd-atk' : '#raidBox'); }
   function render(w) { if (!w || !window.V2Rules) return; var sp = document.body && document.body.getAttribute('data-split'), U = window.V2UI, ME = U && U.ME, tip = (U && U.S && U.S().tip) || w.tip || 0, b = tip + 1; css();
     try { if (sp === 'fight') fight(w, ME, b); else if (sp === 'breed') breed(w, ME, b); else if (sp === 'raid') raid(w, ME, b); } catch (e) { if (window.console) console.warn('placebar', e); } }
   /* also keep itself fresh (some place pages paint their panels outside js/v2.js render): every 2 s while visible, only when the world, tip or wallet changed */
