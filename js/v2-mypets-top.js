@@ -28,7 +28,7 @@
     d.head.appendChild(s); }
   function left(blocks) { var m = blocks * 10, dd = Math.floor(m / 1440), h = Math.round((m % 1440) / 60); return dd ? dd + 'd ' + h + 'h' : h + 'h'; }
   function stat() { var el = $('mptStat'), u = U(); if (!el || !u || !u.world) return; var me = u.ME; try { me = me || localStorage.getItem('xcpets-v2-me'); } catch (e) { }
-    var w = u.world(); if (!w || !me) { el.textContent = ''; return; } var L = w.pets.filter(function (p) { return p.owner === me && !p.dead && !p.released && !p.community; });
+    var w = u.world(); if (!w || !me) { el.textContent = ''; return; } var L = V2Own.living(w, me);
     var k = new Set(((u.S && u.S().sel) || []).map(Number)), kept = L.filter(function (p) { return k.has(p.id); }).length, hungry = L.filter(function (p) { return p.hungry; }).length;
     var urg = L.filter(function (p) { return p.neglected && !p.mythicCare && p.deathBlock != null && p.deathBlock > w.tip; });
     var h = '<b>' + fmt(L.length) + '</b> pet' + (L.length === 1 ? '' : 's') + ' · ☑ <b>' + fmt(kept) + '</b> selected · 🍽️ <b>' + fmt(hungry) + '</b> hungry';
