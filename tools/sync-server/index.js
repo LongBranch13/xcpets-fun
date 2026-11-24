@@ -64,8 +64,16 @@ function salesIo(bases, boot, root) {
   root = root || ROOT;
   const vm = require('vm');
   const { getJson, hashOf, mempool, mempoolHeight, upstreamOf } = makeIo(bases);
-  const limitedFetch = (u, o) => timedFetch(u, o, FETCH_MS);
-  const wrapped = LIM.makeFetch(limitedFetch, { conc: 1, rps: +(process.env.XP_RPS || 2), timeoutMs: FETCH_MS, match: () => true });
+  /* Nov 24 2026: the sales read's global /issuances scan failed on the server on every node ('every Counterparty node failed') while
+   * the same read worked from GitHub. Its heavy pages get a longer limit for the headers (XP_SALES_FETCH_MS, default 60 s), and every
+   * failed sales request is noted per node (public names only: the public API hosts by name, anything else as 'other') so health
+   * shows why (loop.salesNet). */
+  const SALES_MS = Math.max(FETCH_MS, +(process.env.XP_SALES_FETCH_MS || 60000));
+  const nodeName = u => { try { const h = new URL(u).hostname; return /(^|\.)(counterparty\.io|unspendablelabs\.com|xcpets\.fun)$/.test(h) ? h : 'other'; } catch (e) { return 'other'; } };
+  const salesNote = (u, why) => { const k = nodeName(u), n = SALESNET[k] || (SALESNET[k] = { fails: 0 }); n.fails++; n.last = why; n.at = new Date().toISOString(); };
+  const limitedFetch = (u, o) => timedFetch(u, o, SALES_MS).then(r => { if (!r.ok) salesNote(u, 'http ' + r.status); return r; },
+    e => { salesNote(u, e && e.name === 'TimeoutError' ? (e.what || 'headers') + ' timeout' : String(e && (e.cause && e.cause.code) || e && e.name || 'error').slice(0, 30)); throw e; });
+  const wrapped = LIM.makeFetch(limitedFetch, { conc: 1, rps: +(process.env.XP_RPS || 2), timeoutMs: SALES_MS, match: () => true });
   /* the pages' localStorage, in memory. Nov 24 2026: it used to grow for as long as the service ran (every address scan the sales
    * read cached here); past 40 MB of text it now starts empty again, which only costs a re-read. */
   let store = {}, storeChars = 0; const STORE_MAX = 40 * 1048576;
@@ -80,7 +88,10 @@ function salesIo(bases, boot, root) {
   const ctx = vm.createContext(win);
   const scripts = ['rjs/config.js', 'rjs/pet-core.js', 'rjs/game-core.js', 'rjs/bonus-gear.js', 'rjs/real-core.js', 'rjs/chain.js', 'js/pet-core.js', 'js/bonus-gear.js', 'js/v2-gear.js', 'js/v2-fit.js', 'js/v2-rules.js', 'js/block-hashes.js', 'js/v2-sales.js'];
   vm.runInContext(fs.readFileSync(path.join(root, 'rjs/config.js'), 'utf8'), ctx, { filename: 'rjs/config.js' });
-  ctx.XCPETS_CONFIG.read = bases.slice(); ctx.XCPETS_CONFIG.composeList = bases.slice(); ctx.XCPETS_CONFIG.compose = bases[bases.length - 1];
+  /* the game's own node (node.xcpets.fun/v2, the same read path the pages use) is the sales read's last resort (XP_SALES_CACHE=0: off) */
+  const salesRead = bases.slice(); if (process.env.XP_SALES_CACHE !== '0' && !salesRead.some(b => /node\.xcpets\.fun/.test(b))) salesRead.push('https://node.xcpets.fun/v2');
+  ctx.XCPETS_CONFIG.read = salesRead;
+  ctx.XCPETS_CONFIG.composeList = bases.slice(); ctx.XCPETS_CONFIG.compose = bases[bases.length - 1];
   for (const f of scripts) { if (f === 'rjs/config.js') continue; vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), ctx, { filename: f }); }
   vm.runInContext('window.LiveEngine={RealCore:window.RealCore,Chain:window.Chain&&window.Chain.Chain,CFG:window.XCPETS_CONFIG};', ctx);
   const V = ctx.V2Rules, gates = { fire: V.ACTIVATE_FIRESALE_BLOCK != null ? V.ACTIVATE_FIRESALE_BLOCK : null, quest: V.questGate ? V.questGate() : null, raid: V.raidGate ? V.raidGate() : null };
@@ -194,7 +205,7 @@ function ckStart() {
     if (!m || child !== CK.proc) return;
     if (m.cmd === 'loaded') { CK.busy = false; CK.rssMB = m.rssMB || 0;
       if (m.ok) { CK.tip = m.tip; CK.loads++; CK.crashes = 0; CK.lastMs = m.ms || 0; CK.state = 'ready'; CK.why = ''; } else { CK.fails++; CK.tip = 0; CK.manifest = ''; CK.state = 'failed'; CK.why = String(m.error || '').slice(0, 60); CK.restAt = Date.now(); } return; }
-    if (m.cmd === 'checked' || m.cmd === 'shopped') { const fn = CK.pend.get(m.id); if (fn) { CK.pend.delete(m.id); fn(m); } }
+    if (m.cmd === 'checked' || m.cmd === 'shopped' || m.cmd === 'carded') { const fn = CK.pend.get(m.id); if (fn) { CK.pend.delete(m.id); fn(m); } }
   });
   child.on('exit', (code, sig) => { if (child !== CK.proc) return; CK.crashes++; CK.why = sig ? 'signal ' + sig : 'exit ' + code; CK.restAt = Date.now(); ckStop('crashed'); });
   child.on('error', () => { if (child !== CK.proc) return; CK.crashes++; CK.restAt = Date.now(); ckStop('crashed'); });
@@ -243,17 +254,28 @@ function ckShop(state) {
     try { CK.proc.send({ cmd: 'shop', id: id }); } catch (e) { clearTimeout(t); CK.pend.delete(id); res({ ok: false, error: 'not ready' }); }
   });
 }
+/* Pet share cards (GET /xp/v1/pet/<id>.png, share.js): the check service draws the card from its world (card.js). Any loaded world
+ * will do (a card a few blocks old is fine); share.js keeps at most 2 in flight and serves the copy on disk otherwise. */
+function ckCard(id) {
+  return new Promise(res => {
+    if (CK.state !== 'ready' || !CK.proc || CK.busy) { res({ ok: false, error: 'not ready' }); return; }
+    const rid = ++CK.seq, t = setTimeout(() => { CK.pend.delete(rid); res({ ok: false, error: 'slow' }); }, 4000);
+    CK.pend.set(rid, m => { clearTimeout(t); res(m); });
+    try { CK.proc.send({ cmd: 'card', id: rid, pet: id }); } catch (e) { clearTimeout(t); CK.pend.delete(rid); res({ ok: false, error: 'not ready' }); }
+  });
+}
 /* Nov 24 2026 (never freeze): the follow loop's heartbeat. Nov 23 2026 the first follow step after a restart never finished (an
  * upstream answer that stalled mid-body), so the service kept answering health with the boot file's tip, built nothing and logged
  * nothing for hours. Now every step is timed: one that runs past XP_TICK_MAX_MIN writes stall.json and exits, and systemd starts the
  * service again (Restart=always). The published world stays on disk and is served again as soon as the new process listens, which
  * it now does before it loads the rules. Health shows the heartbeat (loop) so outside watchers can tell a frozen follower. */
+const SALESNET = {};
 const LOOP = { startedAt: Date.now(), starts: [Date.now()], resumedFrom: null, savedTip: 0, runningSince: 0, lastDoneAt: 0, lastOkAt: 0, steps: 0, errors: 0, errorRun: 0, lastError: null, stall: null };
 function loopInfo() {
   const now = Date.now();
   return { upSec: Math.round((now - LOOP.startedAt) / 1000), stepSec: LOOP.runningSince ? Math.round((now - LOOP.runningSince) / 1000) : 0,
     lastStepAgoSec: LOOP.lastDoneAt ? Math.round((now - LOOP.lastDoneAt) / 1000) : null, lastOkAgoSec: LOOP.lastOkAt ? Math.round((now - LOOP.lastOkAt) / 1000) : null,
-    steps: LOOP.steps, errors: LOOP.errors, errorRun: LOOP.errorRun, fallback: !!LOOP.fallback, lastError: LOOP.lastError, lastStep: LOOP.lastError ? LOOP.lastStep || null : null, lastHint: LOOP.lastError ? LOOP.lastHint || null : null, waitSec: LOOP.errorRun ? Math.max(0, Math.round((LOOP.lastFailAt + backoffMs() - now) / 1000)) : 0, maxMin: tickMaxMs() / 60000,
+    steps: LOOP.steps, errors: LOOP.errors, errorRun: LOOP.errorRun, fallback: !!LOOP.fallback, lastError: LOOP.lastError, lastStep: LOOP.lastError ? LOOP.lastStep || null : null, lastHint: LOOP.lastError ? LOOP.lastHint || null : null, salesNet: Object.keys(SALESNET).length ? SALESNET : null, waitSec: LOOP.errorRun ? Math.max(0, Math.round((LOOP.lastFailAt + backoffMs() - now) / 1000)) : 0, maxMin: tickMaxMs() / 60000,
     lastStall: LOOP.stall ? { at: LOOP.stall.at, tip: LOOP.stall.tip, sec: LOOP.stall.sec } : null,
     restarts1h: LOOP.starts.filter(t => now - t < 3600e3).length - 1, restarts24h: LOOP.starts.filter(t => now - t < 86400e3).length - 1,
     resumedFrom: LOOP.resumedFrom, heapMB: Math.round(process.memoryUsage().heapUsed / 1048576), heapLimitMB: HEAP_LIMIT_MB };
@@ -330,7 +352,7 @@ function main() {
   { const l0 = readLatest(dataDir); if (l0 && l0.tip) state.world = { ready: true, rsig: l0.rsig, tip: l0.tip, manifest: l0.manifest }; }
   state.loop = loopInfo; state.check = ckInfo; state.mem = memInfo; state.snap = snapState;
   /* listen first: the published world on disk is served again within a second of a restart, before the rules (a few seconds) load */
-  const httpd = createServer({ getState: () => state, dataDir: dataDir, check: body => ckAsk(state, body), shop: () => ckShop(state) });
+  const httpd = createServer({ getState: () => state, dataDir: dataDir, check: body => ckAsk(state, body), shop: () => ckShop(state), card: id => ckCard(id) });
   const port = +(process.env.XP_PORT || 8787);
   httpd.server.listen(port, '127.0.0.1');
   const rules = follower(dataDir);
@@ -381,4 +403,4 @@ function main() {
   return { server: httpd.server, state, stop() { clearInterval(timer); clearInterval(guard); httpd.server.close(); } };
 }
 if (require.main === module) main();
-module.exports = { main, errHint, backoffMs, loopInfo, stallCheck, errCode, saveFollow, readFollow, recordStart, _LOOP: LOOP, chainFns, seedHashes, writeLatest, backfillRsigLatest, PUBLIC, memInfo, ckInfo, _CK: CK, ckTick, ckAsk, ckShop, ckStop };
+module.exports = { main, errHint, backoffMs, loopInfo, stallCheck, errCode, saveFollow, readFollow, recordStart, _LOOP: LOOP, chainFns, seedHashes, writeLatest, backfillRsigLatest, PUBLIC, memInfo, ckInfo, _CK: CK, ckTick, ckAsk, ckShop, ckCard, ckStop };

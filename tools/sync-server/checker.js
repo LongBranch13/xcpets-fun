@@ -11,7 +11,7 @@
  *     Spam City's order book (Nov 23 2026): the same pack js/v2-orderbook-worker.js makes after a full replay in the browser.
  * It runs only between world builds (the parent stops it before a build starts), so the two never hold a world at once. */
 const fs = require('fs'), path = require('path'), vm = require('vm');
-let world = null, ownerTable = null, ctx = null, Art = null, orders = [], shopPack = null, loaded = { tip: 0, rsig: '', ms: 0 };
+let world = null, ownerTable = null, ctx = null, Art = null, Card = null, orders = [], shopPack = null, loaded = { tip: 0, rsig: '', ms: 0 };
 function send(m) { try { if (process.send) process.send(m); } catch (e) { } }
 function mem() { const u = process.memoryUsage(); return { rssMB: u.rss >> 20, heapMB: u.heapUsed >> 20 }; }
 function load(m) {
@@ -22,6 +22,9 @@ function load(m) {
   const C = require(path.join(code, 'tools', 'sync-server', 'client.js')).bootSync();
   const R = require(path.join(code, 'js', 'v2-resume.js'));
   Art = require(path.join(code, 'js', 'v2-art.js'));
+  /* pet share cards (card.js, hatchbot/art.js and the sprite scripts are installed with this service by server-repair, not by the rules
+   * follower: v2-render.js changes often and every followed-file change restarts the service) */
+  Card = { file: path.join(__dirname, 'card.js'), mod: null };
   /* the world must have been built from these exact rule files */
   const rsig = S.rulesSig(S.loadBytes(code));
   if (m.rsig && rsig !== m.rsig) throw new Error('rules differ');
@@ -92,6 +95,14 @@ function shop(m) {
   }
   return Object.assign({ id: m.id, ok: true }, shopPack);
 }
+/* Pet share card (share.js asks through the parent): { id, ok, tip, png (base64), meta } or { id, ok, none } for no such pet. */
+function card(m) {
+  if (!world || !ctx || !Card) return { id: m.id, ok: false, error: 'not ready' };
+  if (!Card.mod) Card.mod = require(Card.file);
+  const r = Card.mod.draw(ctx, world, m.pet);
+  if (!r) return { id: m.id, ok: true, none: 1, tip: world.tip };
+  return { id: m.id, ok: true, tip: world.tip, png: r.png.toString('base64'), meta: r.meta };
+}
 process.on('message', m => {
   if (!m || typeof m !== 'object') return;
   if (m.cmd === 'check') { let out; try { out = check(m); } catch (e) { out = { id: m.id, ok: false, error: 'check failed' }; } send(Object.assign({ cmd: 'checked' }, out)); return; }
@@ -100,7 +111,8 @@ process.on('message', m => {
     send(out); return;
   }
   if (m.cmd === 'shop') { let out; try { out = shop(m); } catch (e) { out = { id: m.id, ok: false, error: 'shop failed' }; } send(Object.assign({ cmd: 'shopped' }, out)); return; }
+  if (m.cmd === 'card') { let out; try { out = card(m); } catch (e) { out = { id: m.id, ok: false, error: 'card failed' }; } send(Object.assign({ cmd: 'carded' }, out)); return; }
   if (m.cmd === 'mem') send(Object.assign({ cmd: 'mem', tip: world ? world.tip : 0 }, mem()));
 });
 process.on('disconnect', () => process.exit(0));
-module.exports = { load, check, shop };
+module.exports = { load, check, shop, card };

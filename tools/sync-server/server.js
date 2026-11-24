@@ -1,11 +1,12 @@
 'use strict';
-/* HTTP surface for xcpets-sync. GET (incl. /xp/v1/shop, Spam City's order book), HEAD and OPTIONS, plus POST for /xp/v1/check only (the burn check, Nov 23 2026). Other POSTs, PUT
+/* HTTP surface for xcpets-sync. GET (incl. /xp/v1/shop, Spam City's order book, /xp/v1/pet/<id> share links and cards), HEAD and OPTIONS, plus POST for /xp/v1/check only (the burn check, Nov 23 2026). Other POSTs, PUT
  * and DELETE are 405. */
 const http = require('http'), fs = require('fs'), path = require('path'), zlib = require('zlib'), { URL } = require('url');
 const { buildAnswer } = require('./answer');
 const { hostKind } = require('./client');
 const { clientIp } = require('./net');
 const { answer: graveAnswer } = require('./graves');
+const share = require('./share');
 function rateLimit(max) { const hits = new Map(); return function (ip) { const now = Date.now(), slot = hits.get(ip) || { t: now, n: 0 };
   if (now - slot.t > 10000) { slot.t = now; slot.n = 0; } slot.n++; hits.set(ip, slot); return slot.n <= max; }; }
 function cors(res) { res.setHeader('Access-Control-Allow-Origin', '*'); res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, POST, OPTIONS'); res.setHeader('Access-Control-Expose-Headers', 'ETag'); res.setHeader('Vary', 'Accept-Encoding'); }
@@ -63,6 +64,8 @@ function checkBody(raw) {
 function createServer(opts) {
   const getState = opts.getState, dataDir = opts.dataDir || path.join(require('os').tmpdir(), 'xcpets-sync');
   const allow = rateLimit(opts.ratePer10s || +(process.env.XP_RATE_PER_10S || 60));
+  /* pet share links and cards (share.js): GET /xp/v1/pet/<id> and /xp/v1/pet/<id>.png; cards come from the check service (opts.card) */
+  const cards = share.makeCards({ dataDir: dataDir, card: opts.card });
   const server = http.createServer((req, res) => {
     const ip = clientIp(req);
     let pathOnly = '/'; try { pathOnly = new URL(req.url, 'http://127.0.0.1').pathname; } catch (e) {}
@@ -89,6 +92,7 @@ function createServer(opts) {
     if (req.method !== 'GET' && req.method !== 'HEAD') { cors(res); res.setHeader('Allow', 'GET, HEAD, OPTIONS'); res.writeHead(405); res.end(); return; }
     let u; try { u = new URL(req.url, 'http://127.0.0.1'); } catch (e) { send(req, res, 400, { v: 1, error: 'bad url' }); return; }
     const p = u.pathname.replace(/\/+$/, '') || '/';
+    if (share.handle(req, res, p, cards, send)) return;
     /* Spam City's order book (Nov 23 2026): listings, the pets they name, pet tokens and dex orders from the check service's world,
      * the same pack the shop page used to rebuild with a full replay in the browser. The page uses it only when its tip and rsig match. */
     if (p === '/xp/v1/shop') {

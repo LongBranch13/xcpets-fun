@@ -32,7 +32,7 @@
   function skips(petId) { try { return JSON.parse(localStorage.getItem(skipKey(petId)) || '[]'); } catch (e) { return []; } }
   function setSkips(petId, a) { try { localStorage.setItem(skipKey(petId), JSON.stringify(a)); } catch (e) { } }
   /* ---------- data ---------- */
-  function myPets(w, ME) { return w.pets.filter(function (p) { return p.owner === ME && !p.dead && !p.released && !p.community && p.stage >= 3; }); }
+  function myPets(w, ME) { return V2Own.living(w, ME).filter(function (p) { return p.stage >= 3; }); }
   function cardKey(c) { return c.ad ? 'a' + c.ad.id : 'd' + c.pet.id; }
   /** deck(w, me, my): open ads (newest first) that my pet `my` qualifies for. Only posted pets ever appear. */
   function deck(w, ME, my, withSkipped) { var b = tip() + 1, sk = withSkipped ? [] : skips(my.id), out = [];

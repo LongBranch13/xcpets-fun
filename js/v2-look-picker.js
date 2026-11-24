@@ -128,7 +128,7 @@
       if (c > bn || (c === bn && s > bs) || (c === bn && s === bs && p.id < best.id)) { best = p; bn = c; bs = s; } }
     return best.id; }
   /* Rare Room Looks station: pick one of your pets (shared picker + sort menu), then the panel for it */
-  function station(el, w, ME) { css(); if (!el.__st) el.__st = { pid: 0 }; var S = el.__st, live = w.pets.filter(function (p) { return p.owner === ME && !p.dead && !p.released && !p.community; });
+  function station(el, w, ME) { css(); if (!el.__st) el.__st = { pid: 0 }; var S = el.__st, live = V2Own.living(w, ME);
     if (!S.pid && live[0]) S.pid = startPet(w, live); /* start on the pet already wearing the most looks, then the best Pet Score */
     el.innerHTML = '<h2 class="sec" data-ico="gear">🃏 ' + esc(NAMES.station) + '</h2><p class="small muted">Pick a pet, then decorate its card with any look you own. All its changes go out together (up to 6 changes per burn).</p><div id="lpPick"></div><div id="lpBody"></div>';
     if (window.V2Picker) V2Picker.mount($('lpPick'), { id: 'looks', w: w, me: ME, noWho: true, dir: true, sorts: ['score', 'rarity', 'power', 'newest'], selected: S.pid,

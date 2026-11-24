@@ -1,0 +1,969 @@
+{
+"note": "HatchBot Telegram packs (Nov 24 2026). Order = emoji pack order (every species bare first). The sticker pack groups the same files by species. Made by make-images.py; uploaded by hatchbot/stickers/packs.js (workflow telegram-packs).",
+"pets": [
+{
+"file": "pepe-no-gear.png",
+"species": "pepe",
+"label": "Pepe",
+"look": "no",
+"emoji": [
+"🐸"
+],
+"keywords": [
+"pepe",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "peepo-no-gear.png",
+"species": "peepo",
+"label": "Peepo",
+"look": "no",
+"emoji": [
+"🥲"
+],
+"keywords": [
+"peepo",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "wojak-no-gear.png",
+"species": "wojak",
+"label": "Wojak",
+"look": "no",
+"emoji": [
+"😐"
+],
+"keywords": [
+"wojak",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "chud-no-gear.png",
+"species": "chud",
+"label": "Chud",
+"look": "no",
+"emoji": [
+"🤓"
+],
+"keywords": [
+"chud",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "bobo-no-gear.png",
+"species": "bobo",
+"label": "Bobo",
+"look": "no",
+"emoji": [
+"🐻"
+],
+"keywords": [
+"bobo",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "mumu-no-gear.png",
+"species": "mumu",
+"label": "Mumu",
+"look": "no",
+"emoji": [
+"🐮"
+],
+"keywords": [
+"mumu",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "doge-no-gear.png",
+"species": "doge",
+"label": "Doge",
+"look": "no",
+"emoji": [
+"🐶"
+],
+"keywords": [
+"doge",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "sarutobi-no-gear.png",
+"species": "sarutobi",
+"label": "Sarutobi",
+"look": "no",
+"emoji": [
+"🐵"
+],
+"keywords": [
+"sarutobi",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "lenny-no-gear.png",
+"species": "lenny",
+"label": "Lenny",
+"look": "no",
+"emoji": [
+"😏"
+],
+"keywords": [
+"lenny",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "snibby-no-gear.png",
+"species": "snibby",
+"label": "Snibby",
+"look": "no",
+"emoji": [
+"🐥"
+],
+"keywords": [
+"snibby",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "kevin-no-gear.png",
+"species": "kevin",
+"label": "KEVIN",
+"look": "no",
+"emoji": [
+"🗿"
+],
+"keywords": [
+"kevin",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "dodo-no-gear.png",
+"species": "dodo",
+"label": "Dodo",
+"look": "no",
+"emoji": [
+"🦤"
+],
+"keywords": [
+"dodo",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "nakamoto-no-gear.png",
+"species": "nakamoto",
+"label": "Nakamoto",
+"look": "no",
+"emoji": [
+"🕵️"
+],
+"keywords": [
+"nakamoto",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "wizard-no-gear.png",
+"species": "wizard",
+"label": "Bitcoin Wizard",
+"look": "no",
+"emoji": [
+"🧙"
+],
+"keywords": [
+"bitcoin wizard",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "kek-no-gear.png",
+"species": "kek",
+"label": "Lord Kek",
+"look": "no",
+"emoji": [
+"👑"
+],
+"keywords": [
+"lord kek",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "chad-no-gear.png",
+"species": "chad",
+"label": "Chad",
+"look": "no",
+"emoji": [
+"😎"
+],
+"keywords": [
+"chad",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "homer-no-gear.png",
+"species": "homer",
+"label": "Homer Pepe",
+"look": "no",
+"emoji": [
+"🍩"
+],
+"keywords": [
+"homer pepe",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "funtrump-no-gear.png",
+"species": "funtrump",
+"label": "FUNTRUMP",
+"look": "no",
+"emoji": [
+"🍊"
+],
+"keywords": [
+"funtrump",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "djpepe-no-gear.png",
+"species": "djpepe",
+"label": "DJ Pepe",
+"look": "no",
+"emoji": [
+"🎧"
+],
+"keywords": [
+"dj pepe",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "orangedragon-no-gear.png",
+"species": "orangedragon",
+"label": "Orange Dragon",
+"look": "no",
+"emoji": [
+"🐉"
+],
+"keywords": [
+"orange dragon",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "starlordkek-no-gear.png",
+"species": "starlordkek",
+"label": "Star-Lord Kek",
+"look": "no",
+"emoji": [
+"⭐"
+],
+"keywords": [
+"star-lord kek",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "gooby-no-gear.png",
+"species": "gooby",
+"label": "Gooby",
+"look": "no",
+"emoji": [
+"🐧"
+],
+"keywords": [
+"gooby",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "lukespam-no-gear.png",
+"species": "lukespam",
+"label": "Luke Spam Junior",
+"look": "no",
+"emoji": [
+"🧢"
+],
+"keywords": [
+"luke spam junior",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "whiterabbit-no-gear.png",
+"species": "rabbit",
+"label": "White Rabbit",
+"look": "no",
+"emoji": [
+"🐇"
+],
+"keywords": [
+"white rabbit",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "pepe-some-gear.png",
+"species": "pepe",
+"label": "Pepe",
+"look": "some",
+"emoji": [
+"🐸",
+"😎"
+],
+"keywords": [
+"pepe",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "peepo-some-gear.png",
+"species": "peepo",
+"label": "Peepo",
+"look": "some",
+"emoji": [
+"🥲",
+"😎"
+],
+"keywords": [
+"peepo",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "wojak-some-gear.png",
+"species": "wojak",
+"label": "Wojak",
+"look": "some",
+"emoji": [
+"😐",
+"😎"
+],
+"keywords": [
+"wojak",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "chud-some-gear.png",
+"species": "chud",
+"label": "Chud",
+"look": "some",
+"emoji": [
+"🤓",
+"😎"
+],
+"keywords": [
+"chud",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "bobo-some-gear.png",
+"species": "bobo",
+"label": "Bobo",
+"look": "some",
+"emoji": [
+"🐻",
+"😎"
+],
+"keywords": [
+"bobo",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "mumu-some-gear.png",
+"species": "mumu",
+"label": "Mumu",
+"look": "some",
+"emoji": [
+"🐮",
+"😎"
+],
+"keywords": [
+"mumu",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "doge-some-gear.png",
+"species": "doge",
+"label": "Doge",
+"look": "some",
+"emoji": [
+"🐶",
+"😎"
+],
+"keywords": [
+"doge",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "sarutobi-some-gear.png",
+"species": "sarutobi",
+"label": "Sarutobi",
+"look": "some",
+"emoji": [
+"🐵",
+"😎"
+],
+"keywords": [
+"sarutobi",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "lenny-some-gear.png",
+"species": "lenny",
+"label": "Lenny",
+"look": "some",
+"emoji": [
+"😏",
+"😎"
+],
+"keywords": [
+"lenny",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "snibby-some-gear.png",
+"species": "snibby",
+"label": "Snibby",
+"look": "some",
+"emoji": [
+"🐥",
+"😎"
+],
+"keywords": [
+"snibby",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "kevin-some-gear.png",
+"species": "kevin",
+"label": "KEVIN",
+"look": "some",
+"emoji": [
+"🗿",
+"😎"
+],
+"keywords": [
+"kevin",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "dodo-some-gear.png",
+"species": "dodo",
+"label": "Dodo",
+"look": "some",
+"emoji": [
+"🦤",
+"😎"
+],
+"keywords": [
+"dodo",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "nakamoto-some-gear.png",
+"species": "nakamoto",
+"label": "Nakamoto",
+"look": "some",
+"emoji": [
+"🕵️",
+"😎"
+],
+"keywords": [
+"nakamoto",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "wizard-some-gear.png",
+"species": "wizard",
+"label": "Bitcoin Wizard",
+"look": "some",
+"emoji": [
+"🧙",
+"😎"
+],
+"keywords": [
+"bitcoin wizard",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "kek-some-gear.png",
+"species": "kek",
+"label": "Lord Kek",
+"look": "some",
+"emoji": [
+"👑",
+"😎"
+],
+"keywords": [
+"lord kek",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "chad-some-gear.png",
+"species": "chad",
+"label": "Chad",
+"look": "some",
+"emoji": [
+"😎"
+],
+"keywords": [
+"chad",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "homer-some-gear.png",
+"species": "homer",
+"label": "Homer Pepe",
+"look": "some",
+"emoji": [
+"🍩",
+"😎"
+],
+"keywords": [
+"homer pepe",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "funtrump-some-gear.png",
+"species": "funtrump",
+"label": "FUNTRUMP",
+"look": "some",
+"emoji": [
+"🍊",
+"😎"
+],
+"keywords": [
+"funtrump",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "pepe-full-gear.png",
+"species": "pepe",
+"label": "Pepe",
+"look": "full",
+"emoji": [
+"🐸",
+"😎"
+],
+"keywords": [
+"pepe",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "peepo-full-gear.png",
+"species": "peepo",
+"label": "Peepo",
+"look": "full",
+"emoji": [
+"🥲",
+"😎"
+],
+"keywords": [
+"peepo",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "wojak-full-gear.png",
+"species": "wojak",
+"label": "Wojak",
+"look": "full",
+"emoji": [
+"😐",
+"😎"
+],
+"keywords": [
+"wojak",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "chud-full-gear.png",
+"species": "chud",
+"label": "Chud",
+"look": "full",
+"emoji": [
+"🤓",
+"😎"
+],
+"keywords": [
+"chud",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "bobo-full-gear.png",
+"species": "bobo",
+"label": "Bobo",
+"look": "full",
+"emoji": [
+"🐻",
+"😎"
+],
+"keywords": [
+"bobo",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "mumu-full-gear.png",
+"species": "mumu",
+"label": "Mumu",
+"look": "full",
+"emoji": [
+"🐮",
+"😎"
+],
+"keywords": [
+"mumu",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "doge-full-gear.png",
+"species": "doge",
+"label": "Doge",
+"look": "full",
+"emoji": [
+"🐶",
+"😎"
+],
+"keywords": [
+"doge",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "sarutobi-full-gear.png",
+"species": "sarutobi",
+"label": "Sarutobi",
+"look": "full",
+"emoji": [
+"🐵",
+"😎"
+],
+"keywords": [
+"sarutobi",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "lenny-full-gear.png",
+"species": "lenny",
+"label": "Lenny",
+"look": "full",
+"emoji": [
+"😏",
+"😎"
+],
+"keywords": [
+"lenny",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "snibby-full-gear.png",
+"species": "snibby",
+"label": "Snibby",
+"look": "full",
+"emoji": [
+"🐥",
+"😎"
+],
+"keywords": [
+"snibby",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "kevin-full-gear.png",
+"species": "kevin",
+"label": "KEVIN",
+"look": "full",
+"emoji": [
+"🗿",
+"😎"
+],
+"keywords": [
+"kevin",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "dodo-full-gear.png",
+"species": "dodo",
+"label": "Dodo",
+"look": "full",
+"emoji": [
+"🦤",
+"😎"
+],
+"keywords": [
+"dodo",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "nakamoto-full-gear.png",
+"species": "nakamoto",
+"label": "Nakamoto",
+"look": "full",
+"emoji": [
+"🕵️",
+"😎"
+],
+"keywords": [
+"nakamoto",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "wizard-full-gear.png",
+"species": "wizard",
+"label": "Bitcoin Wizard",
+"look": "full",
+"emoji": [
+"🧙",
+"😎"
+],
+"keywords": [
+"bitcoin wizard",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "kek-full-gear.png",
+"species": "kek",
+"label": "Lord Kek",
+"look": "full",
+"emoji": [
+"👑",
+"😎"
+],
+"keywords": [
+"lord kek",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "chad-full-gear.png",
+"species": "chad",
+"label": "Chad",
+"look": "full",
+"emoji": [
+"😎"
+],
+"keywords": [
+"chad",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "homer-full-gear.png",
+"species": "homer",
+"label": "Homer Pepe",
+"look": "full",
+"emoji": [
+"🍩",
+"😎"
+],
+"keywords": [
+"homer pepe",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "funtrump-full-gear.png",
+"species": "funtrump",
+"label": "FUNTRUMP",
+"look": "full",
+"emoji": [
+"🍊",
+"😎"
+],
+"keywords": [
+"funtrump",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "djpepe-full-gear.png",
+"species": "djpepe",
+"label": "DJ Pepe",
+"look": "full",
+"emoji": [
+"🎧",
+"😎"
+],
+"keywords": [
+"dj pepe",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "bojackson-full-gear.png",
+"species": "bojackson",
+"label": "Bo Jackson",
+"look": "full",
+"emoji": [
+"🏈",
+"😎"
+],
+"keywords": [
+"bo jackson",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "rarepigeon-full-gear.png",
+"species": "rarepigeon",
+"label": "Rarepigeon",
+"look": "full",
+"emoji": [
+"🐦",
+"😎"
+],
+"keywords": [
+"rarepigeon",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "jacksonpepe-full-gear.png",
+"species": "jacksonpepe",
+"label": "Old Hickory Pepe",
+"look": "full",
+"emoji": [
+"🎩",
+"😎"
+],
+"keywords": [
+"old hickory pepe",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "viking-full-gear.png",
+"species": "viking",
+"label": "Viking",
+"look": "full",
+"emoji": [
+"🪓",
+"😎"
+],
+"keywords": [
+"viking",
+"xcpets",
+"pet"
+]
+},
+{
+"file": "starlordkek-full-gear.png",
+"species": "starlordkek",
+"label": "Star-Lord Kek",
+"look": "full",
+"emoji": [
+"⭐",
+"😎"
+],
+"keywords": [
+"star-lord kek",
+"xcpets",
+"pet"
+]
+}
+]
+}
