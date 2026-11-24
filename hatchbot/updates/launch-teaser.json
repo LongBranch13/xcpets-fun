@@ -1,0 +1,12 @@
+{
+  "_note": "Draft (Nov 24 2026), not posted. Posts only when the owner runs Actions > hatchbot > Run workflow > update: launch-teaser. {PLACEHOLDERS} must be filled in first; announce.js refuses to post a file that still has one.",
+  "posts": [
+    {
+      "art": {
+        "kind": "image",
+        "file": "teaser-egg.png"
+      },
+      "text": "🥚 Something is hatching...\n\n21 of them. Numbered. Each one bonded to a pet you already own.\n\n👀 More soon. xcpets.fun"
+    }
+  ]
+}

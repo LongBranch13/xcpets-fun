@@ -460,6 +460,9 @@ function bossSet(art) { if (!art) return null; if (BOSS[art] !== undefined) retu
 /** event(ctx, w, ev): ev = { kind, id, ids: [a, b], egg, top, bottom, ... }. Returns a file for Telegram, or null when it cannot be drawn. */
 function event(ctx, w, ev) {
   const k = ev.kind, cap = { top: ev.top, bottom: ev.bottom };
+  if (k === 'image') { /* a prepared picture shipped in the repo (hatchbot/updates/img/), e.g. merch or Pet Shell art for an update series */
+    const f = path.join(ROOT, 'hatchbot/updates/img', path.basename(String(ev.file || '')));
+    return /\.(png|jpe?g)$/i.test(f) && fs.existsSync(f) ? { type: 'photo', name: path.basename(f), file: fs.readFileSync(f) } : null; }
   if (k === 'banner') return anim(banner(Object.assign({}, cap, { color: ev.color && C[ev.color] })));
   if (k === 'raid') { const B = bossSet(ev.art); return B ? anim(raid(B, Object.assign({}, cap, { phase: ev.phase, pct: ev.pct, from: ev.from, dmg: ev.dmg }))) : anim(banner(Object.assign({ color: C.red }, cap))); }
   load(ctx); const pet0 = id => w.byId[id];
