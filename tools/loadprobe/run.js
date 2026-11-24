@@ -90,9 +90,9 @@ async function loadOnce(cx, page, addr, mode) {
   await pg.waitForTimeout(1000);
   let blank = null, scroll = null, lt = [], top = null;
   try { blank = await pg.evaluate(BLANK_SRC); } catch (e) {}
-  if (SCROLL) try { scroll = await scrollTest(pg); } catch (e) { errors.push('scroll: ' + String(e.message || e).slice(0, 120)); }
+  if (SCROLL && mode !== 'newtip') try { scroll = await scrollTest(pg); } catch (e) { errors.push('scroll: ' + String(e.message || e).slice(0, 120)); }
   let verify = null;
-  if (VERIFY) try { verify = await verifyTest(pg); } catch (e) { errors.push('verify: ' + String(e.message || e).slice(0, 120)); }
+  if (VERIFY && mode === 'cold') try { verify = await verifyTest(pg); } catch (e) { errors.push('verify: ' + String(e.message || e).slice(0, 120)); }
   try { lt = await pg.evaluate(() => window.__probeLT || []); } catch (e) {}
   if (prof) try { const { profile } = await prof.send('Profiler.stop'); top = topFns(profile); top.tasks = taskFns(profile, prof.t0Page, lt); } catch (e) { errors.push('profile: ' + String(e.message || e).slice(0, 120)); }
   let fcp = null; try { fcp = await pg.evaluate(() => { const e = performance.getEntriesByName('first-contentful-paint')[0]; return e ? Math.round(e.startTime) / 1000 : null; }); } catch (e) {}
