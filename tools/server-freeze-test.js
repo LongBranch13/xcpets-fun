@@ -129,8 +129,14 @@ function stallServer() {
   const on = await SW.toggleAlerts(subEnv, 4242), list = await SW.recipients(subEnv, store), off = await SW.toggleAlerts(subEnv, 4242);
   ok('server watch: /alerts subscribes and unsubscribes a private chat', /on/.test(on) && list.includes('4242') && /off/.test(off) && !(await SW.recipients(subEnv, store)).includes('4242'));
 
+  /* Nov 24 2026: server-repair copies tools/sync-server and tools/lib. Every non-builtin require of the service must resolve inside them. */
+  const svc = fs.readdirSync(path.join(__dirname, 'sync-server')).filter(f => f.endsWith('.js') && f !== 'checker.js');
+  const outside = [];
+  svc.forEach(f => { const src = fs.readFileSync(path.join(__dirname, 'sync-server', f), 'utf8'); (src.match(/require\('(\.\.?\/[^']+)'\)/g) || []).forEach(m => { const rel = m.slice(9, -2); if (rel === '../..') return; const abs = path.resolve(__dirname, 'sync-server', rel); if (!abs.startsWith(path.join(__dirname, 'sync-server')) && !abs.startsWith(path.join(__dirname, 'lib')) && !abs.startsWith(path.join(ROOT, 'js'))) outside.push(f + ' -> ' + rel); }); });
+  ok('service requires stay inside what server-repair installs (tools/sync-server, tools/lib, js/)', outside.length === 0, outside.join(', '));
+  ok('net.js does not depend on a tools/lib helper the server may not have yet', !/require\('\.\.\/lib/.test(fs.readFileSync(path.join(__dirname, 'sync-server', 'net.js'), 'utf8')));
   const repair = fs.readFileSync(path.join(ROOT, '.github/workflows/server-repair.yml'), 'utf8');
-  ok('server-repair installs the sync watchdog timer and the feed time limit', /xcpets-sync-watchdog\.timer/.test(repair) && /TimeoutStartSec=40min/.test(repair) && /"stepSec":\[0-9\]\+/.test(repair));
+  ok('server-repair installs the sync watchdog timer, the feed time limit and tools/lib', /ss\.tgz" tools\/sync-server tools\/lib/.test(repair) && /xcpets-sync-watchdog\.timer/.test(repair) && /TimeoutStartSec=40min/.test(repair) && /"stepSec":\[0-9\]\+/.test(repair));
 
   console.log('\nserver-freeze-test: ' + pass + ' passed, ' + fail + ' failed');
   process.exit(fail ? 1 : 0);
