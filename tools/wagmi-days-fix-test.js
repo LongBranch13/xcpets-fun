@@ -37,10 +37,11 @@ function run(gate) {
   const mine = w.log.filter(l => l.block >= b1 && (l.src === who || l.owner === who || String(l.msg || '').indexOf(who) >= 0));
   return { V, w, who, b1, b2, said: mine.filter(l => l.kind === 'wagmi' && !/counts once/.test(l.msg || '')).length, kinds: mine.map(l => l.kind + (/counts once/.test(l.msg || '') ? '(counts once)' : '')), streak: V.streakOf(w, who, b2), spins: JSON.stringify((w.spins || {})[who] || (w.savedSpins || {})[who] || null) };
 }
-const on = run(tip - 10), off = run(GATE);
+/* off: the switch moved past the test blocks (the feed tip is past the real gate since Nov 24 2026, so the real block no longer works here) */
+const on = run(tip - 10), off = run(99999999);
 ok(on.who && on.who === off.who, 'test wallet ' + String(on.who).slice(0, 10) + '…');
 ok(on.said === 1, 'gate on: two WAGMI burns on the same game day count once (' + on.said + ' counted; log ' + on.kinds.join(',') + ')');
-ok(off.b2 < GATE, 'gate off: the test blocks ' + off.b1 + '-' + off.b2 + ' are before ' + GATE);
+ok(off.b2 < 99999999, 'gate off: the test blocks ' + off.b1 + '-' + off.b2 + ' are before the moved switch');
 ok(off.said === 2, 'gate off: before the block the old rule still takes the second burn, so replay history is unchanged (' + off.said + ' counted)');
 ok(on.streak.today && off.streak.today && on.streak.current === off.streak.current, 'the page streak counts the day once either way (current ' + on.streak.current + ')');
 console.log(`wagmi-days-fix: ${n - fails} passed, ${fails} failed`); process.exit(fails ? 1 : 0);
