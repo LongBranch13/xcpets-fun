@@ -76,12 +76,14 @@
       px(x, '#2a0a10', c[0], c[1], 3, 7); px(x, '#c8102e', c[0], c[1] + 2, 3, 5); px(x, '#8e0b20', c[0] + 2, c[1] + 2, 1, 5);
       px(x, '#ffffff', c[0] + 1, c[1], 1, 1); px(x, '#ff2a2a', c[0], c[1] + 1, 3, 1);
     });
-    px(x, '#1a1020', 186, 62, 54, 24); px(x, '#c8102e', 187, 63, 52, 22); px(x, '#8e0b20', 187, 63, 52, 2);
-    txt(x, 'DOOM', 196, 70, '#ffffff');
-    [[168, 58, 8], [173, 62, 6], [178, 66, 4]].forEach(function (c) {
-      px(x, '#ffffff', c[0], c[1], 3, 1); px(x, '#ff2a2a', c[0], c[1] + 1, 3, 1); px(x, '#c8102e', c[0], c[1] + 2, 3, c[2] - 2);
+    /* doom-board-overlap (owner Nov 24 2026: "overlap"): the board sat on top of the register's LIST tag. It now hangs higher on the empty wall
+     * (y 50 to 72, clear of the sign above and the LIST tag at y 82), and the falling chart lives inside it instead of poking off the glass case. */
+    px(x, '#1a1020', 186, 50, 54, 22); px(x, '#c8102e', 187, 51, 52, 20); px(x, '#8e0b20', 187, 51, 52, 2);
+    txt(x, 'DOOM', 192, 58, '#ffffff');
+    [[215, 55, 7], [221, 58, 6], [227, 61, 5]].forEach(function (c) {
+      px(x, '#ffffff', c[0], c[1], 3, 1); px(x, '#ff2a2a', c[0], c[1] + 1, 3, 1); px(x, '#5a0612', c[0], c[1] + 2, 3, c[2] - 2);
     });
-    px(x, '#ff2a2a', 222, 66, 1, 3); px(x, '#ff2a2a', 221, 68, 3, 1); px(x, '#c8102e', 222, 69, 1, 1);
+    px(x, '#ffffff', 234, 57, 1, 5); px(x, '#ffffff', 232, 61, 5, 1); px(x, '#ffffff', 233, 62, 3, 1); px(x, '#ffffff', 234, 63, 1, 1);
   }
 
   function draw() { var x = cv.getContext('2d'), t = reduced() ? 0 : ST.t, d = D(); PF.cw = d && d.W;
