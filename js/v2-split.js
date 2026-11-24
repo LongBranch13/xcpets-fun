@@ -267,6 +267,10 @@
       early = { root: root, who: who, latestP: latestP, healthP: healthP, viewP: viewP };
     } catch (e) { early = null; }
   })();
+  /* first (an answer already asked for, or null), else ask(); one more ask after 1.2 s when that fails */
+  function again(first, ask) {
+    return (first || ask()).then(null, function () { return new Promise(function (r) { setTimeout(r, 1200); }).then(ask); });
+  }
   function takeEarly(root) { var e = early; early = null; return e && e.root === root && e.who === me() ? e : null; }
   function prepare(cb) {
     if (off() || !base()) { cb(null); return; }
@@ -277,11 +281,15 @@
     /* Nov 24 2026: health and latest.json are asked together (they were one after the other: one more round trip before
      * any pet, ~0.3 s on a phone network). health only feeds the staleness check below; a failed health read failed the
      * whole fast path before and still does. */
-    var latestP = pre ? pre.latestP : getJson(root + '/xp/v1/world/latest.json', 8000, true);
+    /* Never wait on a busy server (Nov 24 2026): the live probe saw pages give up the published world after one missed
+     * answer and rebuild the game in the browser instead (40-53 s, ~55 MB, 350 MB of memory). latest.json is asked once
+     * more after a short pause. health only feeds the staleness check: without it the page still paints the published
+     * world, and the next refresh (recheck) runs the staleness check and the full check when it is too old. */
+    var latestP = again(pre ? pre.latestP : null, function () { return getJson(root + '/xp/v1/world/latest.json', 8000, true); });
     latestP.then(null, function () {});
-    (pre ? pre.healthP : getJson(root + '/xp/v1/health', 8000, true)).then(function (h) {
+    again(pre ? pre.healthP : null, function () { return getJson(root + '/xp/v1/health', 8000, true); }).then(null, function () { return null; }).then(function (h) {
       chainTip = h && h.tip || 0;
-      noteHealth(chainTip); noteCheck(h);
+      if (h) { noteHealth(chainTip); noteCheck(h); }
       return latestP;
     }).then(function (latest) {
       /* Never go dark (Nov 22 2026): latest.json built with other rules than this page's? The server keeps the newest
@@ -303,7 +311,7 @@
       var who = me();
       var preView = pre ? pre.viewP.then(function (v) { return v && v.folder === folder ? v : null; }, function () { return null; }) : Promise.resolve(null);
       return preView.then(function (v) {
-      var summaryP = v ? v.summaryP.then(null, function () { return getJson(folder + 'view/summary.json', 12000, false); }) : getJson(folder + 'view/summary.json', 12000, false);
+      var summaryP = again(v ? v.summaryP : null, function () { return getJson(folder + 'view/summary.json', 12000, false); });
       var pageP = v && v.pageP ? v.pageP : who ? sha2(who).then(function (hex) {
         return getJson(folder + 'view/own/' + hex + '.json', 12000, false).then(function (page) {
           return { hex: hex, page: page };
@@ -364,7 +372,8 @@
   }
   function recheck() {
     if (!last || !last.man) return Promise.resolve(false);
-    return getJson(base() + '/xp/v1/health', 8000, true).then(function (h) {
+    /* one missed health answer is asked again before the page drops to the full check (Nov 24 2026) */
+    return again(null, function () { return getJson(base() + '/xp/v1/health', 8000, true); }).then(function (h) {
       var tip = h && h.tip || 0;
       noteHealth(tip); noteCheck(h);
       return !(tip && last.man.tip != null && tip - last.man.tip > STALE);

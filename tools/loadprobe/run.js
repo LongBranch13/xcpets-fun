@@ -68,6 +68,10 @@ async function loadOnce(cx, page, addr, mode) {
   if (PROFILE) { prof = await cx.newCDPSession(pg); await prof.send('Profiler.enable'); await prof.send('Profiler.setSamplingInterval', { interval: 2000 }); await prof.send('Profiler.start'); try { prof.t0Page = await pg.evaluate(() => performance.now()); } catch (e) { prof.t0Page = 0; } }
   if (SLOW) { const s = await cx.newCDPSession(pg); await s.send('Network.enable'); await s.send('Network.emulateNetworkConditions', { offline: false, latency: 150, downloadThroughput: 9e6 / 8, uploadThroughput: 2e6 / 8 }); await s.send('Emulation.setCPUThrottlingRate', { rate: 4 }); }
   pg.on('pageerror', e => errors.push(String(e.message || e).slice(0, 160)));
+  /* answers from the game server that were not OK (rate limit, timeouts): the usual reason a page falls back to the slow in-browser rebuild */
+  const bad = {}; const noteBad = (u, why) => { if (!/node\.xcpets\.fun/.test(u)) return; const k = why + ' ' + u.replace(/^https:\/\/node\.xcpets\.fun/, '').replace(/\?.*/, '').replace(/r[0-9a-f]{32}\/\d+\//, '').slice(0, 40); bad[k] = (bad[k] || 0) + 1; };
+  pg.on('response', r => { if (r.status() >= 400) noteBad(r.url(), String(r.status())); });
+  pg.on('requestfailed', r => noteBad(r.url(), 'failed'));
   pg.on('requestfinished', async r => { try { const z = await r.sizes(); reqs.push({ u: r.url(), b: z.responseBodySize + z.responseHeadersSize }); } catch (e) {} });
   const t0 = Date.now(); let tWorld = null, tDraw = null, tFull = null, tCard = null, st = null;
   try {
@@ -95,6 +99,7 @@ async function loadOnce(cx, page, addr, mode) {
   if (VERIFY && mode === 'cold') try { verify = await verifyTest(pg); } catch (e) { errors.push('verify: ' + String(e.message || e).slice(0, 120)); }
   try { lt = await pg.evaluate(() => window.__probeLT || []); } catch (e) {}
   if (prof) try { const { profile } = await prof.send('Profiler.stop'); top = topFns(profile); top.tasks = taskFns(profile, prof.t0Page, lt); } catch (e) { errors.push('profile: ' + String(e.message || e).slice(0, 120)); }
+  Object.keys(bad).forEach(k => errors.push('server ' + k + (bad[k] > 1 ? ' x' + bad[k] : '')));
   let fcp = null; try { fcp = await pg.evaluate(() => { const e = performance.getEntriesByName('first-contentful-paint')[0]; return e ? Math.round(e.startTime) / 1000 : null; }); } catch (e) {}
   await pg.close();
   return { mode, page, addr, tWorld, tDraw, tFull, tCard, fcp, st, errors, reqs, secs: (Date.now() - t0) / 1000, blank, scroll, lt, top, verify };
