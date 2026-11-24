@@ -5,7 +5,12 @@
   "builds": [
     {
       "chipFamily": "ESP32-S3",
-      "parts": [{ "path": "petshell.bin", "offset": 0 }]
+      "parts": [
+        {
+          "path": "petshell.bin",
+          "offset": 0
+        }
+      ]
     }
   ]
 }
