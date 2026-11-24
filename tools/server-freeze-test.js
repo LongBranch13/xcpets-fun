@@ -57,6 +57,8 @@ function stallServer() {
   idx._LOOP.runningSince = 0;
   ok('errCode keeps short codes and hides anything else', idx.errCode(new Error('upstream down')) === 'upstream down' && idx.errCode(new Error('fetch http://10.0.0.1:4000 failed')) === 'error');
 
+  ok('errCode names sales-read failures without their details', idx.errCode(new Error('balance check failed for PETTOKEN1')) === 'sales: balance check failed' && idx.errCode(new Error('DEX API 503: busy at http://x')) === 'sales: dex api 503');
+  ok('errCode names code faults by their kind only', idx.errCode(new TypeError('cannot read properties of undefined (reading bc1qsecret)')) === 'code: TypeError');
   /* 2b. saved follower state and the restart counter */
   const dd2 = fs.mkdtempSync(path.join(os.tmpdir(), 'xp-follow-'));
   ok('saveFollow refuses a follower that is not ready', idx.saveFollow(dd2, { ready: false, tip: 5, rows: [] }) === false);

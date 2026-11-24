@@ -253,7 +253,7 @@ function loopInfo() {
   const now = Date.now();
   return { upSec: Math.round((now - LOOP.startedAt) / 1000), stepSec: LOOP.runningSince ? Math.round((now - LOOP.runningSince) / 1000) : 0,
     lastStepAgoSec: LOOP.lastDoneAt ? Math.round((now - LOOP.lastDoneAt) / 1000) : null, lastOkAgoSec: LOOP.lastOkAt ? Math.round((now - LOOP.lastOkAt) / 1000) : null,
-    steps: LOOP.steps, errors: LOOP.errors, errorRun: LOOP.errorRun, lastError: LOOP.lastError, maxMin: tickMaxMs() / 60000,
+    steps: LOOP.steps, errors: LOOP.errors, errorRun: LOOP.errorRun, lastError: LOOP.lastError, lastStep: LOOP.lastError ? LOOP.lastStep || null : null, maxMin: tickMaxMs() / 60000,
     lastStall: LOOP.stall ? { at: LOOP.stall.at, tip: LOOP.stall.tip, sec: LOOP.stall.sec } : null,
     restarts1h: LOOP.starts.filter(t => now - t < 3600e3).length - 1, restarts24h: LOOP.starts.filter(t => now - t < 86400e3).length - 1,
     resumedFrom: LOOP.resumedFrom, heapMB: Math.round(process.memoryUsage().heapUsed / 1048576), heapLimitMB: HEAP_LIMIT_MB };
@@ -283,7 +283,18 @@ function readFollow(dataDir) {
 }
 function tickMaxMs() { return Math.max(2, +(process.env.XP_TICK_MAX_MIN || 10)) * 60000; }
 /* short error codes only (no URLs, no addresses) */
-function errCode(e) { const m = String(e && e.message || e || 'error'); return /^upstream \w+$|^tip$|^missing hash(es)?$|^burn page cursor$|^timeout after \d+ ms$|^base too old$/.test(m) ? m : (e && e.name === 'TimeoutError' ? 'timeout' : 'error'); }
+/* Nov 24 2026: after the second repair every step failed with a bare 'error' and nothing outside the server could tell why. Known
+ * failures from the sales read (js/v2-sales.js) and plain code faults now get a short public class; anything else stays 'error'. The
+ * full message (upstream addresses scrubbed) goes to the journal only. */
+const SALES_ERR = /^(DEX API \d+|bad \w+ reply|bad events|token held on a utxo|no saved sale book|balance check failed|unknown (credit|debit)|send (credit|debit) without a known \w+|node repeated a page cursor|more than \d+ pages|pet token transfers could not be read|could not find a free token name|sales)\b/;
+function errCode(e) { const m = String(e && e.message || e || 'error');
+  if (/^upstream \w+$|^tip$|^missing hash(es)?$|^burn page cursor$|^timeout after \d+ ms$|^base too old$/.test(m)) return m;
+  if (e && e.name === 'TimeoutError') return 'timeout';
+  if (e && e.name === 'AbortError') return 'aborted';
+  const sm = SALES_ERR.exec(m); if (sm) return 'sales: ' + sm[1].toLowerCase();
+  if (e && /^(TypeError|RangeError|ReferenceError|SyntaxError)$/.test(e.name)) return 'code: ' + e.name;
+  return 'error'; }
+function errLine(e) { try { return scrub(e).split('\n').slice(0, 3).map(x => x.trim()).join(' | ').replace(/\b[a-z2-7]{16,56}\.onion\b/gi, '[onion]').replace(/\b\d{1,3}(\.\d{1,3}){3}(:\d+)?\b/g, '[ip]').slice(0, 400); } catch (x) { return ''; } }
 function readStall(dataDir) { try { const j = JSON.parse(fs.readFileSync(path.join(dataDir, 'stall.json'), 'utf8')); return j && j.at ? j : null; } catch (e) { return null; } }
 function stallCheck(state, dataDir, exit) {
   if (!LOOP.runningSince) return false;
@@ -345,7 +356,7 @@ function main() {
     rules.poll().then(adopt, () => {});
     if (ok || held) { LOOP.lastOkAt = Date.now(); LOOP.errorRun = 0; }
     if (ok && state.ready && state.tip > LOOP.savedTip) { if (saveFollow(dataDir, state)) LOOP.savedTip = state.tip; console.log('sync: tip ' + state.tip + ', heap ' + Math.round(process.memoryUsage().heapUsed / 1048576) + ' MB of ' + HEAP_LIMIT_MB); }
-  } catch (e) { LOOP.errors++; LOOP.errorRun++; LOOP.lastError = errCode(e); if (LOOP.errorRun === 1 || LOOP.errorRun % 30 === 0) console.error('sync tick failed (' + LOOP.lastError + ', ' + LOOP.errorRun + ' in a row)'); }
+  } catch (e) { LOOP.errors++; LOOP.errorRun++; LOOP.lastError = errCode(e); LOOP.lastStep = state.step || null; if (LOOP.errorRun === 1 || LOOP.errorRun % 30 === 0) console.error('sync tick failed (' + LOOP.lastError + ', ' + LOOP.errorRun + ' in a row): ' + errLine(e)); }
   finally { LOOP.runningSince = 0; LOOP.lastDoneAt = Date.now(); LOOP.steps++; } });
   loop(); timer = setInterval(loop, 10000);
   const guard = setInterval(() => stallCheck(state, dataDir), 30000); if (guard.unref) guard.unref();
