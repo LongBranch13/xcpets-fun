@@ -35,9 +35,9 @@ node tools/figurine-test.js
 - Nothing here changes the game or the rules.
 
 ## Species check
-`species-check.json` lists which species may be printed: **stop** (real people, big franchises: not made unless `--allow-stop`),
-**ask** (Pepe-derived or someone else's well-known meme: fine as a one-off for the pet's owner, ask Jake before selling publicly),
-**ok**. A hybrid takes the strictest level of its parents. Jake decides; edit the file to change it. Not legal advice.
+`species-check.json`: Jake decided (Nov 24 2026) the game's own pets are the product, so every game species (Pepe, Bobo, Dodo, ...) is **ok**.
+**stop** = species based on a real person or a TV franchise (FUNTRUMP, Homer, Bo Jackson, Star-Lord Kek): no print file unless `--allow-stop`.
+Unlisted species are **ask** (a reminder on the order sheet). A hybrid takes the strictest level of its parents.
 
 ## Print service
 JLC3DP **Full-Color Resin** (WJP). Upload the `-obj.zip` (they accept OBJ + MTL + PNG in one zip, or 3MF), pick full colour, units mm.

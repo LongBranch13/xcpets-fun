@@ -48,6 +48,7 @@ for (const f of fs.readdirSync(path.join(__dirname, 'figurine/samples'))) {
 ok(M.speciesLevel('funtrump').level === 'stop', 'FUNTRUMP is stop');
 ok(M.speciesLevel('hyb:dodo:funtrump').level === 'stop', 'a FUNTRUMP hybrid is stop');
 ok(M.speciesLevel('dodo').level === 'ok', 'Dodo is ok');
-ok(M.speciesLevel('hyb3:dodo:snibby:pepe').level === 'ask', 'a Pepe three-way hybrid is ask');
+ok(M.speciesLevel('hyb3:dodo:snibby:pepe').level === 'ok', 'a Pepe three-way hybrid is ok (Jake: game pets are the product)');
+ok(M.speciesLevel('somethingnew').level === 'ask', 'an unlisted species is ask');
 console.log(bad ? bad + ' FAILED' : 'all figurine checks passed');
 process.exit(bad ? 1 : 0);

@@ -1,6 +1,6 @@
 {
-  "_about": "Which species may be sold as a physical figurine. Jake decides; edit this file to change it. stop = the tool will not make a print file unless run with --allow-stop (real people, big franchises). ask = Pepe-derived or someone else's well-known meme: fine for a private one-off for the pet's owner, ask Jake before selling it publicly. ok = no known outside owner. A hybrid takes the strictest level of its parents. Not legal advice.",
+  "_about": "Which species may be made as a physical figurine. Jake decided (Nov 24 2026): the game's own pets are the product (Pepe, Bobo, Dodo and the rest), so every game species is ok. stop = based on a real person or a big TV franchise: the tool will not make a print file unless run with --allow-stop. ask = shows a reminder on the order sheet. A hybrid takes the strictest level of its parents. Species not listed count as ask. Edit this file to change it.",
   "stop": ["funtrump", "homer", "bojackson", "borp", "starlordkek", "jackson"],
-  "ask": ["pepe", "peepo", "kek", "djpepe", "kevin", "rarepigeon", "doge", "wojak", "chud", "chad", "bobo", "mumu", "lenny", "rabbit", "nakamoto", "sarutobi"],
-  "ok": ["snibby", "dodo", "wizard", "viking", "orangedragon"]
+  "ask": [],
+  "ok": ["pepe", "wojak", "chud", "bobo", "mumu", "snibby", "dodo", "kevin", "peepo", "sarutobi", "doge", "lenny", "nakamoto", "chad", "kek", "djpepe", "rarepigeon", "rabbit", "wizard", "viking", "orangedragon"]
 }
