@@ -35,15 +35,15 @@ if (HB && HB.neverFed) ok(!HB.neverFed(zombie) && HB.neverFed(plain), 'habits ne
 const src = rd('js/v2.js'), a = src.indexOf('  function godUnhide(w)'), b = src.indexOf('\n  function keepBtn(id)', a);
 ok(a > 0 && b > a, 'godUnhide found in js/v2.js'); ok(/try \{ godUnhide\(w\); \} catch \(e\) \{ \}/.test(src.slice(src.indexOf('  function render() {'), src.indexOf('  function render() {') + 400)), 'render() runs godUnhide before the pet list draws');
 const toasts = []; ctx.__toast = h => toasts.push(String(h));
-vm.runInContext('var NET = "mainnet", ME = "me"; function toast(h) { __toast(h); } function idList(ids) { return "#" + ids.join(", #"); }\n' +
+vm.runInContext('var NET = "mainnet", ME = "me"; function ZB(p) { return !!(p && p.zombie && !p.zombie.end); } function toast(h) { __toast(h); } function idList(ids) { return "#" + ids.join(", #"); }\n' +
   'function hidKey() { return "xcpets-hidden-" + NET + "-" + (ME || ""); } function hiddenIds() { try { return JSON.parse(localStorage.getItem(hidKey()) || "[]"); } catch (e) { return []; } }\n' +
   'function setHidden(l) { localStorage.setItem(hidKey(), JSON.stringify(l.filter(function (x, i, a) { return a.indexOf(x) === i; }))); }\n' + src.slice(a, b) + '\nthis.godUnhide = godUnhide; this.hiddenIds = hiddenIds;', ctx);
 const HK = 'xcpets-hidden-mainnet-me', other = { id: 7, owner: 'them', resurrected: { block: 1 } }, w = { pets: [plain, zombie, god, other], byId: { 1: plain, 3: zombie, 22043: god, 7: other } };
 st[HK] = JSON.stringify([1, 3, 22043, 7]); ctx.godUnhide(w);
-ok(JSON.stringify(ctx.hiddenIds()) === '[1,3,7]', 'the God comes back; the plain pet, the zombie and a pet that is not mine stay in the pile');
-ok(toasts.length === 1 && /#22043/.test(toasts[0]) && /God/.test(toasts[0]), 'one toast names the God that came back');
+ok(JSON.stringify(ctx.hiddenIds()) === '[1,7]', 'the God and the risen zombie come back (Nov 24 2026 root fix); the plain pet and a pet that is not mine stay in the pile');
+ok(toasts.length === 2 && /#22043/.test(toasts[0]) && /God/.test(toasts[0]) && /#3\b/.test(toasts[1]) && /zombie/i.test(toasts[1]), 'one toast names the God, one the zombie');
 st[HK] = JSON.stringify([1, 3, 7, 22043]); toasts.length = 0; ctx.godUnhide(w);
-ok(JSON.stringify(ctx.hiddenIds()) === '[1,3,7,22043]' && toasts.length === 0, 'once per pet: a God discarded again on purpose stays in the pile');
-for (const k in st) delete st[k]; ctx.godUnhide(w); ok(ctx.hiddenIds().length === 0 && toasts.length === 0, 'empty pile: nothing to do');
+ok(JSON.stringify(ctx.hiddenIds()) === '[1,7,22043]' && toasts.length === 1 && /zombie/i.test(toasts[0]), 'once per pet for Gods: a God discarded again on purpose stays; a zombie never stays in the pile');
+for (const k in st) delete st[k]; toasts.length = 0; ctx.godUnhide(w); ok(ctx.hiddenIds().length === 0 && toasts.length === 0, 'empty pile: nothing to do');
 ok(!/V2Rules|replay\(/.test(src.slice(a, b)), 'godUnhide is display only (no rules call)');
 console.log(`god-unhide: ${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);

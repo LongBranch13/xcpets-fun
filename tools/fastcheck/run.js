@@ -75,7 +75,11 @@ async function fastDump(browser, addr) {
       if (st && st.ready && st.full) break;
     }
     if (!st || !st.ready) return { addr, error: 'page never built a world', errors, secs: (Date.now() - t0) / 1000 };
-    const d = await pg.evaluate(([src, me]) => { const fn = new Function(src + '\nreturn fastcheckDump;')(); const w = V2Mock.world(); return fn(w, V2Rules, me, w.tip); }, [DUMP_SRC, addr]);
+    const d = await pg.evaluate(([src, me]) => { const fn = new Function(src + '\nreturn fastcheckDump;')(); const w = V2Mock.world(); const o = fn(w, V2Rules, me, w.tip);
+      /* Nov 24 2026 root-cause pass: the world can be right while the page's own filter drops a pet (zombies hidden by the Discard pile).
+       * Record what My Pets actually lists (V2UI.mine), so the compare checks the page, not only the data behind it. */
+      try { o.shown = window.V2UI && V2UI.mine ? V2UI.mine(w).map(p => p.id).sort((a, b) => a - b) : null; } catch (e) { o.shown = 'THROWS: ' + String(e && e.message || e).slice(0, 120); }
+      return o; }, [DUMP_SRC, addr]);
     return { addr, dump: d, partial: !st.full, status: st, errors, secs: (Date.now() - t0) / 1000 };
   } catch (e) { return { addr, error: String(e.message || e).slice(0, 300), errors, secs: (Date.now() - t0) / 1000 }; }
   finally { await cx.close(); }
@@ -95,6 +99,11 @@ function compare(fast, full, partial) {
   Object.keys(fast.items).forEach(g => { const a = fast.items[g], b = full.items[g]; if (!b) { add('gear on fast page but not owned in full game', g, a.item, null); return; }
     Object.keys(Object.assign({}, a, b)).forEach(k => { if (J(a[k]) !== J(b[k])) add('gear field: ' + k, g, a[k], b[k]); }); });
   Object.keys(fast.checks).forEach(id => { const a = fast.checks[id], b = full.checks[id] || {}; Object.keys(Object.assign({}, a, b)).forEach(k => { if (J(a[k]) !== J(b[k])) add('check: ' + k, id, a[k], b[k]); }); });
+  /* My Pets lists every owned living pet that is not discarded on chain (a risen zombie always: it can't be discarded). Graves load on their own (see above). */
+  if (fast.shown != null) { const want = Object.keys(gp).filter(id => !gp[id].released && !gp[id].dead && !(gp[id].hd === full.me && !gp[id].zombie)).map(Number), got = new Set(Array.isArray(fast.shown) ? fast.shown : []);
+    if (!Array.isArray(fast.shown)) add('My Pets list', '-', fast.shown, 'a list');
+    else { want.forEach(id => { if (!got.has(id) && (!partial || gp[id].zombie)) add('pet missing from My Pets list', id, null, gp[id].zombie ? 'risen zombie' : gp[id].dead ? 'grave' : 'alive'); });
+      fast.shown.forEach(id => { if (!gp[id]) add('My Pets lists a pet not owned in the full game', id, 'listed', null); }); } }
   ['communityFed', 'halving', 'mythicOwner'].concat(partial ? [] : ['ownAlive']).forEach(k => { if (J(fast.world[k]) !== J(full.world[k])) add('world: ' + k, '-', fast.world[k], full.world[k]); });
   return diffs;
 }

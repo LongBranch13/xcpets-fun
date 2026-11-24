@@ -475,20 +475,32 @@
    * Risen zombies eat zombie meals, so 'Discard unfed' used to sweep them; after a Resurrection the God stayed hidden. Once per pet (godBackSeen),
    * so a God the player discards on purpose later stays in the pile. */
   function godUnhide(w) { if (!ME || !w || !w.pets) return; var hid = hiddenIds(); if (!hid.length) return; var sk = 'xcpets-v2-godBackSeen-' + NET + '-' + ME, seen; try { seen = JSON.parse(localStorage.getItem(sk) || '[]'); } catch (e) { seen = []; }
-    var back = []; hid.forEach(function (id) { var p = w.byId[id]; if (p && p.owner === ME && p.resurrected && !p.released && seen.indexOf(p.id) < 0) back.push(p.id); });
-    if (!back.length) return; try { localStorage.setItem(sk, JSON.stringify(seen.concat(back))); } catch (e) { }
-    setHidden(hid.filter(function (id) { return back.indexOf(Number(id)) < 0; }));
-    toast('😇 ' + idList(back) + (back.length > 1 ? ' are Gods now and are' : ' is a God now and is') + ' back in My Pets (it was in this browser\u2019s Discard pile from its zombie days).', 10000); }
+    /* ROOT FIX (Nov 24 2026): risen zombies come back too, every time (discardIds no longer lets one in, so any zombie in the pile was swept
+     * there by a bulk discard or discarded in an earlier life). Gods still come back once per pet, so a God discarded on purpose stays. */
+    var back = [], zb = []; hid.forEach(function (id) { var p = w.byId[id]; if (!p || p.owner !== ME || p.released) return; if (ZB(p)) zb.push(p.id); else if (p.resurrected && seen.indexOf(p.id) < 0) back.push(p.id); });
+    if (!back.length && !zb.length) return; if (back.length) try { localStorage.setItem(sk, JSON.stringify(seen.concat(back))); } catch (e) { }
+    var all = back.concat(zb); setHidden(hid.filter(function (id) { return all.indexOf(Number(id)) < 0; }));
+    if (back.length) toast('😇 ' + idList(back) + (back.length > 1 ? ' are Gods now and are' : ' is a God now and is') + ' back in My Pets (it was in this browser\u2019s Discard pile from its zombie days).', 10000);
+    if (zb.length) toast('🧟 ' + idList(zb) + (zb.length > 1 ? ' are back' : ' is back') + ' in My Pets. Zombies are never discarded: ' + (zb.length > 1 ? 'they were' : 'it was') + ' stuck in this browser\u2019s Discard pile.', 10000); }
   function keepBtn(id) { var on = isKept(id); return '<button type="button" class="keepbtn" data-keep="' + id + '" aria-pressed="' + on + '" aria-label="Favorite #' + id + '" title="' + (on ? 'Favorite: never discarded. Click to unstar.' : 'Star this pet as a favorite (never discarded)') + '">' + (on ? '★' : '☆') + '</button>'; } /* favorite-star-restore: the original ☆/★ button (css .keepbtn) */
   function dropKept(ids) { var k = new Set(keptIds()); return ids.filter(function (id) { return !k.has(Number(id)); }); }
   /* discard-pile 2026-10-21 (restored Oct 29 2026): starred pets are NEVER discarded, on every path (card 🗑️, detail, Discard selected, pack review, #discard-ID). Unstar first. */
-  function discardIds(ids) { if (!ids.length) { toast('Tick the box on at least one pet first.'); return; } var kset = new Set(keptIds()), kk = [], keep = [], i; for (i = 0; i < ids.length; i++) (kset.has(Number(ids[i])) ? kk : keep).push(ids[i]); ids = keep;
+  function discardIds(ids) { if (!ids.length) { toast('Tick the box on at least one pet first.'); return; } var kset = new Set(keptIds()), kk = [], keep = [], zz = [], i, wz = world();
+    /* ROOT FIX (Nov 24 2026): every discard path (card, pet page, Select all, Hide all Commons, Clear the pile, #discard-ID) ends here, so the
+     * zombie rule lives here once instead of in each button: a risen zombie is never discarded (the rules refuse it on chain too). */
+    for (i = 0; i < ids.length; i++) { var dp = wz && wz.byId && wz.byId[ids[i]]; (kset.has(Number(ids[i])) ? kk : ZB(dp) ? zz : keep).push(ids[i]); } ids = keep;
+    if (zz.length) toast('🧟 Skipped ' + idList(zz) + ': zombies are never discarded. Feed ' + (zz.length > 1 ? 'them' : 'it') + ' zombie meals, or leave ' + (zz.length > 1 ? 'them' : 'it') + ' hungry and ' + (zz.length > 1 ? 'they turn' : 'it turns') + ' to dust on ' + (zz.length > 1 ? 'their' : 'its') + ' own.', 8000);
     if (kk.length) toast('★ Skipped ' + idList(kk) + ': starred pets are never discarded. Unstar ' + (kk.length > 1 ? 'them' : 'it') + ' first.', 7000); if (ids.length) hideLocal(ids); }
   function hiddenSet() { var a = hiddenIds(), s = new Set(); for (var i = 0; i < a.length; i++) s.add(a[i]); return s; }
   /* On-chain discard (pet:hd) is this owner's flag on the pet. It survives a cache clear.
    * Browser Discard is a separate list. The main profile hides both. */
-  function onChainDiscarded(p) { return !!(p && ME && p.hd === ME); }
-  function mine(w) { var h = hiddenSet(); return w.pets.filter(function (p) { return p.owner === ME && !p.released && !h.has(p.id) && !onChainDiscarded(p); }); }
+  /* ROOT FIX (Nov 24 2026, Jake: "why do zombies keep disappearing"): a discard belongs to one life of a pet. A risen zombie can never be
+   * discarded (the rules refuse pet:hd for zombies, so it could never be made permanent), so neither flag hides it: an old on-chain
+   * discard from before it died, or this browser's pile, where bulk discards (Select all, Hide all Commons) used to sweep zombies for good.
+   * inPile() is the ONE answer to 'is this pet in my Discard pile?': My Pets, the pile box and every V2UI.mine() reader use it. */
+  function onChainDiscarded(p) { return !!(p && ME && p.hd === ME && !ZB(p)); }
+  function inPile(p, h) { return !!p && !ZB(p) && (h.has(p.id) || onChainDiscarded(p)); }
+  function mine(w) { var h = hiddenSet(); return w.pets.filter(function (p) { return p.owner === ME && !p.released && !inPile(p, h); }); }
   function sel() { return S.sel.slice(); }
   var commAnim = null;
   // ---------------------------------------------------------------- gear-win notification (single roll, bulk rolls, live/free-token rolls, trophies)
@@ -1046,7 +1058,7 @@
       /* Nov 22 2026: scrolling near the end shows the next batch by itself (players had to press Show more again and again). The button stays for keyboards. */
       if (window.IntersectionObserver) { var mbIo = new IntersectionObserver(function (es) { if (renderPets.tok !== tok || !mb.parentNode) { if (renderPets.tok !== tok) mbIo.disconnect(); return; }
         var bt = mb.querySelector('button'); if (es[0] && es[0].isIntersecting && bt && !bt.disabled) bt.click(); }, { rootMargin: '800px 0px' }); mbIo.observe(mb); } }
-    var hs = hiddenSet(), gone = w.pets.filter(function (p) { return p.owner === ME && !p.released && hs.has(p.id) && !!p.dead === !!cem; }); /* one read of the discard list: parsing it once per owned pet froze My Pets when the pile held thousands */
+    var hs = hiddenSet(), gone = w.pets.filter(function (p) { return p.owner === ME && !p.released && !ZB(p) && hs.has(p.id) && !!p.dead === !!cem; }); /* a risen zombie is never in the pile (inPile) */ /* one read of the discard list: parsing it once per owned pet froze My Pets when the pile held thousands */
     if (gone.length) box.appendChild(discardedBox(gone, w));
     if (!cem && V.hdPlan) { var hdBar = chainDiscardBar(w); if (hdBar) box.appendChild(hdBar); }
     if (!cem) pileLink(gone.length); /* discard-pile jump link */
@@ -1159,8 +1171,8 @@
     else title += ' · 1 burn · 1 dander, plus the Bitcoin fee.' + (plan.why ? ' ' + plan.why : '');
     confirmPlans(title, plan.plans, restore ? function () { noteHuSent(plan.plans.reduce(function (a, q) { return a.concat(q.petIds || []); }, [])); } : null); }
   function chainDiscardBar(w) { if (!ME || !V.hdPlan || !V.hdOn) return null; var b = (S.tip || 0) + 1, on = V.hdOn(b);
-    var hid = hiddenIds().map(Number).filter(function (id) { var p = w.byId[id]; return p && p.owner === ME && !p.dead && !p.released && !isKept(id); });
-    var chain = (w.pets || []).filter(function (p) { return p.owner === ME && p.hd === ME && !p.dead && !p.released; });
+    var hid = hiddenIds().map(Number).filter(function (id) { var p = w.byId[id]; return p && p.owner === ME && !p.dead && !p.released && !ZB(p) && !isKept(id); });
+    var chain = (w.pets || []).filter(function (p) { return p.owner === ME && onChainDiscarded(p) && !p.dead && !p.released; }); /* inPile rule: an old flag on a risen zombie does not count */
     if (!hid.length && !chain.length) return null;
     var el = document.createElement('div'); el.className = 'small hdbar'; el.id = 'hdBar';
     el.innerHTML = '<p class="muted">' + (on ? 'On-chain discard is 1 dander for the burn, however many pets it names. If they do not fit one tag, you will see the smallest number of exact burns before anything is sent. The game does not sign the burn.' : 'On-chain discard opens at block ' + fmt(V.ACTIVATE_ONCHAIN_DISCARD_BLOCK) + '. Until then, Discard only hides pets in this browser.') + '</p>' +
