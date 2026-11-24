@@ -303,6 +303,20 @@ function checkMesh(mesh) {
 const hex = c => c.map(v => ('0' + v.toString(16)).slice(-2)).join('').toUpperCase();
 const n6 = v => (Math.round(v * 1e4) / 1e4).toString();
 
+/** printPalette(pal, opt): the colours sent to the printer. Full-colour printers lay ink on a white or clear base, so dark
+ * colours come out lighter and greyer than on screen (Shapeways warns black prints as grey). Unless opt.deepBlacks is false:
+ * colours darker than luma 22 become pure black, darks up to luma 90 are pushed darker on a curve, and every colour gets
+ * 12% more saturation so it does not look washed out. Previews keep the game's own colours. */
+function printPalette(pal, opt) {
+  if (opt && opt.deepBlacks === false) return pal;
+  return pal.map(c => {
+    const L = 0.3 * c[0] + 0.59 * c[1] + 0.11 * c[2];
+    if (L < 22) return [0, 0, 0];
+    const k = L < 90 ? Math.pow((L - 22) / 68, 1.35) * 90 / L : 1;
+    return c.map(v => { const d = v * k, s = d + (d - L * k) * 0.12; return Math.max(0, Math.min(255, Math.round(s))); });
+  });
+}
+
 /** palette texture: each colour is a 16x16 block on a 16-wide grid; UVs point at block centres. */
 function paletteTexture(pal) {
   const cols = 16, rows = Math.max(1, Math.ceil(pal.length / cols)), B = 16, W = cols * B, H = Math.max(B, rows * B);
@@ -314,8 +328,8 @@ function paletteTexture(pal) {
 }
 
 /** OBJ + MTL + PNG texture (the format JLC3DP and most full-colour services list first). Returns { 'name.obj': str, ... }. */
-function objFiles(fig, base) {
-  const T = paletteTexture(fig.pal), m = fig.mesh, out = [];
+function objFiles(fig, base, opt) {
+  const T = paletteTexture(printPalette(fig.pal, opt)), m = fig.mesh, out = [];
   out.push('# XCPETS figurine of pet #' + fig.id + ' (' + (fig.info.name || '') + '), units: millimetres, Z up');
   out.push('mtllib ' + base + '.mtl', 'o pet_' + fig.id);
   for (let i = 0; i < m.verts.length; i += 3) out.push('v ' + n6(m.verts[i]) + ' ' + n6(m.verts[i + 1]) + ' ' + n6(m.verts[i + 2]));
@@ -327,11 +341,11 @@ function objFiles(fig, base) {
 }
 
 /** 3MF with a colour per triangle (core-spec basematerials), the format JLC3DP uploads directly and slicers open. */
-function threeMF(fig) {
+function threeMF(fig, opt) {
   const m = fig.mesh, v = [], t = [];
   for (let i = 0; i < m.verts.length; i += 3) v.push('<vertex x="' + n6(m.verts[i]) + '" y="' + n6(m.verts[i + 1]) + '" z="' + n6(m.verts[i + 2]) + '"/>');
   for (let i = 0; i < m.tris.length; i += 3) t.push('<triangle v1="' + m.tris[i] + '" v2="' + m.tris[i + 1] + '" v3="' + m.tris[i + 2] + '" pid="1" p1="' + m.triCol[i / 3] + '"/>');
-  const mats = fig.pal.map((c, k) => '<base name="c' + k + '" displaycolor="#' + hex(c) + '"/>').join('');
+  const mats = printPalette(fig.pal, opt).map((c, k) => '<base name="c' + k + '" displaycolor="#' + hex(c) + '"/>').join('');
   const model = '<?xml version="1.0" encoding="UTF-8"?>\n<model unit="millimeter" xml:lang="en-US" xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02">' +
     '<metadata name="Title">XCPETS #' + fig.id + ' ' + String(fig.info.name || '').replace(/[<&"]/g, '') + '</metadata><metadata name="Designer">xcpets.fun</metadata>' +
     '<resources><basematerials id="1">' + mats + '</basematerials><object id="2" type="model" pid="1" pindex="0"><mesh><vertices>' + v.join('') + '</vertices><triangles>' + t.join('') + '</triangles></mesh></object></resources>' +
@@ -362,4 +376,4 @@ function zip(files) {
   return Buffer.concat(local.concat([cd, end]));
 }
 
-module.exports = { build, toMesh, checkMesh, objFiles, threeMF, zip, paletteTexture, OKV, F };
+module.exports = { printPalette, build, toMesh, checkMesh, objFiles, threeMF, zip, paletteTexture, OKV, F };

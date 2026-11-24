@@ -5,6 +5,7 @@
  *   node tools/figurine/make.js --ids 1,27 --size big   sizes: mini 50 mm, standard 75 mm, big 100 mm (or --height MM)
  *   node tools/figurine/make.js --sprite FILE.json      skip the replay and use a saved sprite (sprite.json from an earlier run)
  *   options: --out DIR (default figurines/)   --allow-stop (species marked stop in species-check.json)
+ *            --true-colors (send the game's exact colours; default pushes darks darker so black does not print grey)
  *
  * For each pet it writes DIR/pet-<id>/:
  *   xcpets-<id>-<size>-obj.zip  OBJ + MTL + PNG colours in one zip: the file to upload for full-colour printing
@@ -47,9 +48,9 @@ function makeOne(sprite, out, heightMm) {
   const fig = V.build(sprite, { heightMm });
   const ck = V.checkMesh(fig.mesh);
   if (ck.open || ck.nonManifold || ck.flipped || !(ck.volumeCm3 > 0)) throw new Error('#' + id + ': the mesh is not watertight (' + JSON.stringify(ck) + ')');
-  const files = V.objFiles(fig, base);
+  const po = { deepBlacks: !flag('--true-colors') }, files = V.objFiles(fig, base, po);
   fs.writeFileSync(path.join(dir, base + '-obj.zip'), V.zip(files));
-  fs.writeFileSync(path.join(dir, base + '.3mf'), V.threeMF(fig));
+  fs.writeFileSync(path.join(dir, base + '.3mf'), V.threeMF(fig, po));
   const cap = String(info.name || 'PET').toUpperCase() + ' #' + id;
   const hero = R.sheet([R.still(fig, { size: 480, yaw: -28, caption: cap, top: 14 }), R.still(fig, { size: 480, yaw: -160, top: 14, footer: 'XCPETS.FUN FIGURINE' })], 0);
   fs.writeFileSync(path.join(dir, 'preview.png'), ART.png(hero, 1));
@@ -61,6 +62,7 @@ function makeOne(sprite, out, heightMm) {
     'Size: ' + s.widthMm + ' x ' + s.depthMm + ' x ' + s.heightMm + ' mm (wide x deep x tall), units = millimetres',
     'Volume: ' + s.volumeCm3 + ' cm3 (solid)   Thinnest part: ' + s.thinnestMm + ' mm   Colours: ' + s.colors + '   Triangles: ' + s.triangles,
     'Plinth: ' + s.plinth + ' colours, name on the front, #' + id + ' on the back',
+    'Colours: ' + (po.deepBlacks ? 'deep blacks on (darks pushed darker, +12% saturation, so black does not print grey; --true-colors turns it off)' : 'true game colours (--true-colors)'),
     'Watertight check: passed (every edge shared by exactly 2 triangles, outward normals)',
     '',
     'Species check: ' + chk.level.toUpperCase() + (chk.why.length ? ' (' + chk.why.join(', ') + ')' : '') +

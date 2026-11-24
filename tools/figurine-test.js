@@ -50,5 +50,11 @@ ok(M.speciesLevel('hyb:dodo:newthing').level === 'ask', 'a hybrid with an unlist
 ok(M.speciesLevel('dodo').level === 'ok', 'Dodo is ok');
 ok(M.speciesLevel('hyb3:dodo:snibby:pepe').level === 'ok', 'a Pepe three-way hybrid is ok (Jake: game pets are the product)');
 ok(M.speciesLevel('somethingnew').level === 'ask', 'an unlisted species is ask');
+/* deep blacks: near-black becomes pure black, darks get darker, light colours keep their brightness */
+const pp = V.printPalette([[10, 12, 20], [60, 40, 30], [240, 230, 210]]);
+ok(pp[0].join() === '0,0,0', 'near-black prints pure black');
+ok(pp[1].every((v, i) => v <= [60, 40, 30][i]), 'dark brown is pushed darker ' + pp[1].join());
+ok(Math.abs((0.3 * pp[2][0] + 0.59 * pp[2][1] + 0.11 * pp[2][2]) - (0.3 * 240 + 0.59 * 230 + 0.11 * 210)) < 4, 'light colours keep their brightness');
+ok(V.printPalette([[10, 12, 20]], { deepBlacks: false })[0].join() === '10,12,20', '--true-colors keeps the game colours');
 console.log(bad ? bad + ' FAILED' : 'all figurine checks passed');
 process.exit(bad ? 1 : 0);

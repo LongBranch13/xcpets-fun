@@ -40,6 +40,10 @@ FUNTRUMP, Homer Pepe, The White Rabbit, Nakamoto, all of them), so all are **ok*
 later) is **ask**: the order sheet shows a reminder to add it. **stop** (empty now) would block a species unless `--allow-stop`.
 A hybrid takes the strictest level of its parents.
 
+## Dark colours
+Full-colour printers print on a white or clear base, so black can come out grey. By default the print files push darks darker
+(near-black becomes pure black) and add 12% saturation; previews keep the game colours. `--true-colors` sends the exact game colours.
+
 ## Print service
 JLC3DP **Full-Color Resin** (WJP). Upload the `-obj.zip` (they accept OBJ + MTL + PNG in one zip, or 3MF), pick full colour, units mm.
 Their limits: walls over 1 mm (our thinnest part is 2.7 mm at mini size), no hollow parts (ours are solid), one piece per file (ours is one piece).
