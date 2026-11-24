@@ -637,22 +637,33 @@
     /* hatch-tray-1124 (owner Nov 24 2026: one Shock Box opened as three pop-ups, 47 then 353 then 600, and 'the animation just popping up is annoying').
      * A big wallet arrives in owner pages, and each page used to open its own review. Now nothing is counted until the list has settled
      * (90 s safety cap, then the old way), so one hatch = one review. Display only: same newHatches keys, nothing signed. */
-    if (!settled) { if (!hDefer0) hDefer0 = Date.now(); if (Date.now() - hDefer0 < 90000) return []; }
+    if (!settled) { if (!hDefer0) hDefer0 = Date.now(); if (Date.now() - hDefer0 < HDEFER_MS) return []; }
+    /* box-reveal-1124: past the cap (HDEFER_MS) the list counts as settled for 'live vs away' too. Before, a wallet whose pages were still loading
+     * never set hSessTip, so every hatch (even one you watched land) went quietly into the tray. */
+    var counted = settled || !!hDefer0;
     var r = V.newHatches(w, ME, seen); hMem = r.seen;
     if (hasKeys || settled) { try { localStorage.setItem(HKEY, JSON.stringify(hPack(r.seen))); } catch (e) { } }
     var groups = hatchKeepGroups(r.groups, hatchTip, hasKeys);
-    if (hSessTip == null && settled) hSessTip = w.tip || 0;
-    /* Eggs that hatched before this page settled ('while you were away') go to the calm hatch tray (a small pill you open when you want),
-     * never an automatic pop-up or animation. Eggs that hatch while you watch still get the egg-crack moment. All of one batch = one review. */
+    if (hSessTip == null && counted) hSessTip = w.tip || 0;
+    /* box-reveal-1124 (GMONEY via owner Nov 24 2026: 'the egg boxes dont pop up to preview like before'; owner: 'I didnt want to lose that popup.
+     * It just need to be better'). A box hatches a block or more after you burn it, so most boxes land 'while you were away' and the tray pill
+     * hid them. Away eggs open the box reveal again (one pop-up per load: every away batch merges into one), without the egg-crack animation;
+     * 'Later' on the reveal puts them in the pill. Eggs that hatch while you watch still get the egg-crack moment first. Display only. */
     var away = [], live = [];
     groups.forEach(function (g) { g.eggs.forEach(function (p) { ((hSessTip == null || (p.hatchBlock || 0) <= hSessTip) ? away : live).push(p.id); }); });
-    if (away.length) trayAdd(away);
+    if (away.length) { var qa = null; for (var ia = 0; ia < revealQ.length; ia++) if (revealQ[ia].kind === 'eggs' && revealQ[ia].away) { qa = revealQ[ia]; break; }
+      if (rev && rev.kind === 'eggs' && rev.away && $('packBox').classList.contains('on')) { away = away.filter(function (id) { return rev.eggs.indexOf(id) < 0; }); if (away.length) { rev.eggs = rev.eggs.concat(away); rev.n0 = (rev.n0 || 0) + away.length; rev.luck = null; rev.best = null; drawReveal(); } }
+      else if (qa) away.forEach(function (id) { if (qa.eggs.indexOf(id) < 0) qa.eggs.push(id); });
+      else revealQ.push({ kind: 'eggs', eggs: away, away: 1, hatchAnim: 1 });
+      if (tray) { tray.eggs = tray.eggs.filter(function (id) { return away.indexOf(id) < 0; }); trayDraw(); } }
     if (live.length) { var q = null; for (var i = revealQ.length - 1; i >= 0; i--) if (revealQ[i].kind === 'eggs' && !revealQ[i].tray) { q = revealQ[i]; break; }
       if (rev && rev.kind === 'eggs' && !rev.tray && $('packBox').classList.contains('on')) { rev.eggs = rev.eggs.concat(live); rev.n0 = (rev.n0 || 0) + live.length; rev.luck = null; rev.best = null; drawReveal(); }
       else if (q) q.eggs = q.eggs.concat(live); else revealQ.push({ kind: 'eggs', eggs: live }); }
     return groups;
   }
-  var hDefer0 = 0, hSessTip = null, tray = null;
+  /* box-reveal-1124: 25 s (was 90 s). A big wallet (GMONEY, ~31k pets) took about a minute to settle, so the reveal came late. Pages load newest
+   * first, so a new box is on the first pages, and eggs from a later page now merge into the open reveal instead of opening a second one. */
+  var hDefer0 = 0, hSessTip = null, tray = null, HDEFER_MS = 25000;
   /* hatch-tray-1124: the calm 'new pets' pill. One per page, merges every away batch, shows the best finds so you know if it's worth a look. */
   function hatchFinds(w, ids) { var out = { n: 0, leg: 0, weird: 0, special: 0 };
     ids.forEach(function (id) { var x = w.byId[id]; if (!x) return; out.n++; if (x.art && x.art.tierIndex >= 3) out.leg++; var k = revStar(x);
@@ -671,7 +682,10 @@
   function trayOpen() { if (!tray) return; var ids = tray.eggs; tray = null; trayDraw(); if (rev && $('packBox').classList.contains('on')) closeReveal();
     revealQ.unshift({ kind: 'eggs', eggs: ids, tray: 1, hatchAnim: 1, away: 1 }); released = true; nextReveal(); }
   var wspinOn = false; /* wheel-spin-anim: the 8-bit Pepe Wheel reveal (js/v2-wheel-anim.js) plays once before a gear batch that came from a wheel spin. Display only. */
-  function nextReveal() { if (wspinOn || $('packBox').classList.contains('on') || !revealQ.length) return; if (holding()) { heldR = true; awayPing(); return; } rev = revealQ.shift(); rev.page = 0; rev.sel = {}; if (rev.kind === 'eggs' && rev.sort == null && rev.eggs.length > 1) rev.sort = 'rar'; if (rev.kind === 'eggs') { rev.n0 = rev.eggs.length; rev.gone = 0; } /* pet-flow-smoother: a hatch review opens Rarest first (Legendaries on page 1); the Sort menu still offers Hatch order */ if (packY == null) packY = window.scrollY || 0; if (rev.kind === 'eggs') lastHatchN = rev.eggs.length;
+  /* box-reveal-1124: never open on top of another pop-up (a community pet's arrival, a pixel scene, a burn confirm); try again when it closes */
+  var otherT = 0;
+  function otherUp() { return !!document.querySelector('.reveal.on:not(#packBox)') || !!(window.V2LifeAnim && V2LifeAnim.busy && V2LifeAnim.busy()); }
+  function nextReveal() { if (wspinOn || $('packBox').classList.contains('on') || !revealQ.length) return; if (otherUp()) { if (!otherT) otherT = setTimeout(function () { otherT = 0; nextReveal(); }, 1500); return; } if (holding()) { heldR = true; awayPing(); if (!holdT) holdT = setTimeout(function () { holdT = 0; nextReveal(); }, Math.max(50, 8050 - (Date.now() - firstDataT))); return; } /* box-reveal-1124: the 8 s hold used to end only at the next repaint (about a minute later), so the reveal came late */ rev = revealQ.shift(); rev.page = 0; rev.sel = {}; if (rev.kind === 'eggs' && rev.sort == null && rev.eggs.length > 1) rev.sort = 'rar'; if (rev.kind === 'eggs') { rev.n0 = rev.eggs.length; rev.gone = 0; if (rev.intro == null) rev.intro = rev.eggs.length >= INTRO_MIN; } /* box-reveal-1124: 7+ eggs open on the box reveal first */ /* pet-flow-smoother: a hatch review opens Rarest first (Legendaries on page 1); the Sort menu still offers Hatch order */ if (packY == null) packY = window.scrollY || 0; if (rev.kind === 'eggs') lastHatchN = rev.eggs.length;
     var WA = window.V2WheelAnim, ws = null; if (rev.kind === 'gear' && WA) try { ws = WA.fromWins(rev.wins, world(), communityName(world())); } catch (e) { ws = null; }
     var paid = rev.kind === 'gear' && !rev.gearAnim && !lifeReduced() && (rev.wins || []).some(function (x) { return x && x.src === 'roll'; }); /* pixel-anims batch 4: a paid gear roll's piece lands on the pet (js/v2-life-anim.js gearRoll, lazy) after the wheel */
     var openG = function (r2) { if (paid && !r2.gearAnim) { r2.gearAnim = 1; wspinOn = true; withLife(function (ok) { var go2 = function () { wspinOn = false; if (rev !== r2) return; drawReveal(); open('packBox'); }; if (!ok || !window.V2LifeAnim || !V2LifeAnim.gearRoll) return go2(); try { V2LifeAnim.gearRoll(world(), r2.wins, ME, go2); } catch (e) { go2(); } }); return; } drawReveal(); open('packBox'); };
@@ -750,7 +764,59 @@
     d.classList.toggle('picked', on); d.setAttribute('aria-checked', String(on)); revCount(); }
   function revCount() { var n = Object.keys(rev.sel).length, b = $('packDiscard'); if (b) { b.textContent = 'Discard selected (' + n.toLocaleString('en-US') + ')'; b.disabled = !n; }
     var c = $('pkSelN'); if (c) c.textContent = n.toLocaleString('en-US'); var cl = $('pkClear'); if (cl) cl.hidden = !n; }
+  /* box-reveal-1124: the box reveal. The first screen of a hatch of 7+ eggs: a big meme headline, the rarity tally counting up,
+   * the best finds dealt in like cards (weird and special first), the Shock Box luck line, then 'See all' opens the sort & discard review.
+   * Fast (about 1.5 s, tap to skip), one screen on a phone, reduced motion = no animation. Display only: nothing is signed or discarded here. */
+  var INTRO_MIN = 7, INTRO_CAPS = { weird: ['ser... what did you just hatch?', 'WEIRD FLEX. KEEP IT.', 'this one is not like the others.'], luck: ['MUCH WOW. VERY LUCK.', 'the box loves you, anon.', 'up only.'],
+    3: ['WAGMI. legendary pull.', 'GIGABRAIN HATCH.', 'number go up.'], 2: ['wen moon? now.', 'not bad, anon.', 'rare drip, fresh eggs.'], 1: ['it\'s honest work.', 'a little something.', 'gm, new frens.'], 0: ['gm. it\'s something.', 'ser, these are Commons.', 'it\'s honest work.'] };
+  var TIER_C = ['#a9b8ad', '#3ddc84', '#5aa9ff', '#ffd166'];
+  function drawIntro(w) {
+    var all = rev.eggs.map(function (id) { return w.byId[id]; }).filter(Boolean), n = all.length, tiers = [0, 0, 0, 0], nEl = 0;
+    all.forEach(function (x) { tiers[x.art.tierIndex]++; if (revEl(x)) nEl++; });
+    if (!rev.best) rev.best = revBest(w, all).map(function (id) { return id.id; }); if (rev.luck == null) rev.luck = revLuck(w, all);
+    var best = rev.best.map(function (id) { return w.byId[id]; }).filter(Boolean).slice(0, 6), star = best.filter(revStar), wd = all.filter(function (x) { return revStar(x) === 'weird'; }).length, sp = all.filter(revStar).length - wd;
+    var box = nEl >= 100 && nEl >= n / 2, ex = Math.round(nEl * (V.ELECTRIC_TIER_10K || [3000, 4000, 2200, 800])[3] / 10000);
+    var ck = star.length ? 'weird' : box && ex && tiers[3] >= ex * 1.1 ? 'luck' : tiers[3] ? 3 : tiers[2] ? 2 : tiers[1] ? 1 : 0, caps = INTRO_CAPS[ck], cap = caps[(n + tiers[3]) % caps.length];
+    $('packTitle').textContent = box ? '⚡ Shock Box opened!' : '🥚 ' + n.toLocaleString('en-US') + ' eggs hatched!';
+    var bars = [3, 2, 1, 0].map(function (t) { var c = tiers[t], pc = n ? Math.max(c ? 2 : 0, Math.round(c * 100 / n)) : 0;
+      return '<div class="pkibar t' + t + '"><span class="pkil">' + esc(TIERS[t].label) + '</span><span class="pkit"><i data-w="' + pc + '" style="width:0;background:' + TIER_C[t] + '"></i></span><b class="pkic" data-n="' + c + '">0</b></div>'; }).join('');
+    var head = star.length ? (wd ? '🌀 ' + wd + ' weird' : '') + (wd && sp ? ' + ' : '') + (sp ? '✨ ' + sp + ' special' : '') + (star.length === 1 && !(wd + sp > 1) ? ' find!' : ' finds!') : '🏆 Your best pulls';
+    var cards = best.map(function (x, i) { var k = revStar(x), oi = revOneIn(w, x);
+      var kp = isKept(x.id);
+      return '<div class="pkic-card t' + x.art.tierIndex + (k ? ' pkb-' + k : '') + '" style="--d:' + i + '"><a class="pkic-open" href="pet.html?id=' + x.id + '" target="_blank" rel="noopener" title="Open #' + x.id + ' in a new tab"><canvas width="32" height="32" data-bid="' + x.id + '"></canvas>' +
+        '<span class="pkbtag">' + esc(k ? revStarLabel(x) : TIERS[x.art.tierIndex].label.toUpperCase()) + '</span><span class="pkbname">#' + x.id + ' ' + esc(V.speciesLabel ? V.speciesLabel(x.species) : x.species) + '</span>' + (oi ? '<span class="pkbodd">💎 1 in ' + (window.PetScore && PetScore.fmtN ? PetScore.fmtN(oi) : oi) + '</span>' : '') + '</a>' +
+        '<button type="button" class="keepbtn pkistar" data-keep="' + x.id + '" aria-pressed="' + kp + '" title="' + (kp ? 'Favorite: never discarded. Click to unstar.' : 'Star this pet as a favorite (never discarded)') + '">' + (kp ? '★' : '☆') + '</button></div>'; }).join('');
+    /* owner Nov 24 2026: 'Make it easy to find and keep the best pets'. One tap stars the best: every weird & special find plus the cards shown. Starred = never discarded. */
+    var keepL = all.filter(revStar).concat(best).filter(function (x, i, a) { return a.indexOf(x) === i; }).map(function (x) { return x.id; }), keepN = keepL.filter(function (id) { return !isKept(id); }).length;
+    $('packSummary').innerHTML = '<div class="pki' + (rev.introDone || lifeReduced() ? ' pki-done' : '') + '">' +
+      '<div class="pkisub">' + (rev.away ? 'While you were away, ' : '') + (rev.away ? 'your ' : 'Your ') + (box ? 'box' : 'eggs') + ' gave you <b>' + n.toLocaleString('en-US') + ' new pet' + (n === 1 ? '' : 's') + '</b></div>' +
+      '<div class="pkibars" role="img" aria-label="' + esc([3, 2, 1, 0].map(function (t) { return tiers[t] + ' ' + TIERS[t].label; }).join(', ')) + '">' + bars + '</div>' +
+      (cards ? '<div class="pkifinds"><div class="pkbh">' + head + '</div><div class="pkirow">' + cards + '</div></div>' : '') +
+      '<div class="pkicap" aria-hidden="true">' + esc(cap) + '</div>' + rev.luck +
+      '<div class="pkigo">' + (keepL.length ? '<button type="button" class="btn pkibest" id="pkiStar"' + (keepN ? '' : ' disabled') + ' title="Stars them: starred pets are favorites and are never discarded">' + (keepN ? '⭐ Keep the best (star ' + keepL.length + ')' : '★ Best ' + (keepL.length === 1 ? 'one' : keepL.length) + ' starred') + '</button>' : '') +
+        '<button type="button" class="btn pkiall" id="pkiAll">See all ' + n.toLocaleString('en-US') + ' &amp; sort ›</button></div>' +
+      '<div class="pkigo pkigo2"><button type="button" class="q" id="pkiKeep" title="Keep every pet. They are already in My Pets.">Done, keep all</button><button type="button" class="q" id="pkiLater" title="Puts a small button at the bottom of the page so you can open this again">Later</button></div></div>';
+    $('packSummary').querySelectorAll('canvas[data-bid]').forEach(function (c) { var x = w.byId[+c.getAttribute('data-bid')]; if (!x) return; try { var fr = petFrames(x, w); paint(c, fr[0]); R.animate(c, fr); } catch (e) { } });
+    var root = $('packSummary').querySelector('.pki'), t0 = 0, DUR = 700, fin = function () { rev && (rev.introDone = 1); root.classList.add('pki-done');
+        root.querySelectorAll('.pkic').forEach(function (b) { b.textContent = (+b.getAttribute('data-n')).toLocaleString('en-US'); }); };
+    root.querySelectorAll('.pkit i').forEach(function (b) { b.style.width = root.classList.contains('pki-done') ? b.getAttribute('data-w') + '%' : '0'; });
+    if (root.classList.contains('pki-done')) fin();
+    else { requestAnimationFrame(function () { root.querySelectorAll('.pkit i').forEach(function (b) { b.style.width = b.getAttribute('data-w') + '%'; }); });
+      var tick = function (ts) { if (!root.isConnected || root.classList.contains('pki-done')) return; if (!t0) t0 = ts; var k = Math.min(1, (ts - t0) / DUR), e = 1 - Math.pow(1 - k, 3);
+        root.querySelectorAll('.pkic').forEach(function (b) { b.textContent = Math.round(+b.getAttribute('data-n') * e).toLocaleString('en-US'); }); if (k < 1) requestAnimationFrame(tick); else setTimeout(function () { if (root.isConnected) fin(); }, 900); };
+      requestAnimationFrame(tick); root.addEventListener('click', function (e) { if (!e.target.closest('a,button')) fin(); }); }
+    $('pkiAll').onclick = function () { rev.intro = false; rev.page = 0; drawReveal(); var g = $('packGrid'); if (g) g.scrollTop = 0; };
+    $('pkiKeep').onclick = closeReveal;
+    root.querySelectorAll('.pkistar').forEach(function (b) { b.onclick = function () { rev.introDone = 1; toggleKeep(+b.getAttribute('data-keep')); drawReveal(); }; });
+    if ($('pkiStar')) $('pkiStar').onclick = function () { rev.introDone = 1; var add = keepL.filter(function (id) { return !isKept(id); }); if (!add.length) return;
+      var l = keptIds().concat(add); try { localStorage.setItem(keepKey(), JSON.stringify(l)); } catch (e) { } try { document.dispatchEvent(new CustomEvent('xcpets-stars')); } catch (e) { }
+      toast('⭐ Starred ' + plural(add.length, 'pet') + ': your favorites, never discarded. Find them with Sort → Starred in My Pets.', 6000); drawReveal(); };
+    $('pkiLater').onclick = function () { var ids = rev.eggs.slice(); if (!revealQ.length) packY = null; close('packBox'); rev = null; trayAdd(ids); render(); setTimeout(nextReveal, 250); };
+    try { $('pkiAll').focus({ preventScroll: true }); } catch (e) { }
+  }
   function drawReveal() {
+    $('packBox').classList.toggle('pkintro', !!(rev.kind === 'eggs' && rev.intro));
+    if (rev.kind === 'eggs' && rev.intro) { var wi = world(); if (rev.eggs.some(function (id) { return wi.byId[id]; })) return drawIntro(wi); rev.intro = false; }
     var w = world(), gear = rev.kind === 'gear', list = gear ? rev.wins : rev.eggs.map(function (id) { return w.byId[id]; }).filter(Boolean), tiers = [0, 0, 0, 0];
     if (!gear) list = sortEggs(w, list, rev.sort); /* egg-review-sort 2026-10-24: display order only; rev.sel is keyed by pet id, so ticks survive re-sorting */
     var all = list; list.forEach(function (x) { tiers[gear ? (x.legendary ? 3 : x.tier) : x.art.tierIndex]++; });
@@ -1798,7 +1864,7 @@
   /* flow-fixes (2026-10-22): results that arrive with the first chain load are HELD for the 'While you were away' sheet (Watch all / Skip all) instead of
    * popping one after another; results that land later play as before. The arena calls V2AnimDone when a fight ends so the queue moves on (it never opens
    * the pop-up, so animClose never advanced it). A queued animation waits while the hatch/gear results are open. */
-  var heldA = [], heldR = false, released = false, firstDataT = 0;
+  var heldA = [], heldR = false, released = false, firstDataT = 0, holdT = 0;
   function dataSeen() { if (!firstDataT) firstDataT = Date.now(); }
   function holding() { return !released && document.documentElement.classList.contains('ip-hold') && firstDataT && Date.now() - firstDataT < 8000; }
   function awayPing() { if (window.V2IpChip) try { V2IpChip(); } catch (e) { } }
