@@ -30,27 +30,23 @@ def native(im):
     sm = im.resize((W // g, H // g), Image.NEAREST)
     return sm.crop(sm.getbbox())
 
+RING = (0x14, 0x10, 0x1c)  # the merch stickers' 1 px dark die-cut ring (no white band since Nov 24 2026)
+
 def strip_outline(sm):
-    """Remove the merch die-cut border (Jake, Nov 24 2026: "I dont like the white outlines"): the outer dark ring and the
-    pure-white band inside it, found by flooding in from the transparent outside. The sprite keeps its own ink outline;
-    white parts inside the pet (eyes, teeth) are never reached because the sprite's outline encloses them."""
+    """Remove the merch die-cut ring (Jake, Nov 24 2026: "I dont like the white outlines"): pixels of the ring colour
+    connected to the transparent outside. The pet keeps its own ink outline. Older files with a white band: that band
+    (pure white, connected to the outside) goes too."""
     sm = sm.copy(); w, h = sm.size; px = sm.load()
     clear = lambda x, y: px[x, y][3] == 0
     out = lambda x, y: not (0 <= x < w and 0 <= y < h) or clear(x, y)
     nb = lambda x, y: ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1))
-    # 1) outermost ring: opaque dark pixels touching the outside
-    ring = [(x, y) for y in range(h) for x in range(w) if not clear(x, y) and sum(px[x, y][:3]) < 150 and any(out(x + dx, y + dy) for dx in (-1, 0, 1) for dy in (-1, 0, 1))]
-    for x, y in ring: px[x, y] = (0, 0, 0, 0)
-    # 2) the white band: pure white pixels connected to the (new) outside
-    stack = [(x, y) for y in range(h) for x in range(w) if px[x, y][:3] == (255, 255, 255) and px[x, y][3] and any(out(a, b) for a, b in nb(x, y))]
-    while stack:
-        x, y = stack.pop()
-        if not (0 <= x < w and 0 <= y < h) or clear(x, y) or px[x, y][:3] != (255, 255, 255): continue
-        px[x, y] = (0, 0, 0, 0); stack.extend(nb(x, y))
-    # 3) leftover specks of the old ring: opaque pixels with no opaque neighbour left
-    for y in range(h):
-        for x in range(w):
-            if not clear(x, y) and all(out(a, b) for a, b in nb(x, y)): px[x, y] = (0, 0, 0, 0)
+    for colour in (RING, (255, 255, 255), RING):
+        stack = [(x, y) for y in range(h) for x in range(w) if not clear(x, y) and px[x, y][:3] == colour and any(out(x + dx, y + dy) for dx in (-1, 0, 1) for dy in (-1, 0, 1))]
+        while stack:
+            x, y = stack.pop()
+            if not (0 <= x < w and 0 <= y < h) or clear(x, y) or px[x, y][:3] != colour: continue
+            if not any(out(x + dx, y + dy) for dx in (-1, 0, 1) for dy in (-1, 0, 1)): continue
+            px[x, y] = (0, 0, 0, 0); stack.extend(nb(x, y))
     return sm.crop(sm.getbbox())
 
 def fit(sm, box, pad, crisp):
