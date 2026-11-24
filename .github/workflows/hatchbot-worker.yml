@@ -89,7 +89,13 @@ jobs:
           API="https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN"
           # tgcall METHOD args...: prints Telegram's own error text (never the token) instead of a bare "error: 400"
           tgcall() { local m="$1"; shift; local out; out=$(curl -sS "$API/$m" "$@") || { echo "::error::$m: no answer"; return 1; }; case "$out" in *'"ok":true'*) return 0;; *) echo "::error::$m: $(printf '%s' "$out" | head -c 300)"; return 1;; esac; }
-          tgcall setWebhook -d "url=$URL" -d "secret_token=$SECRET" -d "drop_pending_updates=true"
+          # Only re-point the webhook when it changed (Nov 24 2026: Telegram's own DNS briefly could not resolve workers.dev and
+          # refused setWebhook, which failed the whole deploy and skipped the command menu). Retries a few times when it must change.
+          CUR=$(curl -sS "$API/getWebhookInfo" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{console.log(JSON.parse(s).result.url||'')}catch(e){console.log('')}})")
+          if [ "$CUR" = "$URL" ]; then echo "webhook already points at the worker"; else
+            ok=; for i in 1 2 3 4; do if tgcall setWebhook -d "url=$URL" -d "secret_token=$SECRET" -d "drop_pending_updates=true"; then ok=1; break; fi; sleep $((i * 10)); done
+            [ -n "$ok" ] || exit 1
+          fi
           CMDS='[{"command":"play","description":"Open the XCPETS app inside Telegram"},{"command":"pet","description":"Pet card: /pet, /pet 123, /pet <name>, /pet <species>"},{"command":"season","description":"The current XCPETS season and its countdown"},{"command":"burns","description":"XCPETS burned all time and today"},{"command":"whosthat","description":"Guess the pet from its silhouette"},{"command":"breed","description":"A real breed from the chain (/breed <pet>)"},{"command":"battle","description":"A real arena battle (/battle <pet>)"},{"command":"meme","description":"A random XCPETS meme"},{"command":"chainday","description":"Current 144-block game day and blocks left"},{"command":"stickers","description":"XCPETS stickers and emoji of every pet"},{"command":"bug","description":"Report a bug to the XCPETS team"},{"command":"help","description":"List HatchBot commands"}]'
           CMDS=$(node -e "const c=JSON.parse(process.argv[1]);if(require('./hatchbot/auto-config.json').commands.rate===true)c.splice(5,0,{command:'rate',description:'HatchBot rates a pet (/rate <pet>)'});console.log(JSON.stringify(c))" "$CMDS")
           for SCOPE in '{"type":"default"}' '{"type":"all_group_chats"}' '{"type":"all_private_chats"}'; do
