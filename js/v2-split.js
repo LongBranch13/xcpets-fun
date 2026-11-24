@@ -548,7 +548,7 @@
    * next owner-page batch republished from the owner list alone and dropped them, and they were never fetched again. Keep them here and
    * add them back on every publish; a fresher copy from the owner list or the device check wins. Display only. */
   var keptExtra = {}, keptN = 0;
-  function keepExtra(list) { var i, p, who = me(); for (i = 0; i < (list || []).length; i++) { p = list[i]; if (p && p.id != null && (p.owner !== who || p.dead || p.released)) { /* my living pets come from my owner pages */ if (!keptExtra[p.id]) keptN++; keptExtra[p.id] = p; } } }
+  function keepExtra(list) { var i, p, who = me(); for (i = 0; i < (list || []).length; i++) { p = list[i]; if (p && p.id != null && (p.owner !== who || p.dead || p.released || (p.zombie && !p.zombie.end))) { /* my living pets come from my owner pages; my risen zombies are kept too (hunt-fast Nov 24 2026: the cemetery loads them before the owner pages finish) */ if (!keptExtra[p.id]) keptN++; keptExtra[p.id] = p; } } }
   function withKept(pets) {
     if (!keptN) return pets;
     var have = {}, i, out = pets.slice();

@@ -23,6 +23,6 @@ assert.deepStrictEqual(order('gear', [g(1, { gear: 1 }), g(2, { gear: 3 }), g(3,
 assert.deepStrictEqual(order('lived', [g(1, { born: 900 }), g(2, { born: 100 }), g(3, { born: null })]), [2, 1, 3]);
 assert.deepStrictEqual(order('id', [g(9), g(2), g(5)]), [2, 5, 9]);
 // chip on every grave card + the score file on the page
-assert(/'"><\/canvas>' \+ rarChip\(p\) \+ '<h4>/.test(src), 'rarity chip on the grave card');
+assert(/More about this grave<\/summary>' \+ rarChip\(p\)/.test(src), 'rarity chip on the grave card (under More about this grave, cem-raise-easy Nov 24 2026)');
 const ip = html.indexOf('js/pet-score.js'), is = html.indexOf('js/v2-cemetery-scene.js'); assert(ip > 0 && is > ip, 'cemetery.html loads pet-score.js before the scene');
 console.log('cemetery-rarity-sort: OK (8 sorts, rarest = rank > 💎 rarity > power, chip on every grave)');
