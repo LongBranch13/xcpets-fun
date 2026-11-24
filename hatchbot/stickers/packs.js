@@ -85,10 +85,28 @@ async function main() {
     if (c) { owner = c.user.id; console.log(`Owner of the packs: the group's creator (${c.user.first_name})`); }
   }
   if (!owner) throw new Error('No owner: set TELEGRAM_CHAT_ID (the group) or type your Telegram user id in the workflow box');
-  const stickers = `xcpets_pets_by_${me.username}`, emoji = `xcpets_emoji_by_${me.username}`;
+  let stickers = `xcpets_pets_by_${me.username}`, emoji = `xcpets_emoji_by_${me.username}`;
+  /* Replace in place (Jake, Nov 24 2026: "cant we just replace them"): when the group already uses a sticker or emoji pack that
+     HatchBot made earlier (name ends _by_<bot>), refresh THAT pack with the new pets, so the group keeps its pack and nobody
+     has to change a setting. Packs made with @Stickers by a person cannot be changed by a bot; those are left alone. */
+  const mine = n => !!n && n.toLowerCase().endsWith('_by_' + me.username.toLowerCase());
+  const inPlace = [];
+  if (CHAT) {
+    try {
+      const chat = await call('getChat', { chat_id: CHAT });
+      console.log(`Group sticker pack now: ${chat.sticker_set_name || 'none'} | group emoji pack now: ${chat.custom_emoji_sticker_set_name || 'none'}`);
+      if (mine(chat.sticker_set_name) && chat.sticker_set_name !== stickers) { stickers = chat.sticker_set_name; inPlace.push('stickers'); }
+      if (mine(chat.custom_emoji_sticker_set_name) && chat.custom_emoji_sticker_set_name !== emoji) { emoji = chat.custom_emoji_sticker_set_name; inPlace.push('emoji'); }
+      if (chat.sticker_set_name && !mine(chat.sticker_set_name)) console.log('The group sticker pack was not made by HatchBot, so it cannot be refreshed in place.');
+      if (chat.custom_emoji_sticker_set_name && !mine(chat.custom_emoji_sticker_set_name)) console.log('The group emoji pack was not made by HatchBot, so it cannot be refreshed in place.');
+    } catch (e) { console.log('getChat: ' + e.message); }
+  }
+  if (inPlace.length) console.log('Refreshing the group\'s own ' + inPlace.join(' and ') + ' pack in place.');
   try {
     await syncPack(owner, stickers, 'XCPETS Pets', 'regular', BY_SPECIES, 'sticker');
+    if (inPlace.includes('stickers') && !DRY) { try { await call('setStickerSetTitle', { name: stickers, title: 'XCPETS Pets' }); } catch (e) { console.log('  title: ' + e.message); } }
     const em = await syncPack(owner, emoji, 'XCPETS Emoji', 'custom_emoji', MANIFEST, 'emoji');
+    if (inPlace.includes('emoji') && !DRY) { try { await call('setStickerSetTitle', { name: emoji, title: 'XCPETS Emoji' }); } catch (e) { console.log('  title: ' + e.message); } }
     if (em) { try { await call('setCustomEmojiStickerSetThumbnail', { name: emoji, custom_emoji_id: em.stickers[0].custom_emoji_id }); } catch (e) { console.log('  thumbnail: ' + e.message); } }
   } catch (e) {
     if (/PEER_ID_INVALID|USER_ID_INVALID|user not found|bot was blocked/i.test(e.message))

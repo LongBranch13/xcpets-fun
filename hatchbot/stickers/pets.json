@@ -268,62 +268,6 @@
 ]
 },
 {
-"file": "bojackson-no-gear.png",
-"species": "bojackson",
-"label": "Bo Jackson",
-"look": "no",
-"emoji": [
-"🏈"
-],
-"keywords": [
-"bo jackson",
-"xcpets",
-"pet"
-]
-},
-{
-"file": "rarepigeon-no-gear.png",
-"species": "rarepigeon",
-"label": "Rarepigeon",
-"look": "no",
-"emoji": [
-"🐦"
-],
-"keywords": [
-"rarepigeon",
-"xcpets",
-"pet"
-]
-},
-{
-"file": "jacksonpepe-no-gear.png",
-"species": "jacksonpepe",
-"label": "Old Hickory Pepe",
-"look": "no",
-"emoji": [
-"🎩"
-],
-"keywords": [
-"old hickory pepe",
-"xcpets",
-"pet"
-]
-},
-{
-"file": "viking-no-gear.png",
-"species": "viking",
-"label": "Viking",
-"look": "no",
-"emoji": [
-"🪓"
-],
-"keywords": [
-"viking",
-"xcpets",
-"pet"
-]
-},
-{
 "file": "orangedragon-no-gear.png",
 "species": "orangedragon",
 "label": "Orange Dragon",

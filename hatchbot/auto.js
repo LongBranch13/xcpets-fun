@@ -6,6 +6,7 @@
  * Not ported (owner turned them off): HatchBot's own meme posts, Q&A/mention answers, the box video clip handoff.
  * Already posted by the GitHub Actions announcer (.github/workflows/hatchbot.yml + hatchbot/announce.js), so not
  * repeated here: halving and Fire Sale warnings, Pantheon seats, Legendary/Mythic gifts and swaps, raids, seasons, zombies. */
+import * as FOMO from "./fomo.mjs"; /* one true urgency line under posts (Nov 24 2026, Jake: "have hatchbot create fomo") */
 const SITE = "https://xcpets.fun", NODE = "https://node.xcpets.fun";
 const TIER = ["Common", "Uncommon", "Rare", "Legendary"], STAGE = ["Egg", "Hatchling", "Juvenile", "Adult", "Elder", "Mythic"];
 const CM_T = [0, 69e3, 834900, 2214900, 4146900, 6906900];
@@ -454,6 +455,16 @@ export async function recapFor(day, P, W, meta, boot) {
   return { text, photoId, blocks: [hStart + 1, hEnd], counts: { burns, sats: String(sats), prevSats: String(prevSats), wallets: wallets.size, hatched, bred, fed, mythics, died, kinds } };
 }
 
+/* ---------------------------------------------------------------- FOMO (hatchbot/fomo.mjs)
+ * Posts that celebrate something (hybrids, battles, milestones, Spam City, routines) get one short, true urgency line:
+ * community pet % to Mythic + raiser prizes, the next feature gate, pets hatched so far. Never on warnings or the recap. */
+const NO_FOMO = /^(warning_|recap|feed_lag)/;
+export function withFomo(posts, s) {
+  for (const p of posts) if (p && p.text && !NO_FOMO.test(p.type || "")) p.text = FOMO.add(p.text, s, (p.keys && p.keys[0]) || p.type + p.text.length, 1000);
+  return posts;
+}
+const fomoState = (W, P, st) => ({ tip: Math.max(W ? W.tip : 0, P ? P.tip : 0, st.wt || 0), cm: W ? { current: W.cm.current, fed: W.cm.fed } : (st.cmFed ? { current: st.cmFed.current, fed: st.cmFed.fed } : null), hatched: (P && P.maxId) || st.hatched || 0 });
+
 /* ---------------------------------------------------------------- state + sending */
 const kv = (env) => env.HB_STATE || env.BUGS || null;
 async function loadState(env) { const K = kv(env); if (!K) return null; try { return JSON.parse(await K.get(KEY) || "null") || {}; } catch (e) { return {}; } }
@@ -540,7 +551,7 @@ export async function watch(st, C, nowMs, opt) {
       out.posts.push(...batch(holdLegendaries(ev, st, nowMs, C.limits.legendary_digest_hours), st));
     }
     st.maxId = Math.max(st.maxId || 0, P.maxId); st.pt = P.tip;
-    if (W) { st.wt = Math.max(st.wt || 0, W.tip); st.cm = { current: W.cm.current, stage: W.cm.stage }; }
+    if (W) { st.wt = Math.max(st.wt || 0, W.tip); st.cm = { current: W.cm.current, stage: W.cm.stage }; st.cmFed = { current: W.cm.current, fed: W.cm.fed }; }
     st.burned = +meta.burnedXCPETS || st.burned || 0; st.pets = +meta.totalPets || st.pets || 0; st.hatched = Math.max(st.hatched || 0, P.maxId || 0);
   }
   if (C.ties === true || C.spamcity === true || C.__all) {
@@ -563,6 +574,7 @@ export async function watch(st, C, nowMs, opt) {
       else out.recapWait = r.wait;
     }
   }
+  if (C.fomo !== false) withFomo(out.posts, fomoState(W, P, st));
   return out;
 }
 
@@ -571,7 +583,7 @@ export async function watch(st, C, nowMs, opt) {
  * Milestones and the community stage are forced one step back so their wording shows too (marked sample). */
 export async function preview(C, opts) {
   opts = opts || {}; const back = Math.max(1, Math.min(+opts.back || 144, 1000)), now = opts.now || Date.now(), out = [];
-  const add = (posts, note) => posts.forEach((p) => out.push({ type: p.type, note: note || "", photo: p.photo || (p.photoId ? SITE + "/t/" + p.photoId + ".png" : null), text: p.text, chars: p.text.length, violations: violations(p.text) }));
+  const add = (posts, note) => (C.fomo !== false ? withFomo(posts, fomoState(W, P, {})) : posts).forEach((p) => out.push({ type: p.type, note: note || "", photo: p.photo || (p.photoId ? SITE + "/t/" + p.photoId + ".png" : null), text: p.text, chars: p.text.length, violations: violations(p.text) }));
   const meta = await loadMeta(), W = await loadWorld(), P = await ((opts && opts.pets) || loadPets)(), ties = await loadTies(), Call = Object.assign({}, C, { __all: true });
   let maxId = 0; for (const r of P.rows) if (r[18] <= P.tip - back && r[0] > maxId) maxId = r[0];
   const st = { maxId, pt: P.tip - back, wt: W.tip - back, cm: { current: W.cm.current, stage: W.cm.stage }, burned: +meta.burnedXCPETS, pets: +meta.totalPets, hatched: P.maxId };

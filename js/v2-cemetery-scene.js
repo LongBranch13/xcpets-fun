@@ -386,7 +386,7 @@
         (p.restUntil ? '<div class="small">Its owner can raise it again from block ' + fmt(p.restUntil) + ' · comes back at its death power</div>' : '') + '<div class="died">🥚 hatched ' + (p.born != null ? 'block ' + fmt(p.born) : '?') + '<br>🪦 died at block ' + fmt(p.died) + '</div>' + (gl ? '<div class="small buried">' + gl + '</div>' : '') + '</details></div>'; }
     /* risen zombies: hunger, feral, crumble countdown; Hunt (anyone, feral only), zombie feed / Resurrection (owner only) */
     function syncWorld() { var nw = ctx.M && ctx.M.world ? ctx.M.world() : null; if (nw) { w = nw; ctx.w = nw; } return w; }
-    function myLiving() { return ME ? (w.pets || []).filter(function (p) { return p.owner === ME && !p.dead && !p.released && !p.community && !V.isZ(p); }) : []; }
+    function myLiving() { return ME ? V2Own.living(w, ME, { zombies: false }) : []; }
     function huntWait() { syncWorld(); if (!(window.xcpLivingFill && window.xcpRestDone)) return false; return !xcpRestDone(w) || !!(window.xcpDiscardMiss && xcpDiscardMiss(ME).length); }
     function zcard(p) { return zcardHtml({ w: w, b: b, V: V, R: R, ME: ME, on: on, fmt: fmt, sa: sa }, p); } /* pet-page-zombies: the card is module level (zcardHtml) so pet.html shows the same one */
     /* cem-doors (Nov 22 2026, Jake: "all the workings there need to be more intuitive"): four doors, one job each. Raise = the grave finder,

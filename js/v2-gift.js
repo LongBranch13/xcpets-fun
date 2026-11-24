@@ -201,7 +201,7 @@
   /* ---- batch picker (play.html My Pets) */
   function picker() {
     var w0 = W(); if (!w0 || !ME) return;
-    var mine0 = (w0.pets || []).filter(function (p) { return p.owner === ME && !p.dead && !p.released && !p.community; });
+    var mine0 = V2Own.living(w0, ME);
     var wait = window.xcpLivingFill && (!(window.xcpRestDone && xcpRestDone(w0)) || (window.xcpDiscardMiss && xcpDiscardMiss(ME).length));
     if (wait && !picker.skip) {
       if (!mine0.length) modal('<h2>🎁 Gift several pets</h2><p class="small" data-petload role="status">Loading your pets…</p>');
@@ -213,7 +213,7 @@
       }, function () { picker.skip = 0; });
       if (!mine0.length) return;
     }
-    var w = W() || w0, b = tip() + 1, mine = (w.pets || []).filter(function (p) { return p.owner === ME && !p.dead && !p.released && !p.community; }), sel = {}, f = PF ? PF.load('gift') : {};
+    var w = W() || w0, b = tip() + 1, mine = V2Own.living(w, ME), sel = {}, f = PF ? PF.load('gift') : {};
     function opts(list, cur) { return '<option value="">All</option>' + list.map(function (x) { return '<option value="' + esc(x[0]) + '"' + (String(cur) === String(x[0]) ? ' selected' : '') + '>' + esc(x[1]) + '</option>'; }).join(''); }
     var sps = {}; mine.forEach(function (p) { sps[p.species] = spL(p); });
     function shown() { return V.petFilter(w, mine.map(function (p) { return { p: p }; }), f, b).map(function (x) { return x.p; }); }
@@ -230,7 +230,7 @@
     draw(); }
   /* ---- swap offer (pet.html, someone else's pet) */
   function swapFlow(theirId) { if (TOK) { modal('<h2>🔁 Swap pets</h2><p>Pets are their tokens now. Two ways to swap #' + esc(theirId) + ':</p><ol><li>Each of you gifts your pet to the other (two token sends, 🎁 Gift).</li><li>Or a DEX order that gives your pet token and gets theirs (token for token, settles on its own).</li></ol><div class="gf-bar"><button class="q" id="gfX">Close</button></div>'); $('gfX').onclick = close; return; } var w = W(), T = w && w.byId[theirId]; if (!T || !ME) return; var b = tip() + 1, kept = keptIds();
-    var all = w.pets.filter(function (p) { return p.owner === ME && !p.dead && !p.released && !p.community && !V.giveLocks(w, p, b); }), f = PF ? PF.load('swap') : {}, pick = null, mine;
+    var all = V2Own.living(w, ME).filter(function (p) { return !V.giveLocks(w, p, b); }), f = PF ? PF.load('swap') : {}, pick = null, mine;
     function draw() { mine = V.petFilter(w, all.map(function (p) { return { p: p }; }), f, b).map(function (x) { return x.p; });
     modal('<h2>🔁 Offer a swap</h2><p class="small">Pick one of your pets to offer for <b>#' + T.id + '</b>. The owner has ' + V.SWAP_WINDOW + ' blocks (about a week) to accept; you can cancel any time before.</p>' +
       (PF ? PF.html(f, GF_FIELDS, { species: PF.species(all), count: mine.length, total: all.length }) : '') +
@@ -267,7 +267,7 @@
   /* ---- pet page buttons */
   function petButtons() { var w = W(), m = /id=(\d+)/.exec(location.search), p = w && m && w.byId[m[1]], acts = $('petActs'); if (!p || !on() || $('gfPetBtns')) return; css();
     var host = acts || ($('petMain') || document.querySelector('main')); if (!host) return; var d = document.createElement('span'); d.id = 'gfPetBtns';
-    if (ME && p.owner === ME && !p.dead && !p.released && !p.community) { var why = V.giveLocks(w, p, tip() + 1); d.innerHTML = '<button type="button" class="btn ghost" id="gfGift"' + (why ? ' disabled title="' + esc(why) + '"' : '') + '>🎁 Gift</button> '; }
+    if (V2Own.isLiving(p, ME)) { var why = V.giveLocks(w, p, tip() + 1); d.innerHTML = '<button type="button" class="btn ghost" id="gfGift"' + (why ? ' disabled title="' + esc(why) + '"' : '') + '>🎁 Gift</button> '; }
     else if (!TOK && ME && p.owner && p.owner !== ME && !p.dead && !p.released && !p.community) d.innerHTML = '<button type="button" class="btn ghost" id="gfSwap">🔁 Offer swap</button> ';
     if (!d.innerHTML) return; if (acts) acts.insertBefore(d, acts.firstChild); else host.appendChild(d);
     if ($('gfGift')) $('gfGift').onclick = function () { giftFlow([p.id]); }; if ($('gfSwap')) $('gfSwap').onclick = function () { swapFlow(p.id); }; }
