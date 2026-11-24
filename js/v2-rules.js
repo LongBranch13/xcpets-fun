@@ -818,7 +818,7 @@
    * also get one .top piece. Unworn, in the stash, lookup-only (never rolled or dropped). Granted once per pet (w.raiserGrants[H.id]), at the first block
    * sweep after its Mythic burn, only when that Mythic block is at or after ACTIVATE_RAISERS_BLOCK. A future pet = a new handoff entry + a RAISER_PRIZES
    * entry + its two maps in V2Gear.WR_RAISER_GEAR. null = OFF: nothing is granted, replay is SAME. */
-  var ACTIVATE_RAISERS_BLOCK = null, RAISER_MIN = 69, RAISER_TOP = 3;
+  var ACTIVATE_RAISERS_BLOCK = 977450, RAISER_MIN = 69, RAISER_TOP = 3; // LIVE: owner approved Nov 23 2026 ("merge all", ~7:26 PM CT); 977,450 is ahead of the tip and far before the White Rabbit's Mythic (55%)
   var RAISER_PRIZES = { rabbit: { all: 'wr-golden-carrot', top: 'wr-mad-hatter' } };
   function raisersOn() { return ACTIVATE_RAISERS_BLOCK != null; }
   function raiserList(M) { return Object.keys((M && M.by) || {}).filter(function (a) { return M.by[a] + 1e-9 >= RAISER_MIN; }).sort(function (x, y) { return M.by[y] - M.by[x] || (x < y ? -1 : 1); }); }
