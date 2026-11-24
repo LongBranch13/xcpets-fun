@@ -14,9 +14,10 @@
   'use strict';
   var RAMP = [[22, 27, 19], [40, 50, 34], [60, 72, 51], [82, 96, 68], [106, 118, 86], [134, 146, 106], [164, 172, 128], [188, 192, 152]];
   var C = { line: [12, 15, 10], hole: [5, 6, 5], rim: [30, 36, 26], pupil: [200, 255, 120], pupil2: [110, 214, 72], thread: [196, 186, 146], threadD: [120, 110, 84],
-    eye: [222, 214, 150], eyeD: [178, 166, 104], seam: [44, 30, 34],
+    eye: [204, 198, 150], eyeD: [160, 150, 104], lid: [70, 84, 72], vein: [176, 40, 44], seam: [44, 30, 34],
     gum: [70, 34, 42], gumD: [40, 18, 24], tooth: [226, 218, 186], toothD: [170, 160, 128], mouth: [16, 8, 8], bone: [230, 222, 192], boneD: [166, 156, 124], cav: [38, 16, 20],
     flesh: [128, 54, 48], fleshD: [84, 32, 30], rot: [52, 46, 34], rotD: [36, 32, 24], pus: [168, 180, 88], drool: [150, 210, 92], droolL: [214, 255, 150],
+    bruise: [66, 44, 78], jaund: [206, 204, 118], bag: [58, 36, 66], bagL: [84, 58, 88], brain: [222, 130, 150], brainD: [150, 66, 92], rotS: [70, 54, 70], rotSL: [104, 92, 84],
     blood: [140, 18, 22], bloodL: [214, 46, 40], fpupil: [255, 72, 52], fpupil2: [196, 28, 24],
     dirt: [[74, 54, 36], [94, 70, 48], [52, 37, 26], [112, 86, 58]], fly: [10, 10, 12], wing: [200, 210, 220], stink: [132, 156, 60], stinkL: [176, 196, 92] };
   function hsh(a, b, c) { var h = (a * 374761393 + b * 668265263 + (c | 0) * 2147483647) | 0; h = (h ^ (h >>> 13)) * 1274126177 | 0; h ^= h >>> 16; return (h >>> 0) / 4294967296; }
@@ -58,6 +59,7 @@
     if (h < 60) { r = c; g = x; } else if (h < 120) { r = x; g = c; } else if (h < 180) { g = c; b = x; } else if (h < 240) { g = x; b = c; } else if (h < 300) { r = x; b = c; } else { r = c; b = x; }
     return [q8((r + m) * 255 + 4), q8((g + m) * 255 + 4), q8((b + m) * 255 + 4)]; }
   function hueGap(a, b) { var d = Math.abs(a - b) % 360; return d > 180 ? 360 - d : d; }
+  function mix(a, b, t) { return [q8(a[0] + (b[0] - a[0]) * t), q8(a[1] + (b[1] - a[1]) * t), q8(a[2] + (b[2] - a[2]) * t)]; }
   function set(L, q, col) { var j = q * 4; L.c[j] = col[0]; L.c[j + 1] = col[1]; L.c[j + 2] = col[2]; }
 
   /* zombie-clean (owner Nov 23 2026 'zombie sprites need work': the old pass turned every pet into the same noisy olive blob).
@@ -71,31 +73,41 @@
     var own = E.length && E.every(function (e) { return e.cells; }), eyeQ = {}; /* own: the sprite told us its real eye pixels (community pets) */
     if (own) E.forEach(function (e) { e.cells.E.concat(e.cells.P).forEach(function (c) { eyeQ[c] = 1; }); });
     /* 1. find the main skin colour: the commonest strong hue (head counts double), or "pale" when a pale neutral skin wins (Wojak, the White Rabbit) */
-    var hist = new Float64Array(25), tot = 0;
+    var hist = new Float64Array(25), tot = 0, SK = opt.skin || null; /* zombie-frames 1124: the skin found on frame 0 is reused on every frame, so a blink or a bob can't flip what counts as skin (DJ Pepe's hat went teal on frame 2) */
     for (q = 0; q < 1024; q++) { if (L.m[q] !== 1 || eyeQ[q]) continue; j = q * 4; var s0 = toHsl(src[j], src[j + 1], src[j + 2]), wt = (q >> 5) < b.y0 + H * 0.6 ? 2 : 1; tot += wt;
       if (E.some(function (e) { var ex = q & 31, ey = q >> 5; return ex >= e.x0 - 3 && ex <= e.x1 + 3 && ey >= e.y0 - 2 && ey <= e.y1 + 3; })) wt *= 3; /* skin is what sits round the eyes (FUNTRUMP's hair is bigger than his face) */
       if (s0[2] < 0.16) continue; if (s0[1] > 0.2 && s0[3] >= 0.1) hist[Math.floor(s0[0] / 15) % 24] += wt; else if (s0[2] > 0.6 && (s0[1] <= 0.2 || s0[3] < 0.1)) hist[24] += wt; }
     var bi = -1, bv = 0; for (i = 0; i < 24; i++) { var sm = hist[i] + 0.6 * (hist[(i + 23) % 24] + hist[(i + 1) % 24]); if (sm > bv) { bv = sm; bi = i; } }
+    if (SK) { bv = SK.bv; tot = SK.tot; hist[24] = SK.pale ? bv + 1 : 0; bi = SK.bi; }
     var pale = hist[24] > bv, skinH = bi * 15 + 7.5, hs = 0, hc = 0, hn = 0, ss = 0, skinS = 0.5, green, TH, TS; /* the skin's real hue: circular mean of the strong pixels near the peak */
-    if (!pale) { for (q = 0; q < 1024; q++) { if (L.m[q] !== 1 || eyeQ[q]) continue; j = q * 4; var s1 = toHsl(src[j], src[j + 1], src[j + 2]); if (s1[1] > 0.2 && s1[3] >= 0.1 && s1[2] >= 0.16 && hueGap(s1[0], skinH) <= 22) { var w1 = E.some(function (e) { var ex = q & 31, ey = q >> 5; return ex >= e.x0 - 3 && ex <= e.x1 + 3 && ey >= e.y0 - 2 && ey <= e.y1 + 3; }) ? 1 : 0.05; hs += w1 * Math.sin(s1[0] * Math.PI / 180); hc += w1 * Math.cos(s1[0] * Math.PI / 180); hn += w1; ss += w1 * s1[1]; } }
+    if (SK) { skinH = SK.skinH; skinS = SK.skinS; } else if (!pale) { for (q = 0; q < 1024; q++) { if (L.m[q] !== 1 || eyeQ[q]) continue; j = q * 4; var s1 = toHsl(src[j], src[j + 1], src[j + 2]); if (s1[1] > 0.2 && s1[3] >= 0.1 && s1[2] >= 0.16 && hueGap(s1[0], skinH) <= 22) { var w1 = E.some(function (e) { var ex = q & 31, ey = q >> 5; return ex >= e.x0 - 3 && ex <= e.x1 + 3 && ey >= e.y0 - 2 && ey <= e.y1 + 3; }) ? 1 : 0.05; hs += w1 * Math.sin(s1[0] * Math.PI / 180); hc += w1 * Math.cos(s1[0] * Math.PI / 180); hn += w1; ss += w1 * s1[1]; } }
       if (hn) { skinH = Math.atan2(hs, hc) * 180 / Math.PI; if (skinH < 0) skinH += 360; skinS = ss / hn; } }
-    green = !pale && skinH >= 70 && skinH <= 170; TH = green ? 168 : 96; TS = green ? 0.2 : 0.3;
-    if (!pale && bv < tot * 0.08) skinH = -999; /* no clear skin: everything is treated as clothes (faded) */
+    green = SK ? SK.green : !pale && skinH >= 70 && skinH <= 170; TH = green ? 138 : 96; TS = green ? 0.17 : 0.3; /* zombie-more 1124: Pepe-green skins go a dead grey-green (was teal, Homer read as an alien) */
+    if (!SK && !pale && bv < tot * 0.08) skinH = -999;
+    var skinOut = { bv: bv, tot: tot, pale: pale, bi: bi, skinH: skinH, skinS: skinS, green: green }; /* no clear skin: everything is treated as clothes (faded) */
     /* 2. recolour, keeping lightness */
+    var skinQ = new Uint8Array(1024), gumQ = [];
     for (q = 0; q < 1024; q++) { if (L.m[q] !== 1) continue; j = q * 4; var r = src[j], g = src[j + 1], bl = src[j + 2], l = lum(r, g, bl); y = q >> 5;
       if (eyeQ[q]) continue;
       if (l < 42) { set(L, q, C.line); continue; }
-      if (r > 140 && r - g > 60 && r - bl > 30 && y > b.y0 + H * 0.35 && y < b.y0 + H * 0.8 && skinH !== -999 && hueGap(toHsl(r, g, bl)[0], skinH) > 25) { set(L, q, l > 120 ? C.gum : C.gumD); continue; } /* lips, tongue: dead gum */
+      if (r > 140 && r - g > 60 && r - bl > 30 && y > b.y0 + H * 0.35 && y < b.y0 + H * 0.8 && skinH !== -999 && hueGap(toHsl(r, g, bl)[0], skinH) > 25) { set(L, q, l > 120 ? C.gum : C.gumD); gumQ.push(q); continue; } /* lips, tongue: dead gum */
       var t = toHsl(r, g, bl), x = q & 31, rimPx = !on(L, x - 1, y) || !on(L, x + 1, y) || !on(L, x, y - 1) || !on(L, x, y + 1), /* the Mythic gold rim sits on the silhouette edge: never skin */
         isSkin = !rimPx && (pale ? ((t[1] <= 0.2 || t[3] < 0.1) && t[2] > 0.6) || (t[1] < 0.45 && t[2] > 0.55 && hueGap(t[0], 30) < 35) : (t[1] > 0.12 && t[3] >= 0.06 && hueGap(t[0], skinH) <= 16 && Math.abs(t[1] - skinS) < 0.24)); /* same hue AND about the same strength: FUNTRUMP's hair is his skin's hue, but duller */
-      if (isSkin) { set(L, q, fromHsl(TH + (t[2] - 0.5) * 16, TS * (0.8 + 0.4 * Math.min(1, t[1] + 0.3)), 0.1 + t[2] * 0.8)); continue; }
+      if (isSkin) { skinQ[q] = 1; var dk = Math.max(0, Math.min(1, (0.46 - t[2]) / 0.3)), hl = Math.max(0, Math.min(1, (t[2] - 0.62) / 0.25)), sc = fromHsl(TH + (t[2] - 0.5) * 16, TS * (0.8 + 0.4 * Math.min(1, t[1] + 0.3)), 0.1 + t[2] * 0.8);
+        set(L, q, mix(mix(sc, C.bruise, dk * 0.55), C.jaund, hl * 0.25)); continue; } /* zombie-more 1124: shadows sink to bruise purple, highlights go a jaundiced yellow, so the skin reads rotten, not just recoloured */
       if (t[1] < 0.15 || t[3] < 0.08) { set(L, q, t[2] > 0.72 ? fromHsl(52, 0.2, t[2] * 0.86) : fromHsl(100, 0.08, t[2] * 0.9)); continue; } /* whites go dingy, greys go a touch green */
       set(L, q, fromHsl(t[0], t[1] * 0.5, 0.05 + t[2] * 0.82)); } /* clothes, hair, the Mythic rim: own colour, faded */
+    /* zombie-more 1124: sunken, gaunt skin: skin pixels touching the dark outline (or an eye) go a step toward bruise purple */
+    var sunk = []; for (q = 0; q < 1024; q++) { if (!skinQ[q]) continue; x = q & 31; y = q >> 5; var nb = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(function (d) { var nx = x + d[0], ny = y + d[1], nq = ny * 32 + nx; if (nx < 0 || ny < 0 || nx > 31 || ny > 31 || L.m[nq] !== 1) return false; return !skinQ[nq] && L.c[nq * 4] + L.c[nq * 4 + 1] + L.c[nq * 4 + 2] < 60; }); if (nb) sunk.push(q); }
+    sunk.forEach(function (q4) { var j4 = q4 * 4, c4 = mix([L.c[j4], L.c[j4 + 1], L.c[j4 + 2]], C.bruise, 0.38); set(L, q4, c4); });
     /* 3. eyes */
+    var lidC = pale ? fromHsl(100, 0.1, 0.5) : skinH === -999 ? C.rim : fromHsl(TH + (290 - TH) * 0.3, TS + 0.04, 0.34);
     var ev = v % 3, glow = F ? C.fpupil : C.pupil, glow2 = F ? C.fpupil2 : C.pupil2, eb = 0;
     if (own) E.forEach(function (e) { eb = Math.max(eb, e.y1); var ey1 = -1; e.cells.E.forEach(function (c) { ey1 = Math.max(ey1, c >> 5); });
-        e.cells.E.forEach(function (c) { var jj = c * 4; if (L.m[c] !== 1 || lum(src[jj], src[jj + 1], src[jj + 2]) < 150) return; set(L, c, (c >> 5) === ey1 ? C.eyeD : C.eye); });
-        e.cells.P.forEach(function (c, n) { if (L.m[c] !== 1) return; set(L, c, n % 2 && fi % 2 ? glow2 : glow); }); });
+        var ey0 = 32; e.cells.E.forEach(function (c) { ey0 = Math.min(ey0, c >> 5); }); var lid = ey1 - ey0 >= 2, vein = -1; /* zombie-more 1124: a heavy dead lid over the top of the eye, dull whites with one red vein */
+        e.cells.E.forEach(function (c) { var jj = c * 4; if (L.m[c] !== 1 || lum(src[jj], src[jj + 1], src[jj + 2]) < 150) return; if (lid && (c >> 5) === ey0) { set(L, c, lidC); return; } if (vein < 0 && (c >> 5) === ey1 && (c & 31) === (side > 0 ? e.x0 + 1 : e.x1 - 1)) { vein = c; set(L, c, C.vein); return; } set(L, c, (c >> 5) === ey1 ? C.eyeD : C.eye); });
+        if (lid) e.cells.P.forEach(function (c) { if ((c >> 5) === ey0 && L.m[c] === 1) set(L, c, lidC); });
+        e.cells.P.forEach(function (c, n) { if (L.m[c] !== 1 || (lid && (c >> 5) === ey0)) return; set(L, c, e.cells.shut ? glow2 : n % 2 && fi % 2 ? glow2 : glow); }); });
     else E.forEach(function (e, n) { var x0 = e.x0, x1 = e.x1, y0 = e.y0, y1 = e.y1; eb = Math.max(eb, y1);
       for (y = y0 - 1; y <= y1 + 1; y++) for (x = x0 - 1; x <= x1 + 1; x++) { if (!on(L, x, y)) continue; var edge = x < x0 || x > x1 || y < y0 || y > y1; j = (y * 32 + x) * 4; if (edge) { if (L.c[j] + L.c[j + 1] > 60) put(L, x, y, C.rim, 1); } else put(L, x, y, C.hole, 1); }
       var mode = !F && E.length === 2 && ev === 1 && n === 1 ? 'x' : 'pupil', cx = Math.round((x0 + x1) / 2 + (n ? -0.3 : 0.3)), cy = Math.round((y0 + y1) / 2);
@@ -121,7 +133,36 @@
     cut.forEach(function (p2) { if (on(L, p2[0], p2[1])) { var q2 = p2[1] * 32 + p2[0]; L.m[q2] = 0; L.c[q2 * 4 + 3] = 0; } });
     cut.forEach(function (p2) { [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(function (d) { var nx = p2[0] + d[0], ny = p2[1] + d[1]; if (on(L, nx, ny)) put(L, nx, ny, C.line, 1); }); });
     if (best >= 0 && on(L, best, bestY + 2)) put(L, best, bestY + 2, C.flesh, 1);
-    return { b: b, my: my, E: E };
+    /* 7. zombie-more 1124 (owner: 'they could still be a bit more zombie like'). A few more clean marks, each placed relative to the pet's own box and
+     * picked by pet id, so they sit still while the sprite bobs and every zombie gets its own set:
+     *  - dark bruise-purple bags under the eyes (every zombie);
+     *  - an open skull with the brain showing on top of the head (about half of them; the others keep only the stitched scar);
+     *  - two small rot spots on the skin, away from the eyes and mouth;
+     *  - a torn, ragged hem where the body meets the bottom of the frame (busts only, so feet and tails are never cut);
+     *  - pets that keep their own mouth (Homer, Kek, FUNTRUMP...) drool from it too. */
+    var bx = function (x, y) { return { x: x - b.x0, y: y - b.y0 }; }, nearEye = function (x, y, pad) { return E.some(function (e) { return x >= e.x0 - pad && x <= e.x1 + pad && y >= e.y0 - pad && y <= e.y1 + pad; }); };
+    E.forEach(function (e) { if (e.guess && !own) return; for (x = e.x0; x <= e.x1; x++) for (var by = e.y1 + (own ? 1 : 2); by <= e.y1 + (own ? 2 : 2); by++) { if (!inner(L, x, by) || eyeQ[by * 32 + x] || !skinQ[by * 32 + x]) continue; put(L, x, by, x === e.x0 || x === e.x1 ? C.bagL : C.bag, 1); break; } });
+    var MK = opt.marks || null; /* frame 0 picks the spots; every other frame reuses them (moved with the bob), so nothing pops in and out */
+    var brain = MK ? !!MK.brain : v % 2 === 0, hx2 = MK && MK.brain ? b.x0 + MK.brain[0] : b.x0 + Math.round(W * (side > 0 ? 0.42 : 0.58)) - 2, hy2 = MK && MK.brain ? b.y0 + MK.brain[1] : b.y0 + Math.max(2, Math.round(H * 0.06)), ok = brain;
+    if (brain && !MK) for (y = hy2; y <= hy2 + 2 && ok; y++) for (x = hx2; x <= hx2 + 4; x++) { if (!inner(L, x, y) || nearEye(x, y, 1)) { ok = false; break; } }
+    if (brain && ok) { var BR = [[0, 1, 1, 1, 0], [1, 2, 1, 2, 1], [3, 1, 3, 1, 3]]; /* 0 skull edge, 1 brain, 2 brain fold, 3 skull crack */
+      for (y = 0; y < 3; y++) for (x = 0; x < 5; x++) { var kk = BR[y][x]; if (on(L, hx2 + x, hy2 + y)) put(L, hx2 + x, hy2 + y, kk === 1 ? C.brain : kk === 2 ? C.brainD : kk === 3 ? C.boneD : C.bone, 1); }
+      if (on(L, hx2 - 1, hy2 + 1)) put(L, hx2 - 1, hy2 + 1, C.line, 1); if (on(L, hx2 + 5, hy2 + 1)) put(L, hx2 + 5, hy2 + 1, C.line, 1); }
+    var spots = [], cand = [];
+    if (MK) (MK.spots || []).forEach(function (sp) { cand.push([0, b.x0 + sp[0], b.y0 + sp[1]]); }); else for (q = 0; q < 1024; q++) { if (!skinQ[q]) continue; x = q & 31; y = q >> 5; if (!inner(L, x, y) || !inner(L, x + 1, y) || !inner(L, x, y + 1) || nearEye(x, y, 2) || Math.abs(y - my) < 3 || (brain && ok && Math.abs(x - hx2 - 2) < 5 && y < hy2 + 5)) continue;
+      var rr = bx(x, y); cand.push([hsh(rr.x, rr.y, v + 77), x, y]); }
+    if (!MK) cand.sort(function (a, c) { return a[0] - c[0]; });
+    for (i = 0; i < cand.length && spots.length < 2; i++) { var cx2 = cand[i][1], cy2 = cand[i][2]; if (spots.some(function (s2) { return Math.abs(s2[0] - cx2) < 5 && Math.abs(s2[1] - cy2) < 4; })) continue; spots.push([cx2, cy2]);
+      if (!on(L, cx2, cy2)) continue; put(L, cx2, cy2, C.rotS, 1); if (skinQ[cy2 * 32 + cx2 + 1]) put(L, cx2 + 1, cy2, C.rotSL, 1); if (skinQ[(cy2 + 1) * 32 + cx2]) put(L, cx2, cy2 + 1, C.rotSL, 1); }
+    var rowW = 0; for (x = b.x0; x <= b.x1; x++) if (on(L, x, b.y1)) rowW++;
+    var torn = MK ? !!MK.torn : rowW >= W * 0.6 && b.y1 >= 26;
+    if (torn) { var tears = [b.x0 + 2 + Math.floor(hsh(v, 3, 9) * Math.max(1, W * 0.35)), b.x1 - 3 - Math.floor(hsh(v, 5, 9) * Math.max(1, W * 0.3))];
+      tears.forEach(function (tx, n) { var cut2 = [[tx, b.y1], [tx + 1, b.y1], [tx + (n ? 1 : 0), b.y1 - 1]]; cut2.forEach(function (c2) { if (on(L, c2[0], c2[1])) { var q3 = c2[1] * 32 + c2[0]; L.m[q3] = 0; L.c[q3 * 4 + 3] = 0; } });
+        cut2.forEach(function (c2) { [[1, 0], [-1, 0], [0, -1]].forEach(function (d) { var nx = c2[0] + d[0], ny = c2[1] + d[1]; if (on(L, nx, ny)) put(L, nx, ny, C.line, 1); }); }); }); }
+    if (own && gumQ.length) { var lo = gumQ.reduce(function (a, c) { return (c >> 5) > (a >> 5) || ((c >> 5) === (a >> 5) && ((c & 31) - (a & 31)) * side < 0) ? c : a; }, gumQ[0]), gx = lo & 31, gy = (lo >> 5) + 1, gl = [2, 3, 3, 2][fi % 4] + (F ? 1 : 0);
+      for (i = 0; i < gl; i++) if (gy + i < 32) put(L, gx, gy + i, i === gl - 1 ? (F ? C.bloodL : C.droolL) : (F ? C.blood : C.drool), L.m[(gy + i) * 32 + gx] === 1 ? 1 : 2); }
+    var marks = MK || { brain: brain && ok ? [hx2 - b.x0, hy2 - b.y0] : null, spots: spots.map(function (s2) { return [s2[0] - b.x0, s2[1] - b.y0]; }), torn: torn };
+    return { b: b, my: my, E: E, skin: skinOut, marks: marks };
   }
   /* slouch: the head rows (top 40%) lean 1 px to the bite side; done on colour and mask together */
   function slouch(L, b, side) { var cutY = b.y0 + Math.round(b.H * 0.4), y, x, c2 = new Uint8ClampedArray(L.c), m2 = new Uint8Array(L.m);
@@ -136,6 +177,10 @@
       for (var k = 0; k < 6; k++) { y = base + k; var xx = sx + sw[(k + fi + n * 3) % 6]; if (y < 0 || y > 31 || xx < 0 || xx > 31 || L.m[y * 32 + xx] === 1) continue; if ((k + n) % 4 === 3) continue; put(L, xx, y, k < 2 ? C.stinkL : C.stink, 2); } });
     if (opt && opt.ground !== false && b.y1 < 31) for (x = b.x0 + 1; x < b.x1; x++) if (hsh(x, b.y1, v + 12) < 0.55) put(L, x, b.y1 + 1, C.dirt[Math.floor(hsh(x, 0, v + 13) * 4)], 2); }
 
+  /* zombie-more 1124: one fly buzzing a lap round the head (the old pass had two flies, stink lines and dirt; this is just the one, kept off the pet) */
+  function fly(L, b, fi, v) { var side = v & 1 ? 1 : -1, P = [[-1, 0], [0, -1], [1, 0], [0, 1]], k = P[fi % 4], cx = side > 0 ? b.x1 + 1 : b.x0 - 1, cy = Math.max(2, b.y0 + 2),
+      x = Math.max(1, Math.min(30, cx + k[0] * 2 * side)), y = Math.max(2, Math.min(30, cy + k[1] * 2));
+    if (L.m[y * 32 + x] === 1) return; put(L, x, y, C.fly, 2); var wx = x + (fi % 2 ? 1 : -1); if (wx >= 0 && wx < 32 && L.m[(y - 1) * 32 + wx] !== 1) put(L, wx, y - 1, C.wing, 2); }
   /* frame: the full frame (any background); ka / kb: the same pet keyed on two solid colours (pixels equal in both = the pet).
    * Returns new { img, ka, kb } data arrays (the inputs are not changed). */
   /* the pet's real eye spots: the same star-eye render the gear anchors use (render only; pet-core untouched). null when it can't tell (hybrids, eyeless) */
@@ -158,7 +203,20 @@
    * 32x32 grid as the frame. Their eyes are kept as they are (dingy whites, glowing pupils) instead of guessed sockets. Two biggest eye clusters at most. */
   var OWN = { homer: 'HomerSprite', kek: 'KekSprite', funtrump: 'FuntrumpSprite', djpepe: 'DjPepeSprite', viking: 'VikingSprite', orangedragon: 'DragonSprite', rabbit: 'RabbitSprite', wizard: 'WizardSprite' };
   function spriteEyes(art, stage, fi) { try { var g = art && !art.hybrid && OWN[art.species] && window[OWN[art.species]]; if (!g || typeof g.draw !== 'function') return null;
-      var m = g.draw(Math.max(0, Math.min(5, stage | 0)), (fi | 0) % 4, {}); if (!m || !m.length) return null; var seen = {}, cl = [];
+      var st = Math.max(0, Math.min(5, stage | 0)), f = (fi | 0) % 4, m = g.draw(st, f, {}); if (!m || !m.length) return null; var cl = eyeClusters(m); if (cl) return cl;
+      /* zombie-frames 1124: a blink frame (Homer, FUNTRUMP and the White Rabbit shut their eyes on frame 2) has no eye cells. It used to fall back to guessed
+       * sockets plus a drawn-on mouth for that one frame, so the zombie flickered into another face once a loop. Now the eyes come from an open frame,
+       * moved by that frame's bob, and stay shut: the lids go dead-skin coloured with a thin glowing slit, like a squint. */
+      for (var k = 0; k < 4; k++) { if (k === f) continue; var mk = g.draw(st, k, {}), ck = mk && eyeClusters(mk); if (!ck) continue; var dy = bobShift(m, mk);
+        return ck.map(function (c) { var P = c.cells.P.concat(c.cells.E), ys = P.map(function (q) { return q >> 5; }), mid = Math.round((Math.min.apply(null, ys) + Math.max.apply(null, ys)) / 2), slit = [];
+          P.forEach(function (q) { var y = (q >> 5) + dy; if ((q >> 5) === mid && y >= 0 && y < 32 && c.cells.P.indexOf(q) >= 0) slit.push(y * 32 + (q & 31)); });
+          if (!slit.length) { var cx = Math.round((c.x0 + c.x1) / 2), cy = mid + dy; if (cy >= 0 && cy < 32) slit.push(cy * 32 + cx); }
+          return { x0: c.x0, x1: c.x1, y0: c.y0 + dy, y1: c.y1 + dy, cells: { E: [], P: slit, shut: true } }; }); }
+      return null; } catch (e) { return null; } }
+  /* the vertical shift (-2..2) that best lines frame m up with frame mk: the sprites bob 1 px, the blink frame keeps the open frame's height */
+  function bobShift(m, mk) { var best = 0, bs = -1; for (var d = -2; d <= 2; d++) { var n = 0; for (var y = 0; y < 32; y++) { var ry = y - d; if (ry < 0 || ry > 31) continue; var a = m[y] || [], b = mk[ry] || [];
+        for (var x = 0; x < 32; x++) if (a[x] && a[x] !== '.' && a[x] === b[x]) n++; } if (n > bs) { bs = n; best = d; } } return best; }
+  function eyeClusters(m) { var seen = {}, cl = [];
       for (var y = 0; y < 32; y++) for (var x = 0; x < 32; x++) { var k = (m[y] || [])[x]; if ((k !== 'E' && k !== 'P') || seen[y * 32 + x]) continue; var st = [[x, y]], c = { E: [], P: [], x0: 32, x1: -1, y0: 32, y1: -1 }; seen[y * 32 + x] = 1;
         while (st.length) { var p = st.pop(), px = p[0], py = p[1], kk = m[py][px]; c[kk].push(py * 32 + px); c.x0 = Math.min(c.x0, px); c.x1 = Math.max(c.x1, px); c.y0 = Math.min(c.y0, py); c.y1 = Math.max(c.y1, py);
           for (var dy = -1; dy <= 1; dy++) for (var dx = -1; dx <= 1; dx++) { var nx = px + dx, ny = py + dy, nk = nx >= 0 && ny >= 0 && nx < 32 && ny < 32 ? (m[ny] || [])[nx] : null; if ((nk === 'E' || nk === 'P') && !seen[ny * 32 + nx]) { seen[ny * 32 + nx] = 1; st.push([nx, ny]); } } }
@@ -167,7 +225,7 @@
       cl = cl.slice(0, 2).filter(function (c) { return c.E.length + c.P.length >= Math.max(1, n0 / 3); }); if (!cl.length) return null;
       if (cl.length === 2 && Math.abs((cl[0].y0 + cl[0].y1) - (cl[1].y0 + cl[1].y1)) > 6) cl = [cl[0]];
       return cl.map(function (c) { if (!c.P.length) { c.P = c.E.filter(function (q) { return (q >> 5) === Math.round((c.y0 + c.y1) / 2) && Math.abs((q & 31) - (c.x0 + c.x1) / 2) < 1; }); c.E = c.E.filter(function (q) { return c.P.indexOf(q) < 0; }); }
-        return { x0: c.x0, x1: c.x1, y0: c.y0, y1: c.y1, cells: { E: c.E, P: c.P } }; }); } catch (e) { return null; } }
+        return { x0: c.x0, x1: c.x1, y0: c.y0, y1: c.y1, cells: { E: c.E, P: c.P } }; }); }
   function starEyes(art, stage, fi) { try { var P = window.PetCore; if (!P || !art || art.hybrid || typeof P.render !== 'function') return null;
       var k = Object.assign({}, art, { background: 'solid', bgColor: '#ff00ff', pattern: 'none', eyes: 'star' }), o = { stage: stage, frame: fi || 0, gearOverride: {} }, out = null;
       for (var t = 0; t < 2 && !out; t++) { var d = P.render(k, t ? Object.assign({}, o, { openEyes: true }) : o).data, S = [null, null];
@@ -180,7 +238,7 @@
   function frame(src, ka, kb, id, fi, nf, opt) { opt = opt || {}; var L = { c: new Uint8ClampedArray(4096), m: new Uint8Array(1024) }, q, j, k;
     for (q = 0; q < 1024; q++) { j = q * 4; if (ka[j] === kb[j] && ka[j + 1] === kb[j + 1] && ka[j + 2] === kb[j + 2] && (ka[j + 3] > 0)) { L.m[q] = 1; for (k = 0; k < 4; k++) L.c[j + k] = src[j + k]; } }
     var r = zombifyLayer(src, L, id, fi, nf, opt); if (!r) return null; var side = Math.abs(id | 0) & 1 ? 1 : -1;
-    if (opt.slouch === true) slouch(L, r.b, side); var b = bbox(L.m); if (opt.extras === true) extras(L, b, fi, nf, Math.abs(id | 0), opt);
+    if (opt.slouch === true) slouch(L, r.b, side); var b = bbox(L.m); if (opt.extras === true) extras(L, b, fi, nf, Math.abs(id | 0), opt); else if (opt.fly !== false) fly(L, b, fi, Math.abs(id | 0));
     var bgFill = function (out, kc) { for (q = 0; q < 1024; q++) { j = q * 4; if (kc) { out[j] = kc[j]; out[j + 1] = kc[j + 1]; out[j + 2] = kc[j + 2]; out[j + 3] = kc[j + 3]; } } };
     /* background under the old pet: the nearest pixel in the same row that was never pet (so a moved or bitten edge shows the tile, not a hole) */
     var img = new Uint8ClampedArray(src), orig = new Uint8Array(1024); for (q = 0; q < 1024; q++) { j = q * 4; orig[q] = ka[j] === kb[j] && ka[j + 1] === kb[j + 1] && ka[j + 2] === kb[j + 2] ? 1 : 0; }
@@ -196,11 +254,14 @@
     var A = new Uint8ClampedArray(ka), B = new Uint8ClampedArray(kb), kA = ka.slice(0, 4), kB = kb.slice(0, 4);
     for (q = 0; q < 1024; q++) { j = q * 4; if (orig[q] === 1) { for (k = 0; k < 4; k++) { A[j + k] = kA[k]; B[j + k] = kB[k]; } } }
     for (q = 0; q < 1024; q++) { if (!L.m[q]) continue; j = q * 4; for (k = 0; k < 4; k++) img[j + k] = L.c[j + k]; if (L.m[q] === 1) for (k = 0; k < 4; k++) { A[j + k] = L.c[j + k]; B[j + k] = L.c[j + k]; } }
-    void bgFill; return { img: img, ka: A, kb: B, box: b }; }
+    void bgFill; return { img: img, ka: A, kb: B, box: b, skin: r.skin, E: r.E, marks: r.marks }; }
   /* one keyed (transparent background) canvas-sized RGBA, for the seance rise: same pass, transparent where not pet */
+  var TMEMO = { n: 0 };
   function transparent(rgba, id, fi, nf, opt) { var ka = new Uint8ClampedArray(rgba), kb = new Uint8ClampedArray(rgba), q, j;
     for (q = 0; q < 1024; q++) { j = q * 4; if (rgba[j + 3] < 128) { ka[j] = 255; ka[j + 1] = 0; ka[j + 2] = 254; ka[j + 3] = 255; kb[j] = 0; kb[j + 1] = 255; kb[j + 2] = 1; kb[j + 3] = 255; } }
-    var r = frame(ka, ka, kb, id, fi, nf, Object.assign({ ground: false }, opt || {})); if (!r) return null; var out = new Uint8ClampedArray(4096);
+    var o = Object.assign({ ground: false }, opt || {}), mk = 't' + id + ':' + (o.feral ? 1 : 0), memo = TMEMO[mk]; /* zombie-frames 1124: the first frame drawn picks skin + marks, the rest reuse them (no flicker in the hunt scenes) */
+    if (memo && !o.skin && !o.marks) { o.skin = memo.skin; o.marks = memo.marks; }
+    var r = frame(ka, ka, kb, id, fi, nf, o); if (!r) return null; if (!memo && r.skin) { if (++TMEMO.n > 200) { TMEMO = { n: 1 }; } TMEMO[mk] = { skin: r.skin, marks: r.marks }; } var out = new Uint8ClampedArray(4096);
     for (q = 0; q < 1024; q++) { j = q * 4; var keyBg = r.img[j] === 255 && r.img[j + 1] === 0 && r.img[j + 2] === 254; if (keyBg) continue; out[j] = r.img[j]; out[j + 1] = r.img[j + 1]; out[j + 2] = r.img[j + 2]; out[j + 3] = 255; }
     return { data: out, box: r.box }; }
   /* no smug hand (owner Oct 29 2026 [pt2182u] 'Maybe we don't have the mythic smug hand on zombies'): pet-core draws the Mythic hand-to-chin pose from
