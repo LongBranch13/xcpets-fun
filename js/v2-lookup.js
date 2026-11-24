@@ -251,7 +251,7 @@
       btn.addEventListener('click', function () { go(el); });
       if (!document.getElementById('xlookCss')) {
         var cs = document.createElement('style'); cs.id = 'xlookCss';
-        cs.textContent = '.xlook{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:4px 0 6px;padding:6px;border:2px dashed #4b3f7a;background:#120e22}' +
+        cs.textContent = '.xlook[hidden]{display:none!important}.xlook{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:4px 0 6px;padding:6px;border:2px dashed #4b3f7a;background:#120e22}' +
           '.xlook-l{display:flex;flex:1 1 180px;gap:6px;align-items:center;min-width:0;color:#ffd166;font-size:12px}.xlook-q{flex:1 1 120px;min-width:0;min-height:36px;padding:4px 8px;border:2px solid #000;background:#fff8e1;color:#1b1b1b;font:inherit;font-size:14px}' +
           '.xlook-go{min-height:36px;padding:4px 10px;border:2px solid #000;background:#ffd166;color:#140f24;font:inherit;font-weight:700;box-shadow:2px 2px 0 #000;cursor:pointer}' +
           '.xlook-msg{flex:1 1 100%;margin:0;font-size:12px;color:#9fe8ff}';
@@ -263,27 +263,39 @@
     if (opts.mode !== 'rare') browse(el);
     if (opts.before && opts.before.parentNode === parent) parent.insertBefore(el, opts.before);
     else if (el.parentNode !== parent) parent.appendChild(el);
+    if (quietIds[opts.id]) { el.hidden = true; el.style.display = 'none'; }
     paint(el);
     return el;
   }
   /* Nov 22 2026 (Jake: "other wallets dont show"): an empty Other wallets / opponents list looked broken. On first open, load one
    * screen from each of the top 3 players by XCPETS burned (the published leaderboard, not this wallet), so there is always
    * someone to pick. Typing an address or a pet number still loads anyone. Display only. */
-  var browsed = false;
+  var browsed = false, warmCbs = [], warmDone = false, quietIds = {};
   function browse(el) {
-    if (browsed) return; var w = world(), lb = w && w.community && w.community.leaderboard; if (!lb || !lb.length) return;
+    var st = boxes[el.id] || (boxes[el.id] = { q: '', msg: '' });
+    if (warmDone) return;
+    if (!browsed) { st.busy = true; paint(el); }
+    warm(function (n, k) { st.busy = false; st.msg = n ? 'Showing ' + n + ' pets from the top ' + k + ' players. Type a wallet address or a pet number for anyone else.' : ''; paint(el);
+      var nodes = root.document ? document.querySelectorAll('.xlook') : [], i; for (i = 0; i < nodes.length; i++) { var fn = nodes[i]._onReady; if (fn) try { fn({ ok: true, browse: true }); } catch (e) {} } });
+    if (!browsed) { st.busy = false; paint(el); }
+  }
+  /** warm(cb): load one screen from each of the top 3 players once per page (the pickers' search box calls this when the other side opens).
+   * cb(nPets, nPlayers) runs when they are in; later calls after that do nothing. */
+  function warm(cb) {
+    if (warmDone) return; if (cb && warmCbs.indexOf(cb) < 0 && warmCbs.length < 8) warmCbs.push(cb); if (browsed) return;
+    var w = world(), lb = w && w.community && w.community.leaderboard; if (!lb || !lb.length) return;
     var own = me(), picks = lb.map(function (x) { return x && x.address; }).filter(function (a) { return a && a !== own && parse(a).ok; }).slice(0, 3);
     if (!picks.length) return; browsed = true;
-    var st = boxes[el.id] || (boxes[el.id] = { q: '', msg: '' }); st.busy = true; paint(el);
     var n = 0, i = 0;
     (function next() {
-      if (i >= picks.length) { st.busy = false; st.msg = n ? 'Showing ' + n + ' pets from the top ' + picks.length + ' players. Type a wallet address or a pet number for anyone else.' : ''; paint(el);
-        var nodes = root.document ? document.querySelectorAll('.xlook') : [], k; for (k = 0; k < nodes.length; k++) { var fn = nodes[k]._onReady; if (fn) try { fn({ ok: true, browse: true }); } catch (e) {} } return; }
+      if (i >= picks.length) { warmDone = true; var cbs = warmCbs; warmCbs = []; cbs.forEach(function (f) { try { f(n, picks.length); } catch (e) {} }); return; }
       loadOwner(picks[i++], { cap: 3 }).then(function (res) { n += (res && res.pets && res.pets.length) || 0; next(); }, function () { next(); });
     })();
   }
+  /** quiet(id): a lookup box that a picker's own search box replaces stays hidden (mount keeps it hidden too). */
+  function quiet(id) { quietIds[id] = 1; var el = root.document && document.getElementById(id); if (el) { el.hidden = true; el.style.display = 'none'; } }
   root.V2Lookup = {
     PAGE_CAP: PAGE_CAP, parse: parse, rev: function () { return rev; }, last: function () { return last; },
-    load: load, loadOwner: loadOwner, loadPet: loadPet, absorb: absorb, mount: mount, held: function () { return held; }
+    load: load, loadOwner: loadOwner, loadPet: loadPet, absorb: absorb, mount: mount, warm: warm, quiet: quiet, held: function () { return held; }
   };
 })(typeof window !== 'undefined' ? window : globalThis);
