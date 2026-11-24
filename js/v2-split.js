@@ -235,17 +235,51 @@
       return 'r' + h.slice(0, 32);
     }, function () { return null; });
   }
+  /* Nov 24 2026 (instant load): ask for latest.json, health, the summary and this wallet's first page while the ~50 rule and
+   * engine scripts after this one are still downloading (on a phone's first visit those take ~2 s, and the asks used to wait
+   * for them). prepare() takes these answers once when the server address and wallet are the same, else asks again itself.
+   * Same files, same checks: nothing is trusted that prepare() would not check. */
+  var early = null;
+  function earlyBase() {
+    try { if (/\/verify-pet\.html$/.test(location.pathname || '')) return ''; } catch (e) {}
+    var s = q('sync');
+    if (s === '0' || s === 'off') return '';
+    if (s) return String(s).replace(/\/+$/, '');
+    try { var f = localStorage.getItem('xcpets-sync'); if (f) return String(f).replace(/\/+$/, ''); } catch (e2) {}
+    try { var h = String(location.hostname || '').toLowerCase(); if (h === 'xcpets.fun' || h === 'www.xcpets.fun') return 'https://node.xcpets.fun'; } catch (e3) {}
+    return '';
+  }
+  function quiet(p) { if (p && p.then) p.then(null, function () {}); return p; }
+  (function startEarly() {
+    try {
+      if (off() || typeof fetch !== 'function' || q('early') === '0') return;
+      var root = earlyBase(); if (!root) return;
+      var who = me();
+      var latestP = quiet(getJson(root + '/xp/v1/world/latest.json', 8000, true));
+      var healthP = quiet(getJson(root + '/xp/v1/health', 8000, true));
+      var viewP = quiet(latestP.then(function (latest) {
+        var path = latest && (latest.manifest || latest.url);
+        if (!path) return null;
+        var folder = dirOf(/^https?:/.test(path) ? path : root + path);
+        return { folder: folder, summaryP: quiet(getJson(folder + 'view/summary.json', 12000, false)),
+          pageP: who ? quiet(sha2(who).then(function (hex) { return getJson(folder + 'view/own/' + hex + '.json', 12000, false).then(function (page) { return { hex: hex, page: page }; }, function () { return { hex: hex, page: null }; }); })) : null };
+      }));
+      early = { root: root, who: who, latestP: latestP, healthP: healthP, viewP: viewP };
+    } catch (e) { early = null; }
+  })();
+  function takeEarly(root) { var e = early; early = null; return e && e.root === root && e.who === me() ? e : null; }
   function prepare(cb) {
     if (off() || !base()) { cb(null); return; }
     var root = base();
+    var pre = takeEarly(root);
     var chainTip = 0, manUrl = '';
     var sigP = pageRsig();
     /* Nov 24 2026: health and latest.json are asked together (they were one after the other: one more round trip before
      * any pet, ~0.3 s on a phone network). health only feeds the staleness check below; a failed health read failed the
      * whole fast path before and still does. */
-    var latestP = getJson(root + '/xp/v1/world/latest.json', 8000, true);
+    var latestP = pre ? pre.latestP : getJson(root + '/xp/v1/world/latest.json', 8000, true);
     latestP.then(null, function () {});
-    getJson(root + '/xp/v1/health', 8000, true).then(function (h) {
+    (pre ? pre.healthP : getJson(root + '/xp/v1/health', 8000, true)).then(function (h) {
       chainTip = h && h.tip || 0;
       noteHealth(chainTip); noteCheck(h);
       return latestP;
@@ -266,9 +300,11 @@
       if (chainTip && snapTip && chainTip - snapTip > STALE) throw new Error('stale');
       var folder = dirOf(manUrl);
       viewFolder = folder;
-      var summaryP = getJson(folder + 'view/summary.json', 12000, false);
       var who = me();
-      var pageP = who ? sha2(who).then(function (hex) {
+      var preView = pre ? pre.viewP.then(function (v) { return v && v.folder === folder ? v : null; }, function () { return null; }) : Promise.resolve(null);
+      return preView.then(function (v) {
+      var summaryP = v ? v.summaryP.then(null, function () { return getJson(folder + 'view/summary.json', 12000, false); }) : getJson(folder + 'view/summary.json', 12000, false);
+      var pageP = v && v.pageP ? v.pageP : who ? sha2(who).then(function (hex) {
         return getJson(folder + 'view/own/' + hex + '.json', 12000, false).then(function (page) {
           return { hex: hex, page: page };
         }, function () { return { hex: hex, page: null }; });
@@ -322,6 +358,7 @@
         var view = paint(null);
         ownersReady();
         return view;
+      });
       });
     }).then(function (view) { if (view && view._pages && view._pages.pages > 1) restView = view; cb(view); if (view && view.breedReqs && view.breedReqs.length) reqPetsSoon(); }, function () { cb(null); });
   }
