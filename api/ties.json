@@ -1,6 +1,6 @@
 {
- "lastBlock": 977420,
- "count": 450,
+ "lastBlock": 977428,
+ "count": 451,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -5402,6 +5402,18 @@
    "speciesLabel": "Bobo",
    "rarity": "Legendary",
    "stage": "Juvenile"
+  },
+  {
+   "id": 147174,
+   "asset": "A8383244913256322629",
+   "tiedBlock": 977423,
+   "tiedTx": "ad2c3ac9a7270c4107ebce4cbe3f06655bed31826b295dfaade9fb72a5b75127",
+   "kind": "deed",
+   "name": "Chiyap",
+   "species": "homer",
+   "speciesLabel": "Homer Pepe",
+   "rarity": "Legendary",
+   "stage": "Mythic"
   }
  ]
 }
