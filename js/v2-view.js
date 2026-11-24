@@ -72,7 +72,7 @@
   function me() { return (root.V2Mock && root.V2Mock.ME) || q('addr') || ls.get(ME_KEY); }
   function walletAddr() { return ls.get(ADDR_KEY); }
   /** viewOnly(): the page shows an address that is not this browser's XCP Wallet. Wallet actions are disabled. */
-  function viewOnly() { var m = me(); if (!m) return false; var cur = root.V2Wallet && root.V2Wallet.current && root.V2Wallet.current(); if (cur && cur === m) return false; return walletAddr() !== m; }
+  function viewOnly() { var m = me(); if (!m) return false; if (root.XcpHandoff && root.XcpHandoff.on()) return false; /* phone plan mode (js/handoff.js): the player's own pets, signed on their computer */ var cur = root.V2Wallet && root.V2Wallet.current && root.V2Wallet.current(); if (cur && cur === m) return false; return walletAddr() !== m; }
   function remembered() { return ls.get(VIEW_KEY); }
   /** view(raw): check, ask first if a different XCP Wallet is connected, remember, then open play.html?addr=. Returns an error string or ''. */
   function view(raw) { var c = check(raw); if (!c.ok) return c.error; var w = walletAddr();
