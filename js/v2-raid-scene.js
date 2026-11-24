@@ -213,7 +213,7 @@
   window.V2RaidScene = { mount: mount, set: set, demo: demo, _state: function () { return S; } };
   /* raid.html: paint at once (before the chain is read); js/v2-raid.js calls set() with the real raid. Tap the boss = the attack box. */
   function boot() { var c = document.getElementById('rsCanvas'); if (!c) return; var p = document.getElementById('raidPanel'); if (p) p.classList.add('rs-on');
-    mount(c, { onBoss: function () { var a = document.querySelector('#raidBox .rd-atk') || document.querySelector('#raidBox .rd-how') || document.getElementById('raidBox'); if (!a) return;
+    mount(c, { onBoss: function () { if (window.V2Raid && V2Raid.attack && document.getElementById('rdGo')) return V2Raid.attack(); /* attack-tap (Nov 24 2026): TAP TO ATTACK attacks (or asks for a pet first) instead of only scrolling */ var a = document.querySelector('#raidBox .rd-atk') || document.querySelector('#raidBox .rd-how') || document.getElementById('raidBox'); if (!a) return;
       if (a.tagName === 'DETAILS') a.open = true; a.scrollIntoView({ behavior: reduced() ? 'auto' : 'smooth', block: 'start' }); } });
     if (/[?&]raiddemo=1\b/.test(location.search)) demo(); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
