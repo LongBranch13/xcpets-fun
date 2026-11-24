@@ -64,8 +64,10 @@ if (fs.existsSync(HO)) {
   win.window = win; win.self = win;
   try {
     vm.runInNewContext(fs.readFileSync(HO, 'utf8'), Object.assign(win, { escape, unescape, encodeURIComponent, decodeURIComponent, JSON, Date, Math, Number, String, Array, Object, RegExp, Error }), { filename: 'handoff.js' });
-    const got = JSON.parse(store['xcpets-handoff-in'] || 'null');
+    let got = JSON.parse(store['xcpets-handoff-in'] || 'null');
+    if (got && Array.isArray(got.items)) got = got.items[got.items.length - 1];   // the phone inbox (a list of codes) since PR 219's final version
     ok(got && got.a === o1.a && got.plans && got.plans[0].tag === 'pet:feed:4207' && got.plans[0].amount === 12.5, 'js/handoff.js receive() accepts the device QR');
+    ok(store['xcpets-v2-me'] === o1.a, 'js/handoff.js switches the page to the Pet Shell owner\'s address');
   } catch (e) { ok(false, 'js/handoff.js runs: ' + e.message); }
 } else console.log('PASS js/handoff.js not on this branch yet (PR 219): checked against the documented format only');
 

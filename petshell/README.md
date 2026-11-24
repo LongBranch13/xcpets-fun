@@ -101,7 +101,7 @@ What the screen says: *HUNGRY!* (not fed this chain day), *FED TODAY*, *STREAK N
 - Hybrids and community pets show a mystery egg instead of their art (their art is drawn by the full site only). Everything else works.
 - Gear is not drawn on the device (same as the Telegram mini app).
 - The world files are rebuilt every 6 blocks, so the screen can be up to about an hour behind the chain.
-- The feed QR relies on the phone hand-off (PR 219). Until that is merged, scanning opens the play page without the burn ready.
+- The feed QR uses the phone hand-off (PR 219, merged): it lands in the computer's "From your phone" list, ready to sign.
 - The firmware can't be built in Claude's sandbox; the `petshell-firmware` workflow builds it on GitHub. It has not run on real
   hardware yet: the first unit is the real test.
 
