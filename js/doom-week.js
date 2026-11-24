@@ -161,9 +161,9 @@
   function shopBits() {
     var stage = document.querySelector('#shScene .cs-stage') || document.getElementById('shScene'); if (!stage || document.querySelector('.dw-sale')) return;
     var sale = el('div', 'dw-sale'); sale.textContent = 'DOOM SALE';
-    var sign = el('div', 'dw-sign'); sign.textContent = 'DOOM';
+    /* doom-board-overlap (owner Nov 24 2026: "overlap"): the floating DOOM tag on the shop sign is gone. On phones it grew over Luke's face,
+     * and the shop canvas already paints its own DOOM board (js/v2-shop-scene.js doomBits). */
     var scene = document.getElementById('shScene'); if (scene) scene.insertBefore(sale, scene.firstChild); else stage.appendChild(sale);
-    stage.appendChild(sign);
   }
   function clearShop() { document.querySelectorAll('.dw-sale, .dw-sign').forEach(function (n) { n.parentNode.removeChild(n); }); if (shopObs) { shopObs.disconnect(); shopObs = null; } }
   function watchShop() {
