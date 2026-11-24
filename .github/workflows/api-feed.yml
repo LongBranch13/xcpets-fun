@@ -80,9 +80,12 @@ jobs:
       # backup. While the server's feed is down the backup now keeps itself going: about every 20 minutes it starts the next run.
       # It stops by itself once the server publishes again (a feed commit without the github-backup line from the last 45 minutes).
       - name: Keep the backup going while the server's feed is down
-        if: always() && github.event_name == 'workflow_dispatch' && vars.FEED_BACKUP_LOOP != '0'
-        env: { GH_TOKEN: '${{ github.token }}' }
+        # (Nov 24 2026: the switch is read in the shell. In a GitHub `if:` an unset variable is '' and '' != '0' is false, because
+        # both turn into the number 0, so the step was always skipped and the loop never ran.)
+        if: always() && github.event_name == 'workflow_dispatch'
+        env: { GH_TOKEN: '${{ github.token }}', LOOP_SWITCH: '${{ vars.FEED_BACKUP_LOOP }}' }
         run: |
+          if [ "$LOOP_SWITCH" = "0" ]; then echo "FEED_BACKUP_LOOP=0: the backup loop is off."; exit 0; fi
           git fetch -q origin main
           MSG=$(git log -1 --format=%B origin/main -- api/meta.json); AT=$(git log -1 --format=%ct origin/main -- api/meta.json)
           AGE=$(( $(date +%s) - ${AT:-0} ))
