@@ -11,7 +11,7 @@ const ROOT = path.resolve(__dirname, '..'), ER = require('./build-err-report.js'
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) pass++; else { fail++; console.log('FAIL', m); } };
 /* 1. snippet in a vm */
 function run(opts = {}) {
-  const sent = [], L = {}, DL = {}, doc = { prerendering: !!opts.pre, querySelector: s => /\?v=/.test(s) ? { src: 'https://xcpets.fun/js/v2.js?v=abcdef1234' } : null,
+  const sent = [], L = {}, DL = {}, doc = { prerendering: !!opts.pre, querySelector: s => /\?v=/.test(s) ? { src: 'https://xcpets.fun/js/v2.js?v=spn1124' } : null,
     addEventListener: (t, f) => { DL[t] = f; } };
   const win = { addEventListener: (t, f) => { L[t] = f; } };
   const ctx = { window: win, document: doc, location: { href: 'https://xcpets.fun/pet.html?id=5&addr=bc1qfgqx0q3ptr6gfy38kn5ehs4dzfg06y7up328e0', origin: 'https://xcpets.fun', pathname: '/pet.html' },
@@ -29,7 +29,7 @@ ok(s0 && !/bc1q|1Boat|abab|me@x/.test(s0.m) && /<addr>.*<addr>.*<hex>.*<email>/.
 h.L.error({ message: 'ReferenceError: blocks is not defined (wallet bc1qfgqx0q3ptr6gfy38kn5ehs4dzfg06y7up328e0, 1BoatSLRHtKNngkdXEeobR76b53LETtpyT, tx ' + 'ab'.repeat(32) + ', me@x.com)', filename: 'https://xcpets.fun/js/v2-chain.js?v=abcdef1234', lineno: 412, colno: 9 });
 ok(h.sent.length === 1, 'same error again = not sent again (dedupe)');
 h.L.error({ message: 'Script error.', filename: '', lineno: 0 }); ok(h.sent.length === 1, 'cross-origin "Script error." skipped');
-h.L.unhandledrejection({ reason: { name: 'TypeError', message: 'x is undefined', stack: 'TypeError: x is undefined\n    at f (https://xcpets.fun/js/v2-sales.js?v=abcdef1234:77:5)' } });
+h.L.unhandledrejection({ reason: { name: 'TypeError', message: 'x is undefined', stack: 'TypeError: x is undefined\n    at f (https://xcpets.fun/js/v2-sales.js?v=spn1124:77:5)' } });
 const s1 = h.sent[1] && h.sent[1].b; ok(s1 && s1.k === 'rejection' && s1.m === 'TypeError: x is undefined' && s1.f === '/js/v2-sales.js' && s1.l === 77, 'unhandled rejection: message + file:line from the stack (' + JSON.stringify(s1) + ')');
 for (let i = 0; i < 10; i++) h.L.error({ message: 'boom ' + i, filename: 'https://xcpets.fun/js/a.js', lineno: i });
 ok(h.sent.length === 5, 'at most 5 reports per page load (' + h.sent.length + ')');

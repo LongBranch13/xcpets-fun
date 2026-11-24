@@ -132,7 +132,7 @@
     var I = questsOn() ? (window.V2Rules.questInfo(w, p, tip() + 1) || {}) : {};
     var key = [w.tip, id, ME, !!p.resurrected, (window.V2Rules && V2Rules.godBornOf && V2Rules.godBornOf(w, p)) ? 1 : 0, viewOnly(), p.stage, p.tier, p.dead, questsOn(), I.away && I.away.end, I.napUntil, I.freeQuest, !!(window.V2Quests && V2Quests.start), zb, H && H.pct, H && H.feral].join('|'); if (key === last) return; last = key;
     card.setAttribute('data-tier', String(p.tier || 0)); card.classList.toggle('pc-myth', myth); card.classList.toggle('pc-dead', !!p.dead && p.id !== 1765); card.classList.toggle('pc-zombie', zb); card.classList.toggle('pc-away', !!I.away); /* Sabo #1765 is never shown dead */
-    var sp = window.V2Rules && V2Rules.speciesLabel ? V2Rules.speciesLabel(p.species) : p.species;
+    var sp = window.V2Rules && V2Rules.speciesLabel ? V2Rules.petSpeciesLabel(p) : p.species;
     $('pcNum').textContent = '#' + p.id; $('pcType').innerHTML = '<span>' + esc(zb ? (H && H.feral ? 'Feral zombie' : 'Zombie') + (H && H.times ? ' · ' + (H.milestone ? H.milestone + ' ' : '') + Number(H.times).toFixed(2) + ' times' : '') : p.resurrected ? 'God' : myth ? 'Mythic' : TIERS[p.tier] || '') + (window.V2Render && V2Render.godBornChip ? ' ' + V2Render.godBornChip(w, p, 'pc-gb') : '') + '</span><span>' + esc(sp) + ' · ' + esc((window.V2Rules && V2Rules.stageLabelOf ? V2Rules.stageLabelOf(p) : p.stageName) || '') + '</span>';
     $('pcFoot').textContent = 'No. ' + String(p.id).padStart(5, '0') + ' · blk ' + fmt(p.hatchBlock);
     $('pcBackTxt').innerHTML = 'Pet #' + p.id + '<br>hatched in block ' + fmt(p.hatchBlock) + '<br><span class="muted">burn-to-play on Bitcoin</span>';

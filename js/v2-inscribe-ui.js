@@ -179,7 +179,7 @@
         (pend.length ? '<br>⏳ ' + pend.length + ' pending (unconfirmed)' : ''); }, function (e) { $('inscPetList').textContent = 'Could not read inscriptions: ' + e.message; }); }
   function page() {
     var w = M.world(), sel = $('inscPet'), mine = w.pets.filter(function (p) { return I.checkRequest({ petId: p.id }, w, M.ME).ok; });
-    sel.innerHTML = mine.length ? mine.map(function (p) { return '<option value="' + p.id + '">#' + p.id + ' ' + esc(p.name) + ' (' + esc(V.speciesLabel(p.species)) + ', ' + esc(p.stageName) + ')</option>'; }).join('') : '<option value="">(no pets yet: connect your wallet on Play)</option>';
+    sel.innerHTML = mine.length ? mine.map(function (p) { return '<option value="' + p.id + '">#' + p.id + ' ' + esc(p.name) + ' (' + esc(V.petSpeciesLabel(p)) + ', ' + esc(p.stageName) + ')</option>'; }).join('') : '<option value="">(no pets yet: connect your wallet on Play)</option>';
     $('inscGo').onclick = function () { if (!/^[1-9]\d*$/.test(sel.value)) return fail('Pick one of your pets.'); request({ petId: Number(sel.value) }, function () { regP = null; page(); }); };
     if ($('inscRecover')) recoverPanel($('inscRecover'));
     pending().filter(function (x) { return x.status === 'reveal-sent' || x.status === 'commit-sent'; }).forEach(function (x) { track(x); });

@@ -34,9 +34,9 @@
   function fxWords(n) { var G = MGd(), L = G.seatLook(n), a = L.fx.split('').filter(function (k) { return k !== 'E'; }).map(function (k) { return G.NAMES[k]; }); a.push(L.pal + ' light');
     return a.length > 1 ? a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1] : a[0]; }
   function verse(seat, w) { var G = MGd(), h = sha('XCPETS:odyssey:' + seat.n + ':' + seat.block + ':' + (seat.tx || '')), Z = w && w.byId[seat.eatenBy];
-    var f = { M: seat.name || ('#' + seat.petId), SP: spName(seat.species), Z: (Z && Z.name) || ('#' + seat.eatenBy), T: G.seatTitle(seat.n), N: ORD[seat.n - 1] || ('#' + seat.n), FX: fxWords(seat.n), EB: fmt(seat.eatenAt + 6), RB: fmt(seat.block) };
+    var f = { M: seat.name || ('#' + seat.petId), SP: spName(seat), Z: (Z && Z.name) || ('#' + seat.eatenBy), T: G.seatTitle(seat.n), N: ORD[seat.n - 1] || ('#' + seat.n), FX: fxWords(seat.n), EB: fmt(seat.eatenAt + 6), RB: fmt(seat.block) };
     return T.map(function (vars, i) { var k = parseInt(h.substr(i * 2, 2), 16) % vars.length; return vars[k].replace(/\{(\w+)\}/g, function (m, x) { return f[x] != null ? f[x] : m; }); }); }
-  function spName(s) { try { return V.speciesLabel ? V.speciesLabel(s) : s; } catch (e) { return s; } }
+  function spName(s) { try { if (s && typeof s === 'object') return V.petSpeciesLabel ? V.petSpeciesLabel(s) : V.speciesLabel(s.species); return V.speciesLabel ? V.speciesLabel(s) : s; } catch (e) { return s && typeof s === 'object' ? s.species : s; } } /* a pet object: its shown name (cross pets) */
   var SEEN_KEY = 'xcpets-pn-seen', CAP_MS = 8000, LINE_MS = 420;
   function readSeen() { try { var o = JSON.parse(localStorage.getItem(SEEN_KEY) || '{}'); if (!o || typeof o !== 'object' || Array.isArray(o)) return {}; return o; } catch (e) { return {}; } }
   function writeSeen(o) { try { localStorage.setItem(SEEN_KEY, JSON.stringify(o)); } catch (e) {} }
@@ -81,7 +81,7 @@
       '<p class="pn-count">' + seats.length + ' of 21 seats filled' + (seats.length >= 21 ? ': the Pantheon is complete' : '') + '</p><div class="pn-grid">';
     for (var n = 1; n <= 21; n++) { var s = seats[n - 1], L = G.seatLook(n), chips = '<div class="pn-chips' + (s ? '' : ' pn-dim') + '">' + L.fx.split('').map(function (k) { return '<span class="pn-chip">' + G.NAMES[k] + '</span>'; }).join('') + '<span class="pn-chip tint">' + L.pal + ' light</span></div>';
       if (s) h += '<div class="pn-seat on" id="seat-' + n + '"><div class="pn-num">Seat ' + G.ROMAN[n - 1] + '</div><canvas width="32" height="32" data-seat="' + n + '" role="img" aria-label="Seat ' + G.ROMAN[n - 1] + ' Mythic God"></canvas><div class="pn-title">' + esc(G.seatTitle(n)) + '</div>' +
-        '<div class="pn-who"><a href="pet.html?id=' + s.petId + '">' + esc(s.name || ('#' + s.petId)) + '</a> · ' + esc(spName(s.species)) + ' · #' + s.petId + '</div><div class="pn-meta">seated at block ' + fmt(s.block) + ' · <a href="#book-' + n + '">Odyssey, Book ' + G.ROMAN[n - 1] + '</a></div>' +
+        '<div class="pn-who"><a href="pet.html?id=' + s.petId + '">' + esc(s.name || ('#' + s.petId)) + '</a> · ' + esc(spName(s)) + ' · #' + s.petId + '</div><div class="pn-meta">seated at block ' + fmt(s.block) + ' · <a href="#book-' + n + '">Odyssey, Book ' + G.ROMAN[n - 1] + '</a></div>' +
         '<div class="pn-meta" title="' + esc(s.owner) + '">keeper ' + esc(sa(s.owner)) + (ctx.ME && s.owner === ctx.ME ? ' (you)' : '') + '</div>' + chips + '</div>';
       else h += '<div class="pn-seat" id="seat-' + n + '"><div class="pn-num">Seat ' + G.ROMAN[n - 1] + '</div><div class="pn-plinth">' + G.ROMAN[n - 1] + '</div><div class="pn-title">' + esc(G.seatTitle(n)) + '</div><div class="pn-who">awaiting its god</div>' + chips + '</div>'; }
     h += '</div><h2 id="odyssey" class="meme sec">📜 The Pantheon Odyssey</h2><p class="pn-sub">Sung by Homer Pepe, community pet #5. Each time a Mythic God takes its seat, a new book of the Odyssey is added: the zombie that ate it, its rise from the grave, and its resurrection.</p>';

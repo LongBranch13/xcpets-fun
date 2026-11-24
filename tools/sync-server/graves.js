@@ -29,7 +29,7 @@ function fromWorld(ctx, world, tip) {
   for (let i = 0; i < graves.length; i++) {
     const g = graves[i], p = world.byId && world.byId[g.id];
     const row = rowFromGrave(g, p);
-    if (V.speciesLabel) row.spl = V.speciesLabel(g.species);
+    if (V.speciesLabel) row.spl = V.petSpeciesLabel(g);
     if (V.isHybrid) row.hybrid = !!V.isHybrid(g.species);
     out[i] = row;
   }

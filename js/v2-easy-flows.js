@@ -16,10 +16,10 @@
   function fmt(n) { return Number(n).toLocaleString('en-US'); }
   function pow(p) { return window.UXB && UXB.power ? UXB.power(p) : 0; }
   function score(w, p) { var s = window.PetScore && PetScore.of(w, p); return s ? s.score : 0; }
-  function spL(s) { return V().speciesLabel ? V().speciesLabel(s) : s; }
+  function spL(s) { var R = V(); if (s && typeof s === 'object') return R.petSpeciesLabel ? R.petSpeciesLabel(s) : R.speciesLabel ? R.speciesLabel(s.species) : s.species; return R.speciesLabel ? R.speciesLabel(s) : s; } /* a pet object: its shown name (cross pets) */
   function short(a) { a = String(a || ''); return a.length > 12 ? a.slice(0, 6) + '\u2026' + a.slice(-4) : a; }
   function tip(w) { return (U().S && U().S().tip) || w.tip || 0; }
-  function match(p, q) { if (!q) return true; q = q.toLowerCase().replace(/^#/, ''); return String(p.id).indexOf(q) === 0 || String(p.name || '').toLowerCase().indexOf(q) >= 0 || (q.length >= 4 && String(p.owner || '').toLowerCase().indexOf(q) === 0) || spL(p.species).toLowerCase().indexOf(q) === 0; }
+  function match(p, q) { if (!q) return true; q = q.toLowerCase().replace(/^#/, ''); return String(p.id).indexOf(q) === 0 || String(p.name || '').toLowerCase().indexOf(q) >= 0 || (q.length >= 4 && String(p.owner || '').toLowerCase().indexOf(q) === 0) || spL(p).toLowerCase().indexOf(q) === 0; }
   var ST = { f: { qa: '', qb: '', tab: '', inc: null, msg: '' }, b: { qa: '', qb: '', tab: '', req: null, sa: 'pow', sb: 'mate', fsp: '', fst: '', frar: '', fall: false, fslot: false, ways: null } };
   /* hotel-mate-sort 2026-10-24: Sort dropdown on both breed lists, same options + logic as the egg review (js/pet-sort.js PetSort). Default stays
    * Power: high to low (= the old Pet Score order). Base order = hatch order (hatch block, then #id), so 'Hatch order' and every tie keep it. */
@@ -58,7 +58,7 @@
    * Looks: V2Rules.crossOf (1 of 1 cross body) and, once that rules change is live, V2Rules.specialPairOf (special x special mix) say what the baby looks like. */
   function specialNote(A, B, b) { var V = window.V2Rules || {}; if (!A || !B || !V.isContestSp) return '';
     var sa = V.isContestSp(A.species), sb = V.isContestSp(B.species); if (!sa && !sb) return '';
-    var lab = function (p) { return esc(V.speciesLabel ? V.speciesLabel(p.species) : p.species); }, look = null;
+    var lab = function (p) { return esc(V.speciesLabel ? V.petSpeciesLabel(p) : p.species); }, look = null;
     try { if (V.specialPairOf && V.specialPairOn && V.specialPairOn(b)) look = V.specialPairOf(A, B); if (!look && V.crossOf && V.crossOn && V.crossOn(b)) { var x = V.crossOf(A, B); if (x && x.body) look = x; } } catch (e) { look = null; }
     var lk = look && V.crossLabel ? esc(V.crossLabel(look)) : '', head, body;
     if (sa && sb) {
@@ -79,7 +79,7 @@
       e.notes.map(function (x) { return '<div class="ez-hint">' + esc(x) + '</div>'; }).join('') + '</div>'; }
   /* hotel quick filters (hotel-power-sort): species, stage, rarity, all hatched pets (not only the ones that can breed now), free gear slot */
   function fbar(w, s, pets) { var sps = {}, o = function (v, l, cur) { return '<option value="' + esc(v) + '"' + (String(cur) === String(v) ? ' selected' : '') + '>' + esc(l) + '</option>'; };
-    pets.forEach(function (p) { sps[p.species] = spL(p.species); }); var spk = Object.keys(sps).sort(function (a, b) { return sps[a] < sps[b] ? -1 : sps[a] > sps[b] ? 1 : 0; });
+    pets.forEach(function (p) { sps[p.species] = spL(p); }); var spk = Object.keys(sps).sort(function (a, b) { return sps[a] < sps[b] ? -1 : sps[a] > sps[b] ? 1 : 0; });
     var SN = (V().STAGE_NAMES || ['Egg', 'Baby', 'Kid', 'Adult', 'Elder', 'Mythic']), n = (s.fsp ? 1 : 0) + (s.fst !== '' ? 1 : 0) + (s.frar !== '' ? 1 : 0) + (s.fall ? 1 : 0) + (s.fslot ? 1 : 0);
     return '<div class="ez-fb" role="group" aria-label="Filters"><span class="ez-fbl">🔎 Filter</span>' +
       '<label class="ez-so"><xc-select id="ezFsp" aria-label="Species">' + o('', 'All species', s.fsp) + spk.map(function (k) { return o(k, sps[k], s.fsp); }).join('') + '</xc-select></label>' +
@@ -281,7 +281,7 @@
     var SORT_B = (A && window.EggPower ? [['mate', '🥚 Best egg'], ['egg', '🥚 Egg power'], ['pass', '🧬 Traits']] : []).concat([['pow', '⚡ Power'], ['sc', '⭐ Score'], ['rar', '💎 Rarity']]);
     var asks = reqs.map(function (r) { var Y = w.byId[r.a], X = w.byId[r.b], k = r.b + ':' + r.a, kw = v2 && Vr.kinWhy ? Vr.kinWhy(X, Y) : null, rw = Vr.resPairWhy ? Vr.resPairWhy(X, Y, T + 1) : null, e = eggOf(Y, X, T + 1);
       return { p: Y, key: 'r' + k, why: kw ? kw + ' (no inbreeding)' : rw || null, tag: 'asks your ' + esc(X.name) + ' #' + X.id, tagMe: true, stat: '<span' + ptA(Y) + '>⚡ ' + pw(Y) + '</span>',
-        line: esc(spL(Y.species)) + ' · ' + esc(tierL(Y)) + ' · 👤 ' + esc(short(Y.owner)), lines: ['⏳ until block ' + fmt(r.block + (Vr.BREED_WINDOW || 144)) + (T ? ' (~' + Math.max(1, Math.round(Math.max(0, r.block + (Vr.BREED_WINDOW || 144) - T) / 6)) + ' h left)' : '')].concat(e ? [eggLine(e)] : []).concat(info(Y)), noStar: false }; });
+        line: esc(spL(Y)) + ' · ' + esc(tierL(Y)) + ' · 👤 ' + esc(short(Y.owner)), lines: ['⏳ until block ' + fmt(r.block + (Vr.BREED_WINDOW || 144)) + (T ? ' (~' + Math.max(1, Math.round(Math.max(0, r.block + (Vr.BREED_WINDOW || 144) - T) / 6)) + ' h left)' : '')].concat(e ? [eggLine(e)] : []).concat(info(Y)), noStar: false }; });
     var sideCfg = function (sd) { var st = sd === 'A' ? (s.pa = s.pa || {}) : (s.pb = s.pb || {}), nShow = Math.max(st.n || 0, per), shelves, shelf, cfgList;
       if (sd === 'A') {
         shelves = [{ id: 'best', label: '⭐ Best', list: bestA, why: 'Your pets that can breed right now.', empty: L.mine.length ? 'None of your pets can breed right now (Adult+, fed, off cooldown). Try 📋 All my pets to see why.' : 'No living pets at this address yet.' },
