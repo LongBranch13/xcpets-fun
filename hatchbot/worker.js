@@ -149,7 +149,7 @@ async function loadWorld() {
   const T = [0, 69e3, 834900, 2214900, 4146900, 6906900], STAGES = ["Egg", "Hatchling", "Juvenile", "Adult", "Elder", "Mythic"];
   const fed = Number(c[cur + "Fed"] != null ? c[cur + "Fed"] : (w[cur] || {}).fed || 0);
   const hi = stage < 5 ? T[stage + 1] : null, lo = T[stage] || 0;
-  const NAMES = { wizard: "Bitcoin Wizard", kek: "Lord Kek", funtrump: "FUNTRUMP", homer: "Homer Pepe", rabbit: "White Rabbit" };
+  const NAMES = { wizard: "Bitcoin Wizard", kek: "Lord Kek", funtrump: "FUNTRUMP", homer: "Homer Pepe", rabbit: "White Rabbit", groyper: "Groyper" };
   const cold = Object.keys(NAMES).map((k) => { const x = w[k + "Mythic"]; return x && +x.block > 0 && +x.block <= tip ? { name: NAMES[k], block: +x.block, total: +x.total, feeders: +x.feeders } : null; }).filter(Boolean).sort((a, b) => b.block - a.block);
   const fights = (w.fights || []).filter((f) => f && f.winner != null).map((f) => ({ id: f.id, a: f.a, b: f.b, winner: f.winner, loser: f.loser, block: f.acceptBlock || f.block }));
   WORLD = { at: Date.now(), tip, burned: c.burned, feeds: c.feeds, current: cur, name: NAMES[cur] || c.petName || null, stageName: c.petStageName || STAGES[stage], fed: Math.floor(fed), next: hi ? Math.ceil(hi - fed - 1e-6) : null, nextName: hi ? STAGES[stage + 1] : null, pct: hi ? Math.min(100, 100 * (fed - lo) / (hi - lo)) : 100, latestCold: cold[0] || null, fights };

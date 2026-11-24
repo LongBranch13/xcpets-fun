@@ -95,6 +95,11 @@ function petName(w, id, V) { const p = w.byId[id]; if (!p) return '#' + id;
 const link = id => 'xcpets.fun/pet.html?id=' + id;
 const isMythic = p => !!p && (p.mythicCare || p.stage >= 5);
 
+/* Community pet hand-off posts (Nov 24 2026): the log kind each community pet's Cold Storage writes (V2Rules COMMUNITY_HANDOFF), and the line for the pet that takes over. */
+const COLD_POST = { homercold: { id: 'homer', name: 'Homer Pepe', emoji: '🍩', eggs: 'Homer Pepe', banner: 'HOMER PEPE IS MYTHIC' },
+  rabbitcold: { id: 'rabbit', name: 'The White Rabbit', emoji: '🐇⌚', eggs: 'White Rabbit', banner: 'WHITE RABBIT IS MYTHIC' },
+  groypcold: { id: 'groyper', name: 'Groyper', emoji: '🐸', eggs: 'Groyper', banner: 'GROYPER IS MYTHIC' } };
+const COLD_POST_NEXT = { rabbit: '🐇 The White Rabbit is the new community pet. Every burn feeds him!', groyper: '🐸 GROYPER floats in on a lily pad: he is community pet #7. Every burn feeds him. Comfy.' };
 /* Every event has a stable key, the block it happened at and its text. Old keys are never posted twice. */
 function collect(V, w, tip, from) {
   const out = [], add = (key, at, text, prio, art) => out.push({ key, at, text, prio: prio || 1, art: art || null });
@@ -110,6 +115,9 @@ function collect(V, w, tip, from) {
     else if (x.kind === 'breed') { const egg = (m.match(/Egg #(\d+)/) || [])[1]; const ids = (m.match(/#(\d+)/g) || []).map(s => +s.slice(1));
       const big = ids.slice(0, 2).some(i => w.byId[i] && ((w.byId[i].tier | 0) >= 3 || isMythic(w.byId[i])));
       if (big) add(k, x.block, "💘 IT'S A MATCH! " + petName(w, ids[0], V) + ' and ' + petName(w, ids[1], V) + " checked into Gooby's Motel and made an egg" + (egg ? ' (#' + egg + ')' : '') + '! 🥚 Big genes incoming.' + (egg ? '\n' + link(egg) : ''), 2, { kind: 'breed', ids: ids.slice(0, 2), egg: egg ? +egg : null }); }
+    else if (COLD_POST[x.kind]) { const P = COLD_POST[x.kind], tot0 = (m.match(/\((\d+) burned\)/) || [])[1], tot = tot0 && Number(tot0).toLocaleString('en-US'), cur = w.community && w.community.current, nx = cur && cur !== P.id && COLD_POST_NEXT[cur]; /* community pet -> Cold Storage (Nov 24 2026: the hand-off used to post nothing) */
+      add(k, x.block, '🧊 MYTHIC! ' + P.name + ' just hit Mythic' + (tot ? ' with ' + tot + ' XCPETS burned by the community' : '') + ' and went into COLD STORAGE. ' + P.emoji + '\n🥚 ' + P.eggs + ' eggs now hatch (1 in 777) and can breed.\n✂️ Burn costs halve 6 blocks from now.' + (nx ? '\n' + nx : '') + '\nxcpets.fun', 5, { kind: 'banner', top: 'COLD STORAGE!', bottom: P.banner, color: 'cyan' }); }
+    else if (x.kind === 'grant' && /^XCPETS:raisers:/.test(x.tx || '')) add(k, x.block, '🎁 RAISER PRIZES! ' + clean(m) + '. Check your gear! 🎉\nxcpets.fun', 4, { kind: 'banner', top: 'RAISER PRIZES!', bottom: 'THANKS FOR FEEDING HIM', color: 'gold' });
     else if (x.kind === 'mzfull') add(k, x.block, '💀 FULL POWER! ' + petName(w, +id, V) + ' just maxed out its zombie power. Nobody is safe. 🧟\n' + link(id), 3, { kind: 'rage', id: +id, color: 'green' });
   });
   /* 2) Legendary hatches (one post per pet, or one roundup when a big egg case drops several) */
