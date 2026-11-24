@@ -81,7 +81,10 @@
     }
     return pets;
   }
+  /* Nov 24 2026: with js/v2-merge.js loaded, looked-up pets are pinned there and every view world keeps them (V2Merge.carry in
+   * setViewWorld), so this page no longer wraps setViewWorld. The wrap stays only as a fallback for a page without v2-merge.js. */
   function hook() {
+    if (root.V2Merge) return;
     var M = root.V2Mock;
     if (hooked || !M || typeof M.setViewWorld !== 'function' || M.setViewWorld.__lookup) return;
     var orig = M.setViewWorld;
@@ -110,8 +113,9 @@
       if (!held[p.id] && !already) added++;
       held[p.id] = already || held[p.id] || p;
     }
+    if (root.V2Merge) { var hl = [], hk = Object.keys(held), hi; for (hi = 0; hi < hk.length; hi++) hl.push(held[hk[hi]]); V2Merge.pin(hl, me(), true); }
     w = world();
-    if (w) stamp(w);
+    if (w && !root.V2Merge) stamp(w);
     rev++;
     var M = root.V2Mock;
     if (M && typeof M.setViewWorld === 'function' && w) {
