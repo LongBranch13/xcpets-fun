@@ -24,7 +24,7 @@ const scene = rd('js/v2-cemetery-scene.js'), gift = rd('js/v2-gift.js'), altar =
 const helper = block(scene);
 ok(helper.length > 500 && helper === block(gift), 'cemetery and shop share one living-rest helper');
 ok(/V2Split\.rest/.test(helper) && /V2Split\.ensurePet/.test(helper) && /AUTO_CAP/.test(helper) && !/loadBoard\(/.test(helper), 'helper calls rest and ensurePet, not loadBoard');
-ok(/if \(window\.xcpLivingRest\) window\.xcpLivingRest\(\)/.test(scene) && /xcpLivingRest\(\)\.then\(function \(\) \{ syncWorld\(\); zLoad\(\); \}, zLoad\)/.test(scene) && /function zLoad\(\) \{ if \(!\(window\.V2Split && V2Split\.loadZombies\)\)/.test(scene), 'cemetery boot starts rest and loads zombies after it');
+ok(/if \(window\.xcpLivingRest\) window\.xcpLivingRest\(\)/.test(scene) && /zLoad\(\); if \(window\.xcpLivingRest\) window\.xcpLivingRest\(\)\.then\(function \(\) \{ syncWorld\(\); status\(\); zombies\(\); \}/.test(scene) && /p\.zombie && !p\.zombie\.end\)\)\) \{ \/\* my living pets/.test(rd('js/v2-split.js')) && /function zLoad\(\) \{ if \(!\(window\.V2Split && V2Split\.loadZombies\)\)/.test(scene), 'cemetery boot starts rest and loads zombies right away (kept across owner-page publishes, hunt-fast Nov 24 2026)');
 ok(/xcpLivingFill\(ME\)/.test(scene) && /pending: pend/.test(scene), 'hunt waits for the rest of the living pets');
 ok(/function primeOffers\(/.test(altar) && /xcpLivingFill\(me\)/.test(altar) && /Loading your pets…/.test(altar), 'seance shows a loading line, then refills from the full list');
 ok(/pending && !query && !rows.length/.test(hunt) && /Loading your pets…/.test(hunt) && /d\._fill/.test(hunt), 'hunt picker can show loading, then take the full hunter list');

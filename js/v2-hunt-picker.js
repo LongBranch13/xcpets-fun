@@ -9,11 +9,23 @@
     var d = document.createElement('dialog'); d.id = 'huntPicker'; d.className = 'hunt-picker'; d.setAttribute('aria-labelledby', 'huntTitle');
     var revised = V.huntRulesOn && V.huntRulesOn(c.block);
     var rows = [], best = null;
+    /* hunt-fast (Nov 24 2026, Jake: "everything loads slow when i chose to hunt a feral zombie"): the picker used to run the full hunt check
+     * (V.cemHuntWhy, which scans every open fight) for every pet in the wallet before it showed anything: thousands of pets times thousands
+     * of fights. Now rows are sorted by power first (cheap), and the check runs only for the cards on screen (and on tap, as before).
+     * The grudge bonus is looked up only for pets that have a grudge against this zombie. The rules still decide every hunt. */
+    var G = (w.cem && w.cem.grudges) || {};
+    function why(r) { if (r.w === undefined) r.w = V.cemHuntWhy(w, r.p.id, Z.id, c.me, c.block) || null; return r.w; }
+    function mk(p) { var r = { p: p, w: undefined, power: V.petPower(p) * (revised && G[p.id + ':' + Z.id] ? 1 + V.huntQuote(w, p.id, Z.id, c.block).bonus / 100 : 1), search: ((p.name || '') + ' #' + p.id).toLowerCase() };
+      Object.defineProperty(r, 'why', { get: function () { return why(r); }, enumerable: true }); return r; }
     function build(pets) {
-      rows = (pets || []).map(function (p) { var why = V.cemHuntWhy(w, p.id, Z.id, c.me, c.block); return {p:p, why:why, power:V.petPower(p) * (revised ? 1 + V.huntQuote(w, p.id, Z.id, c.block).bonus / 100 : 1), search:((p.name || '') + ' #' + p.id).toLowerCase()}; });
+      G = (w.cem && w.cem.grudges) || {};
+      rows = (pets || []).map(mk);
       rows.sort(function (a,b) { return b.power - a.power || a.p.id - b.p.id; });
-      best = rows.filter(function (r) { return !r.why; })[0];
+      best = null; ready = []; scanned = 0; readyUpTo(1);
     }
+    var ready = [], scanned = 0;
+    /* the ready shelf, filled lazily in power order: enough for the cards on screen plus one more page */
+    function readyUpTo(n) { while (ready.length < n && scanned < rows.length) { var r = rows[scanned++]; if (!r.why) ready.push(r); } if (!best) best = ready[0] || null; return ready; }
     build(c.pets);
     function close() { d.close(); }
     d.addEventListener('close', function () { d.remove(); if (focus && focus.isConnected) focus.focus(); });
@@ -29,10 +41,10 @@
       if (!d.querySelector('#huntPk')) { shell('⚔️ Choose your hunter'); d.querySelector('#huntBody').innerHTML = '<div id="huntPk"></div><p class="small" id="huntError" role="alert"></p><footer><button type="button" class="btn" data-ready disabled>Pick a hunter</button></footer>'; }
       var gb = d.querySelector('[data-ready]'); gb.disabled = !chosen; gb.textContent = chosen ? '🗡️ Hunt with ' + (chosen.name || 'Pet') + ' #' + chosen.id + ' · ' + V.cemHuntPlan(w, chosen.id, Z.id, c.block).amount + ' XCPETS' : 'Pick a hunter';
       var deco = function (r) { return { p: r.p, why: r.why, stat: '⚡ ' + Math.round(r.power * 100) / 100, line: r === best ? '★ suggested' : '' }; };
-      var ready = rows.filter(function (r) { return !r.why; }), n = PS.st.n || 24, dec = function (L) { return L.slice(0, n).map(deco).concat(L.slice(n).map(function (r) { return { p: r.p, why: r.why }; })); };
+      var n = PS.st.n || 24, rdy = readyUpTo(n + 24).slice(), dec = function (L) { return L.slice(0, n).map(deco).concat(L.slice(n).map(function (r) { return { p: r.p }; })); };
       var plan = chosen ? V.cemHuntPlan(w, chosen.id, Z.id, c.block) : null, zp = Math.round(V.petPower(Z) * (revised ? 0.9 : 1) * 100) / 100;
       var cr = chosen && rows.filter(function (r) { return r.p.id === chosen.id; })[0], hp = cr ? Math.round(cr.power * 100) / 100 : 0;
-      var shelves = [{ id: 'best', label: '⭐ Strongest', list: dec(ready), why: 'Your pets that can hunt today, strongest first.', empty: c.pending ? 'Loading your pets…' : 'None of your pets can hunt right now. Try 📋 All my pets to see why.' }]
+      var shelves = [{ id: 'best', label: '⭐ Strongest', list: dec(rdy), why: 'Your pets that can hunt today, strongest first.', empty: c.pending ? 'Loading your pets…' : 'None of your pets can hunt right now. Try 📋 All my pets to see why.' }]
         .concat(PK.canFav() ? [{ id: 'fav', label: '★ Favorites', list: dec(PK.favOf(rows)), why: 'Your ★ pets.', empty: 'No favorites here.' }] : [])
         .concat([{ id: 'recent', label: '🕘 Recent', list: dec(PK.recentOf(rows)), why: 'Pets you picked lately, here and in other places.', empty: 'Nothing picked yet.' },
           { id: 'all', label: '📋 All my pets', list: dec(rows), why: 'Every pet. The ones that can\u2019t hunt say why.', empty: c.pending ? 'Loading your pets…' : 'No pets yet.' }]);

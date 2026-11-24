@@ -63,7 +63,10 @@ function loadRows(dir) {
     for (let j = 0; j < part.length; j++) rows.push(part[j]);
   }
   const packed = { stamp: stamp, counts: counts, rows: rows };
-  cache.set(dir, packed);
+  /* Nov 24 2026: every new world (every 6 blocks) has its own graves folder. The cache kept every one of them (100k+ rows each) for the life
+   * of the service, so memory grew all day. Keep only the newest two folders. */
+  cache.delete(dir); cache.set(dir, packed);
+  while (cache.size > 2) cache.delete(cache.keys().next().value);
   return packed;
 }
 function answer(dir, q) {
