@@ -403,10 +403,17 @@ async function cmdBurns(env) {
   if (!boot || !Array.isArray(boot.rows)) return { text: "I could not load the burn numbers right now. Please try again shortly. " + SITE };
   const feedTip = Number(boot.tip) || 0, chainTip = Math.max(feedTip, Number(await tipNow()) || 0);
   const s = burnStats(boot.rows, chainTip);
+  let supplySats = 0n;
+  try { const m = await (await fetch(SITE + "/api/meta.json", { cf: { cacheTtl: 120 } })).json(); if (m && m.supplyXCPETS != null) supplySats = BigInt(Math.round(Number(m.supplyXCPETS) * 1e8)) + s.allSats; } catch (e) {}
+  const pct = (a, b) => { if (!b) return null; const v = Number(a) * 100 / Number(b); return (v > 0 && v < 0.01 ? "<0.01" : v.toFixed(v < 10 ? 2 : 1)) + "%"; };
+  const w = (n) => fmt0(n) + " wallet" + (n === 1 ? "" : "s");
+  const ofSupply = supplySats ? pct(s.allSats, supplySats) : null, ofAll = pct(s.daySats, s.allSats), ofWallets = pct(s.dayWallets, s.allWallets);
   const L = [
-    "\u{1F525} XCPETS burned all time: " + fmtXcp(s.allSats) + " (" + fmt0(s.allWallets) + " wallet" + (s.allWallets === 1 ? "" : "s") + ")",
-    "\u{1F4C5} Burned today: " + fmtXcp(s.daySats) + " (" + fmt0(s.dayWallets) + " wallet" + (s.dayWallets === 1 ? "" : "s") + ")",
-    "Today = chain day " + fmt(s.day) + ", since block " + fmt(s.dayStart) + "."
+    "\u{1F525} XCPETS burned all time: " + fmtXcp(s.allSats) + (ofSupply ? " (" + ofSupply + " of all XCPETS ever made)" : ""),
+    "\u{1F438} Wallets that ever burned: " + fmt0(s.allWallets),
+    "\u{1F95A} Burned today: " + fmtXcp(s.daySats) + (ofAll ? " (" + ofAll + " of all time)" : ""),
+    "\u{1F423} Wallets that burned today: " + fmt0(s.dayWallets) + (ofWallets ? " (" + ofWallets + " of all burners)" : ""),
+    "\u26D3\uFE0F Today = chain day " + fmt(s.day) + ", since block " + fmt(s.dayStart) + "."
   ];
   if (chainTip - feedTip > 12) L.push("\u26A0\uFE0F The burn feed is " + fmt(chainTip - feedTip) + " blocks behind, so the newest burns may be missing.");
   L.push("As of block " + fmt(feedTip) + ". " + SITE);
