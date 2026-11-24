@@ -12,7 +12,7 @@ import { serverWatch, statusText, toggleAlerts } from './serverwatch.js'; /* gam
 const TOKEN_IDS = TOKENS.map(m => m.id); /* every pet with a 512x512 picture (hatchbot/build-memes.js) */
 
 var SITE = "https://xcpets.fun";
-var HELP = "\u{1F438} HatchBot commands\n/pet \xB7 a random pet (/pet 123, /pet <name>, /pet <species>)\n/burns \xB7 XCPETS burned all time and today, and how many wallets\n/whosthat \xB7 guess the pet from its silhouette (reply to the photo)\n/breed \xB7 a real breed from the chain (/breed <pet>)\n/battle \xB7 a real arena battle (/battle <pet>)\n/meme \xB7 a random XCPETS meme\n/chainday \xB7 the current 144-block game day and blocks left\n/season \xB7 the current XCPETS season and its countdown\n/bug <what happened> \xB7 report a bug to the XCPETS team (pet numbers help!)\n/play \xB7 open the XCPETS app right here in Telegram (your pets + live feed)\n/help \xB7 this list\n\nPlay at xcpets.fun";
+var HELP = "\u{1F438} HatchBot commands\n/pet \xB7 a random pet (/pet 123, /pet <name>, /pet <species>)\n/burns \xB7 XCPETS burned all time and today, and how many burners\n/whosthat \xB7 guess the pet from its silhouette (reply to the photo)\n/breed \xB7 a real breed from the chain (/breed <pet>)\n/battle \xB7 a real arena battle (/battle <pet>)\n/meme \xB7 a random XCPETS meme\n/chainday \xB7 the current 144-block game day and blocks left\n/season \xB7 the current XCPETS season and its countdown\n/bug <what happened> \xB7 report a bug to the XCPETS team (pet numbers help!)\n/play \xB7 open the XCPETS app right here in Telegram (your pets + live feed)\n/help \xB7 this list\n\nPlay at xcpets.fun";
 var BOT_COMMANDS = [["play", "Open the XCPETS app inside Telegram"], ["pet", "Pet card: /pet, /pet 123, /pet <name>, /pet <species>"], ["burns", "XCPETS burned all time and today"], ["whosthat", "Guess the pet from its silhouette"], ["breed", "A real breed from the chain (/breed <pet>)"], ["battle", "A real arena battle (/battle <pet>)"], ["meme", "A random XCPETS meme"], ["chainday", "Current 144-block game day and blocks left"], ["bug", "Report a bug to the XCPETS team"], ["help", "List HatchBot commands"]];
 var RATE_ON = !!(AUTO.commands && AUTO.commands.rate === true);
 if (RATE_ON) { HELP = HELP.replace("\n/meme ", "\n/rate \xB7 HatchBot rates a pet (/rate 42, /rate <name>)\n/meme "); BOT_COMMANDS.splice(5, 0, ["rate", "HatchBot rates a pet (/rate <pet>)"]); }
@@ -394,7 +394,8 @@ async function cmdBattle(env, S, W, args) {
   const intro = pick(["LADIES AND GENTLEMEN, LET'S GET READY TO RUMBLLLE!", "OH MY! WHAT A MATCH THIS WAS, FOLKS!", "BAH GAWD! LOOK AT THIS ONE FROM THE ARCHIVES!"]);
   return { text: ["\u{1F94A} " + intro, "In this corner: #" + A.id + " " + A.name + " the " + A.speciesLabel + "! And in THAT corner: #" + B.id + " " + B.name + " the " + B.speciesLabel + "!", "Block " + fmt0(f.block) + "... and #" + Wn.id + " " + Wn.name + " WINS IT! " + Ls.name + " walks home with a black eye!", link(Wn.id)].join("\n"), ids: [f.a, f.b] };
 }
-// /burns: plain burn totals only (Jake, Nov 24 2026: no community pet info here).
+// /burns: plain burn totals only (Jake, Nov 24 2026: no community pet info here, and say "burners", not "wallets").
+// A burner = one address that ever destroyed XCPETS (every game action is a burn, so this is every address that ever played).
 // Source: the public burn feed api/boot.json (every valid XCPETS burn, ~20-25 min fresh).
 // "Today" = the current chain day (144-block day, the same day /chainday shows).
 async function cmdBurns(env) {
@@ -406,13 +407,12 @@ async function cmdBurns(env) {
   let supplySats = 0n;
   try { const m = await (await fetch(SITE + "/api/meta.json", { cf: { cacheTtl: 120 } })).json(); if (m && m.supplyXCPETS != null) supplySats = BigInt(Math.round(Number(m.supplyXCPETS) * 1e8)) + s.allSats; } catch (e) {}
   const pct = (a, b) => { if (!b) return null; const v = Number(a) * 100 / Number(b); return (v > 0 && v < 0.01 ? "<0.01" : v.toFixed(v < 10 ? 2 : 1)) + "%"; };
-  const w = (n) => fmt0(n) + " wallet" + (n === 1 ? "" : "s");
   const ofSupply = supplySats ? pct(s.allSats, supplySats) : null, ofAll = pct(s.daySats, s.allSats), ofWallets = pct(s.dayWallets, s.allWallets);
   const L = [
     "\u{1F525} XCPETS burned all time: " + fmtXcp(s.allSats) + (ofSupply ? " (" + ofSupply + " of all XCPETS ever made)" : ""),
-    "\u{1F438} Wallets that ever burned: " + fmt0(s.allWallets),
+    "\u{1F438} Burners all time: " + fmt0(s.allWallets),
     "\u{1F95A} Burned today: " + fmtXcp(s.daySats) + (ofAll ? " (" + ofAll + " of all time)" : ""),
-    "\u{1F423} Wallets that burned today: " + fmt0(s.dayWallets) + (ofWallets ? " (" + ofWallets + " of all burners)" : ""),
+    "\u{1F423} Burners today: " + fmt0(s.dayWallets) + (ofWallets ? " (" + ofWallets + " of all burners)" : ""),
     "\u26D3\uFE0F Today = chain day " + fmt(s.day) + ", since block " + fmt(s.dayStart) + "."
   ];
   if (chainTip - feedTip > 12) L.push("\u26A0\uFE0F The burn feed is " + fmt(chainTip - feedTip) + " blocks behind, so the newest burns may be missing.");
