@@ -622,11 +622,42 @@
     if (hMem) seen = Object.assign(seen || {}, hMem);
     if (hatchTip == null) hatchTip = savedTip != null ? savedTip : (w.tip || 0);
     var settled = hatchListSettled(w);
+    /* hatch-tray-1124 (owner Nov 24 2026: one Shock Box opened as three pop-ups, 47 then 353 then 600, and 'the animation just popping up is annoying').
+     * A big wallet arrives in owner pages, and each page used to open its own review. Now nothing is counted until the list has settled
+     * (90 s safety cap, then the old way), so one hatch = one review. Display only: same newHatches keys, nothing signed. */
+    if (!settled) { if (!hDefer0) hDefer0 = Date.now(); if (Date.now() - hDefer0 < 90000) return []; }
     var r = V.newHatches(w, ME, seen); hMem = r.seen;
     if (hasKeys || settled) { try { localStorage.setItem(HKEY, JSON.stringify(hPack(r.seen))); } catch (e) { } }
     var groups = hatchKeepGroups(r.groups, hatchTip, hasKeys);
-    groups.forEach(function (g) { revealQ.push({ kind: 'eggs', eggs: g.eggs.map(function (p) { return p.id; }) }); }); return groups;
+    if (hSessTip == null && settled) hSessTip = w.tip || 0;
+    /* Eggs that hatched before this page settled ('while you were away') go to the calm hatch tray (a small pill you open when you want),
+     * never an automatic pop-up or animation. Eggs that hatch while you watch still get the egg-crack moment. All of one batch = one review. */
+    var away = [], live = [];
+    groups.forEach(function (g) { g.eggs.forEach(function (p) { ((hSessTip == null || (p.hatchBlock || 0) <= hSessTip) ? away : live).push(p.id); }); });
+    if (away.length) trayAdd(away);
+    if (live.length) { var q = null; for (var i = revealQ.length - 1; i >= 0; i--) if (revealQ[i].kind === 'eggs' && !revealQ[i].tray) { q = revealQ[i]; break; }
+      if (rev && rev.kind === 'eggs' && !rev.tray && $('packBox').classList.contains('on')) { rev.eggs = rev.eggs.concat(live); rev.n0 = (rev.n0 || 0) + live.length; rev.luck = null; rev.best = null; drawReveal(); }
+      else if (q) q.eggs = q.eggs.concat(live); else revealQ.push({ kind: 'eggs', eggs: live }); }
+    return groups;
   }
+  var hDefer0 = 0, hSessTip = null, tray = null;
+  /* hatch-tray-1124: the calm 'new pets' pill. One per page, merges every away batch, shows the best finds so you know if it's worth a look. */
+  function hatchFinds(w, ids) { var out = { n: 0, leg: 0, weird: 0, special: 0 };
+    ids.forEach(function (id) { var x = w.byId[id]; if (!x) return; out.n++; if (x.art && x.art.tierIndex >= 3) out.leg++; var k = revStar(x);
+      if (k === 'weird') out.weird++; else if (k) out.special++; });
+    return out; }
+  function trayAdd(ids) { if (!tray) tray = { eggs: [] }; ids.forEach(function (id) { if (tray.eggs.indexOf(id) < 0) tray.eggs.push(id); }); trayDraw(); }
+  function trayDraw() { var el = $('hatchTray');
+    if (!tray || !tray.eggs.length) { if (el) el.remove(); return; }
+    if (!el) { el = document.createElement('div'); el.id = 'hatchTray'; el.className = 'htray'; el.setAttribute('role', 'status'); document.body.appendChild(el);
+      el.addEventListener('click', function (e) { if (e.target.closest('.htx')) { tray = null; trayDraw(); return; } if (e.target.closest('.htgo')) trayOpen(); }); }
+    var f = hatchFinds(world(), tray.eggs), n = f.n || tray.eggs.length, bits = [];
+    if (f.weird) bits.push('<b class="htw">🌀 ' + f.weird + ' weird</b>'); if (f.special) bits.push('<b class="hts">✨ ' + f.special + ' special</b>'); if (f.leg) bits.push('<b class="htl">🏆 ' + f.leg.toLocaleString('en-US') + ' Legendary</b>');
+    el.innerHTML = '<button type="button" class="htgo" title="See your new pets"><span class="hticon" aria-hidden="true">🥚</span><span class="httxt"><span class="htn">' + n.toLocaleString('en-US') + ' new pet' + (n === 1 ? '' : 's') + ' hatched</span>' +
+      (bits.length ? '<span class="htbits">' + bits.join(' ') + '</span>' : '') + '</span><span class="htcta">Open ›</span></button><button type="button" class="htx" aria-label="Hide this (your pets stay)" title="Hide this (your pets stay in My Pets)">✕</button>';
+    el.classList.toggle('htgold', !!(f.weird || f.special)); }
+  function trayOpen() { if (!tray) return; var ids = tray.eggs; tray = null; trayDraw(); if (rev && $('packBox').classList.contains('on')) closeReveal();
+    revealQ.unshift({ kind: 'eggs', eggs: ids, tray: 1, hatchAnim: 1, away: 1 }); released = true; nextReveal(); }
   var wspinOn = false; /* wheel-spin-anim: the 8-bit Pepe Wheel reveal (js/v2-wheel-anim.js) plays once before a gear batch that came from a wheel spin. Display only. */
   function nextReveal() { if (wspinOn || $('packBox').classList.contains('on') || !revealQ.length) return; if (holding()) { heldR = true; awayPing(); return; } rev = revealQ.shift(); rev.page = 0; rev.sel = {}; if (rev.kind === 'eggs' && rev.sort == null && rev.eggs.length > 1) rev.sort = 'rar'; if (rev.kind === 'eggs') { rev.n0 = rev.eggs.length; rev.gone = 0; } /* pet-flow-smoother: a hatch review opens Rarest first (Legendaries on page 1); the Sort menu still offers Hatch order */ if (packY == null) packY = window.scrollY || 0; if (rev.kind === 'eggs') lastHatchN = rev.eggs.length;
     var WA = window.V2WheelAnim, ws = null; if (rev.kind === 'gear' && WA) try { ws = WA.fromWins(rev.wins, world(), communityName(world())); } catch (e) { ws = null; }
@@ -647,8 +678,28 @@
    * picked by Keep Rare and up or Select all, and need an extra confirm to select by hand; starred pets can't be hidden at all (restored Oct 29 2026). */
   function dudGuard(w, p) { var r = []; if (p.art && p.art.tierIndex >= 3) r.push(TIERS[p.art.tierIndex].label); if (p.stage === 5) r.push('Mythic');
     var n = R.worn ? R.worn(w, p.id).length : 0; if (n) r.push('wearing ' + n + ' gear piece' + (n > 1 ? 's' : '')); if (isKept(p.id)) r.push('starred'); return r; }
-  var REV_SHOW = [['all', 'All'], ['my', 'Mythic'], ['3', 'Legendary'], ['2', 'Rare'], ['1', 'Uncommon'], ['0', 'Common']];
-  function revShows(f, x) { return f === 'all' || !f || (f === 'my' ? x.stage === 5 : f === 'sel' ? !!rev.sel[x.id] : String(x.art.tierIndex) === f); }
+  var REV_SHOW = [['all', 'All'], ['wx', '🌀 Weird &amp; special'], ['my', 'Mythic'], ['3', 'Legendary'], ['2', 'Rare'], ['1', 'Uncommon'], ['0', 'Common']];
+  function revShows(f, x) { return f === 'all' || !f || (f === 'wx' ? !!revStar(x) : f === 'my' ? x.stage === 5 : f === 'sel' ? !!rev.sel[x.id] : String(x.art.tierIndex) === f); }
+  /* hatch-tray-1124 (owner: 'Id like to see if I hatched any weird pets'). DISPLAY ONLY. 'weird' = a weird hatch (tiny, giant, two-headed, ghost...),
+   * 'special' = a Legend egg or a special species (the 1 in 777 egg: Homer, the White Rabbit, FUNTRUMP...). Ordinary species and hybrids are neither. */
+  var REV_PLAIN = { pepe: 1, wojak: 1, chud: 1, bobo: 1, mumu: 1, snibby: 1, dodo: 1, kevin: 1, peepo: 1, sarutobi: 1, doge: 1, lenny: 1, chad: 1 };
+  function revStar(x) { if (!x) return null; var RI = window.V2Render && V2Render.rareInfo, i = RI ? RI(x) : null; if (i) return i.weird ? 'weird' : 'special';
+    if (x.hybrid || (x.art && x.art.hybrid) || (V.isHybrid && V.isHybrid(x.species))) return null; return x.species && !REV_PLAIN[x.species] ? 'special' : null; }
+  function revStarLabel(x) { var RI = window.V2Render && V2Render.rareInfo, i = RI ? RI(x) : null; if (i) return i.icon + ' ' + (i.weird ? i.name.toUpperCase() : i.banner);
+    return '✨ ' + String(V.speciesLabel ? V.speciesLabel(x.species) : x.species).toUpperCase() + '!'; }
+  function revOneIn(w, x) { var r = window.PetScore && PetScore.peek ? PetScore.peek(w, x) : null; return r && r.rarityOneIn ? r.rarityOneIn : 0; }
+  /* Best finds: every weird / special pet first, then the rarest-looking Legendaries, up to 6. */
+  function revBest(w, all) { var st = [], rest = [];
+    all.forEach(function (x) { var k = revStar(x); if (k) st.push(x); else if (x.art && x.art.tierIndex >= 2) rest.push(x); });
+    st.sort(function (a, b) { return (revStar(a) === 'weird' ? 0 : 1) - (revStar(b) === 'weird' ? 0 : 1) || b.art.tierIndex - a.art.tierIndex; });
+    if (st.length < 6) { rest.forEach(function (x) { x._oneIn = revOneIn(w, x); }); rest.sort(function (a, b) { return b.art.tierIndex - a.art.tierIndex || b._oneIn - a._oneIn; }); st = st.concat(rest.slice(0, 6 - st.length)); }
+    return st.slice(0, Math.max(6, st.length)).slice(0, 12); }
+  /* Shock Box luck line: the box's real tier odds (V2Rules.ELECTRIC_TIER_10K) next to what you got, so a dry box reads as luck, not a bug. */
+  function revEl(x) { return !!(x && (x.electric || (x.art && x.art.electric))); }
+  function revLuck(w, all) { var nEl = all.filter(revEl).length; if (nEl < 100) return '';
+    var T = V.ELECTRIC_TIER_10K || [3000, 4000, 2200, 800], leg = all.filter(function (x) { return revEl(x) && x.art.tierIndex >= 3; }).length, ex = Math.round(nEl * T[3] / 10000), odd = all.filter(function (x) { return revEl(x) && revStar(x); }).length, exO = nEl * (1 / 777 + (V.RARE_BUCKETS && V.RARE_D ? V.RARE_BUCKETS.reduce(function (a, b) { return a + b[1]; }, 0) / V.RARE_D : 1 / 330));
+    var face = leg >= ex * 1.1 ? '🍀 lucky box!' : leg <= ex * 0.85 ? '😤 a bit dry' : '👌 right on average';
+    return '<div class="pkluck small" title="Shock Box odds per egg: Legendary ' + T[3] / 100 + '% · Rare ' + T[2] / 100 + '% · Uncommon ' + T[1] / 100 + '% · Common ' + T[0] / 100 + '%. Plus a 1 in 777 special egg, about 1 in 776 weird hatches and rare Legend eggs.">⚡ Shock Box luck: <b>' + leg.toLocaleString('en-US') + ' Legendary</b> (average ' + ex.toLocaleString('en-US') + ') · <b>' + odd + ' weird or special</b> (average ' + exO.toFixed(1) + ') · ' + face + '</div>'; }
   /* hatch-species-filter 2026-10-30 (owner 9:35 PM CT [pt2372u]: 'not a to z but just show particular species'). DISPLAY ONLY: a Species dropdown
    * in the hatch review shows only one species (or Hybrids). It combines with the rarity Show chips (each side counts within the other), Select all shown and paging. */
   function revSp(x) { return (x.hybrid || (x.art && x.art.hybrid) || (V.isHybrid && V.isHybrid(x.species))) ? 'hybrid' : x.species; }
@@ -697,7 +748,7 @@
       if (rev.sp !== 'all' && !spAll.length) { rev.sp = 'all'; spAll = all; }
       list = spAll.filter(function (x) { return revShows(rev.f, x); }); if (!list.length && rev.f !== 'sel') { rev.f = 'all'; list = spAll; } } /* hatch-review-simple: the Show filter (+ species) */
     var pages = Math.max(1, Math.ceil(list.length / REV_PAGE)); rev.page = Math.min(rev.page, pages - 1);
-    $('packTitle').textContent = gear ? '🎁 ' + (list.length === 1 ? 'You got ' + list[0].label : list.length + ' new gear pieces') : ((rev.n0 || all.length) === 1 ? '1 egg hatched' : (rev.n0 || all.length).toLocaleString('en-US') + ' eggs hatched') + (tiers[3] ? ' · ' + tiers[3] + ' Legendary' : '') + (nMy ? ' · ' + nMy + ' Mythic' : '');
+    $('packTitle').textContent = gear ? '🎁 ' + (list.length === 1 ? 'You got ' + list[0].label : list.length + ' new gear pieces') : ((rev.n0 || all.length) === 1 ? '1 egg hatched' : (rev.n0 || all.length).toLocaleString('en-US') + ' eggs hatched') + (tiers[3] ? ' · ' + tiers[3] + ' Legendary' : '') + (nMy ? ' · ' + nMy + ' Mythic' : '') + (function () { var k = gear ? 0 : all.filter(function (x) { return revStar(x) === 'weird'; }).length; return k ? ' · ' + k + ' Weird' : ''; })();
     $('packBox').classList.toggle('gearmode', gear); $('packTitle').setAttribute('data-ico', gear ? 'gear' : 'egg'); if ($('packNote')) { $('packNote').hidden = gear; if (!gear) $('packNote').textContent = 'Discarding is free and only in this browser. Undo anytime from 🗑️ Discard pile in My Pets.'; } /* the hide note belongs to the egg review only */
     var logBy = {}, info = '', where = { on: 0, bag: 0, comm: 0 };
     if (gear) { (w.log || []).forEach(function (l) { if (l.gid) logBy[l.gid] = l; });
@@ -721,8 +772,8 @@
     var pager = pages > 1 ? ' <span class="pager"><button class="q" type="button" id="pkPrev"' + (rev.page ? '' : ' disabled') + '>‹ Prev</button> page ' + (rev.page + 1) + '/' + pages + ' <button class="q" type="button" id="pkNext"' + (rev.page < pages - 1 ? '' : ' disabled') + '>Next ›</button></span>' : '';
     if (gear) $('packSummary').innerHTML = info + '<span class="grtiers">' + tierLine + '</span>' + pager;
     else { /* hatch-review-simple: two equal quick choices, a Show filter by rarity, one Sort, Select all shown / Clear selection, the pager */
-      var kR = revKeepN(w, all, 1), kL = revKeepN(w, all, 2), kA = revKeepN(w, all, 3), many = all.length > 1, spOn = rev.sp !== 'all', cnt = { all: spAll.length, my: 0, sel: 0, 0: 0, 1: 0, 2: 0, 3: 0 };
-      spAll.forEach(function (x) { cnt[x.art.tierIndex]++; if (x.stage === 5) cnt.my++; if (rev.sel[x.id]) cnt.sel++; }); /* chip counts = within the chosen species */
+      var kR = revKeepN(w, all, 1), kL = revKeepN(w, all, 2), kA = revKeepN(w, all, 3), many = all.length > 1, spOn = rev.sp !== 'all', cnt = { all: spAll.length, wx: 0, my: 0, sel: 0, 0: 0, 1: 0, 2: 0, 3: 0 };
+      spAll.forEach(function (x) { cnt[x.art.tierIndex]++; if (revStar(x)) cnt.wx++; if (x.stage === 5) cnt.my++; if (rev.sel[x.id]) cnt.sel++; }); /* chip counts = within the chosen species */
       if (!spOn) cnt.sel = Object.keys(rev.sel).length;
       var spC = {}, spK = [], spBase = all.filter(function (x) { return revShows(rev.f, x); }); all.forEach(function (x) { var k = revSp(x); if (spC[k] == null) { spC[k] = 0; spK.push(k); } });
       spBase.forEach(function (x) { spC[revSp(x)]++; }); /* species counts = within the chosen rarity chip */
@@ -736,12 +787,19 @@
         '<button type="button" class="btn pkq pkall" id="pkHideAll" data-top="3"' + (kA ? '' : ' disabled') + '>Discard all<small>discards ' + kA.toLocaleString('en-US') + ', Legendary too</small></button>' +
         '<div class="muted small pksafe">🛡️ Legendary pets are never discarded, except by Discard all.' + (function () { var t = revSafeNote(w, all, 3); return t ? ' ' + esc(t.replace(/^These stay too: /, 'Always kept: ')) + '.' : ''; })() + '</div></div>' : ''; /* hide-all-1103: owner wording 'Discard', not 'Hide' */
       var chips = many ? '<div class="pkshow" role="group" aria-label="Show"><span class="muted">Show</span> ' + REV_SHOW.concat([['sel', '✓ Selected']]).filter(function (f) { return f[0] === 'all' || f[0] === 'sel' || cnt[f[0]] || rev.f === f[0]; }).map(function (f) {
-        return '<button type="button" class="q pkchip' + (f[0] === '3' || f[0] === 'my' ? ' pkgold' : '') + '" data-f="' + f[0] + '" aria-pressed="' + (rev.f === f[0]) + '">' + f[1] + ' <b' + (f[0] === 'sel' ? ' id="pkSelN"' : '') + '>' + cnt[f[0]].toLocaleString('en-US') + '</b></button>'; }).join('') +
+        return '<button type="button" class="q pkchip' + (f[0] === '3' || f[0] === 'my' || f[0] === 'wx' ? ' pkgold' : '') + '" data-f="' + f[0] + '" aria-pressed="' + (rev.f === f[0]) + '">' + f[1] + ' <b' + (f[0] === 'sel' ? ' id="pkSelN"' : '') + '>' + cnt[f[0]].toLocaleString('en-US') + '</b></button>'; }).join('') +
         (rev.gone ? '<span class="muted pkgone">' + rev.gone.toLocaleString('en-US') + ' discarded</span>' : '') + '</div>' : '';
       var tools = many ? '<div class="pktools">' + spSel + ' <label class="pksort">Sort <xc-select id="pkSort" aria-label="Sort the pets">' + (window.PetSort ? PetSort.options(rev.sort) : '') + '</xc-select></label>' +
         ' <button type="button" class="q" id="pkSelAll">Select all shown</button> <button type="button" class="q" id="pkClear"' + (cnt.sel ? '' : ' hidden') + '>Clear selection</button>' + pager + '</div>' +
         '<div class="muted small pktip">Tap a pet to select it, then Discard selected.</div>' : '';
-      $('packSummary').innerHTML = keepRow + chips + tools; }
+      if (!rev.best) rev.best = revBest(w, all).map(function (x) { return x.id; }); /* hatch-tray-1124: fixed when the review opens, so it doesn't jump around while you discard */
+      if (rev.luck == null) rev.luck = revLuck(w, all);
+      var bestL = rev.best.map(function (id) { return w.byId[id]; }).filter(function (x) { return x && rev.eggs.indexOf(x.id) >= 0; });
+      var best = bestL.length && all.length > 1 ? '<div class="pkbest" aria-label="Best finds"><div class="pkbh">' + (bestL.some(revStar) ? '🌀 Weird &amp; special finds!' : '✨ Best of this hatch') + '</div><div class="pkbrow">' +
+        bestL.map(function (x) { var k = revStar(x), oi = revOneIn(w, x); return '<a class="pkbc t' + x.art.tierIndex + (k ? ' pkb-' + k : '') + '" href="pet.html?id=' + x.id + '" target="_blank" rel="noopener" title="Open #' + x.id + ' in a new tab"><canvas width="32" height="32" data-bid="' + x.id + '"></canvas>' +
+          '<span class="pkbtag">' + esc(k ? revStarLabel(x) : TIERS[x.art.tierIndex].label) + '</span><span class="pkbname">#' + x.id + ' ' + esc(V.speciesLabel ? V.speciesLabel(x.species) : x.species) + '</span>' + (oi ? '<span class="pkbodd">💎 1 in ' + (window.PetScore && PetScore.fmtN ? PetScore.fmtN(oi) : oi) + '</span>' : '') + '</a>'; }).join('') + '</div></div>' : '';
+      $('packSummary').innerHTML = rev.luck + best + keepRow + chips + tools;
+      $('packSummary').querySelectorAll('canvas[data-bid]').forEach(function (c) { var x = w.byId[+c.getAttribute('data-bid')]; if (!x) return; try { var fr = petFrames(x, w); paint(c, fr[0]); R.animate(c, fr); } catch (e) { } }); }
     bindAeTogs($('packSummary'));
     if (!gear) { $('packSummary').querySelectorAll('.pkq').forEach(function (b) { b.onclick = function () { revKeepTier(w, all, +b.dataset.top); }; });
       $('packSummary').querySelectorAll('[data-f]').forEach(function (b) { b.onclick = function () { rev.f = b.dataset.f; rev.page = 0; drawReveal(); var g = $('packGrid'); if (g) g.scrollTop = 0; }; });
@@ -757,7 +815,7 @@
       if (gear) { d.className = 'egg gearwin t' + (x.legendary ? 3 : x.tier) + ' ux-flash ux-t' + (x.legendary ? 3 : x.tier || 0) + (x.legendary ? ' ux-fanfare' : ''); d.title = x._src.long; d.innerHTML = '<span class="ic"></span><div class="gwname"><b>' + esc(x.label) + '</b></div><div>' + esc(x.tierName) + (x.legendary ? ' ★' : '') + ' · ' + esc(x.slotName) + '</div><div class="muted gwsrc">' + esc(x._src.short) + (x._pet != null ? ' · pet #' + x._pet : '') + '</div>' +
           '<div class="gwwhere">' + (x._on === 'c' ? '✓ Worn by ' + esc(commName(w)) + ' (community pet)' : x._on != null ? '✓ Equipped on #' + x._on : '📦 In your stash') + '</div>';
         d.querySelector('.ic').appendChild(V2Render.iconCanvas(x.item, 'gicon')); grid.appendChild(d); if (window.UXB) UXB.revealCard(d, x, w); return; }
-      var gd = dudGuard(w, x), on = !!rev.sel[x.id]; d.className = 'egg pkcard t' + x.art.tierIndex + (on ? ' picked' : ''); d.tabIndex = 0; d.setAttribute('role', 'checkbox'); d.setAttribute('aria-checked', String(on)); d.setAttribute('aria-label', 'Select #' + x.id + ' to discard'); d.title = 'Tap to select or unselect';
+      var gd = dudGuard(w, x), on = !!rev.sel[x.id]; var sk = revStar(x); d.className = 'egg pkcard t' + x.art.tierIndex + (sk ? ' pkstar' : '') + (on ? ' picked' : ''); d.tabIndex = 0; d.setAttribute('role', 'checkbox'); d.setAttribute('aria-checked', String(on)); d.setAttribute('aria-label', 'Select #' + x.id + ' to discard'); d.title = 'Tap to select or unselect';
       d.innerHTML = '<span class="pkcheck" aria-hidden="true">✓</span><canvas width="32" height="32"></canvas><div>#' + x.id + ' ' + esc(TIERS[x.art.tierIndex].label) + (x.stageName ? ' · ' + esc(V.stageLabelOf ? V.stageLabelOf(x) : x.stageName) : '') + '</div><div class="muted">' + esc(V.speciesLabel ? V.speciesLabel(x.species) : x.species) + '</div>' + (R.eraChip ? R.eraChip(w, x) : '') + (x.parents && R.bredFrom ? '<div class="small">' + R.bredFrom(w, x, false) + '</div>' : '') + (window.PetScore && PetScore.discardInfo ? PetScore.discardInfo(w, x, V.speciesLabel ? V.speciesLabel(x.species) : null) : '') + (gd.length ? '<div class="small dudg" title="Protected: never picked for you">🛡️ Protected · ' + esc(gd.join(', ')) + '</div>' : '');
       grid.appendChild(d); var c = d.querySelector('canvas'), fr = petFrames(x, w); paint(c, fr[0]); R.animate(c, fr);
       d.onclick = function (e) { if (e.target.closest && e.target.closest('a,button,input,select,xc-select')) return; revToggle(w, x, d); };
