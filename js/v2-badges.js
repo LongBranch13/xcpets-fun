@@ -40,8 +40,12 @@
     ['ngmi', 'NGMI', 'WAGMI \u2192 NGMI, speedrun.', 'A pet loses 5 fights in a row', 'uncommon', 1],
     ['rip', 'PRESS F', 'Gone but not forgotten.', 'A pet in the Pet Cemetery', 'common', 1],
     ['old-money', OLD_MONEY_NAME, 'Paid full freight. Rarer: bred when breeding cost 690.', OLD_MONEY_RULE, 'rare', 1],
-    ['day-one-degen', 'DAY ONE DEGEN', 'First five through the door. WAGMI.', 'One of the first five wallets to say WAGMI on a chain day', 'uncommon']
+    ['day-one-degen', 'DAY ONE DEGEN', 'First five through the door. WAGMI.', 'One of the first five wallets to say WAGMI on a chain day', 'uncommon'],
+    /* OG BACKER (owner Nov 24 2026): wallets holding the owner's XCPETS.FUN.D sub-asset (sold from its dispenser) = early backers of the game.
+     * Read from Counterparty balances (not the burns), so it is passed in as extra.backers; display only, lost if the asset is sent away. */
+    ['og-backer', 'OG BACKER', 'Backed the game before it was cool. Diamond hands, brother.', 'Holds ' + 'XCPETS.FUN.D' + ' (bought from the dispenser)', 'legendary']
   ];
+  var BACKER_ASSET = 'XCPETS.FUN.D';
   var DEF = {}; DEFS.forEach(function (d, i) { DEF[d[0]] = { id: d[0], name: d[1], flavour: d[2], rule: d[3], kind: d[4], pet: !!d[5], order: i }; });
   function bestRun(nums) { nums = nums.slice().sort(function (a, b) { return a - b; }); var best = 0, run = 0, prev = null, at = null, bestAt = null;
     nums.forEach(function (n) { run = prev != null && n === prev + 1 ? run + 1 : n === prev ? run : 1; prev = n; if (run > best) { best = run; bestAt = n; } }); return { n: best, at: bestAt }; }
@@ -51,7 +55,7 @@
     var b = Object.assign({ id: id }, o); b.rarity = typeof d.kind === 'string' && d.kind !== 'top3' ? d.kind : TIER_RAR[b.tier];
     if (!cur || (b.tier || 0) > (cur.tier || 0) || ((b.tier || 0) === (cur.tier || 0) && (b.block || 0) < (cur.block || 0))) L[id] = Object.assign(b, cur && cur.count ? { count: cur.count } : {}); }
   /** compute(w, rows, V) -> { byAddr: {addr: [badge]}, byPet: {petId: [badge]} }. Pure; same inputs => same badges. */
-  function compute(w, rows, V) {
+  function compute(w, rows, V, extra) {
     V = V || root.V2Rules; var out = {}, byPet = {}, tip = w.tip || 0, dayOf = function (b) { return Math.floor(b / (V.BLOCKS_PER_DAY || 144)); };
     var bad = {}; (w.log || []).forEach(function (l) { if (l.kind === 'rejected' && l.tx) bad[l.tx] = 1; });
     var feedTx = {}; (w.log || []).forEach(function (l) { if ((l.kind === 'feed' || l.kind === 'cfeed') && l.tx) feedTx[l.tx] = 1; });
@@ -108,10 +112,14 @@
     /* DAY ONE DEGEN (WAGMI top five): from the replayed record w.wagmiFirst[chain day] (only filled from ACTIVATE_WAGMI_PRIZE_BLOCK); count = days in the first five */
     Object.keys(w.wagmiFirst || {}).map(Number).sort(function (a, b) { return a - b; }).forEach(function (d) { (w.wagmiFirst[d] || []).forEach(function (a, i) {
       var L = out[a] || (out[a] = {}), c = L['day-one-degen']; if (c) { c.count++; c.days.push(d); } else L['day-one-degen'] = { id: 'day-one-degen', rarity: 'uncommon', block: d * 144, count: 1, days: [d] }; }); });
+    /* OG BACKER: extra.backers = { address: quantity held } from the chain's balance list (see backers() below) */
+    var bk = extra && extra.backers; if (bk) Object.keys(bk).forEach(function (a) { if (bk[a] > 0) add(out, a, 'og-backer', { n: bk[a] }); });
     var byAddr = {}; Object.keys(out).forEach(function (a) { byAddr[a] = sortList(Object.keys(out[a]).map(function (k) { return out[a][k]; })); });
     var bp = {}; Object.keys(byPet).forEach(function (id) { bp[id] = sortList(Object.keys(byPet[id]).map(function (k) { return byPet[id][k]; })); });
     return { byAddr: byAddr, byPet: bp, tip: tip };
   }
+  /** backersFrom(rows) -> { address: quantity } from a Counterparty /assets/<asset>/balances result (quantity > 0 only) */
+  function backersFrom(rows) { var o = {}; (rows || []).forEach(function (r) { var q = Number(r && r.quantity) || 0; if (r && r.address && q > 0) o[r.address] = (o[r.address] || 0) + q; }); return o; }
   function sortList(L) { return L.sort(function (x, y) { return RAR_SCORE[y.rarity] - RAR_SCORE[x.rarity] || DEF[x.id].order - DEF[y.id].order; }); }
   function score(list) { return (list || []).reduce(function (a, b) { return a + RAR_SCORE[b.rarity] * (b.count || 1); }, 0); }
   function img(b) { var d = DEF[b.id], t = typeof d.kind === 'string' && d.kind !== 'top3' ? '' : '-' + TIER_NAMES[b.tier]; return 'img/badges/' + b.id + t + '.png'; }
@@ -120,13 +128,24 @@
   /** recapLine(res) -> one line for the daily recap data (HatchBot does NOT post badges) */
   function recapLine(res, sinceBlock) { var tot = 0, wallets = 0, fresh = 0; Object.keys(res.byAddr).forEach(function (a) { var L = res.byAddr[a]; if (L.length) wallets++; tot += L.length; L.forEach(function (b) { if (sinceBlock != null && b.block > sinceBlock) fresh++; }); });
     return 'Badges: ' + tot + ' held by ' + wallets + ' wallets' + (sinceBlock != null ? ' (' + fresh + ' new since block ' + sinceBlock + ')' : ''); }
-  var API = { DEFS: DEF, LIST: DEFS.map(function (d) { return d[0]; }), WEEK: WEEK, WEEK_ANCHOR: WEEK_ANCHOR, DEX: DEX, compute: compute, score: score, img: img, label: label, ruleText: ruleText, recapLine: recapLine, OLD_MONEY_NAME: OLD_MONEY_NAME, oldMoney: oldMoney, oldMoneyMark: oldMoneyMark, TIER_NAMES: TIER_NAMES, ACTIVATE_BADGES_BLOCK: ACTIVATE_BADGES_BLOCK };
+  var API = { DEFS: DEF, LIST: DEFS.map(function (d) { return d[0]; }), WEEK: WEEK, WEEK_ANCHOR: WEEK_ANCHOR, DEX: DEX, compute: compute, score: score, img: img, label: label, ruleText: ruleText, recapLine: recapLine, OLD_MONEY_NAME: OLD_MONEY_NAME, oldMoney: oldMoney, oldMoneyMark: oldMoneyMark, TIER_NAMES: TIER_NAMES, ACTIVATE_BADGES_BLOCK: ACTIVATE_BADGES_BLOCK, BACKER_ASSET: BACKER_ASSET, backersFrom: backersFrom };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   root.V2Badges = API;
   if (typeof document === 'undefined' || !document.getElementById) return;
   /* ------------------------------------------------------------------ UI (play.html My Pets strip, pet.html row) */
-  var memo = { w: null, r: null };
-  function get() { var M = root.V2Mock; if (!M || !M.world) return null; var w = M.peek ? M.peek() : M.world(); /* page-load-freeze: never force a main-thread replay */ if (!w || !w.pets || !w.pets.length) return null; if (memo.w !== w) { memo.w = w; memo.r = compute(w, (M.state() || {}).rows || []); } return memo.r; }
+  var memo = { w: null, r: null, b: null };
+  /* OG BACKER holders: one small read of the asset's balance list (read cache first, then the public Core nodes), kept 30 min in localStorage.
+   * A failed read just means no backer badge this visit; it never blocks the page or the other badges. */
+  var BKEY = 'xcpets-backers-1', BTTL = 30 * 60e3, backers = null, bTried = false;
+  try { var bc = JSON.parse(localStorage.getItem(BKEY)); if (bc && bc.at && Date.now() - bc.at < BTTL && bc.b) backers = bc.b; } catch (e) {}
+  function readBases() { var C = root.XCPETS_CONFIG || {}, L = (C.read && C.read.length) ? C.read : ['https://node.xcpets.fun/v2', 'https://api.counterparty.io:4000/v2', 'https://api.unspendablelabs.com:4000/v2'];
+    return L.map(function (u) { u = String(u || '').replace(/\/+$/, ''); return !u || /xcp\.fun/i.test(u) ? '' : /\/v2$/.test(u) ? u : u + '/v2'; }).filter(Boolean); }
+  function getJson(url) { var ac = typeof AbortController !== 'undefined' ? new AbortController() : null, tm = ac ? setTimeout(function () { ac.abort(); }, 9000) : 0;
+    return fetch(url, ac ? { signal: ac.signal } : undefined).then(function (r) { clearTimeout(tm); if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }); }
+  function loadBackers() { if (backers || bTried || typeof fetch !== 'function') return; bTried = true; var bs = readBases(), path = '/assets/' + encodeURIComponent(BACKER_ASSET) + '/balances?limit=1000';
+    (function on(i) { if (i >= bs.length) return; getJson(bs[i] + path).then(function (j) { if (!j || !Array.isArray(j.result)) throw new Error('no balance list'); var b = backersFrom(j.result);
+        backers = b; memo.w = null; last = null; try { localStorage.setItem(BKEY, JSON.stringify({ at: Date.now(), b: b })); } catch (e) {} paint(); }).catch(function () { on(i + 1); }); })(0); }
+  function get() { var M = root.V2Mock; if (!M || !M.world) return null; var w = M.peek ? M.peek() : M.world(); /* page-load-freeze: never force a main-thread replay */ if (!w || !w.pets || !w.pets.length) return null; if (memo.w !== w || memo.b !== backers) { memo.w = w; memo.b = backers; memo.r = compute(w, (M.state() || {}).rows || [], undefined, backers ? { backers: backers } : null); } return memo.r; }
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function chip(b, i) { return '<button type="button" class="bdg bdg-' + b.rarity + '" data-i="' + i + '" title="' + esc(label(b) + ': ' + DEF[b.id].flavour) + '"><img src="' + img(b) + '" alt="' + esc(label(b)) + '" width="32" height="32"></button>'; }
   function detailHtml(b) { var d = DEF[b.id]; return '<img src="' + img(b) + '" alt="" width="64" height="64"><div><b>' + esc(label(b)) + '</b><i>\u201c' + esc(d.flavour) + '\u201d</i><span>' + esc(ruleText(b)) + (b.block ? ' \u00b7 block ' + Number(b.block).toLocaleString('en-US') : '') + (b.petId ? ' \u00b7 <a href="pet.html?id=' + b.petId + '">#' + b.petId + '</a>' : '') + '</span></div>'; }
@@ -137,7 +156,7 @@
     el.querySelectorAll('.bdg').forEach(function (bt) { bt.onclick = function () { var D = el.querySelector('.bdg-detail'), i = +bt.getAttribute('data-i'); if (!D.hidden && D.getAttribute('data-i') == i) { D.hidden = true; return; } D.setAttribute('data-i', i); D.innerHTML = detailHtml(list[i]); D.hidden = false; }; });
     var m = el.querySelector('.bdg-more'); if (m) m.onclick = function () { el.setAttribute('data-all', m.getAttribute('data-less') ? '0' : '1'); strip(el, list, title); }; }
   var last = null;
-  function paint() { var M0 = root.V2Mock, tip0 = M0 && M0.state && (M0.state() || {}).tip; if (!(tip0 + 1 >= ACTIVATE_BADGES_BLOCK) && !/[?&]preview=badges\b/.test(location.search)) return; var r = get(); if (!r || r === last) return; last = r; var page = document.body && document.body.getAttribute('data-v2page');
+  function paint() { var M0 = root.V2Mock, tip0 = M0 && M0.state && (M0.state() || {}).tip; if (!(tip0 + 1 >= ACTIVATE_BADGES_BLOCK) && !/[?&]preview=badges\b/.test(location.search)) return; loadBackers(); var r = get(); if (!r || r === last) return; last = r; var page = document.body && document.body.getAttribute('data-v2page');
     if (page === 'pet') { var id = +(new URLSearchParams(location.search).get('id') || 0), st = document.getElementById('stats'); if (!id || !st) return;
       var el = document.getElementById('petBadges'); if (!el) { el = document.createElement('div'); el.id = 'petBadges'; el.className = 'bdg-strip'; st.parentNode.insertBefore(el, st.nextSibling); } strip(el, r.byPet[id] || [], 'Badges'); return; }
     var panel = document.getElementById('petsPanel'), me = root.V2Mock && root.V2Mock.ME; if (!panel || !me) return;
