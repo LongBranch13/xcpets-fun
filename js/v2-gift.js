@@ -108,7 +108,7 @@
   /* pet-shop-sales: Old Money collector badge (display only) + the shared filter drawer (js/v2-pet-filter.js) replace the old inline species/tier/stage selects */
   var PF = window.V2PetFilter; function omB(p) { return PF ? ' ' + PF.badge(p) : ''; }
   var GF_FIELDS = ['sp', 'tier', 'st', 'badge'];
-  function spL(p) { try { return V.petSpeciesLabel(p); } catch (e) { return p.species; } }
+  function spL(p) { try { return (V.petSpeciesLabel ? V.petSpeciesLabel(p) : V.speciesLabel(p.species)); } catch (e) { return p.species; } }
   function sprite(p) { return '<span class="gf-sp" data-gfsp="' + p.id + '"></span>'; }
   function paint(root) { var R = window.V2Render, w = W(); if (!R || !R.petFrames || !w) return; root.querySelectorAll('[data-gfsp]').forEach(function (s) { if (s.firstChild) return; var p = w.byId[s.getAttribute('data-gfsp')]; if (!p) return;
       var c = document.createElement('canvas'); c.width = c.height = 32; c.className = 'sprite'; s.appendChild(c); try { if (R.lazy) R.lazy(c, function () { return R.petFrames(p, w); }, true); else if (R.animate) R.animate(c, R.petFrames(p, w)); } catch (e) { } }); } /* speed2-1101: frames are built only when a row scrolls into view (was all 300 up front, ~1.3 s) */

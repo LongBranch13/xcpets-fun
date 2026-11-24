@@ -56,7 +56,7 @@
   function paintCounts(box) { var c = counts(); Array.prototype.forEach.call(box.querySelectorAll('.rh-c'), function (s) { s.textContent = '(' + c[s.getAttribute('data-c')] + ')'; });
     Array.prototype.forEach.call(box.querySelectorAll('[data-rh]'), function (b) { var on = b.getAttribute('data-rh') === show; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); }); }
   function cardHtml(x) { var p = x.p, R = window.V2Render, w = worldRef; return '<a class="rh-card" href="pet.html?id=' + p.id + '"><canvas width="32" height="32" data-rh-id="' + p.id + '"></canvas>' + (R && R.rareChip ? R.rareChip(w, p) : '') +
-    '<span class="rh-nm">#' + p.id + ' ' + esc(p.name || '') + '</span><span class="small">' + esc(window.V2Rules && V2Rules.speciesLabel ? V2Rules.petSpeciesLabel(p) : p.species) + (x.i.block ? ' · block ' + fmt(x.i.block) : '') + (p.dead ? ' · in the Pet Cemetery' : '') + '</span></a>'; }
+    '<span class="rh-nm">#' + p.id + ' ' + esc(p.name || '') + '</span><span class="small">' + esc(window.V2Rules && V2Rules.petSpeciesLabel ? V2Rules.petSpeciesLabel(p) : p.species) + (x.i.block ? ' · block ' + fmt(x.i.block) : '') + (p.dead ? ' · in the Pet Cemetery' : '') + '</span></a>'; }
   function light() { return !!(worldRef && worldRef._view && !worldRef._ranked); }
   function emptyHtml() {
     var looked = window.V2Lookup && V2Lookup.last && V2Lookup.last(), none = !listAll || !listAll.length;

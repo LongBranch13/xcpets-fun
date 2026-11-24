@@ -50,7 +50,7 @@
   function cardHtml(c, w) { var p = c.pet, b = tip() + 1, left = c.ad.block + V.AD_WINDOW - b;
     return '<div class="rm-top"><span class="pill tier tier-' + (p.resurrected ? 'god' : TID[p.tier]) + '">' + (p.resurrected ? 'God' : TL[p.tier]) + '</span>' + '<span class="rm-n">Ad ' + c.ad.id + '</span></div>' +
       '<div class="rm-art"></div><div class="rm-name">' + esc(p.name) + ' <span class="muted">#' + p.id + '</span>' + (window.V2Badges && V2Badges.oldMoneyMark ? ' ' + V2Badges.oldMoneyMark(p) : '') + '</div>' +
-      '<div class="rm-sub">' + esc(V.petSpeciesLabel(p)) + ' · ' + ST[p.stage] + (traits(p).length ? ' · ' + esc(traits(p).join(' · ')) : '') + '</div>' + statBlock(p) +
+      '<div class="rm-sub">' + esc((V.petSpeciesLabel ? V.petSpeciesLabel(p) : V.speciesLabel(p.species))) + ' · ' + ST[p.stage] + (traits(p).length ? ' · ' + esc(traits(p).join(' · ')) : '') + '</div>' + statBlock(p) +
       (window.V2Render && V2Render.eraChip ? V2Render.eraChip(w, p) : '') +
       '<div class="rm-bio">“' + esc(c.bio) + '”</div>' +
       '<div class="rm-wants">Wants: <b>' + esc(V.reqText(c.ad.req)) + '</b> · ' + fmt(Math.max(0, left)) + ' blocks left</div>' +
@@ -90,7 +90,7 @@
     if (!st.as || !mine.some(function (p) { return p.id === st.as; })) st.as = mine[0].id; var my = w.byId[st.as], cards = deck(w, ME, my), c = cards[0];
     var others = mine.filter(function (p) { return p.id !== my.id; }), alsoQ = c && c.ad ? others.filter(function (p) { return !V.meetsReq(w, p, c.ad.req) && !V.breedable(p, b); }) : [];
     var myAds = (w.ads || []).filter(function (a) { return a.owner === ME && V.adState(w, a, tip() + 1) === 'open'; });
-    box.innerHTML = '<div class="rm-as"><label class="small">Swiping as <xc-select id="rmAs">' + mine.map(function (p) { return '<option value="' + p.id + '"' + (p.id === my.id ? ' selected' : '') + '>#' + p.id + ' ' + esc(p.name) + ' (' + TL[p.tier] + ' ' + esc(V.petSpeciesLabel(p)) + ' ' + ST[p.stage] + ')' + (V.onRug(w, p, b) ? ' · on Rug Me' : '') + '</option>'; }).join('') + '</xc-select></label>' +
+    box.innerHTML = '<div class="rm-as"><label class="small">Swiping as <xc-select id="rmAs">' + mine.map(function (p) { return '<option value="' + p.id + '"' + (p.id === my.id ? ' selected' : '') + '>#' + p.id + ' ' + esc(p.name) + ' (' + TL[p.tier] + ' ' + esc((V.petSpeciesLabel ? V.petSpeciesLabel(p) : V.speciesLabel(p.species))) + ' ' + ST[p.stage] + ')' + (V.onRug(w, p, b) ? ' · on Rug Me' : '') + '</option>'; }).join('') + '</xc-select></label>' +
       '<button class="btn ghost rm-posttog" id="rmPostGo">📌 Post on Rug Me</button></div>' +
       (V.breedable(my, b) ? '<p class="small warn">#' + my.id + ' can\u2019t breed right now (' + esc(V.breedable(my, b)) + '). Pick another pet.</p>' : '') +
       '<div class="rm-stack" id="rmStack">' + (c ? (cards[1] ? '<div class="rm-card rm-under"></div>' : '') + '<div class="rm-card" id="rmCard" tabindex="0">' + cardHtml(c, w) + '</div>' : '<div class="rm-empty">💤 No more cards for #' + my.id + ' today.<br><span class="small muted">0 pets qualify. Standards: delusional. Skips reset each chain day.</span></div>') + '</div>' +

@@ -698,7 +698,7 @@
   function revStar(x) { if (!x) return null; var RI = window.V2Render && V2Render.rareInfo, i = RI ? RI(x) : null; if (i) return i.weird ? 'weird' : 'special';
     if (x.hybrid || (x.art && x.art.hybrid) || (V.isHybrid && V.isHybrid(x.species))) return null; return x.species && !REV_PLAIN[x.species] ? 'special' : null; }
   function revStarLabel(x) { var RI = window.V2Render && V2Render.rareInfo, i = RI ? RI(x) : null; if (i) return i.icon + ' ' + (i.weird ? i.name.toUpperCase() : i.banner);
-    return '✨ ' + String(V.speciesLabel ? V.petSpeciesLabel(x) : x.species).toUpperCase() + '!'; }
+    return '✨ ' + String(V.petSpeciesLabel ? V.petSpeciesLabel(x) : x.species).toUpperCase() + '!'; }
   function revOneIn(w, x) { var r = window.PetScore && PetScore.peek ? PetScore.peek(w, x) : null; return r && r.rarityOneIn ? r.rarityOneIn : 0; }
   /* Best finds: every weird / special pet first, then the rarest-looking Legendaries, up to 6. */
   function revBest(w, all) { var st = [], rest = [];
@@ -809,7 +809,7 @@
       var bestL = rev.best.map(function (id) { return w.byId[id]; }).filter(function (x) { return x && rev.eggs.indexOf(x.id) >= 0; });
       var best = bestL.length && all.length > 1 ? '<div class="pkbest" aria-label="Best finds"><div class="pkbh">' + (bestL.some(revStar) ? '🌀 Weird &amp; special finds!' : '✨ Best of this hatch') + '</div><div class="pkbrow">' +
         bestL.map(function (x) { var k = revStar(x), oi = revOneIn(w, x); return '<a class="pkbc t' + x.art.tierIndex + (k ? ' pkb-' + k : '') + '" href="pet.html?id=' + x.id + '" target="_blank" rel="noopener" title="Open #' + x.id + ' in a new tab"><canvas width="32" height="32" data-bid="' + x.id + '"></canvas>' +
-          '<span class="pkbtag">' + esc(k ? revStarLabel(x) : TIERS[x.art.tierIndex].label) + '</span><span class="pkbname">#' + x.id + ' ' + esc(V.speciesLabel ? V.petSpeciesLabel(x) : x.species) + '</span>' + (oi ? '<span class="pkbodd">💎 1 in ' + (window.PetScore && PetScore.fmtN ? PetScore.fmtN(oi) : oi) + '</span>' : '') + '</a>'; }).join('') + '</div></div>' : '';
+          '<span class="pkbtag">' + esc(k ? revStarLabel(x) : TIERS[x.art.tierIndex].label) + '</span><span class="pkbname">#' + x.id + ' ' + esc(V.petSpeciesLabel ? V.petSpeciesLabel(x) : x.species) + '</span>' + (oi ? '<span class="pkbodd">💎 1 in ' + (window.PetScore && PetScore.fmtN ? PetScore.fmtN(oi) : oi) + '</span>' : '') + '</a>'; }).join('') + '</div></div>' : '';
       $('packSummary').innerHTML = rev.luck + best + keepRow + chips + tools;
       $('packSummary').querySelectorAll('canvas[data-bid]').forEach(function (c) { var x = w.byId[+c.getAttribute('data-bid')]; if (!x) return; try { var fr = petFrames(x, w); paint(c, fr[0]); R.animate(c, fr); } catch (e) { } }); }
     bindAeTogs($('packSummary'));
@@ -828,7 +828,7 @@
           '<div class="gwwhere">' + (x._on === 'c' ? '✓ Worn by ' + esc(commName(w)) + ' (community pet)' : x._on != null ? '✓ Equipped on #' + x._on : '📦 In your stash') + '</div>';
         d.querySelector('.ic').appendChild(V2Render.iconCanvas(x.item, 'gicon')); grid.appendChild(d); if (window.UXB) UXB.revealCard(d, x, w); return; }
       var gd = dudGuard(w, x), on = !!rev.sel[x.id]; var sk = revStar(x); d.className = 'egg pkcard t' + x.art.tierIndex + (sk ? ' pkstar' : '') + (on ? ' picked' : ''); d.tabIndex = 0; d.setAttribute('role', 'checkbox'); d.setAttribute('aria-checked', String(on)); d.setAttribute('aria-label', 'Select #' + x.id + ' to discard'); d.title = 'Tap to select or unselect';
-      d.innerHTML = '<span class="pkcheck" aria-hidden="true">✓</span><canvas width="32" height="32"></canvas><div>#' + x.id + ' ' + esc(TIERS[x.art.tierIndex].label) + (x.stageName ? ' · ' + esc(V.stageLabelOf ? V.stageLabelOf(x) : x.stageName) : '') + '</div><div class="muted">' + esc(V.speciesLabel ? V.petSpeciesLabel(x) : x.species) + '</div>' + (R.eraChip ? R.eraChip(w, x) : '') + (x.parents && R.bredFrom ? '<div class="small">' + R.bredFrom(w, x, false) + '</div>' : '') + (window.PetScore && PetScore.discardInfo ? PetScore.discardInfo(w, x, V.speciesLabel ? V.petSpeciesLabel(x) : null) : '') + (gd.length ? '<div class="small dudg" title="Protected: never picked for you">🛡️ Protected · ' + esc(gd.join(', ')) + '</div>' : '');
+      d.innerHTML = '<span class="pkcheck" aria-hidden="true">✓</span><canvas width="32" height="32"></canvas><div>#' + x.id + ' ' + esc(TIERS[x.art.tierIndex].label) + (x.stageName ? ' · ' + esc(V.stageLabelOf ? V.stageLabelOf(x) : x.stageName) : '') + '</div><div class="muted">' + esc(V.petSpeciesLabel ? V.petSpeciesLabel(x) : x.species) + '</div>' + (R.eraChip ? R.eraChip(w, x) : '') + (x.parents && R.bredFrom ? '<div class="small">' + R.bredFrom(w, x, false) + '</div>' : '') + (window.PetScore && PetScore.discardInfo ? PetScore.discardInfo(w, x, V.petSpeciesLabel ? V.petSpeciesLabel(x) : null) : '') + (gd.length ? '<div class="small dudg" title="Protected: never picked for you">🛡️ Protected · ' + esc(gd.join(', ')) + '</div>' : '');
       grid.appendChild(d); var c = d.querySelector('canvas'), fr = petFrames(x, w); paint(c, fr[0]); R.animate(c, fr);
       d.onclick = function (e) { if (e.target.closest && e.target.closest('a,button,input,select,xc-select')) return; revToggle(w, x, d); };
       d.onkeydown = function (e) { if (e.target === d && (e.key === ' ' || e.key === 'Enter')) { e.preventDefault(); revToggle(w, x, d); } };
@@ -1668,7 +1668,7 @@
    * 'Confirm breed'): both pets with sprite, #, species, rarity pill, Pet Score, owner badge; buttons relabelled Confirm breed / Back. */
   function breedReview(w, a, b) { if (!ME || !$('confirmBox').classList.contains('on')) return; var short = function (x) { x = String(x || ''); return x.length > 12 ? x.slice(0, 4) + '\u2026' + x.slice(-3) : x; };
     var card = function (p, lab) { if (!p) return ''; var sc = window.PetScore && PetScore.of(w, p);
-      return '<div class="brv-pet"><span class="brv-sp" data-brv="' + p.id + '"></span><div><b>' + lab + '</b><div class="brv-nm">#' + p.id + ' ' + esc(p.name || '') + '</div><div>' + esc(V.petSpeciesLabel(p)) + ' ' + tierPill(p.tier, p) + ' <span class="brv-sc">⭐ ' + (sc ? sc.score : '–') + '</span></div>' +
+      return '<div class="brv-pet"><span class="brv-sp" data-brv="' + p.id + '"></span><div><b>' + lab + '</b><div class="brv-nm">#' + p.id + ' ' + esc(p.name || '') + '</div><div>' + esc((V.petSpeciesLabel ? V.petSpeciesLabel(p) : V.speciesLabel(p.species))) + ' ' + tierPill(p.tier, p) + ' <span class="brv-sc">⭐ ' + (sc ? sc.score : '–') + '</span></div>' +
         (p.owner === ME ? '<em class="bk-own me">My Pets</em>' : '<em class="bk-own" title="' + esc(p.owner) + '">Other Pets ' + esc(short(p.owner)) + '</em>') + '</div></div>'; };
     var flip = breedFlip(w, a, b); if (flip && flip.kind === 'confirmed') { var ct = $('cfTitle'); if (ct && !/accept/i.test(ct.textContent || '')) ct.textContent = 'Accept their check-in · #' + a + ' × #' + b; }
     $('cfBody').insertAdjacentHTML('afterbegin', (flip ? breedFlipNote(flip) : '') + '<div class="brv">' + card(w.byId[a], 'Pet 1') + card(w.byId[b], 'Pet 2') + '</div>');

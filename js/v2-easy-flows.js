@@ -58,7 +58,7 @@
    * Looks: V2Rules.crossOf (1 of 1 cross body) and, once that rules change is live, V2Rules.specialPairOf (special x special mix) say what the baby looks like. */
   function specialNote(A, B, b) { var V = window.V2Rules || {}; if (!A || !B || !V.isContestSp) return '';
     var sa = V.isContestSp(A.species), sb = V.isContestSp(B.species); if (!sa && !sb) return '';
-    var lab = function (p) { return esc(V.speciesLabel ? V.petSpeciesLabel(p) : p.species); }, look = null;
+    var lab = function (p) { return esc(V.petSpeciesLabel ? V.petSpeciesLabel(p) : p.species); }, look = null;
     try { if (V.specialPairOf && V.specialPairOn && V.specialPairOn(b)) look = V.specialPairOf(A, B); if (!look && V.crossOf && V.crossOn && V.crossOn(b)) { var x = V.crossOf(A, B); if (x && x.body) look = x; } } catch (e) { look = null; }
     var lk = look && V.crossLabel ? esc(V.crossLabel(look)) : '', head, body;
     if (sa && sb) {

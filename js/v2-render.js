@@ -2085,11 +2085,11 @@
   if (typeof document === 'undefined' || !document.addEventListener) return;
   var TL = ['Common', 'Uncommon', 'Rare', 'Legendary'];
   /* content-fixes 2026-10-19: a dead pet is shared with cemetery wording, not a brag */
-  function memorial(p) { var V = window.V2Rules, sp = V && V.speciesLabel ? V.petSpeciesLabel(p) : p.species, t = (p.resurrected ? 'God' : TL[p.tier]) || '';
+  function memorial(p) { var V = window.V2Rules, sp = V && V.petSpeciesLabel ? V.petSpeciesLabel(p) : p.species, t = (p.resurrected ? 'God' : TL[p.tier]) || '';
     return 'Remembering ' + (p.name || ('#' + p.id)) + ' #' + p.id + ', ' + (/^[AEIOU]/.test(t) ? 'an ' : 'a ') + t + ' ' + sp + ', resting in the XCPETS Pet Cemetery.'; }
   function quietDead(p) { return !!(p && p.id === 1765); } /* Sabo #1765 is never described as dead */
   function shareUrl(p) { var V = window.V2Rules, link = petLink(p);
-    var sp = V && V.speciesLabel ? V.petSpeciesLabel(p) : p.species, text = p.dead && !quietDead(p) ? memorial(p) + ' 🪦 @XCPets' : 'Meet ' + (p.name || ('#' + p.id)) + ' #' + p.id + ': a ' + ((p.resurrected ? 'God' : TL[p.tier]) || '') + ' ' + sp + ' (' + (p.stageName || '') + ') on XCPETS. Burned with love. 🔥 @XCPets';
+    var sp = V && V.petSpeciesLabel ? V.petSpeciesLabel(p) : p.species, text = p.dead && !quietDead(p) ? memorial(p) + ' 🪦 @XCPets' : 'Meet ' + (p.name || ('#' + p.id)) + ' #' + p.id + ': a ' + ((p.resurrected ? 'God' : TL[p.tier]) || '') + ' ' + sp + ' (' + (p.stageName || '') + ') on XCPETS. Burned with love. 🔥 @XCPets';
     return 'https://t.me/share/url?url=' + encodeURIComponent(link) + '&text=' + encodeURIComponent(text); }
   /* P9 (wizard-story-short 2026-10-21): 'Share to Telegram' sends the pet's dancing GIF to the XCPets group, client-side only (no bot token in the site):
    * phones with file sharing -> the share sheet with the GIF (the player picks the XCPets group); otherwise the GIF downloads and t.me/xcpets opens
@@ -2115,7 +2115,7 @@
     g.fillStyle = '#0b0a12'; g.fillRect(44, 56, 518, 518); g.lineWidth = 4; g.strokeRect(46, 58, 514, 514);
     var s = document.createElement('canvas'); s.width = s.height = 32; try { var w = window.V2Mock.world(); window.V2Render.paint(s, window.V2Render.petFrames(p, w)[0]); } catch (e) {}
     if (gone) g.filter = 'grayscale(1)'; g.imageSmoothingEnabled = false; g.drawImage(s, 63, 75, 480, 480); g.filter = 'none';
-    var sp = V && V.speciesLabel ? V.petSpeciesLabel(p) : p.species, stg = (V && V.stageLabelOf ? V.stageLabelOf(p) : p.stageName) || '';
+    var sp = V && V.petSpeciesLabel ? V.petSpeciesLabel(p) : p.species, stg = (V && V.stageLabelOf ? V.stageLabelOf(p) : p.stageName) || '';
     function fit(t, px, max) { var z = px; do { g.font = z + 'px ' + F; } while (g.measureText(t).width > max && --z > 10); return z; }
     g.textAlign = 'left'; g.textBaseline = 'top'; g.lineJoin = 'round';
     function txt(t, y, px, fill) { fit(t, px, 540); g.lineWidth = 8; g.strokeStyle = '#000'; g.strokeText(t, 610, y); g.fillStyle = fill; g.fillText(t, 610, y); }
@@ -2165,7 +2165,7 @@
     if (opts.older) { var o = document.createElement('a'); o.className = 'ftolder'; o.href = 'pet.html?id=' + t.id; o.textContent = '+ older ancestors'; o.title = 'Open #' + t.id + ' to see its parents'; d.appendChild(o); }
     var c = document.createElement('canvas'); c.width = c.height = 32; c.className = 'ftsprite';
     try { window.V2Render.paint(c, window.V2Render.petFrames(p, w)[0]); } catch (e) {}
-    var sp = window.V2Rules && window.V2Rules.speciesLabel ? window.V2Rules.petSpeciesLabel(t) : t.species, a = document.createElement('a'); a.href = 'pet.html?id=' + t.id; a.appendChild(c);
+    var sp = window.V2Rules && window.V2Rules.petSpeciesLabel ? window.V2Rules.petSpeciesLabel(t) : t.species, a = document.createElement('a'); a.href = 'pet.html?id=' + t.id; a.appendChild(c);
     var s = document.createElement('span'); s.innerHTML = '<b></b><br><span class="muted"></span>'; s.firstChild.textContent = (p && p.stage === 0 && opts.kid ? 'Egg ' : '') + (t.name || '') + ' #' + t.id; s.lastChild.textContent = sp + ' · ' + (TL[t.tier] || ''); a.appendChild(s);
     if (g) { var m = document.createElement('span'); m.className = 'ftgonetag'; m.textContent = g === 'dead' ? '🪦 died' : (g === 'sacrificed' ? 'sacrificed' : 'released'); a.appendChild(m); a.title = g === 'dead' ? 'This pet died' : (g === 'sacrificed' ? 'This pet was sacrificed' : 'This pet was released'); }
     if (p && window.V2Render.eraChip) a.insertAdjacentHTML('beforeend', window.V2Render.eraChip(w, p));

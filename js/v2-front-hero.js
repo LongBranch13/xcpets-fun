@@ -124,7 +124,7 @@
   function agoTxt(block, tip) { if (!block) return 'hatching now (waiting for a block)'; return 'hatched ' + ago(Math.max(0, tip - block)) + ' · block ' + block.toLocaleString('en-US'); }
   function eggItem(b, tip) { EGG = EGG || [eggCrate()]; return { fr: EGG, tier: 3, egg: true, key: 'tx' + b.tx, block: b.block || tip + 1,
     line: '🥚 ' + short(b.src) + ' ' + (b.zap ? 'cracked a ⚡ zap egg' : b.n > 1 ? 'hatched ' + b.n + ' eggs' : 'hatched an egg') + ' · ' + (b.block ? agoTxt(b.block, tip).replace(/^hatched /, '') : 'waiting for a block') }; }
-  function petItem(p, wd, tip) { var V = w.V2Rules || {}, sp = V.speciesLabel ? V.petSpeciesLabel(p) : p.species;
+  function petItem(p, wd, tip) { var V = w.V2Rules || {}, sp = V.petSpeciesLabel ? V.petSpeciesLabel(p) : p.species;
     if (/^hyb/.test(String(p.species))) sp = String(p.species).split(':').slice(1).map(function (x) { return V.speciesLabel ? V.speciesLabel(x) : x; }).join(' × ');
     var t = Math.max(0, Math.min(3, p.tier | 0));
     return { fr: offFrames(V2Render.petFrames(p, wd)), tier: t, id: p.id, key: 'p' + p.id, block: p.hatchBlock | 0,
