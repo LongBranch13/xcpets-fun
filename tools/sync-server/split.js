@@ -5,7 +5,7 @@
  * and a pet-detail shard (2,000 ids each). The page paints from these and does
  * not reindex the full world. Keyed by the snapshot directory, which is already
  * rules-signature + tip. Missing or stale files are the page's fallback. */
-const fs = require('fs'), path = require('path'), os = require('os'), crypto = require('crypto');
+const fs = require('fs'), path = require('path'), os = require('os'), crypto = require('crypto'), zlib = require('zlib');
 const Art = require('../../js/v2-art');
 const PET_SHARD = 2000;
 const PAGE = 24;
@@ -176,10 +176,21 @@ function fromWorld(world) {
   };
   return { summary: summary, owners: owners, pets: pets };
 }
+/* Nov 24 2026 (instant load): every view file also gets a brotli (.br) and gzip (.gz) copy beside it; server.js already
+ * sends those to browsers that accept them (as it does for the world parts). The view files compress ~22x (121 MB of
+ * owner pages and pet shards -> 5.5 MB brotli, ~1.2 s per build), so a big wallet's first visit downloads megabytes,
+ * not tens of megabytes. The .json file itself is unchanged and stays the source. */
 function writeJson(file, obj) {
   const json = JSON.stringify(obj);
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, json);
+  if (json.length > 1024) {
+    try {
+      const buf = Buffer.from(json);
+      fs.writeFileSync(file + '.br', zlib.brotliCompressSync(buf, { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 5, [zlib.constants.BROTLI_PARAM_SIZE_HINT]: buf.length } }));
+      fs.writeFileSync(file + '.gz', zlib.gzipSync(buf, { level: 6 }));
+    } catch (e) { try { fs.rmSync(file + '.br', { force: true }); fs.rmSync(file + '.gz', { force: true }); } catch (e2) {} }
+  }
   return Buffer.byteLength(json);
 }
 function fieldsOf(p) {
@@ -440,7 +451,6 @@ function write(dir, world, meta) {
   function end(stream) { return new Promise(res => { stream.on('finish', res); stream.end(); }); }
   return Promise.all(outs.map(end).concat([...petOut.values()].map(end), [end(zstream), end(rankOut)])).then(() => {
     let bytes = 0, files = 0, largestOwner = { bytes: 0, file: '', n: 0 }, largestPage = { bytes: 0, file: '' }, largestShard = { bytes: 0, file: '' };
-    bytes += writeJson(path.join(dir, 'summary.json'), summary); files++;
     const ownDir = path.join(dir, 'own');
     fs.mkdirSync(ownDir, { recursive: true });
     for (let i = 0; i < 256; i++) {
@@ -468,6 +478,9 @@ function write(dir, world, meta) {
             const ids = slice.map(r => r.rec.id);
             const extra = typeof extraFor === 'function' ? extraFor(pg) : extraFor;
             const body = Object.assign({ v: 3, tip: tip, rsig: rsig, owner: rows[0].o, n: list.length, alive: living.length, dead: graves.length, page: pg, pages: pages, pageSize: PAGE, ids: ids }, extra || {});
+            /* Device copy (Nov 24 2026): every living id of the wallet, in page order, delta-coded, on page 0. Page k is
+             * ord.slice(k*PAGE, (k+1)*PAGE) with the same header, so a big wallet's 1,000+ id pages need no request each. */
+            if (pg === 0 && list === living && pages > 1) { let prev = 0; body.ord = list.map(r => { const d = r.rec.id - prev; prev = r.rec.id; return d; }); }
             if (pg === 0) {
               const used = [], map = new Map();
               function packPet(src) {
@@ -501,7 +514,7 @@ function write(dir, world, meta) {
         writeSet(graves, pg => pg === 0 ? key + '.d.json' : key + '.d.' + pg + '.json', { graves: 1 });
       });
     }
-    const petDir = path.join(dir, 'p');
+    const petDir = path.join(dir, 'p'), shardSig = {};
     fs.mkdirSync(petDir, { recursive: true });
     petOut.forEach((stream, shard) => {
       const text = fs.readFileSync(path.join(tmp, 'p-' + shard + '.ndjson'), 'utf8');
@@ -519,10 +532,15 @@ function write(dir, world, meta) {
         }
         pets[String(rec.id)] = rec;
       });
+      /* Device copy (Nov 24 2026): a digest of what the page reads from the shard (not the tip). Between two published
+       * worlds 6 blocks apart about 100 of 103 shards are the same, so a returning player keeps its saved copy of those. */
+      shardSig[shard] = crypto.createHash('sha256').update(JSON.stringify({ hashes: used, pets: pets })).digest('hex').slice(0, 20);
       const nb = writeJson(path.join(petDir, shard + '.json'), { v: 3, tip: tip, rsig: rsig, hashes: used, pets: pets });
       bytes += nb; files++;
       if (nb > largestShard.bytes) largestShard = { bytes: nb, file: 'view/p/' + shard + '.json' };
     });
+    summary.shardSig = shardSig;
+    bytes += writeJson(path.join(dir, 'summary.json'), summary); files++;
     const ztext = fs.readFileSync(path.join(tmp, 'zombies.ndjson'), 'utf8');
     const zpets = [];
     ztext.split('\n').forEach(line => { if (!line) return; zpets.push(JSON.parse(line)); });
