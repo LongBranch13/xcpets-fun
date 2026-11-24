@@ -848,7 +848,20 @@
   function framesWith(art, stage, itemIds, extraOv, cap, baseGo) { var fr = framesWithB(art, stage, itemIds, extraOv, cap, baseGo); if (!(art && art.cross && art.cross.body && window.ContestSprite && ContestSprite.CROSS)) { /* 1 OF 1 CROSS body already carries its look */ if (art && art.boMark && !art.boLook) fr = boMarkFrames(fr, art, stage); if (art && art.rpMark && !art.rpLook) fr = rpMarkFrames(fr, art, stage); if (art && (art.rpLook || art.boLook)) fr = oneOfOneLookFrames(fr, art, stage); if (art && art.rareTier) fr = rareTierFrames(fr, art, stage, itemIds, extraOv, cap, baseGo); if (art && !stage && art.rareHatch) fr = rareEggFrames(fr, art, itemIds, extraOv, cap, baseGo); }
     if (window.V2ClownHair && stage && clownWanted(itemIds, extraOv)) fr = window.V2ClownHair.apply(fr, art, stage | 0);
     if (art && art.hybrid && stage && !hatBusy) fr = keptTopHat(fr, art, stage, itemIds, extraOv, cap, baseGo);
-    if (art && art.hybrid && stage && Array.isArray(art.hybrid.parts) && art.hybrid.parts.some(function (q) { return q.sp === 'dodo' && q.part === 'beak'; })) fr = dodoBeak(fr, art, stage); return fr; }
+    if (art && art.hybrid && stage && Array.isArray(art.hybrid.parts) && art.hybrid.parts.some(function (q) { return q.sp === 'dodo' && q.part === 'beak'; })) fr = dodoBeak(fr, art, stage);
+    if (art && art.hybrid && art.hybrid.shape === 'kek' && stage && Array.isArray(art.hybrid.parts) && art.hybrid.parts.some(function (q) { return q.sp === 'nakamoto' && q.part === 'glasses'; })) fr = kekGlassArms(fr, art, stage); return fr; }
+  /* sprite-qa 2026-11-24: on a Kek body the rules run the Nakamoto glasses' side arms along the whole row, so a black line crossed both wings
+   * (#46072, #46074). Display only: the arms stop 3 px past the lenses (the edge of the face) and the wing pixels under the rest come back. */
+  function kekGlassArms(fr, art, stage) {
+    try { var key = Object.assign({}, art, { background: 'solid', bgColor: '#ff00ff', pattern: 'none' }), nb = Object.assign({}, key, { hybrid: Object.assign({}, key.hybrid, { parts: key.hybrid.parts.filter(function (q) { return !(q.sp === 'nakamoto' && q.part === 'glasses'); }) }) });
+      var KW = framesWithB(key, stage, [], []), KN = framesWithB(nb, stage, [], []);
+      return fr.map(function (F, f) { var w = KW[f % KW.length].data, n = KN[f % KN.length].data, L = 99, R = -1, i, q, d = null;
+        for (i = 0; i < 1024; i++) { q = i * 4; if (w[q] === n[q] && w[q + 1] === n[q + 1] && w[q + 2] === n[q + 2]) continue; if (w[q + 2] > 140 && w[q + 2] > w[q] + 40) { L = Math.min(L, i & 31); R = Math.max(R, i & 31); } } /* the blue lenses */
+        if (R < 0) return F;
+        for (i = 0; i < 1024; i++) { var x = i & 31; if (x >= L - 3 && x <= R + 3) continue; q = i * 4; if (w[q] === n[q] && w[q + 1] === n[q + 1] && w[q + 2] === n[q + 2]) continue;
+          if (F.data[q] !== w[q] || F.data[q + 1] !== w[q + 1] || F.data[q + 2] !== w[q + 2]) continue; if (!d) d = new Uint8ClampedArray(F.data); d[q] = n[q]; d[q + 1] = n[q + 1]; d[q + 2] = n[q + 2]; }
+        return d ? Object.assign({}, F, { data: d }) : F; });
+    } catch (e) { return fr; } }
   /* sprite-qa 2026-11-24 (Jake: "that kekdodo beak doesnt look great", Chafokak #89552): the Dodo beak hybrid part is drawn by the rules on a front-facing
    * face as a flat 7-px red triangle, which read as a bib or a gem, not a beak (22 living pets, every body shape). Display only: that drawing is found by
    * rendering the same hybrid with and without the beak part, covered with the face's skin, and a real beak goes in its place: a hooked bill in a
