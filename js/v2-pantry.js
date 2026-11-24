@@ -36,13 +36,19 @@
       (I.nextFeed ? '<span>⏰ next serving in ' + blocksTo(I.nextFeed, c.nb) + '</span>' : '') +
       (I.last && I.last.short ? '<span class="pp-warn">' + I.last.short + ' pet' + (I.last.short === 1 ? '' : 's') + ' went without last time: top up</span>' : ''); }
   /* the picker's lists: my pets the pantry can feed (the eater list the tags count over), newest-hungry first */
-  function lists(c, I) { var ref = c.v.refList ? c.v.refList(c.w, c.me, c.w.tip, c.nb) : [], on = new Set(I.ids), eat = new Set(I.eat);
+  /* canEat(v, w, p, me, b): will the Pantry ever feed this pet? The SAME test as the rules' pantryEats/pantryInfo (js/v2-rules.js): not a zombie,
+   * not dead or discarded on chain, not a Mythic (Mythics don't take normal meals), not away on a quest, and still mine. Nov 24 2026: the picker
+   * used to offer every pet of the tag list, zombies and Mythics too, which then never ate. tools/pantry-interactions-test.js checks the two agree. */
+  function canEat(v, w, p, me, b) { if (!p || p.community || p.released || p.owner !== me || p.dead || p.ascended || p.mythicCare || p.stage === 5) return false;
+    if (v.isZ && v.isZ(p)) return false; if (p.hd && p.hd === me && (!v.hdOn || v.hdOn(b))) return false;
+    if (v.questOn && v.questAway && v.questOn(b) && v.questAway(p, b)) return false; return true; }
+  function lists(c, I) { var ref = (c.v.refList ? c.v.refList(c.w, c.me, c.w.tip, c.nb) : []).filter(function (p) { return canEat(c.v, c.w, p, c.me, c.nb) || I.ids.indexOf(p.id) >= 0; }), on = new Set(I.ids), eat = new Set(I.eat);
     var item = function (p) { var listed = on.has(p.id), add = st.add.has(p.id), del = st.del.has(p.id), will = (listed && !del) || add;
-      return { p: p, key: p.id, tag: add ? '➕ goes on' : del ? '➖ comes off' : listed ? '🥫 on the list' : '', tagMe: will, line: eat.has(p.id) ? 'eats next serving' : p.hungry ? 'hungry' : '' }; };
+      return { p: p, key: p.id, tag: add ? '➕ goes on' : del ? '➖ comes off' : listed ? '🥫 on the list' : '', tagMe: will, line: !canEat(c.v, c.w, p, c.me, c.nb) ? 'can\'t eat from the pantry: take it off' : eat.has(p.id) ? 'eats next serving' : p.hungry ? 'hungry' : '' }; };
     var L = { list: [], hungry: [], all: [] }; ref.forEach(function (p) { var x = item(p); L.all.push(x); if (on.has(p.id) || st.add.has(p.id)) L.list.push(x); else if (p.hungry) L.hungry.push(x); });
     return L; }
   function full(c) { return !c.w._view || c.w._full; } /* pet:pp counts places in the full list of your pets: wait until every page is in */
-  function paint() { var c = ctx(), box = $('pantryCard'); if (!c || (c.gate == null && !PREVIEW) || window.XcpPractice) { if (box) box.style.display = 'none'; return; }
+  function paint() { var c = ctx(), box = $('pantryCard'); var sp = d.querySelector('[data-split]'); if (!c || (c.gate == null && !PREVIEW) || window.XcpPractice || (sp && sp.getAttribute('data-split') !== 'play')) { /* Play page only: the place pages share the template */ if (box) box.style.display = 'none'; return; }
     var host = $('todayCard') || d.querySelector('main'); if (!host) return; css();
     if (!box) { box = d.createElement('section'); box.id = 'pantryCard'; box.setAttribute('aria-label', 'Pantry'); if (host.id === 'todayCard') host.parentNode.insertBefore(box, host.nextSibling); else host.insertBefore(box, host.firstChild); }
     box.style.display = ''; var I = info(c), key = [c.nb, c.me, I.bal, I.ids.length, I.daily, st.open, st.shelf, st.add.size, st.del.size, st.amount, full(c)].join('|');
@@ -87,5 +93,5 @@
     u.confirmPlans('🥫 Pantry', P.plans, function () { u.toast('🥫 Sent. The pantry changes when the burn confirms.'); st.add.clear(); st.del.clear(); st.amount = ''; st.seen = ''; paint(); });
     if (P.skipped.length) u.toast(P.skipped.length + ' pet' + (P.skipped.length === 1 ? '' : 's') + ' left out: they can\'t eat from the pantry.'); }
   setInterval(paint, 2000); setTimeout(paint, 300);
-  window.V2Pantry = { paint: paint, state: function () { return st; } };
+  window.V2Pantry = { paint: paint, state: function () { return st; }, canEat: canEat };
 })();
