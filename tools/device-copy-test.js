@@ -4,7 +4,8 @@
  *     pageFromOrder() rebuilds each later id page exactly as the server wrote it (so 1,000+ requests become none).
  *  2. summary.shardSig is a digest of what the page reads from each pet shard; a changed pet changes only its shard's digest,
  *     so a saved copy of an unchanged shard is provably the same data.
- *  3. The page only trusts the saved copy when the digest matches and every asked id is in it, and falls back to the download.
+ *  3. View files get .br/.gz copies (the running server sends those to browsers that accept them).
+ *  4. The page only trusts the saved copy when the digest matches and every asked id is in it, and falls back to the download.
  * The browser check against a real world (same pets byte for byte as main, first visit / return / newer world) is in the PR. */
 'use strict';
 const fs = require('fs'), path = require('path'), os = require('os'), vm = require('vm'), crypto = require('crypto');
@@ -48,6 +49,11 @@ function world(tip, bump) {
   ok(shards.length === 3 && sigOk === 3, 'summary.shardSig is the digest of each shard\'s pets and hashes (' + sigOk + ' of ' + shards.length + ')');
   const changed = shards.filter(nm => sa.shardSig[nm] !== sb.shardSig[nm]);
   ok(changed.length === 1 && changed[0] === '00001', 'one changed pet (#2010) at a newer tip changes only its own shard digest (' + changed.join(',') + ')');
+  const zlib = require('zlib'), big = path.join(dir, key + '.json');
+  ok(fs.existsSync(big + '.br') && zlib.brotliDecompressSync(fs.readFileSync(big + '.br')).toString() === fs.readFileSync(big, 'utf8') && zlib.gunzipSync(fs.readFileSync(big + '.gz')).toString() === fs.readFileSync(big, 'utf8'),
+    'view files have .br and .gz copies with the same bytes (server.js sends them compressed)');
+  const { worldFile } = require('./sync-server/server');
+  ok(/\.br'\)\) \{ cors\(res\)/.test(fs.readFileSync(path.join(__dirname, 'sync-server/server.js'), 'utf8')) && /view[\\/]own/.test(worldFile('/d', ['r' + 'ab'.repeat(16), '9', 'view', 'own', 'ab'.repeat(32) + '.3.json']) || ''), 'the running server already sends a .br copy of an allowed view file');
   const src = fs.readFileSync(path.join(__dirname, '..', 'js/v2-split.js'), 'utf8');
   ok(/if \(!v\) return net\(\);\s*for \(i = 0; i < ids\.length; i\+\+\) if \(!v\.pets\[String\(ids\[i\]\)\]\) return net\(\);/.test(src), 'a saved shard missing any asked id is downloaded instead');
   ok(/g\.onsuccess = function \(\) \{ var v = g\.result; res\(v && v\.sig === sig && v\.pets \? v : null\); \}/.test(src), 'a saved shard is used only under the same digest');

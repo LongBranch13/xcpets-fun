@@ -5,7 +5,7 @@
  * and a pet-detail shard (2,000 ids each). The page paints from these and does
  * not reindex the full world. Keyed by the snapshot directory, which is already
  * rules-signature + tip. Missing or stale files are the page's fallback. */
-const fs = require('fs'), path = require('path'), os = require('os'), crypto = require('crypto');
+const fs = require('fs'), path = require('path'), os = require('os'), crypto = require('crypto'), zlib = require('zlib');
 const Art = require('../../js/v2-art');
 const PET_SHARD = 2000;
 const PAGE = 24;
@@ -176,10 +176,21 @@ function fromWorld(world) {
   };
   return { summary: summary, owners: owners, pets: pets };
 }
+/* Nov 24 2026 (instant load): every view file also gets a brotli (.br) and gzip (.gz) copy beside it; server.js already
+ * sends those to browsers that accept them (as it does for the world parts). The view files compress ~22x (121 MB of
+ * owner pages and pet shards -> 5.5 MB brotli, ~1.2 s per build), so a big wallet's first visit downloads megabytes,
+ * not tens of megabytes. The .json file itself is unchanged and stays the source. */
 function writeJson(file, obj) {
   const json = JSON.stringify(obj);
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, json);
+  if (json.length > 1024) {
+    try {
+      const buf = Buffer.from(json);
+      fs.writeFileSync(file + '.br', zlib.brotliCompressSync(buf, { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 5, [zlib.constants.BROTLI_PARAM_SIZE_HINT]: buf.length } }));
+      fs.writeFileSync(file + '.gz', zlib.gzipSync(buf, { level: 6 }));
+    } catch (e) { try { fs.rmSync(file + '.br', { force: true }); fs.rmSync(file + '.gz', { force: true }); } catch (e2) {} }
+  }
   return Buffer.byteLength(json);
 }
 function fieldsOf(p) {
