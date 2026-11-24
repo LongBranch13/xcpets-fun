@@ -612,3 +612,30 @@ a.prarlink{text-decoration:none;color:inherit}a.prarlink .chip.prar{cursor:point
  * Before, a phone showed the header, the wallet panel and the address box first, and the place started below the fold. */
 body[data-split]:not([data-split="play"]) main{display:flex;flex-direction:column}
 body[data-split]:not([data-split="play"]) main>#topBar{order:1}
+/* hatch-tray-1124 (owner Nov 24 2026): calm 'new pets' pill instead of an automatic pop-up, Best finds strip, Shock Box luck line, weird/special card glow */
+.htray{position:fixed;left:50%;bottom:calc(14px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:60;display:flex;align-items:stretch;gap:0;max-width:calc(100vw - 32px);animation:htrayIn .45s cubic-bezier(.2,1.6,.4,1) both}
+.htray .htgo{display:flex;align-items:center;gap:10px;min-width:0;padding:8px 12px;background:#12241a;color:#e8ffe9;border:3px solid #000;border-right:0;box-shadow:4px 4px 0 #000;cursor:pointer;text-align:left;font:inherit}
+.htray .htgo:hover{background:#183323}.htray .hticon{font-size:26px;line-height:1;animation:htwob 2.4s ease-in-out infinite}
+.htray .httxt{display:flex;flex-direction:column;min-width:0;gap:3px}.htray .htn{font-family:var(--pixel,'Press Start 2P',monospace);font-size:10px;line-height:1.4;color:#3ddc84;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.htray .htbits{font-size:12px;display:flex;flex-wrap:wrap;gap:2px 8px}.htray .htw{color:#c99bff}.htray .hts{color:#9fe8ff}.htray .htl{color:#ffd166}
+.htray .htcta{font-family:var(--meme,Bangers,Impact,sans-serif);font-size:18px;letter-spacing:.5px;background:#3ddc84;color:#06210f;border:2px solid #000;padding:2px 10px;white-space:nowrap;flex:0 0 auto}
+.htray .htx{border:3px solid #000;background:#0a0f0b;color:#9db8a4;padding:0 10px;cursor:pointer;box-shadow:4px 4px 0 #000;font-size:14px}.htray .htx:hover{color:#fff}
+.htray.htgold .htgo{background:#22163a;border-color:#000;box-shadow:4px 4px 0 #000,0 0 18px rgba(201,155,255,.55)}.htray.htgold .htcta{background:#ffd166}
+@keyframes htrayIn{from{opacity:0;transform:translate(-50%,24px)}to{opacity:1;transform:translate(-50%,0)}}
+@keyframes htwob{0%,80%,100%{transform:rotate(0)}85%{transform:rotate(-14deg)}90%{transform:rotate(12deg)}95%{transform:rotate(-6deg)}}
+@media (max-width:520px){.htray .htgo{padding:6px 8px;gap:8px}.htray .htn{font-size:8px}.htray .htbits{font-size:11px}.htray .htcta{font-size:15px;padding:2px 6px}}
+@media (prefers-reduced-motion:reduce){.htray,.htray .hticon{animation:none}}
+#packBox .pkluck{margin:0 auto 8px;padding:5px 10px;max-width:760px;background:#140f24;border:2px solid #000;box-shadow:3px 3px 0 #000;color:#e6ddff;line-height:1.5;text-align:center}#packBox .pkluck b{color:#ffd166}
+#packBox .pkbest{margin:0 0 10px;padding:8px;background:linear-gradient(180deg,#22163a,#140f24);border:3px solid #000;box-shadow:4px 4px 0 #000}
+#packBox .pkbh{font-family:var(--meme,Bangers,Impact,sans-serif);font-size:22px;letter-spacing:1px;color:#ffd166;text-shadow:2px 2px 0 #000;text-align:center;margin-bottom:6px}
+#packBox .pkbrow{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 6px;justify-content:safe center;scrollbar-width:thin}
+#packBox .pkbc{flex:0 0 108px;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 4px;background:#0f1a13;border:3px solid #3ddc84;color:#e8ffe9;text-decoration:none;box-shadow:3px 3px 0 #000;position:relative}
+#packBox .pkbc:hover{transform:translateY(-2px)}#packBox .pkbc canvas{width:64px;height:64px;image-rendering:pixelated}
+#packBox .pkbc.t3{border-color:#ffd166}#packBox .pkbc.t2{border-color:#5aa9ff}
+#packBox .pkbc.pkb-weird{border-color:#c99bff;animation:pkbglow 1.6s ease-in-out infinite alternate}#packBox .pkbc.pkb-special{border-color:#9fe8ff;animation:pkbglow 1.6s ease-in-out infinite alternate}
+#packBox .pkbtag{font-family:var(--pixel,'Press Start 2P',monospace);font-size:7px;line-height:1.4;text-align:center;color:#ffd166;word-break:break-word}
+#packBox .pkb-weird .pkbtag{color:#e2c8ff}#packBox .pkbname{font-size:11px;text-align:center;line-height:1.2}#packBox .pkbodd{font-size:10px;color:#9fe8ff}
+@keyframes pkbglow{from{box-shadow:3px 3px 0 #000,0 0 4px rgba(201,155,255,.4)}to{box-shadow:3px 3px 0 #000,0 0 16px rgba(201,155,255,.95)}}
+#packBox .pkcard.pkstar{box-shadow:0 0 0 2px #c99bff,0 0 14px rgba(201,155,255,.7)}
+@media (max-width:520px){#packBox .pkbh{font-size:18px}#packBox .pkbc{flex-basis:92px}#packBox .pkbc canvas{width:48px;height:48px}#packBox .pkluck{font-size:11px}}
+@media (prefers-reduced-motion:reduce){#packBox .pkbc.pkb-weird,#packBox .pkbc.pkb-special{animation:none}}

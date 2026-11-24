@@ -13,6 +13,14 @@ const DEF = { conc: 1, rps: 2, maxRetries: 4, defaultCooldownMs: 2000, maxCooldo
 function retryAfterMs(v, now) { const t = v == null ? '' : String(v).trim(); if (!t) return null;
   if (/^\d+$/.test(t)) return Number(t) * 1000;
   if (!/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)/.test(t)) return null; const d = Date.parse(t); return isFinite(d) ? Math.max(0, d - now) : null; }
+/* Reads the whole body while the request's timer still runs and hands back an ordinary Response holding it (429/503 answers too:
+ * their retry path cancels nothing it still needs). Anything that is not a real fetch Response (test fakes) passes through as is. */
+async function whole(r, late) {
+  if (!r || typeof r.arrayBuffer !== 'function' || typeof Response !== 'function' || !(r instanceof Response)) return r;
+  const buf = await Promise.race([r.arrayBuffer(), late]);
+  const nullBody = r.status === 204 || r.status === 205 || r.status === 304;
+  return new Response(nullBody ? null : buf, { status: r.status, statusText: r.statusText, headers: r.headers });
+}
 function makeFetch(rawFetch, o) {
   o = Object.assign({}, DEF, o || {}); const now = o.now || (() => Date.now()), sleep = o.sleep || (ms => new Promise(r => setTimeout(r, ms))), rnd = o.random || Math.random;
   const hosts = {}, stats = { requests: 0, passthrough: 0, byHost: {}, r429: 0, r503: 0, retries: 0, maxInFlight: 0, waitedMs: 0, gaveUp: 0 };
@@ -30,8 +38,12 @@ function makeFetch(rawFetch, o) {
     for (let attempt = 0; ; attempt++) {
       await acquire(H); let r;
       try { await clearance(H); stats.requests++; stats.byHost[H.name] = (stats.byHost[H.name] || 0) + 1;
-        const ac = new AbortController(), tm = setTimeout(() => ac.abort(), o.timeoutMs);
-        try { r = await rawFetch(u, Object.assign({}, init, { signal: ac.signal })); } finally { clearTimeout(tm); }
+        const ac = new AbortController(); let tm = null;
+        /* Nov 24 2026: the timer used to stop at the headers, so a node that sent headers and then stalled the body held
+         * r.json() forever (the sync server froze at 977,257 for hours with no error). The body is now read under the same timer. */
+        const late = new Promise((_, rej) => { tm = setTimeout(() => { try { ac.abort(); } catch (e) { } rej(Object.assign(new Error('timeout after ' + o.timeoutMs + ' ms'), { name: 'TimeoutError' })); }, o.timeoutMs); });
+        late.catch(() => { });
+        try { r = await Promise.race([rawFetch(u, Object.assign({}, init, { signal: ac.signal })).then(x => whole(x, late)), late]); } finally { clearTimeout(tm); }
       } finally { release(H); }
       if (r.status !== 429 && r.status !== 503) { H.refusals = 0; return r; }
       stats[r.status === 429 ? 'r429' : 'r503']++;
@@ -44,4 +56,4 @@ function makeFetch(rawFetch, o) {
   }
   limited.stats = stats; limited.opts = o; return limited;
 }
-module.exports = { makeFetch, retryAfterMs, DEF };
+module.exports = { makeFetch, retryAfterMs, DEF, whole };

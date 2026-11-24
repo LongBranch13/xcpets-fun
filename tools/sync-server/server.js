@@ -108,6 +108,7 @@ function createServer(opts) {
       if (s.world && s.world.rsig) body.worldRsig = s.world.rsig;
       try { if (typeof s.check === 'function') body.check = s.check(); } catch (e) { } /* burn check service: state, tip, load time, memory (numbers only) */
       try { if (typeof s.mem === 'function') body.mem = s.mem(); } catch (e) { }
+      try { if (typeof s.loop === 'function') body.loop = s.loop(); } catch (e) { } /* follow-loop heartbeat (seconds and short codes only): a frozen follower shows here */
       send(req, res, 200, body, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'public, max-age=5' }); return;
     }
     if (p === '/xp/v1/sync') {

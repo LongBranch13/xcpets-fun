@@ -32,6 +32,10 @@
     var lc = xcGet(url); if (lc) { mem[url] = { at: Date.now(), j: lc }; return Promise.resolve(lc); }
     if (!inflight[url]) inflight[url] = xcSlot(function () { return getJ0(url, 0); }).then(function (j) { delete inflight[url]; xcPut(url, j); return j; }, function (e) { delete inflight[url]; throw e; });
     return inflight[url]; }
+  /* Nov 24 2026: mem kept every answer forever (TTL was only checked on read). A page lives minutes, but the game server keeps this
+   * file loaded for days and ran out of heap; answers older than TTL are now dropped every 100 writes. Same reads, same results. */
+  var memWrites = 0;
+  function memPut(url, j) { mem[url] = { at: Date.now(), j: j }; if (++memWrites % 100) return; var t = Date.now(); Object.keys(mem).forEach(function (k) { if (t - mem[k].at >= TTL) delete mem[k]; }); }
   /* feed-429-fix: the hourly feed (tools/api-feed.js sets XCPETS_PATIENT) keeps the old patient 429 backoff (6 tries, honor Retry-After up to 60 s); pages keep the short 2-retry cap */
   var PATIENT = typeof window !== 'undefined' && !!window.XCPETS_PATIENT;
   /* node.xcpets.fun answers about 80 GETs / 10 s per IP. Stay under that. A 429 retry is the same request and is not paced again. The feed has its own limiter. */
@@ -47,7 +51,7 @@
         var ms = isFinite(s) && ra !== null ? s * 1000 : ra ? Math.max(0, Date.parse(ra) - Date.now()) : 2000 * (n + 1); if (url.indexOf(API) === 0) xcUntil = Math.max(xcUntil, Date.now() + Math.min(ms || 1000, 4000)); return wait(Math.min(ms || 1000 * (n + 1), PATIENT ? 60e3 : 4000)).then(function () { return getJ0(url, n + 1); }); }
       if (r.status === 404) { var e = new Error('DEX API 404'); e.status = 404; throw e; }
       if (!r.ok) return r.text().then(function (t) { return t; }, function () { return ''; }).then(function (t) { var m = ''; try { var jj = JSON.parse(t); m = jj && (jj.error || jj.message) || ''; if (typeof m !== 'string') m = JSON.stringify(m); } catch (x) { } /* api-hardening: say what the node said (400 = bad request, the same on every node) */
-        var e4 = new Error('DEX API ' + r.status + (r.status === 400 ? ' (request rejected)' : '') + (m ? ': ' + String(m).replace(/\s+/g, ' ').slice(0, 200) : '')); e4.http = r.status; throw e4; /* .http, not .status: callers treat .status as 404-only */ }); return r.json(); }).then(function (j) { mem[url] = { at: Date.now(), j: j }; return j; }); }
+        var e4 = new Error('DEX API ' + r.status + (r.status === 400 ? ' (request rejected)' : '') + (m ? ': ' + String(m).replace(/\s+/g, ' ').slice(0, 200) : '')); e4.http = r.status; throw e4; /* .http, not .status: callers treat .status as 404-only */ }); return r.json(); }).then(function (j) { memPut(url, j); return j; }); }
   /* Read-only GETs try the HTTPS cache first (CFG.read: node.xcpets.fun/v2, then the two public Core nodes).
    * Composing and signing stay on composeList and never use this list. One node per paginated list (cursors belong to one node).
    * api.xcp.fun is not a read. Same JSON from every node, so the replay input is unchanged. */
