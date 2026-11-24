@@ -50,3 +50,16 @@ jobs:
           BUSY=$(gh run list -R "$GITHUB_REPOSITORY" --workflow pages.yml --limit 5 --json status --jq '[.[]|select(.status!="completed")]|length')
           if [ "${BUSY:-0}" != "0" ]; then echo "A pages deploy is already running."; exit 0; fi
           gh workflow run pages.yml -R "$GITHUB_REPOSITORY" --ref main && echo "The world for main's rules exists: re-running the held deploy." | tee -a "$GITHUB_STEP_SUMMARY"
+      # Nov 24 2026: the server's feed job stopped at 977,257 for 16 hours (server and world were fine) and nothing started the
+      # backup. When the feed (api/meta.json) is more than 12 blocks behind the real chain, start the GitHub backup feed (api-feed,
+      # public read APIs, merges and never force-pushes; it skips its push when the server's feed already caught up).
+      - name: Start the backup feed when the feed lags
+        if: always()
+        env: { GH_TOKEN: '${{ github.token }}' }
+        run: |
+          [ -f "$RUNNER_TEMP/ww.json" ] || exit 0
+          LAG=$(node -e "const r=require(process.argv[1]);console.log(r.feedTip&&r.chainTip?r.chainTip-r.feedTip:0)" "$RUNNER_TEMP/ww.json")
+          [ "${LAG:-0}" -gt 12 ] || exit 0
+          BUSY=$(gh run list -R "$GITHUB_REPOSITORY" --workflow api-feed.yml --limit 5 --json status --jq '[.[]|select(.status!="completed")]|length')
+          if [ "${BUSY:-0}" != "0" ]; then echo "The backup feed is already running (feed $LAG blocks behind)."; exit 0; fi
+          gh workflow run api-feed.yml -R "$GITHUB_REPOSITORY" --ref main && echo "The feed is $LAG blocks behind the chain: started the backup feed (api-feed)." | tee -a "$GITHUB_STEP_SUMMARY"

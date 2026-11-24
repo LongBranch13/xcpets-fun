@@ -131,6 +131,21 @@ jobs:
             journalctl -D "$J" -u xcpets-sync-watch.service --since '2026-11-22 13:00' --until '2026-11-22 14:30' --no-pager -o short-iso 2>/dev/null | tail -25 | scrub | cut -c1-220
             echo "---"
           fi
+          # the feed job (api/boot.json, meta.json, pets.json to main every ~20 min). Nov 24 2026: it stopped at 977,257 for 16 hours
+          # while the sync service was fine. Its unit, the script's command lines and its log (secrets filtered, addresses scrubbed).
+          for U in xcpets-feed.timer xcpets-feed.service; do F=/mnt/r/etc/systemd/system/$U; [ -f "$F" ] || continue
+            echo "== $U: $(grep -hE '^(OnCalendar|OnUnitActiveSec|OnBootSec|Type|User|WorkingDirectory|TimeoutStartSec|RuntimeMaxSec|MemoryMax)=' "$F" ${F}.d/*.conf 2>/dev/null | tr '\n' ' ')"
+            X=$(grep -m1 '^ExecStart=' "$F" | cut -d= -f2- | grep -oE '/[^ ]+\.(sh|js|py)' | head -1)
+            [ -n "$X" ] && echo "   runs $(basename "$X") ($(wc -l < "/mnt/r$X" 2>/dev/null) lines, changed $(date -u -r "/mnt/r$X" +%F 2>/dev/null)); its commands:" && grep -nvE '^\s*(#|$)' "/mnt/r$X" 2>/dev/null | grep -viE 'token|secret|pass|key|auth|cred|ssh|@' | scrub | cut -c1-200 | head -60 | sed 's/^/   /'
+          done
+          if [ -d "$J" ]; then
+            echo "feed runs in 2 days: $(journalctl -D "$J" -u xcpets-feed --since -2d --no-pager -o cat 2>/dev/null | grep -c 'Starting\|Started')"
+            echo "--- feed result lines, 2 days (last 25) ---"
+            journalctl -D "$J" -u xcpets-feed --since -2d --no-pager -o short-iso 2>/dev/null | grep -iE 'systemd|error|fail|timeout|killed|exit|refused|rejected|conflict|block [0-9]|pushed|skipping|no change' | grep -viE 'token|secret|pass|auth|cred' | tail -25 | scrub | cut -c1-220
+            echo "--- feed lines, last run (last 40) ---"
+            journalctl -D "$J" -u xcpets-feed --since -3h --no-pager -o short-iso 2>/dev/null | grep -viE 'token|secret|pass|auth|cred' | tail -40 | scrub | cut -c1-220
+            echo "---"
+          fi
           for F in "$UNIT" ${ENVF:+"/mnt/r$ENVF"}; do grep -q 'XP_SNAPSHOT=0' "$F" 2>/dev/null && echo "XP_SNAPSHOT=0 is set in $(basename "$F"), file last changed $(date -u -r "$F" +%FT%TZ)"; done
           # rule files on the server vs main (these make the rsig pages compare against)
           mkdir -p /root/rm && tar -C /root/rm -xzf /root/rules.tgz
