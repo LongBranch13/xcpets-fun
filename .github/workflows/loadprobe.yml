@@ -9,11 +9,13 @@ on:
       wallets: { description: 'Comma-separated wallets (empty = Evan, owner, a test wallet)', required: false, default: '' }
       pages: { description: 'Comma-separated pages', required: false, default: 'play.html,breed.html,cemetery.html' }
       slow: { description: 'Also run on a phone network with a slower CPU', type: boolean, default: true }
+      phonepages: { description: 'Pages for the phone run (empty = play.html)', required: false, default: '' }
+      warm: { description: 'Also time return visits (saved files kept, and after a newer server world)', type: boolean, default: true }
       noworld: { description: 'Also run with the server world blocked (the page rebuilds the game itself, like during a server rebuild)', type: boolean, default: true }
   push:
     paths: ['tools/loadprobe/**', '.github/workflows/loadprobe.yml']
 permissions: { contents: read }
-concurrency: { group: loadprobe, cancel-in-progress: true }
+concurrency: { group: 'loadprobe-${{ github.ref }}', cancel-in-progress: true } # per branch: one thread's probe no longer cancels another's
 jobs:
   probe:
     runs-on: ubuntu-latest
@@ -25,13 +27,13 @@ jobs:
         with: { node-version: '20' }
       - run: npm install --no-save --no-package-lock playwright-core@1
       - name: Fast network
-        env: { WALLETS: '${{ github.event.inputs.wallets }}', PAGES: '${{ github.event.inputs.pages }}', BRANCH_FLAG: "${{ github.ref != 'refs/heads/main' && '--branch' || '' }}" }
-        run: node tools/loadprobe/run.js --verify --profile --scroll ${BRANCH_FLAG} ${WALLETS:+--wallets "$WALLETS"} --pages "${PAGES:-play.html,breed.html}"
+        env: { WALLETS: '${{ github.event.inputs.wallets }}', PAGES: '${{ github.event.inputs.pages }}', WARM_FLAG: "${{ github.event.inputs.warm != 'false' && '--warm' || '' }}", BRANCH_FLAG: "${{ github.ref != 'refs/heads/main' && '--branch' || '' }}" }
+        run: node tools/loadprobe/run.js --verify --profile --scroll ${WARM_FLAG} ${BRANCH_FLAG} ${WALLETS:+--wallets "$WALLETS"} --pages "${PAGES:-play.html,breed.html}"
       - name: Server world blocked (in-browser rebuild)
         if: always() && (github.event_name == 'push' || github.event.inputs.noworld == 'true')
         env: { WALLETS: '${{ github.event.inputs.wallets }}', BRANCH_FLAG: "${{ github.ref != 'refs/heads/main' && '--branch' || '' }}" }
         run: node tools/loadprobe/run.js --no-world --profile --scroll --max-wait 300 ${BRANCH_FLAG} --pages play.html --wallets "${WALLETS:-bc1pfvkpmllr7mtn5uazqxumwp39h2ny3c8l6fmrgvjv2cqn5wlpt7hssf3gqd,bc1pd8pantl2vmvdf5uvtvvn0r3xnnuxvp0wln8xmlxqmykxfnte3mwqmes2ut}"
       - name: Phone network, slower CPU
         if: always() && (github.event_name == 'push' || github.event.inputs.slow == 'true')
-        env: { WALLETS: '${{ github.event.inputs.wallets }}', BRANCH_FLAG: "${{ github.ref != 'refs/heads/main' && '--branch' || '' }}" }
-        run: node tools/loadprobe/run.js --verify --slow --profile --scroll ${BRANCH_FLAG} --pages play.html --wallets "${WALLETS:-bc1pfvkpmllr7mtn5uazqxumwp39h2ny3c8l6fmrgvjv2cqn5wlpt7hssf3gqd}"
+        env: { WALLETS: '${{ github.event.inputs.wallets }}', PHONE_PAGES: '${{ github.event.inputs.phonepages }}', WARM_FLAG: "${{ github.event.inputs.warm != 'false' && '--warm' || '' }}", BRANCH_FLAG: "${{ github.ref != 'refs/heads/main' && '--branch' || '' }}" }
+        run: node tools/loadprobe/run.js --verify --slow --profile --scroll ${WARM_FLAG} ${BRANCH_FLAG} --pages "${PHONE_PAGES:-play.html}" --wallets "${WALLETS:-bc1pfvkpmllr7mtn5uazqxumwp39h2ny3c8l6fmrgvjv2cqn5wlpt7hssf3gqd}"
