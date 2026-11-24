@@ -1,5 +1,5 @@
 /* community-roll-tip-test (Nov 1 2026): the community pet hover/tap tooltip shows each worn piece with slot + rarity and
- * 'Your recent community rolls'; the roll result card names the community pet. Display only. Static checks. */
+ * 'Your recent community rolls' (older pets); the roll result card names the community pet. Display only. Static checks. */
 'use strict';
 const fs = require('fs'), path = require('path'), rd = f => fs.readFileSync(path.join(__dirname, '..', f), 'utf8');
 const r = rd('js/v2-render.js'), v = rd('js/v2.js'), pg = rd('js/v2-pages.js');
@@ -8,6 +8,11 @@ ok(/function communityTipHtml\(w, me\)/.test(r), 'communityTipHtml(w, me) exists
 ok(r.includes("' wears'") && /esc\(e\.slotName\) \+ ': ' \+ esc\(e\.label\) \+ ' ' \+ ctPill\(/.test(r), 'each worn piece: slot: name + rarity pill');
 ok(r.includes('🎲 Your recent community rolls') && /g\.by === me/.test(r) && /\.slice\(-3\)\.reverse\(\)/.test(r), 'last 3 rolls by this wallet, newest first');
 ok(/cur = vis\[g\.slot\]/.test(r), "only a piece the sprite draws can 'replace' a roll");
+ok(/function raiseTipHtml\(w, me\)/.test(r) && /var rt = raiseTipHtml\(w, me\); if \(rt\) return rt;/.test(r), 'raise-tip (Nov 24 2026): the current community pet shows the raise card first');
+ok(/Every XCPETS burn feeds him/.test(r) && /Top raisers/.test(r) && /raisers/.test(r), 'raise card: every burn feeds him, your share, top raisers');
+ok(/RabbitSprite\.frames\(c\.rabbitStage \|\| 0, '#2a3a2e', \{\}, \{ community: true \}\)/.test(r), 'White Rabbit drawn bare (gear rolls retired)');
+ok(/id="crollBtn" style="display:none"/.test(rd('play.html')), 'community gear roll button hidden on play.html');
+ok(/o\.raisers = \{ pet: c\.current/.test(rd('tools/sync-server/split.js')), 'summary carries the raisers map for the fast page');
 ok(/tip\.innerHTML = communityTipHtml\(w2, cv\._ctipMe\)/.test(r), 'tooltip uses communityTipHtml');
 ok(/communityTipHtml: communityTipHtml/.test(r), 'communityTipHtml exported on V2Render');
 ok(/bindCommunityTip\(commAnim\.c, w, ME\)/.test(v), 'play page passes ME to the tooltip');
