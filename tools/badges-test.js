@@ -24,6 +24,10 @@ t('weekly boards close on 1,008-block weeks', () => Object.values(r1.byAddr).fla
 const pets = w.pets.filter(p => p.parents && p.parents.length === 2), cross = pets.find(p => w.byId[p.parents[0]].owner !== w.byId[p.parents[1]].owner && !p.released);
 if (cross) t('single mother = egg from a two-wallet breed', () => assert((r1.byPet[cross.id] || []).some(b => b.id === 'single-mother')));
 const dead = w.pets.find(p => p.dead && !p.released); if (dead) { t('released pet loses badges', () => { const w2 = Object.assign({}, w, { pets: w.pets.map(p => p === dead ? Object.assign({}, p, { released: 1 }) : p) }); const r = B.compute(w2, snap.rows, V); assert(!(r.byPet[dead.id])); }); }
+t('OG BACKER from the XCPETS.FUN.D balance list', () => { const addr = Object.keys(r1.byAddr)[0] || 'bc1qtest', bk = B.backersFrom([{ address: addr, quantity: 3 }, { address: 'bc1qzero', quantity: 0 }, { address: null, quantity: 5 }]);
+  assert.deepStrictEqual(Object.keys(bk), [addr]); const r = B.compute(w, snap.rows, V, { backers: bk }), L = r.byAddr[addr];
+  assert(L.some(b => b.id === 'og-backer' && b.rarity === 'legendary')); assert(!r.byAddr.bc1qzero);
+  assert(fs.existsSync(path.join(ROOT, B.img({ id: 'og-backer' })))); assert(!Object.values(r1.byAddr).flat().some(b => b.id === 'og-backer')); });
 t('recap line', () => assert(/^Badges: \d+ held by \d+ wallets/.test(B.recapLine(r1, snap.tip - 144))));
 const n = {}; Object.values(r1.byAddr).flat().forEach(b => n[b.id] = (n[b.id] || 0) + 1);
 console.log('wallets with badges', Object.keys(r1.byAddr).length, JSON.stringify(n)); console.log(B.recapLine(r1, snap.tip - 144));

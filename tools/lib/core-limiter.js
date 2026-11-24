@@ -13,14 +13,31 @@ const DEF = { conc: 1, rps: 2, maxRetries: 4, defaultCooldownMs: 2000, maxCooldo
 function retryAfterMs(v, now) { const t = v == null ? '' : String(v).trim(); if (!t) return null;
   if (/^\d+$/.test(t)) return Number(t) * 1000;
   if (!/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)/.test(t)) return null; const d = Date.parse(t); return isFinite(d) ? Math.max(0, d - now) : null; }
-/* Reads the whole body while the request's timer still runs and hands back an ordinary Response holding it (429/503 answers too:
- * their retry path cancels nothing it still needs). Anything that is not a real fetch Response (test fakes) passes through as is. */
-async function whole(r, late) {
-  if (!r || typeof r.arrayBuffer !== 'function' || typeof Response !== 'function' || !(r instanceof Response)) return r;
-  const buf = await Promise.race([r.arrayBuffer(), late]);
+/* Nov 24 2026 (second fix): the body is read with an IDLE limit, not the request's short limit. A whole-body limit of 15 s timed out
+ * the big, slow but steady answers (the sales read's 1,000-row issuance pages from the game server), which the sales code then marked
+ * as dead nodes, and every follow step failed. Now: headers within the request's limit; then the body may take as long as it keeps
+ * sending bytes, failing only when nothing arrives for BODY_IDLE_MS (default 30 s) or the whole body passes BODY_MAX_MS (5 min). */
+function BODY_IDLE_MS() { return +(process.env.XP_BODY_IDLE_MS || 30000); } function BODY_MAX_MS() { return +(process.env.XP_BODY_MAX_MS || 300000); }
+function bodyTimeout(what, ms) { return Object.assign(new Error('timeout after ' + ms + ' ms'), { name: 'TimeoutError', what: what }); }
+async function readBody(r, ac, idleMs, maxMs) {
+  if (!r || typeof Response !== 'function' || !(r instanceof Response) || !r.body || typeof r.body.getReader !== 'function') return r;
+  idleMs = idleMs || BODY_IDLE_MS(); maxMs = maxMs || BODY_MAX_MS();
+  const rd = r.body.getReader(), parts = [], t0 = Date.now(); let idle = null;
+  try {
+    for (;;) {
+      const left = maxMs - (Date.now() - t0); if (left <= 0) throw bodyTimeout('body', maxMs);
+      const wait = Math.min(idleMs, left);
+      const rp = rd.read(); rp.catch(() => { });
+      const step = await Promise.race([rp, new Promise((_, rej) => { idle = setTimeout(() => rej(bodyTimeout('body idle', wait)), wait); })]).finally(() => clearTimeout(idle));
+      if (step.done) break;
+      parts.push(step.value);
+    }
+  } catch (e) { try { ac && ac.abort(); } catch (x) { } try { Promise.resolve(rd.cancel()).catch(() => { }); } catch (x) { } throw e; }
   const nullBody = r.status === 204 || r.status === 205 || r.status === 304;
-  return new Response(nullBody ? null : buf, { status: r.status, statusText: r.statusText, headers: r.headers });
+  return new Response(nullBody ? null : Buffer.concat(parts.map(p => Buffer.from(p.buffer, p.byteOffset, p.byteLength))), { status: r.status, statusText: r.statusText, headers: r.headers });
 }
+/* kept for callers of the old helper: the late promise only bounds the headers now */
+async function whole(r, late, ac) { return readBody(r, ac); }
 function makeFetch(rawFetch, o) {
   o = Object.assign({}, DEF, o || {}); const now = o.now || (() => Date.now()), sleep = o.sleep || (ms => new Promise(r => setTimeout(r, ms))), rnd = o.random || Math.random;
   const hosts = {}, stats = { requests: 0, passthrough: 0, byHost: {}, r429: 0, r503: 0, retries: 0, maxInFlight: 0, waitedMs: 0, gaveUp: 0 };
@@ -40,10 +57,12 @@ function makeFetch(rawFetch, o) {
       try { await clearance(H); stats.requests++; stats.byHost[H.name] = (stats.byHost[H.name] || 0) + 1;
         const ac = new AbortController(); let tm = null;
         /* Nov 24 2026: the timer used to stop at the headers, so a node that sent headers and then stalled the body held
-         * r.json() forever (the sync server froze at 977,257 for hours with no error). The body is now read under the same timer. */
+         * r.json() forever (the sync server froze at 977,257 for hours with no error). Headers within the timer, then the body under
+         * readBody's idle limit (a big answer that keeps arriving is fine; one that stops sending fails). */
         const late = new Promise((_, rej) => { tm = setTimeout(() => { try { ac.abort(); } catch (e) { } rej(Object.assign(new Error('timeout after ' + o.timeoutMs + ' ms'), { name: 'TimeoutError' })); }, o.timeoutMs); });
         late.catch(() => { });
-        try { r = await Promise.race([rawFetch(u, Object.assign({}, init, { signal: ac.signal })).then(x => whole(x, late)), late]); } finally { clearTimeout(tm); }
+        try { r = await Promise.race([rawFetch(u, Object.assign({}, init, { signal: ac.signal })), late]); } finally { clearTimeout(tm); }
+        r = await readBody(r, ac);
       } finally { release(H); }
       if (r.status !== 429 && r.status !== 503) { H.refusals = 0; return r; }
       stats[r.status === 429 ? 'r429' : 'r503']++;
@@ -56,4 +75,4 @@ function makeFetch(rawFetch, o) {
   }
   limited.stats = stats; limited.opts = o; return limited;
 }
-module.exports = { makeFetch, retryAfterMs, DEF, whole };
+module.exports = { makeFetch, retryAfterMs, DEF, whole, readBody };

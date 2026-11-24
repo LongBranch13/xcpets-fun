@@ -12,7 +12,7 @@
     if (sp === 'hyb3:nakamoto:wizard:kek') return 'kekamozard'; if (sp === 'hyb3:nakamoto:kek:funtrump' && p.supreme) return 'don';
     if (a.species === 'funtrump' || sp === 'funtrump' || (h && h.shape === 'funtrump')) return 'goldshine';
     if (sp === 'nakamoto' || a.species === 'nakamoto') return 'matrix';
-    var K = { kek: 'kekglow', wizard: 'arcane', homer: 'donut', rabbit: 'clockwork', viking: 'frost', bojackson: 'bo', rarepigeon: 'feathers', starlordkek: 'cosmic', gooby: 'goo', lukespam: 'spam' };
+    var K = { kek: 'kekglow', wizard: 'arcane', homer: 'donut', rabbit: 'clockwork', groyper: 'pond', viking: 'frost', bojackson: 'bo', rarepigeon: 'feathers', starlordkek: 'cosmic', gooby: 'goo', lukespam: 'spam' };
     return K[sp] || K[a.species] || null; }
   /* masks from two keyed renders: pet = same pixel in both */
   function masks(A, B) { var pet = new Uint8Array(N * N), d1 = new Uint8Array(N * N), d2 = new Uint8Array(N * N), bb = { x0: N, x1: -1, y0: N, y1: -1 };
@@ -67,6 +67,15 @@
       if (col) { var c = hex(col); o[p * 4] = c[0]; o[p * 4 + 1] = c[1]; o[p * 4 + 2] = c[2]; } }
     for (i = 0; i < 12; i++) { var t = i * 0.5236, tx = Math.round(cx + Math.cos(t) * (rx + 1.6)), ty = Math.round(cy + Math.sin(t) * (ry + 1.6)); put(o, M, tx, ty, i % 3 === 0 ? '#ffffff' : '#fff1a8'); }
     for (i = 0; i < 7; i++) { var bx = 2 + i * 4, by = 30 - (i % 2); if (i <= f % NF) put(o, M, bx, by, i === f % NF ? '#ffffff' : '#ffd23f'); } };
+  /* Groyper (PREVIEW, community pet #7; no live Groyper can exist while V2Rules.ACTIVATE_GROYPER_BLOCK is null): a comfy night pond. Two ripple rings
+   * spread out from under him across the water one after the other, fireflies blink around him, and a soft lime glow breathes on his outline. */
+  FX.pond = function (o, M, f) { var cx = (M.bb.x0 + M.bb.x1) / 2, wy = Math.min(30, M.bb.y1 + 1), i, p, x, y;
+    glow(o, M, '#b6ff7a', pul(f, 0.2, 0.45), 0.1);
+    for (p = 0; p < N * N; p++) { if (M.pet[p]) continue; x = p & 31; y = p >> 5; if (y < wy) continue; var c = hex(y === wy ? '#2f6f8f' : '#1f4f6a'); o[p * 4] = c[0]; o[p * 4 + 1] = c[1]; o[p * 4 + 2] = c[2]; } /* still pond water under him */
+    [0, NF / 2].forEach(function (ph) { var t = ((f + ph) % NF) / NF, r = 3 + t * 15, col = t < 0.55 ? '#d8faff' : '#7fc8e0'; /* a ripple ring spreading out both ways */
+      [-1, 1].forEach(function (sd) { for (var k = 0; k < 2; k++) { var X = Math.round(cx + sd * (r + k)), Y = wy + (k ? 1 : 0); put(o, M, X, Y, col); } }); });
+    spots(M, 6, 93).forEach(function (s2, k) { var ph = (f + k * 3) % NF; if (s2[1] >= wy - 1) return; if (ph < 2) put(o, M, s2[0], s2[1], ph === 0 ? '#f4ff9a' : '#c8f060', ph === 0, 1); else if (ph < 4) put(o, M, s2[0], s2[1], '#8fc040'); }); /* fireflies */
+    for (i = 0; i < 2; i++) { var lx = (i ? 26 : 1) + (((f >> 2) + i) % 2); put(o, M, lx, wy, '#3f9a3a'); put(o, M, lx + 1, wy, '#3f9a3a'); put(o, M, lx + 2, wy, '#2c6e2a'); } }; /* two little lily pads bobbing */
   /* Ragnar the Viking: ice-blue frost glow, slow snowflakes */
   FX.frost = function (o, M, f) { glow(o, M, '#9fe8ff', pul(f, 0.35, 0.6), 0.2); for (var i = 0; i < 6; i++) { var x = 2 + hsh(i, 5) % 28, y = (hsh(i, 6) % 32 + f * 2) % 34 - 1; put(o, M, x, y, '#eafcff', i % 2 === 0, 1); } };
   /* Bo Jackson: speed lines streaking past and a baseball orbiting (Bo Knows) */

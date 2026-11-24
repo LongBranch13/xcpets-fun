@@ -160,7 +160,7 @@
       community: summary.community || {},
       tokens: {}, deeds: deeds, mythicOwners: mythicOwners,
       wizardMythic: cold.wizard || null, kekMythic: cold.kek || null, homerMythic: cold.homer || null,
-      rabbitMythic: cold.rabbit || null, funtrumpMythic: cold.funtrump || null, djpepeMythic: cold.djpepe || null,
+      rabbitMythic: cold.rabbit || null, groyperMythic: cold.groyper || null, funtrumpMythic: cold.funtrump || null, djpepeMythic: cold.djpepe || null, /* groyper: Groyper's Cold Storage (community pet #7, Nov 24 2026); older summaries have none */
       wagmi: summary.wagmi || {},
       raids: summary.raids || [], /* raids ride in the summary (Nov 22 2026); older summaries have none */
       seasons: summary.seasons || {}, /* season eggs sold, points and tiers ride in the summary too; older summaries have none */
@@ -177,7 +177,7 @@
    * Homer, Kek, Wizard pools and breeding). A replay or V2Rules.reindex sets them; the fast world never ran either, so FUNTRUMP-line
    * pets showed 'FUNTRUMP can breed once he reaches Cold Storage' here while the game allowed the breed. Set only the switches: a stub
    * with __ix skips the gear index, which would go stale while more owner pages arrive. */
-  function poolSwitches(w) { try { if (w && window.V2Rules && V2Rules.reindex) V2Rules.reindex({ items: {}, __ix: 1, djpepeMythic: w.djpepeMythic, rabbitMythic: w.rabbitMythic,
+  function poolSwitches(w) { try { if (w && window.V2Rules && V2Rules.reindex) V2Rules.reindex({ items: {}, __ix: 1, djpepeMythic: w.djpepeMythic, rabbitMythic: w.rabbitMythic, groyperMythic: w.groyperMythic,
     homerMythic: w.homerMythic, funtrumpMythic: w.funtrumpMythic, kekMythic: w.kekMythic, wizardMythic: w.wizardMythic }); } catch (e) {} }
   var last = null, lastSummary = null, viewOwners = null, rankHashes = null, healthTipN = 0;
   /* The published health tip. Unleash reads this so a stale replay tip cannot invent a dust deadline. */

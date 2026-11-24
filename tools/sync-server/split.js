@@ -9,7 +9,7 @@ const fs = require('fs'), path = require('path'), os = require('os'), crypto = r
 const Art = require('../../js/v2-art');
 const PET_SHARD = 2000;
 const PAGE = 24;
-const COLD_KEYS = ['wizard', 'kek', 'homer', 'rabbit', 'funtrump', 'djpepe'];
+const COLD_KEYS = ['wizard', 'kek', 'homer', 'rabbit', 'groyper', 'funtrump', 'djpepe']; /* groyper: community pet #7 (Nov 24 2026); reaches the VPS with a server-repair code update */
 
 function ownerKey(addr) {
   return crypto.createHash('sha256').update(String(addr || '')).digest('hex');
