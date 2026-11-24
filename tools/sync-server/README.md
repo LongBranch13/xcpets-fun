@@ -71,3 +71,8 @@ the chain from the public Counterparty nodes (`tools/followprobe.js`, workflow `
   `sync tick failed (...)` carries the full message with upstream addresses, onions and IPs removed.
 - Public fallback: when the configured nodes fail 6 steps in a row the follower reads from the public nodes and stays there,
   trying its own nodes again every 30th step (`loop.fallback` in health). `XP_PUBLIC_FALLBACK=0` turns it off.
+- Found with `lastHint` (Nov 24 2026, 02:40 UTC): "new pet tokens could not be read (every Counterparty node failed)". The never-freeze
+  change had put the whole body under the 15 s request limit, so the sales read's big 1,000-row issuance pages timed out on the
+  server (GitHub's faster network read them fine), and js/v2-sales.js then marks those nodes dead for the life of the process. Now
+  the body has its own idle limit (`XP_BODY_IDLE_MS`, 30 s without a byte; `XP_BODY_MAX_MS` 5 min in all), and after 4 sales
+  failures in a row the service restarts itself for fresh node state (`XP_SALES_RESTART=0` turns that off).

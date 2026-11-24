@@ -287,7 +287,7 @@ function tickMaxMs() { return Math.max(2, +(process.env.XP_TICK_MAX_MIN || 10)) 
 /* Nov 24 2026: after the second repair every step failed with a bare 'error' and nothing outside the server could tell why. Known
  * failures from the sales read (js/v2-sales.js) and plain code faults now get a short public class; anything else stays 'error'. The
  * full message (upstream addresses scrubbed) goes to the journal only. */
-const SALES_ERR = /^(DEX API busy|DEX API \d+|could not check the chain|bad \w+ reply|bad events|token held on a utxo|no saved sale book|balance check failed|unknown (credit|debit)|send (credit|debit) without a known \w+|node repeated a page cursor|more than \d+ pages|pet token transfers could not be read|could not find a free token name|sales)\b/;
+const SALES_ERR = /^(new pet tokens could not be read|DEX API busy|DEX API \d+|could not check the chain|bad \w+ reply|bad events|token held on a utxo|no saved sale book|balance check failed|unknown (credit|debit)|send (credit|debit) without a known \w+|node repeated a page cursor|more than \d+ pages|pet token transfers could not be read|could not find a free token name|sales)\b/;
 function errCode(e) { const m = String(e && e.message || e || 'error');
   if (/^upstream \w+$|^tip$|^missing hash(es)?$|^burn page cursor$|^timeout after \d+ ms$|^base too old$/.test(m)) return m;
   if (e && e.name === 'TimeoutError') return 'timeout';
@@ -370,7 +370,10 @@ function main() {
     rules.poll().then(adopt, () => {});
     if (ok || held) { LOOP.lastOkAt = Date.now(); LOOP.errorRun = 0; }
     if (ok && state.ready && state.tip > LOOP.savedTip) { if (saveFollow(dataDir, state)) LOOP.savedTip = state.tip; console.log('sync: tip ' + state.tip + ', heap ' + Math.round(process.memoryUsage().heapUsed / 1048576) + ' MB of ' + HEAP_LIMIT_MB); }
-  } catch (e) { LOOP.errors++; LOOP.errorRun++; LOOP.lastError = errCode(e); LOOP.lastHint = errHint(e); LOOP.lastStep = state.step || null; LOOP.lastFailAt = Date.now(); if (LOOP.errorRun === 1 || LOOP.errorRun % 30 === 0) console.error('sync tick failed (' + LOOP.lastError + ', ' + LOOP.errorRun + ' in a row): ' + errLine(e)); }
+  } catch (e) { LOOP.errors++; LOOP.errorRun++; LOOP.lastError = errCode(e); LOOP.lastHint = errHint(e); LOOP.lastStep = state.step || null; LOOP.lastFailAt = Date.now();
+      /* the sales code marks a node dead for the life of the process after one hard failure; after 4 sales failures in a row a fresh
+       * process (systemd starts it again within seconds, the published world stays served) gets clean node state */
+      if (LOOP.lastStep === 'sales' && LOOP.errorRun >= 4 && !startSnapshot.running && process.env.XP_SALES_RESTART !== '0') { console.error('sync: the sales read failed ' + LOOP.errorRun + ' times in a row; restarting the service for fresh node state'); try { ckStop('off'); } catch (x) { } setTimeout(() => process.exit(71), 200); } if (LOOP.errorRun === 1 || LOOP.errorRun % 30 === 0) console.error('sync tick failed (' + LOOP.lastError + ', ' + LOOP.errorRun + ' in a row): ' + errLine(e)); }
   finally { LOOP.runningSince = 0; LOOP.lastDoneAt = Date.now(); LOOP.steps++; } });
   loop(); timer = setInterval(loop, 10000);
   const guard = setInterval(() => stallCheck(state, dataDir), 30000); if (guard.unref) guard.unref();
