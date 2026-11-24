@@ -32,6 +32,20 @@ jobs:
               t = Date.now(); const s = await fetch(B + '/xp/v1/shop?cb=' + Date.now()).then(r => r.json()).catch(e => ({ error: e.message }));
               console.log('shop', (Date.now() - t) + ' ms', JSON.stringify({ ok: s.ok, tip: s.tip, rsig: s.rsig, listings: (s.listings || []).length, pets: (s.pets || []).length, orders: (s.orders || []).length, open: s.open, error: s.error }));
             })();"
+      - name: Pet share link and card (PR 232)
+        run: |
+          node -e "
+            const B = 'https://node.xcpets.fun/xp/v1/pet/';
+            (async () => {
+              for (const id of [7995, 1765, 2]) {
+                let t = Date.now(); const p = await fetch(B + id + '?cb=' + Date.now(), { redirect: 'manual' }).catch(e => ({ status: 'err ' + e.message }));
+                const html = p.text ? await p.text() : ''; const og = (re) => (re.exec(html) || [])[1] || '-';
+                console.log('page', id, p.status, (Date.now() - t) + ' ms', 'title:', og(/og:title\" content=\"([^\"]*)/), 'image:', og(/og:image\" content=\"([^\"]*)/));
+                t = Date.now(); const c = await fetch(B + id + '.png?cb=' + Date.now(), { redirect: 'manual' }).catch(e => ({ status: 'err ' + e.message, headers: new Map() }));
+                const b = c.arrayBuffer ? Buffer.from(await c.arrayBuffer()) : Buffer.alloc(0);
+                console.log('card', id, c.status, (Date.now() - t) + ' ms', c.headers.get('content-type'), b.length + ' bytes', c.headers.get('location') || '', b.slice(16, 24).toString('hex'));
+              }
+            })();"
       - name: Raids in the slim view
         run: |
           node -e "
