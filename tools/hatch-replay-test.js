@@ -13,7 +13,7 @@ let pass = 0, fail = 0;
 const ok = (c, m) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (c) pass++; else fail++; };
 function md5(rel) { return crypto.createHash('md5').update(fs.readFileSync(path.join(ROOT, rel))).digest('hex'); }
 const src = fs.readFileSync(path.join(ROOT, 'js/v2.js'), 'utf8');
-ok(md5('js/v2-rules.js') === '11b5c6c1959c56a7fd51c09a8b2a2309', 'rules MD5 stays 11b5c6c1959c56a7fd51c09a8b2a2309');
+ok(md5('js/v2-rules.js') === 'c6c9f5d10e75aa163fb6a3086ee69d07', 'rules MD5 stays c6c9f5d10e75aa163fb6a3086ee69d07');
 ok(/function onChainDiscarded\(p\) \{ return !!\(p && ME && p\.hd === ME\); \}/.test(src), 'on-chain discard is the pet.hd flag for this wallet');
 ok(/!onChainDiscarded\(p\)/.test(src.slice(src.indexOf('function mine(w)'), src.indexOf('function mine(w)') + 220)), 'My Pets hides an on-chain discard');
 ok(/p\.hungry && !onChainDiscarded\(p\)/.test(src), 'Feed all hungry skips an on-chain discard');
@@ -37,10 +37,15 @@ const sandbox = {
   },
   V: { newHatches: function (w, owner, seen) { return rules.V2Rules.newHatches(w, owner, seen); } },
   dataSeen: function () {},
+  rev: null,
+  $: function () { return { classList: { contains: function () { return false; } } }; },
   console: console
 };
 vm.createContext(sandbox);
 vm.runInContext(slice + '\nthis.hatchListSettled = hatchListSettled; this.hatchKeepGroups = hatchKeepGroups; this.notifyHatch = notifyHatch; this.hPack = hPack; this.hUnpack = hUnpack;', sandbox);
+/* hatch-tray-1124: away hatches go to the calm tray (no DOM here, so record them) */
+let trayGot = [];
+sandbox.trayAdd = function (ids) { trayGot = trayGot.concat(ids); };
 
 function pet(id, tx, block) {
   return { id: id, owner: ME, community: false, hatchTx: tx, hatchBlock: block, lastGot: null };
@@ -71,6 +76,23 @@ sandbox.hatchTip = null;
 const fresh = pet(6, 'tx-new', tip + 10);
 const g2 = sandbox.notifyHatch({ pets: full.pets.concat([fresh]), tip: tip + 12, _full: 1, _pages: { got: 3, pages: 3 } });
 ok(g2.length === 1 && g2[0].tx === 'tx-new' && g2[0].eggs.length === 1 && g2[0].eggs[0].id === 6, 'a hatch after the saved baseline still opens');
+ok(sandbox.revealQ.length === 1 && sandbox.revealQ[0].eggs.join(',') === '6' && trayGot.length === 0, 'a hatch that lands while the page is open gets the live review, not the tray');
+
+/* hatch-tray-1124 (owner Nov 24 2026: one Shock Box showed as 47, then 353, then 600). A saved baseline + a wallet arriving in pages:
+ * nothing is counted until the list settles, then ONE away batch goes to the tray, no automatic review. */
+{
+  const base = { pets: page0.slice(), tip: tip, _full: 1 };
+  sandbox.hMem = null; sandbox.hatchTip = null; sandbox.revealQ = []; trayGot = [];
+  delete store[sandbox.HKEY]; sandbox.notifyHatch(base);
+  const boxEggs = []; for (let i = 0; i < 9; i++) boxEggs.push(pet(100 + i, 'tx-zap', tip + 2));
+  const ctx2 = vm.createContext(Object.assign({}, sandbox, { revealQ: [], hMem: null, hatchTip: null }));
+  vm.runInContext(slice + '\nthis.notifyHatch = notifyHatch;', ctx2); ctx2.trayAdd = function (ids) { ctx2.__tray = (ctx2.__tray || []).concat([ids]); };
+  const P = n => ({ pets: page0.concat(boxEggs.slice(0, n)), tip: tip + 6, _pages: { got: n < 9 ? 1 : 3, pages: 3 }, _full: n < 9 ? 0 : 1 });
+  ctx2.notifyHatch(P(2)); ctx2.notifyHatch(P(5));
+  ok(!ctx2.__tray && ctx2.revealQ.length === 0, 'pages still arriving: no tray, no review yet');
+  ctx2.notifyHatch(P(9));
+  ok(ctx2.__tray && ctx2.__tray.length === 1 && ctx2.__tray[0].length === 9 && ctx2.revealQ.length === 0, 'the settled list gives ONE tray batch of all 9 eggs and no automatic review');
+}
 
 delete store[sandbox.HKEY];
 sandbox.hMem = null;

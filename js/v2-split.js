@@ -844,6 +844,23 @@
       }, function () { if (t) clearTimeout(t); return null; });
     });
   }
+  /* Spam City shelves (Nov 24 2026, Jake: 'spam city games takes a long time reading the chain'): the live /xp/v1/shop answers only
+   * while the server's check service sits at the newest block, and that service is stopped for every world build and reloads after
+   * every block, so many visits fell back to a full replay in the browser (a minute or more). Every published world now carries the
+   * same order book pack (view/p/99901.json). It is used only when it is from this page's rules and not older than STALE blocks;
+   * js/v2-sales.js shows it at once and reads the newest blocks before any wallet window. */
+  function publishedShop() {
+    var folder = viewFolder;
+    if (off() || !folder || q('servershop') === '0' || typeof fetch !== 'function') return Promise.resolve(null);
+    var S = window.V2Mock && V2Mock.state && V2Mock.state(), need = Math.max(healthTipN || 0, (S && S.tip) || 0, (S && S.chainTip) || 0);
+    return myRsig().then(function (rsig) {
+      if (!rsig) return null;
+      return getJson(folder + 'view/p/99901.json', 10000, false).then(function (j) {
+        if (!j || j.ok !== true || j.rsig !== rsig || !(j.tip > 0) || (need && need - j.tip > STALE) || !Array.isArray(j.listings) || !Array.isArray(j.pets) || !Array.isArray(j.orders)) return null;
+        return { ok: true, tip: j.tip, listings: j.listings, pets: j.pets, deeds: j.deeds || {}, orders: j.orders, n: j.n, open: j.open, published: true };
+      }, function () { return null; });
+    });
+  }
   function checkPlans(plans) {
     return serverCheck(plans).then(function (out) { return out || deviceCheck(plans); });
   }
@@ -1248,5 +1265,5 @@
     zombieP = getJson(folder + 'view/zombies.json').then(function (z) { return applyZombies(z); }, function () { return scanZombies(folder, onProg); });
     return zombieP;
   }
-  window.V2Split = { loadLead: loadLead, remergeLead: remergeLead, STALE: STALE, SCREEN_PAGES: SCREEN_PAGES, AUTO_CAP: AUTO_CAP, prepare: prepare, recheck: recheck, install: install, assemble: assemble, startVerify: startVerify, checkPlans: checkPlans, serverCheck: serverCheck, serverShop: serverShop, serverStat: function () { return serverStat; }, rest: rest, more: more, loadBoard: loadBoard, loadZombies: loadZombies, dress: dress, boardBytes: function () { return { bytes: boardBytes, files: boardFiles }; }, ensureDead: ensureDead, ensurePet: ensurePet, ownerShard: function (addr, cb) { sha2(addr).then(function (h) { cb(h.slice(0, 2)); }); }, petSig: petSig, healthTip: function () { return healthTipN; }, noteHealth: noteHealth, pingHealth: pingHealth, ownersReady: ownersReady, ownersKnown: ownersKnown, adoptOwners: adoptOwners, openOwnerPets: openOwnerPets, openList: openList, notePets: notePets, ownerTable: ownerTable, pageWallet: pageWallet, resolveWorld: resolveWorld, newestPages: newestPages, rowsToLog: rowsToLog, loadNewest: loadNewest };
+  window.V2Split = { loadLead: loadLead, remergeLead: remergeLead, STALE: STALE, SCREEN_PAGES: SCREEN_PAGES, AUTO_CAP: AUTO_CAP, prepare: prepare, recheck: recheck, install: install, assemble: assemble, startVerify: startVerify, checkPlans: checkPlans, serverCheck: serverCheck, serverShop: serverShop, publishedShop: publishedShop, serverStat: function () { return serverStat; }, rest: rest, more: more, loadBoard: loadBoard, loadZombies: loadZombies, dress: dress, boardBytes: function () { return { bytes: boardBytes, files: boardFiles }; }, ensureDead: ensureDead, ensurePet: ensurePet, ownerShard: function (addr, cb) { sha2(addr).then(function (h) { cb(h.slice(0, 2)); }); }, petSig: petSig, healthTip: function () { return healthTipN; }, noteHealth: noteHealth, pingHealth: pingHealth, ownersReady: ownersReady, ownersKnown: ownersKnown, adoptOwners: adoptOwners, openOwnerPets: openOwnerPets, openList: openList, notePets: notePets, ownerTable: ownerTable, pageWallet: pageWallet, resolveWorld: resolveWorld, newestPages: newestPages, rowsToLog: rowsToLog, loadNewest: loadNewest };
 })();

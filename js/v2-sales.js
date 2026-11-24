@@ -32,6 +32,10 @@
     var lc = xcGet(url); if (lc) { mem[url] = { at: Date.now(), j: lc }; return Promise.resolve(lc); }
     if (!inflight[url]) inflight[url] = xcSlot(function () { return getJ0(url, 0); }).then(function (j) { delete inflight[url]; xcPut(url, j); return j; }, function (e) { delete inflight[url]; throw e; });
     return inflight[url]; }
+  /* Nov 24 2026: mem kept every answer forever (TTL was only checked on read). A page lives minutes, but the game server keeps this
+   * file loaded for days and ran out of heap; answers older than TTL are now dropped every 100 writes. Same reads, same results. */
+  var memWrites = 0;
+  function memPut(url, j) { mem[url] = { at: Date.now(), j: j }; if (++memWrites % 100) return; var t = Date.now(); Object.keys(mem).forEach(function (k) { if (t - mem[k].at >= TTL) delete mem[k]; }); }
   /* feed-429-fix: the hourly feed (tools/api-feed.js sets XCPETS_PATIENT) keeps the old patient 429 backoff (6 tries, honor Retry-After up to 60 s); pages keep the short 2-retry cap */
   var PATIENT = typeof window !== 'undefined' && !!window.XCPETS_PATIENT;
   /* node.xcpets.fun answers about 80 GETs / 10 s per IP. Stay under that. A 429 retry is the same request and is not paced again. The feed has its own limiter. */
@@ -47,7 +51,7 @@
         var ms = isFinite(s) && ra !== null ? s * 1000 : ra ? Math.max(0, Date.parse(ra) - Date.now()) : 2000 * (n + 1); if (url.indexOf(API) === 0) xcUntil = Math.max(xcUntil, Date.now() + Math.min(ms || 1000, 4000)); return wait(Math.min(ms || 1000 * (n + 1), PATIENT ? 60e3 : 4000)).then(function () { return getJ0(url, n + 1); }); }
       if (r.status === 404) { var e = new Error('DEX API 404'); e.status = 404; throw e; }
       if (!r.ok) return r.text().then(function (t) { return t; }, function () { return ''; }).then(function (t) { var m = ''; try { var jj = JSON.parse(t); m = jj && (jj.error || jj.message) || ''; if (typeof m !== 'string') m = JSON.stringify(m); } catch (x) { } /* api-hardening: say what the node said (400 = bad request, the same on every node) */
-        var e4 = new Error('DEX API ' + r.status + (r.status === 400 ? ' (request rejected)' : '') + (m ? ': ' + String(m).replace(/\s+/g, ' ').slice(0, 200) : '')); e4.http = r.status; throw e4; /* .http, not .status: callers treat .status as 404-only */ }); return r.json(); }).then(function (j) { mem[url] = { at: Date.now(), j: j }; return j; }); }
+        var e4 = new Error('DEX API ' + r.status + (r.status === 400 ? ' (request rejected)' : '') + (m ? ': ' + String(m).replace(/\s+/g, ' ').slice(0, 200) : '')); e4.http = r.status; throw e4; /* .http, not .status: callers treat .status as 404-only */ }); return r.json(); }).then(function (j) { memPut(url, j); return j; }); }
   /* Read-only GETs try the HTTPS cache first (CFG.read: node.xcpets.fun/v2, then the two public Core nodes).
    * Composing and signing stay on composeList and never use this list. One node per paginated list (cursors belong to one node).
    * api.xcp.fun is not a read. Same JSON from every node, so the replay input is unchanged. */
@@ -387,8 +391,32 @@
     if (S.dex && S.rows && S.rows.length && W && !W._view) { BOOK = S.dex.orders || []; return Promise.resolve(); }
     /* spam-city-fast (Nov 23 2026): the game server sends the order book from its checked world (about a second); the full replay in
      * this browser (a minute or more on a phone) is the backup. */
+    /* spam-city-shelves (Nov 24 2026, Jake: 'spam city games takes a long time reading the chain'): the live answer is down during every
+     * world build and after every block while the server reloads, so many visits waited for the full replay. Now: the live answer if it
+     * comes within 2.5 s, else the order book published with the world (instant, a few blocks older), and the live answer replaces it
+     * when it lands. While the shelves are the published copy, every wallet step reads the newest blocks first (fresh()). */
+    var SP = window.V2Split, live = SP && SP.serverShop ? SP.serverShop() : Promise.resolve(null), pub = SP && SP.publishedShop ? SP.publishedShop() : Promise.resolve(null);
+    var quick = Promise.race([live, new Promise(function (r) { setTimeout(function () { r(null); }, 2500); })]);
+    return quick.then(function (pack) { if (pack) { useBook(pack, 'server'); return; }
+      return pub.then(function (pp) { if (pp) { useBook(pp, 'published'); live.then(function (lp) { if (lp && SRC === 'published') { useBook(lp, 'server'); redraw(); } else liveLater(); }); return; }
+        return live.then(function (lp) { if (lp) { useBook(lp, 'server'); return; } return deviceBook(); }); }); }); }
+  var SRC = '', upP = null, liveTry = 0;
+  function useBook(pack, src) { SRC = src; window.__xcpShopSrc = src; applyBook(pack); }
+  function deviceBook() { window.__xcpShopSrc = 'device'; return bookInputs().then(replayBook).then(function (m) { useBook(m, 'device'); }); }
+  function redraw() { if (!window.V2Sales.scene.ready) return; try { render(); } catch (e) { } try { document.dispatchEvent(new CustomEvent('v2sales:fresh')); } catch (x) { } }
+  /* published shelves: ask the server again every 30 s (10 minutes at most) for the newest book */
+  function liveLater() { if (SRC !== 'published' || liveTry >= 20 || !(window.V2Split && V2Split.serverShop)) return; liveTry++;
+    setTimeout(function () { if (SRC !== 'published' || upP || document.hidden) { liveLater(); return; }
+      V2Split.serverShop().then(function (lp) { if (lp && SRC === 'published') { useBook(lp, 'server'); redraw(); } else liveLater(); }); }, 30000); }
+  /* the newest book, before a wallet step: the server's live answer, else the full read on this device (the old path) */
+  function upgrade() { if (SRC !== 'published') return Promise.resolve(); if (upP) return upP;
     var sv = window.V2Split && V2Split.serverShop ? V2Split.serverShop() : Promise.resolve(null);
-    return sv.then(function (pack) { if (pack) { window.__xcpShopSrc = 'server'; applyBook(pack); return; } window.__xcpShopSrc = 'device'; return bookInputs().then(replayBook).then(applyBook); }); }
+    upP = sv.then(function (lp) { if (lp) { useBook(lp, 'server'); return; } return deviceBook(); }).then(function () { upP = null; redraw(); }, function (e) { upP = null; throw e; });
+    return upP; }
+  function fresh(fn, args) { if (PREVIEW || SRC !== 'published') return fn.apply(null, args || []);
+    modal('<h3>🛒 One moment</h3><p class="sh-hint" role="status">Reading the newest blocks so this uses the latest listings. The window opens by itself.</p>');
+    upgrade().then(function () { close(); fn.apply(null, args || []); }, function (e) { modal('<h3>🛒 Not yet</h3><p class="sh-warn">Could not read the newest blocks: ' + esc(e && e.message || e) + '. Nothing was sent.</p><button class="sh-btn" data-close>Close</button>'); }); }
+  function shelfNote() { return SRC === 'published' ? '<p class="sh-hint" id="shShelf">🕒 Shelves from block ' + blk(W.tip || TIP) + '. Newer blocks are on their way; buying, selling and gifts read them first.</p>' : ''; }
   function on() { return PREVIEW || V.salesOn(TIP + 1); }
   function blk(n) { return Number(n).toLocaleString('en-US'); }
   function short(A) { A = String(A || ''); return A.length > 12 ? A.slice(0, 6) + '…' + A.slice(-4) : A; }
@@ -468,8 +496,8 @@
      * at the top (js/v2-places.js) are the only row. syncTop() gives them what the old row had: the current tab marked, the same count badges
      * (Buy = open listings, Sell = your open listings, Trade = trades for you) and in-place switching (no reload; see the click handler). */
     syncTop({ buy: all.length, sell: nSell, trade: nTrade, gift: null });
-    if (TAB === 'trade' || TAB === 'gift') { root.innerHTML = openBanner(b) + (TAB === 'trade' ? tradeHtml(b) : giftHtml(b)); paint(); return; }
-    root.innerHTML = openBanner(b) + (TAB === 'sell' ? '<div class="sh-bar"><button class="sh-btn" id="shSell">List my pet</button><span class="sh-hint">Every pet sells with its own 🎟 pet token. Your token travels to the buyer with the pet.</span></div>' : /* shop-dedupe-1103: the 'N of M pets in the binder · every pet sells with its own pet token' line is dropped: the Filters summary right
+    if (TAB === 'trade' || TAB === 'gift') { root.innerHTML = shelfNote() + openBanner(b) + (TAB === 'trade' ? tradeHtml(b) : giftHtml(b)); paint(); return; }
+    root.innerHTML = shelfNote() + openBanner(b) + (TAB === 'sell' ? '<div class="sh-bar"><button class="sh-btn" id="shSell">List my pet</button><span class="sh-hint">Every pet sells with its own 🎟 pet token. Your token travels to the buyer with the pet.</span></div>' : /* shop-dedupe-1103: the 'N of M pets in the binder · every pet sells with its own pet token' line is dropped: the Filters summary right
        * under it already says 'showing N of M', and the token sentence is in the Sell bar and the page footer. */
       '' +
       '<div id="shBinF">' + PF.html(fB, BINDER_F, { species: PF.species(all.map(function (x) { return x.p; })), count: others.length, total: all.length }) + '</div>' +
@@ -515,7 +543,8 @@
     var id, p;
     for (id in live.byId) { p = live.byId[id]; if (!p || W.byId[p.id]) continue; W.byId[p.id] = p; W.pets.push(p); }
   }
-  function sellPick() { freshW();
+  function sellPick() { fresh(sellPickNow); }
+  function sellPickNow() { freshW();
     absorbViewPets();
     var live = (window.V2Mock && V2Mock.world && V2Mock.world()) || W;
     var wait = window.xcpLivingFill && (!(window.xcpRestDone && xcpRestDone(live)) || (window.xcpDiscardMiss && xcpDiscardMiss(ME).length));
@@ -526,7 +555,7 @@
         absorbViewPets();
         sellPick.skip = 1;
         var m = $('shModal');
-        if (m && m.style.display !== 'none' && (m.querySelector('[data-petload]') || m.querySelector('.sh-pick'))) sellPick();
+        if (m && m.style.display !== 'none' && (m.querySelector('[data-petload]') || m.querySelector('.sh-pick'))) sellPickNow();
         sellPick.skip = 0;
       }, function () { sellPick.skip = 0; });
       if (!nFree) return;
@@ -595,7 +624,8 @@
   /* ---- Token Press (owner Oct 24 2026, 5:30 AM CT): make + tie a pet token, no listing. Step 1 = the free token (only the Bitcoin fee),
    * wait 1 block, Step 2 = the 1-dander pet:deed tie burn. Reuses freeDeed / V.mintPlan / V.deedPlan / tokenAt / pend (same pending key as Sell). */
   function pressable(p) { return p.owner === ME && !p.dead && !p.released && !p.community && V.sellStep(W, p, ME) !== 'list' && !V.deedWhy(W, { petId: p.id }, ME, TIP + 1) && !(V.giveLocks && V.giveLocks(W, p, TIP + 1)); }
-  function pressPick() { freshW(); var free = W.pets.filter(pressable), fS = PF.load('press'), mine = V.petFilter(W, free.map(function (p) { return { p: p }; }), fS, TIP + 1).map(function (x) { return x.p; });
+  function pressPick() { fresh(pressPickNow); }
+  function pressPickNow() { freshW(); var free = W.pets.filter(pressable), fS = PF.load('press'), mine = V.petFilter(W, free.map(function (p) { return { p: p }; }), fS, TIP + 1).map(function (x) { return x.p; });
     var tied = W.pets.filter(function (p) { return p.owner === ME && !p.dead && !p.released && !p.community && V.sellStep(W, p, ME) === 'list'; }).length;
     modal('<h3>🏭 Token Press</h3><p class="sh-hint">Pick a pet without a token. The press makes its 🎟 pet token and ties it to the pet: then the pet can be gifted or listed in one wallet window. ' + (tied ? 'You already have ' + tied + ' tokenized pet' + (tied === 1 ? '' : 's') + '.' : '') + ' Pets in a fight, a breed request, a Rug Me ad, a listing or a pending gift/swap are locked and are not shown.</p>' +
       PF.html(fS, PICK_F, { species: PF.species(free), count: mine.length, total: free.length }) + '<div class="sh-pick">' +
@@ -630,17 +660,20 @@
         if (t.holder && t.holder !== ME) { $('shMsg').textContent = 'The token is held by another address. Make a new one.'; pend(p.id, null); return; } go(); }); }; }
   function pressDone(p, A) { modal('<h3>🏭 Pressed!</h3><canvas class="tp-anim tp-big" id="tpAnim" width="160" height="112" aria-label="The Token Press pressing #' + p.id + ' into a token card"></canvas><p class="sh-ok">The tie burn for #' + p.id + ' was sent. Token ' + esc(A) + ' is tied once the burn confirms.</p><p class="sh-hint">Then gift it at the 🎁 Gift Wrap counter or list it at the register in one wallet window.</p><button class="sh-btn" data-close>Done</button>');
     if (window.V2PressAnim) V2PressAnim.play($('tpAnim'), p, { asset: A }); }
-  function buy(n) { var S = W.listings.filter(function (x) { return x.n === n; })[0], p = W.byId[S.petId], why = V.buyGuard(W, S, BOOK, TIP + 1, ME), gear = (p.gear || []).length;
+  function buy(n) { fresh(buyNow, [n]); }
+  function buyNow(n) { var S = W.listings.filter(function (x) { return x.n === n; })[0], p = S && W.byId[S.petId]; if (!S || !p) { toast('That listing just ended.'); return; } var why = V.buyGuard(W, S, BOOK, TIP + 1, ME), gear = (p.gear || []).length;
     modal('<h3>Buy #' + p.id + '?</h3><div class="sh-sellrow">' + card(p, S) + '<div class="sh-form">' + omLine(p) + '<p>You pay exactly <b>' + esc(V.saleAmountText(S.asset, S.price)) + '</b> and get #' + p.id + (gear ? ' with its ' + gear + ' worn and bag gear' : ' and any worn and bag gear') + ', plus its 🎟 pet token ' + esc(short(S.give)) + '.</p>' +
       '<p class="sh-hint">One wallet window: a DEX order that gives this amount and gets the token. It expires after 1 block. The pet moves to you when the match completes on chain. Keep the token to relist the pet in one window.</p>' +
       (why ? '<p class="sh-warn">' + esc(why) + '</p>' : '<p class="sh-ok">Checked against this pet\'s own order book: the listing is open.</p>') +
       '<button class="sh-btn" id="shBuyGo"' + (why ? ' disabled' : '') + '>Open wallet window</button> <button class="sh-btn sh-ghost" data-close>Back</button></div></div>');
     if (!why) $('shBuyGo').onclick = function () { walletDex(V.buyPlan(S), close); }; }
-  function cancel(n) { var S = W.listings.filter(function (x) { return x.n === n; })[0];
+  function cancel(n) { fresh(cancelNow, [n]); }
+  function cancelNow(n) { var S = W.listings.filter(function (x) { return x.n === n; })[0]; if (!S) { toast('That listing just ended.'); return; }
     modal('<h3>Cancel listing ' + S.n + '?</h3><p>One wallet window: a Counterparty cancel of the order ' + esc(String(S.order).slice(0, 8)) + '….</p><p class="sh-hint">Once the cancel confirms nobody can buy #' + S.petId + '. It stays locked until block ' + blk(S.expire) + ', or press “Unlock” after the cancel for a 1-dander burn that frees it ' + (V.SALE_UNSELL_SETTLE || 6) + ' blocks later.</p>' +
       '<button class="sh-btn" id="shCanGo">Open wallet window</button> <button class="sh-btn sh-ghost" data-close>Keep it listed</button>');
     $('shCanGo').onclick = function () { walletDex(V.cancelPlan(S), close); }; }
-  function unsell(n) { var S = W.listings.filter(function (x) { return x.n === n; })[0], plan = V.unsellPlan(S);
+  function unsell(n) { fresh(unsellNow, [n]); }
+  function unsellNow(n) { var S = W.listings.filter(function (x) { return x.n === n; })[0]; if (!S) { toast('That listing just ended.'); return; } var plan = V.unsellPlan(S);
     modal('<h3>Unlock #' + S.petId + ' early?</h3><p>Burn 1 dander with the tag<br><code>' + esc(plan.tag) + '</code></p><p class="sh-hint">The listing ends ' + (V.SALE_UNSELL_SETTLE || 6) + ' blocks after the burn confirms. You keep the pet and its token.</p><button class="sh-btn" id="shUnGo">Open wallet window</button> <button class="sh-btn sh-ghost" data-close>Back</button>');
     $('shUnGo').onclick = function () { walletBurn(plan, close); }; }
 
@@ -658,8 +691,8 @@
     if (ts && window.V2Sales.scene.ready && !e.metaKey && !e.ctrlKey && !e.shiftKey && e.button === 0) {
       if (/^(buy|sell|trade|gift)$/.test(tk)) { e.preventDefault(); window.V2Sales.scene.tab(tk); return; }
       if (tk === 'press' && window.V2ShopScene) { e.preventDefault(); try { history.replaceState(null, '', '#press'); } catch (x) { } window.V2ShopScene.act('press'); return; } }
-    if (t.id === 'shGiftMany' && window.V2Gift) { window.V2Gift.picker(); return; } if (t.closest('[data-gift]') && window.V2Gift) { window.V2Gift.gift([Number(t.closest('[data-gift]').getAttribute('data-gift'))]); return; }
-    if (t.id === 'shSwapGo' && window.V2Gift) { var sid = Number($('shSwapId').value), sp = W.byId[sid]; if (!sp || sp.owner === ME || sp.dead || sp.released || sp.community) { toast('Enter the # of a living pet someone else owns.'); return; } window.V2Gift.swap(sid); return; }
+    if (t.id === 'shGiftMany' && window.V2Gift) { fresh(function () { window.V2Gift.picker(); }); return; } if (t.closest('[data-gift]') && window.V2Gift) { var gid = Number(t.closest('[data-gift]').getAttribute('data-gift')); fresh(function () { window.V2Gift.gift([gid]); }); return; }
+    if (t.id === 'shSwapGo' && window.V2Gift) { var sid = Number($('shSwapId').value), sp = W.byId[sid]; if (!sp || sp.owner === ME || sp.dead || sp.released || sp.community) { toast('Enter the # of a living pet someone else owns.'); return; } fresh(function () { window.V2Gift.swap(sid); }); return; }
     if (t.closest('[data-swapgo]')) { window.V2SwapGo(t.closest('[data-swapgo]').getAttribute('data-swapgo')); return; }
     if (t.closest('[data-tpopen]')) { close(); pressPick(); return; }
     if (t.id === 'shSell') sellPick(); else if (t.id === 'shPrev') { PAGE--; render(); } else if (t.id === 'shNext') { PAGE++; render(); }
@@ -669,7 +702,7 @@
   window.V2Sales.scene = { ready: false, data: function () { var b = TIP + 1, open = on() && W ? V.openListings(W, b) : [];
       return { W: W, ME: ME, TIP: TIP, on: on(), preview: PREVIEW, listings: open.map(function (S) { var own = !!ME && S.seller === ME; return { p: W.byId[S.petId], S: S, mine: own, buy: !own && !V.buyGuard(W, S, BOOK, b, ME) }; }).filter(function (x) { return x.p; }), /* listings-fix (owner 9:42 PM CT Oct 30): the seller's own open listings show too, marked as theirs */
         mine: W ? W.pets.filter(function (p) { return ME && p.owner === ME && !p.dead && !p.released && !p.community; }) : [], sellable: function (p) { return sellable(p); } }; },
-    card: card, paint: function () { paint(); }, buy: function (n) { buy(n); }, cancel: function (n) { cancel(n); }, sellPick: function () { sellPick(); }, pressPick: function () { pressPick(); }, press: function (id) { var p = W && W.byId[id]; if (p) viaChain(p, function () { press(p); }); }, pressable: function (p) { return pressable(p); }, sell: function (id) { var p = W && W.byId[id]; if (p) viaChain(p, function () { sellPrice(p, 'XCPETS', 100); }); },
+    card: card, paint: function () { paint(); }, buy: function (n) { buy(n); }, cancel: function (n) { cancel(n); }, sellPick: function () { sellPick(); }, pressPick: function () { pressPick(); }, press: function (id) { fresh(function () { var p = W && W.byId[id]; if (p) viaChain(p, function () { press(p); }); }); }, pressable: function (p) { return pressable(p); }, sell: function (id) { fresh(function () { var p = W && W.byId[id]; if (p) viaChain(p, function () { sellPrice(p, 'XCPETS', 100); }); }); },
     tab: function (t) { TAB = t; try { history.replaceState(null, '', '#' + t); } catch (x) { } render(); var r = $('shop'); if (r && r.scrollIntoView) r.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, toast: toast, lines: LINES };
   function start() { if (!PREVIEW && window.xcpLivingRest) window.xcpLivingRest(); var root = $('shop'); if (root && !PREVIEW) root.innerHTML = '<p class="sh-hint">Reading the order book…</p>';
     load().then(function () { render(); luke(); setInterval(luke, 9000); window.V2Sales.scene.ready = true; try { document.dispatchEvent(new CustomEvent('v2sales:ready')); } catch (x) { } }, function (e) { if (root) root.innerHTML = '<p class="sh-warn">Could not read the order book: ' + esc(e.message || e) + '</p>'; }); }

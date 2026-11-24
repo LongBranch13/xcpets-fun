@@ -8,7 +8,7 @@ const per = /var PICK_PER = (\d+);/.exec(s);
 ok(per && +per[1] > 0 && +per[1] <= 60, 'PICK_PER set and <= 60');
 ok(/function pickPages\(/.test(s) && /list\.slice\(n, n \+ PICK_PER\)/.test(s), 'pickPages slices one page at a time');
 for (const f of ['pressPick', 'sellPick']) {
-  const b = body(f);
+  const b = body(f + 'Now') || body(f); /* spam-city-shelves: pressPick/sellPick wait for the newest book, then run pressPickNow/sellPickNow */
   ok(b.length > 0, f + ' found');
   ok(/pickPages\(mine,/.test(b), f + ' uses pickPages');
   ok(!/mine\.map\(/.test(b), f + ' does not render every pet at once');

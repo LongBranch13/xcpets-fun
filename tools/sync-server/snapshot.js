@@ -162,6 +162,10 @@ async function buildSnapshot(opts) {
       const split = require('./split');
       manifest.view = await split.write(path.join(opts.outDir, 'view'), world, { tip: opts.tip, rsig: rsig, ctx: ctx });
     } catch (e) { console.error('split view: ' + String(e && e.message || e).split('\n')[0]); }
+    try {
+      const shop = require('./split').writeShop(path.join(opts.outDir, 'view'), world, { tip: opts.tip, rsig: rsig, ctx: ctx, orders: (dexIn && dexIn.orders) || [] });
+      if (manifest.view) manifest.view.shop = shop.file;
+    } catch (e) { console.error('shop view: ' + String(e && e.message || e).split('\n')[0]); }
   }
   if (opts.outDir) {
     fs.writeFileSync(path.join(opts.outDir, 'manifest.json'), JSON.stringify(manifest));

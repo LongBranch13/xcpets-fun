@@ -1653,7 +1653,7 @@
   function kekPetFrames(art, stage, ids) { var G = wizGearOf(ids); if ((ids || []).indexOf('kek-card') >= 0) G.hand = KekSprite.KEK_CARD; return KekSprite.frames(stage || 0, (art && art.bgColor) || '#2a3a2e', G, {}); }
   /** Card flavour (owner Q4): shown as a tap-to-see line on his card only, no game effect. */
   var KEK_CARD = 'Card: ⚔ 25 · 🛡 38 · ❤ 42 · Element: Eye · Rareness: ∞ · "All Pepes worship Lord Kek as the most powerful Pepe in existence. ~Godhead~" (flavour only)';
-  function communityFrames(w) { var c = w && w.community; if (wrOn(w)) return RabbitSprite.frames(c.rabbitStage || 0, '#2a3a2e', wrGear(w), { community: true }); /* THE WHITE RABBIT (PREVIEW, inert) */ if (hpOn(w)) return HomerSprite.frames(c.homerStage || 0, '#2a3a2e', hpGear(w), { community: true }); if (ftOn(w)) return FuntrumpSprite.frames(c.funtrumpStage || 0, '#1f2a44', ftGear(w), { community: true }); if (kekOn(w)) return KekSprite.frames(c.kekStage || 0, '#2a3a2e', kekGear(w), { community: true }); if (c && c.returned && window.WizardSprite) return WizardSprite.frames(c.wizardStage || 0, '#2a3a2e', c.wizardStage > 0 ? wizardGear(w) : { head: WizardSprite.WIZARD_HAT }, { community: true }); /* purple = community-pet-only palette */
+  function communityFrames(w) { var c = w && w.community; if (wrOn(w)) return RabbitSprite.frames(c.rabbitStage || 0, '#2a3a2e', {}, { community: true }); /* raise-tip (Nov 24 2026): community gear rolls retired from the page, he is drawn bare (wrGear kept for reference) */ /* THE WHITE RABBIT (PREVIEW, inert) */ if (hpOn(w)) return HomerSprite.frames(c.homerStage || 0, '#2a3a2e', hpGear(w), { community: true }); if (ftOn(w)) return FuntrumpSprite.frames(c.funtrumpStage || 0, '#1f2a44', ftGear(w), { community: true }); if (kekOn(w)) return KekSprite.frames(c.kekStage || 0, '#2a3a2e', kekGear(w), { community: true }); if (c && c.returned && window.WizardSprite) return WizardSprite.frames(c.wizardStage || 0, '#2a3a2e', c.wizardStage > 0 ? wizardGear(w) : { head: WizardSprite.WIZARD_HAT }, { community: true }); /* purple = community-pet-only palette */
     return nakaFrames(w); }
   function nakaFrames(w) { var NG = window.GenPetCore || PetCore, live = window.PetCore; if (V2Gear.reworkNakamoto) V2Gear.reworkNakamoto(NG);
     var nk = Object.assign(NG.characterPet('nakamoto', { tier: 'legendary' }), { band: 'none', crown: 'none', armor: 'none', cape: 'none', weapon: 'none', background: 'solid', bgColor: '#2a3a2e', pattern: 'none' });
@@ -1671,7 +1671,32 @@
    * communityTipHtml(w, me): '<pet> wears' + each worn piece as slot: name + rarity pill, then 'Your recent community rolls' (last 3 by this wallet,
    * newest first) with where each one is now. */
   function ctPill(t, nm, leg) { return '<span class="pill tier tier-' + TID[t] + '">' + esc(nm) + (leg ? ' ★' : '') + '</span>'; }
-  function communityTipHtml(w, me) { var c = (w && w.community) || {}, nm = c.petName || 'The community pet', it = communityTipItems(w), worn = {}, vis;
+  /* raise-tip (Jake Nov 24 2026: "this pop up is odd, he doesnt look like he has any gear ... do something cooler for players to engage with it").
+   * DISPLAY ONLY, no rule touched. Community gear rolls are retired from the page: the current community pet is drawn bare and the tooltip
+   * becomes a 'raise him together' card: stage + bar to Mythic, what Mythic unlocks, YOUR share of his care (every burn feeds him) and the top raisers.
+   * Shares come from the rules' own per-wallet care map (w[<pet key>].by = what each wallet burned since the last pet's Mythic); the fast world
+   * reads the same map from summary.community.raisers (tools/sync-server/split.js). No map yet => the share lines are left out. */
+  var RAISE_PETS = { rabbit: { emoji: '🐇', eggs: 'White Rabbit eggs start hatching (1 in 777)' }, homer: { emoji: '🍩', eggs: 'Homer Pepe eggs start hatching (1 in 777)' }, funtrump: { emoji: '🍔' }, kek: { emoji: '🐸' } };
+  function raisersOf(w) { var c = (w && w.community) || {}, k = c.current, R = w && k && w[k], out;
+    if (R && R.by) out = Object.keys(R.by).map(function (a) { return { address: a, amount: R.by[a] }; });
+    else if (c.raisers && c.raisers.pet === k && c.raisers.list) out = c.raisers.list.map(function (x) { return { address: x[0], amount: x[1] }; });
+    if (!out) return null; out = out.filter(function (x) { return x.amount > 0; }); out.sort(function (a, b) { return b.amount - a.amount || (a.address < b.address ? -1 : 1); }); return out; }
+  function shortAddr(a) { a = String(a || ''); return a.length > 12 ? a.slice(0, 6) + '…' + a.slice(-4) : a; }
+  function bigN(n) { n = Number(n) || 0; return n >= 1e6 ? (n / 1e6).toFixed(n >= 1e7 ? 1 : 2).replace(/\.?0+$/, '') + 'M' : n >= 1e4 ? Math.round(n / 1e3) + 'K' : Math.floor(n).toLocaleString('en-US'); }
+  function raiseTipHtml(w, me) { var c = (w && w.community) || {}, P = RAISE_PETS[c.current], V2 = window.V2Rules || V; if (!P || !V2.COMMUNITY_THRESHOLDS) return null;
+    var T = V2.COMMUNITY_THRESHOLDS, N = V2.STAGE_NAMES || [], st = c.petStage || 0, fed = Number(c[c.current + 'Fed']) || 0, goal = T[5], left = Math.max(0, Math.ceil(goal - fed - 1e-6)), pct = Math.max(0, Math.min(100, 100 * fed / goal));
+    var h = '<div class="rt-top"><b>' + P.emoji + ' ' + esc(c.petName || 'The community pet') + '</b> <span class="pill">' + esc(N[st] || '') + '</span></div>';
+    h += '<div class="rt-bar" aria-hidden="true"><i style="width:' + pct.toFixed(1) + '%"></i></div>';
+    h += '<div class="small">' + (left ? fmtN(left) + ' XCPETS to <b>Mythic</b> (' + Math.floor(pct) + '% there)' : '<b>Mythic reached!</b>') + '</div>';
+    h += '<div class="small muted">Every XCPETS burn feeds him: hatches, meals, fights, breeding, all of it.</div>';
+    if (left) h += '<div class="ctip-h small">🌕 <b>At Mythic:</b> every burn costs half (the next halving)' + (P.eggs ? ' and ' + esc(P.eggs) : '') + '.</div>';
+    var rs = raisersOf(w);
+    if (rs) { var i = -1, mine = 0; rs.forEach(function (x, n) { if (me && x.address === me) { i = n; mine = x.amount; } });
+      h += '<div class="ctip-h small">🫵 ' + (!me ? 'Connect a wallet to see your share.' : i >= 0 ? 'You raised <b>' + bigN(mine) + '</b> (' + (100 * mine / Math.max(fed, 1e-9)).toFixed(mine / fed >= 0.1 ? 0 : 1) + '%) · <b>#' + (i + 1) + '</b> of ' + rs.length + ' raisers' : 'You have not fed him yet. Any burn counts!') + '</div>';
+      if (rs.length) h += '<div class="small rt-lb"><b>🏆 Top raisers</b>' + rs.slice(0, 3).map(function (x, n) { return '<div' + (me && x.address === me ? ' class="rt-me"' : '') + '>' + ['🥇', '🥈', '🥉'][n] + ' ' + esc(shortAddr(x.address)) + ' · ' + bigN(x.amount) + '</div>'; }).join('') + '</div>'; }
+    return h; }
+  function communityTipHtml(w, me) { var rt = raiseTipHtml(w, me); if (rt) return rt; /* raise-tip: the current community pet (gear rolls retired) */
+    var c = (w && w.community) || {}, nm = c.petName || 'The community pet', it = communityTipItems(w), worn = {}, vis;
     vis = {}; it.forEach(function (e) { if (e.tx) worn[e.tx] = 1; vis[e.slot] = e; });
     var h = '<div><b>' + esc(nm) + (it.length ? ' wears' : ': no gear yet') + '</b></div>' + it.map(function (e) { return '<div>' + esc(e.slotName) + ': ' + esc(e.label) + ' ' + ctPill(e.t, e.tierName, e.legendary) + '</div>'; }).join('');
     var mine = me ? (c.gearLog || []).filter(function (g) { return g.by === me; }).slice(-3).reverse() : [];
