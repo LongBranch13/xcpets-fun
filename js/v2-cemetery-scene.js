@@ -406,6 +406,12 @@
       mort: function () { var h = $('cemHow'); if (h) { h.open = true; into(h); } } };
     doorBar.addEventListener('click', function (e) { var t = e.target.closest('[data-door]'); if (t) setDoor(t.getAttribute('data-door'), true); });
     function zAll() { return w.pets.filter(function (p) { return V.isZ(p); }); }
+    /* Gods (Nov 24 2026, fastcheck): a fast page holds only some pets, so counting Gods from w.pets showed 0, 2 or 6 of 19. The server's summary
+     * lists every living God (w._gods); a God the page has loaded (or one newer than the summary) comes from the page's own pets. */
+    function gods() { var seen = {}, out = [];
+      w.pets.forEach(function (p) { if (p.resurrected && !p.dead) { seen[p.id] = 1; out.push(p); } });
+      (w._gods || []).forEach(function (g) { var p = w.byId && w.byId[g.id]; if (seen[g.id] || (p && (p.dead || !p.resurrected))) return; seen[g.id] = 1; out.push(p || { id: g.id, name: g.name, owner: g.owner, resurrected: { block: g.block } }); });
+      return out.sort(function (a, c) { return c.resurrected.block - a.resurrected.block || a.id - c.id; }); }
     function urgent(Z) { var best = null; Z.forEach(function (p) { var v = V.cemView(w, p, b), r = v.res || {}, min = r.min || CE.RES_MIN || 25, u = null;
         if (v.mfed) u = r.points >= min ? { k: 'res', n: 3, p: p, v: v } : null;
         else if (v.feral) u = { k: 'feral', n: 0, p: p, v: v, t: v.crumbleIn };
@@ -426,7 +432,7 @@
     function zombies() { var Z = zAll(), C = w.cem || {}, HB = C.huntedBy || {}, top = Object.keys(HB).sort(function (a, c) { return HB[c] - HB[a]; }).slice(0, 5);
       var vw = {}; Z.forEach(function (p) { vw[p.id] = V.cemView(w, p, b); });
       Z.sort(function (a, c) { var x = vw[a.id], y = vw[c.id]; return (y.feral - x.feral) || (x.crumbleIn - y.crumbleIn) || a.id - c.id; });
-      var H = w.pets.filter(function (p) { return p.resurrected && !p.dead; }).sort(function (a, c) { return c.resurrected.block - a.resurrected.block || a.id - c.id; });
+      var H = gods();
       var mine = ME ? Z.filter(function (p) { return p.owner === ME; }) : [], prey = Z.filter(function (p) { return p.owner !== ME && vw[p.id].feral && !vw[p.id].mfed; }), calm = Z.filter(function (p) { return p.owner !== ME && !(vw[p.id].feral && !vw[p.id].mfed); });
       var need = mine.filter(function (p) { return vw[p.id].feral || (!vw[p.id].mfed && vw[p.id].hungerLeft <= 144); }).length;
       if (!door) door = need ? 'mine' : 'raise';

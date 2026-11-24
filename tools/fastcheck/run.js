@@ -109,7 +109,7 @@ async function rankCheck(browser) {
       if (!(await tap('[data-board="' + id + '"]'))) { out.boards[key] = { rows: 0, empty: 'never painted (no tab)' }; continue; }
       await pg.waitForTimeout(300); await tap('[data-span="' + (wk ? 'week' : 'all') + '"]');
       const st = await settle(120000);
-      out.boards[key] = { rows: st ? st.rows : 0, empty: st ? st.empty : 'never painted' }; out.tip = st && st.tip;
+      out.boards[key] = { rows: st ? st.rows : 0, empty: st ? st.empty : 'never painted', top: st ? st.top : [] }; out.tip = st && st.tip;
       if (key === 'burn') out.burnTop = st ? st.top : [];
     }
   } catch (e) { out.error = String(e.message || e).slice(0, 300); }
@@ -133,6 +133,66 @@ function rankDiffs(rk) {
   (rk.burnTop || []).forEach((row, i) => { const v = Number(String(row[1]).replace(/[^0-9.]/g, ''));
     if (row[0] !== order[i]) add('Top burners order', '#' + (i + 1), row[0], order[i]);
     else if (Math.abs(v - all[order[i]]) > 0.01) add('Top burners total', '#' + (i + 1), v, Math.round(all[order[i]] * 100) / 100); });
+  /* Nov 24 2026 root-cause pass: Most pets, Rarest collection and Legendary hunters read the server's per-wallet totals (view/rank.json),
+   * another partial file. Their first five wallets and totals must match the full game's living pets (the page leaves #1765 out). */
+  const F = fullAt(tip).w, RW = [1, 3, 10, 33], tot = { pets: {}, rare: {}, leg: {} };
+  F.pets.forEach(p => { if (!p || p.dead || p.released || !p.owner || p.id === 1765) return; const o = p.owner;
+    tot.pets[o] = (tot.pets[o] || 0) + 1; tot.rare[o] = (tot.rare[o] || 0) + (RW[p.tier] || 0); if (p.tier === 3) tot.leg[o] = (tot.leg[o] || 0) + 1; });
+  ['pets', 'rare', 'leg'].forEach(id => { const b = rk.boards[id]; if (!b || !b.top || !b.top.length) return; const m = tot[id];
+    const order = Object.keys(m).filter(o => m[o] > 0).sort((x, y) => m[y] - m[x] || (x < y ? -1 : 1));
+    b.top.forEach((row, i) => { const v = Number(String(row[1]).replace(/[^0-9.]/g, ''));
+      if (row[0] && m[row[0]] !== v) add('Rankings ' + id + ' total', '#' + (i + 1) + ' ' + String(row[0]).slice(0, 10) + '…', v, m[row[0]] || 0);
+      else if (row[0] !== order[i] && m[row[0]] !== m[order[i]]) add('Rankings ' + id + ' order', '#' + (i + 1), row[0], order[i]); }); });
+  return diffs;
+}
+
+/* ---------------------------------------------------------------- Cemetery (Nov 24 2026 root-cause pass)
+ * The cemetery is built from two more partial sources: the server's grave index (GET /xp/v1/graves, its own files per world) and the
+ * fast world's zombies. For a wallet in view-only mode, open the live cemetery page and read:
+ *  - My graves: every grave the index lists for this wallet (the "My graves" shelf asks the same query) and the index's total,
+ *  - My zombies: the zombies the page's world gives this wallet (what the My zombies door lists), and the Gods count,
+ *  - the numbers on the doors (graves, my zombies, Gods), so a page that shows 0 while the data is there is caught too.
+ * Then compare with the full replay: graves = the server's own builder (tools/sync-server/graves.js fromWorld) run on the full world. */
+async function cemCheck(browser, addr) {
+  const cx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  await cx.addInitScript(a => { try { localStorage.setItem('xcpets-v2-me', a); } catch (e) {} }, addr);
+  const pg = await cx.newPage(), errors = [], t0 = Date.now();
+  pg.on('pageerror', e => errors.push(String(e.message || e).slice(0, 200)));
+  try {
+    await pg.goto(SITE + '/cemetery.html?fastcheck=' + Date.now(), { waitUntil: 'domcontentloaded', timeout: 90000 });
+    let ok = false;
+    while (Date.now() - t0 < MAX_WAIT) { await pg.waitForTimeout(3000);
+      ok = await pg.evaluate(() => { const w = window.V2Mock && V2Mock.world && V2Mock.world(); return !!(w && w.pets && document.querySelector('[data-door="mine"]') && window.V2GraveIndex); }); if (ok) break; }
+    if (!ok) return { addr, error: 'cemetery page never painted its doors', errors, secs: (Date.now() - t0) / 1000 };
+    await pg.waitForTimeout(4000); /* the door counts repaint once the grave index answers */
+    const d = await pg.evaluate(async me => { const w = V2Mock.world(), V = window.V2Rules, GI = window.V2GraveIndex, sub = k => { const e = document.querySelector('[data-door="' + k + '"] small'); return e ? e.textContent : null; };
+      const o = { tip: w.tip, zombies: w.pets.filter(p => V.isZ(p) && p.owner === me).map(p => p.id).sort((a, b) => a - b), gods: w.pets.filter(p => p.resurrected && !p.dead).length,
+        doors: { raise: sub('raise'), mine: sub('mine'), gods: sub('gods') } };
+      try { const r = await GI.fetchPage(GI.base(), { mine: true, owner: me, per: 1000000, page: 0, sort: 'id' }); o.graves = (r.rows || []).map(x => x.id).sort((a, b) => a - b); o.gtip = r.counts && r.counts.tip; o.gdead = r.counts && r.counts.dead; o.gsource = r.source; }
+      catch (e) { o.graves = 'THROWS: ' + String(e && e.message || e).slice(0, 120); }
+      return o; }, addr);
+    return { addr, cem: d, errors, secs: (Date.now() - t0) / 1000 };
+  } catch (e) { return { addr, error: String(e.message || e).slice(0, 300), errors, secs: (Date.now() - t0) / 1000 }; }
+  finally { await cx.close(); }
+}
+function cemDiffs(r) {
+  const diffs = [], add = (k, key, f, g) => diffs.push({ kind: k, key, fast: f, full: g }), c = r.cem, num = t => Number((/[\d,]+/.exec(String(t || '')) || ['0'])[0].replace(/,/g, '')) || 0;
+  const G = require('../sync-server/graves');
+  if (c.tip > boot.tip) { add('cemetery page tip', '-', c.tip, '<= ' + boot.tip); return diffs; }
+  const F = fullAt(c.tip), zw = F.w.pets.filter(p => F.V.isZ(p) && p.owner === r.addr).map(p => p.id).sort((a, b) => a - b), gods = F.w.pets.filter(p => p.resurrected && !p.dead).length;
+  const zs = new Set(c.zombies); zw.forEach(id => { if (!zs.has(id)) add('zombie missing from My zombies', id, null, 'risen zombie'); });
+  c.zombies.forEach(id => { if (zw.indexOf(id) < 0) add('My zombies lists a pet that is not this wallet\'s zombie', id, 'listed', null); });
+  if (r.addr && c.doors.mine != null && num(c.doors.mine) !== zw.length && !(zw.length === 0 && /none/.test(c.doors.mine))) add('My zombies door number', '-', c.doors.mine, zw.length);
+  if (c.doors.gods != null && num(c.doors.gods) !== gods) add('Gods door number', '-', c.doors.gods, gods);
+  if (!Array.isArray(c.graves)) { add('grave index', '-', c.graves, 'a list'); return diffs; }
+  if (c.gsource !== 'index') add('grave index source', '-', c.gsource, 'index');
+  if (!(c.gtip <= boot.tip)) { add('grave index tip', '-', c.gtip, '<= ' + boot.tip); return diffs; }
+  const Fg = fullAt(c.gtip), rows = G.fromWorld({ V2Rules: Fg.V }, Fg.w, c.gtip), mine = rows.filter(x => x.owner === r.addr && x.id !== 1765).map(x => x.id).sort((a, b) => a - b), got = new Set(c.graves);
+  mine.forEach(id => { if (!got.has(id)) add('grave missing from My graves', id, null, 'grave'); });
+  c.graves.forEach(id => { if (mine.indexOf(id) < 0) add('My graves lists a pet that is not this wallet\'s grave', id, 'listed', null); });
+  if (c.gdead !== rows.length) add('grave index total', '-', c.gdead, rows.length);
+  if (c.doors.raise != null && num(c.doors.raise) !== rows.length && c.gtip === c.tip) add('Raise door grave count', '-', c.doors.raise, rows.length);
+  r.fullGraves = mine.length; r.fullZombies = zw.length;
   return diffs;
 }
 
@@ -176,6 +236,9 @@ function compare(fast, full, partial) {
     if (r.dump) { const F = fullAt(r.dump.tip), full = dump(F.w, F.V, addr, r.dump.tip, r.dump.ids); r.diffs = compare(r.dump, full, r.partial); r.fullPets = Object.keys(full.pets).length; }
     delete r.dump; results.push(r);
   }
+  const CEM_N = +opt('--cem', 5), cems = [];
+  for (const addr of wallets.slice(0, CEM_N)) { const c = await cemCheck(browser, addr); if (c.cem) c.diffs = cemDiffs(c);
+    log('cemetery ' + addr.slice(0, 12) + '… ' + (c.error || (c.cem.zombies.length + ' zombies, ' + (Array.isArray(c.cem.graves) ? c.cem.graves.length : '?') + ' graves, ' + c.diffs.length + ' problems')) + ' in ' + c.secs.toFixed(0) + ' s'); cems.push(c); }
   const rk = await rankCheck(browser); rk.diffs = rankDiffs(rk);
   log('rankings: tip ' + rk.tip + ', ' + Object.keys(rk.boards).length + ' boards, ' + rk.diffs.length + ' problems in ' + rk.secs + ' s' + (rk.error ? ' (' + rk.error + ')' : ''));
   await browser.close();
@@ -184,6 +247,10 @@ function compare(fast, full, partial) {
   md += '## Rankings boards' + (rk.diffs.length ? ' ❌ ' + rk.diffs.length + ' problems' : ' ✅ every board has rows, Top burners matches') + '\n\n' +
     Object.keys(rk.boards).map(k => k + ' ' + (rk.boards[k].rows || 0)).join(' · ') + '\n\n' + rk.diffs.map(d => '- **' + d.kind + '** ' + d.key + ': page=' + J(d.fast) + ' full=' + J(d.full)).join('\n') + (rk.diffs.length ? '\n\n' : '');
   if (rk.diffs.length) bad++;
+  md += '## Cemetery\n\n'; cems.forEach(c => { const short = c.addr.slice(0, 10) + '…' + c.addr.slice(-6);
+    if (c.error) { bad++; md += '- ' + short + ' ❌ ' + c.error + '\n'; return; }
+    md += '- ' + short + (c.diffs.length ? ' ❌ ' + c.diffs.length + ' problems' : ' ✅ matches') + ' · ' + (c.fullZombies != null ? c.fullZombies : c.cem.zombies.length) + ' zombies, ' + (c.fullGraves != null ? c.fullGraves : '?') + ' graves (index tip ' + c.cem.gtip + ')' + (c.errors.length ? ' · page errors: ' + c.errors.slice(0, 2).join(' | ') : '') + '\n';
+    if (c.diffs.length) { bad++; c.diffs.slice(0, 12).forEach(d => { md += '  - **' + d.kind + '** ' + d.key + ': page=' + J(d.fast) + ' full=' + J(d.full) + '\n'; }); } }); md += '\n';
   results.forEach(r => { const short = r.addr.slice(0, 10) + '…' + r.addr.slice(-6);
     if (r.error) { bad++; md += '## ' + short + '\n\n❌ ' + r.error + '\n\n'; return; }
     md += '## ' + short + (r.diffs.length ? ' ❌ ' + r.diffs.length + ' differences' : ' ✅ matches') + '\n\n' + r.fullPets + ' pets in the full game' + (r.partial ? ' · fast page only partly loaded (too big to load in the background)' : '') + ' · loaded in ' + r.secs.toFixed(0) + ' s' + (r.errors.length ? ' · page errors: ' + r.errors.slice(0, 3).join(' | ') : '') + '\n\n';
@@ -192,7 +259,7 @@ function compare(fast, full, partial) {
         const rs = Object.keys(rng).length > 1 ? ' (ids ' + Object.keys(rng).map(b => b + 'k+: ' + rng[b]).join(', ') + ')' : '';
         md += '- **' + k + '** × ' + g[k].length + rs + ': ' + g[k].slice(0, 3).map(d => '#' + d.key + ' fast=' + J(d.fast) + ' full=' + J(d.full)).join(' · ').slice(0, 600) + '\n'; }); md += '\n'; } });
   fs.mkdirSync(OUT, { recursive: true });
-  fs.writeFileSync(path.join(OUT, 'fastcheck-report.md'), md); fs.writeFileSync(path.join(OUT, 'fastcheck-report.json'), JSON.stringify(results.concat([{ rankings: rk }]), null, 1));
+  fs.writeFileSync(path.join(OUT, 'fastcheck-report.md'), md); fs.writeFileSync(path.join(OUT, 'fastcheck-report.json'), JSON.stringify(results.concat([{ rankings: rk }, { cemetery: cems }]), null, 1));
   if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, md);
   console.log(md); process.exit(bad ? 1 : 0);
 })().catch(e => { console.error(e); process.exit(2); });
