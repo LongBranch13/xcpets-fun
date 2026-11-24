@@ -240,10 +240,15 @@
     var root = base();
     var chainTip = 0, manUrl = '';
     var sigP = pageRsig();
+    /* Nov 24 2026: health and latest.json are asked together (they were one after the other: one more round trip before
+     * any pet, ~0.3 s on a phone network). health only feeds the staleness check below; a failed health read failed the
+     * whole fast path before and still does. */
+    var latestP = getJson(root + '/xp/v1/world/latest.json', 8000, true);
+    latestP.then(null, function () {});
     getJson(root + '/xp/v1/health', 8000, true).then(function (h) {
       chainTip = h && h.tip || 0;
       noteHealth(chainTip); noteCheck(h);
-      return getJson(root + '/xp/v1/world/latest.json', 8000, true);
+      return latestP;
     }).then(function (latest) {
       /* Never go dark (Nov 22 2026): latest.json built with other rules than this page's? The server keeps the newest
        * world for each rules signature at world/<rsig>/latest.json; use this page's own before falling back to a replay. */
@@ -278,6 +283,7 @@
         var otherRules = rsig !== latest.rsig;
         if (!summary || (summary.v !== 1 && summary.v !== 2 && summary.v !== 3) || summary.tip !== latest.tip || summary.rsig !== latest.rsig) throw new Error('summary');
         lastSummary = summary;
+        keepStart(summary.rsig);
         last = { man: { tip: latest.tip, rsig: latest.rsig, view: true, other: otherRules }, url: manUrl, tip: chainTip };
         function paint(owners) {
           if (owners) viewOwners = owners;
@@ -307,7 +313,7 @@
         }
         viewHold = { deeds: view.deeds, mythicOwners: view.mythicOwners, roster: view._roster || null, cem: view.cem || null, stash: own.page.stash || null, owner: own.page.owner || who };
         viewFolder = folder;
-        view._pages = { n: separate ? own.page.alive : living0.length, pages: livingPages, total: own.page.pages, page: 0, got: 1, key: own.hex, folder: folder, raw: living0, rev: separate ? 1 : 0 };
+        view._pages = { n: separate ? own.page.alive : living0.length, pages: livingPages, total: own.page.pages, page: 0, got: 1, key: own.hex, folder: folder, raw: living0, rev: separate ? 1 : 0, ord: idOrder(own.page) };
         if (separate) noteGraves(view._pages, 0, true);
         else if (stop0) noteGraves(view._pages, 1, false);
         if (!(view._pages.pages > 1)) { view._full = 1; viewHold.roster = null; view._roster = null; }
@@ -467,10 +473,12 @@
     if (diffBuf && diffBuf.length) for (i = 0; i < diffBuf.length; i++) one(diffBuf[i]);
     return w;
   }
+  var filledFor = null, filledSet = null;
   function fillWorld() {
     if (!viewOwners) return;
+    if (filledFor !== viewOwners || !filledSet) { filledFor = viewOwners; filledSet = typeof WeakSet === 'function' ? new WeakSet() : null; }
     var w = eachOpen(function (p) {
-      if (window.XcpArt && XcpArt.fillOwners) XcpArt.fillOwners(p, viewOwners, '');
+      if (window.XcpArt && XcpArt.fillOwners) XcpArt.fillOwners(p, viewOwners, '', filledSet || undefined);
       else stampOwner(p, viewOwners, '');
     });
     if (w && window.V2Mock && V2Mock.setViewWorld) { try { V2Mock.setViewWorld(w); } catch (e) {} }
@@ -490,10 +498,10 @@
     ownersP = getJson(viewFolder + 'view/owners.json', 12000, false).then(function (rows) { return adoptOwners(rows || []); }, function () { return adoptOwners([]); });
     return ownersP;
   }
-  function resolveIds(ids) {
+  function resolveIds(ids, keep) {
     var folder = viewFolder, need = {}, i, id, name, names;
     if (!ids || !ids.length || !folder) return Promise.resolve([]);
-    return ownersReady().then(function () { return resolveIdsNow(ids); });
+    return ownersReady().then(function () { return resolveIdsNow(ids, keep); });
   }
   /* Nov 23 2026 (players: 'missing about 100 pets', 'discards take forever'): every later owner page (24 ids) fetched and parsed its
    * ~1 MB pet shard again, one page after another on the main thread, and a shard that timed out (12 s) or failed dropped that page's
@@ -508,7 +516,128 @@
     while (shardOrder.length > SHARD_KEEP) delete shardMemo[shardOrder.shift()];
     return p;
   }
-  function resolveIdsNow(ids) {
+  /* Device copy of my pets (Nov 24 2026, Jake: 'let players download the pets'; 'we can't lose anything'). The records of the
+   * player's own pets are kept in IndexedDB, one entry per 2,000-id shard, under the shard's content digest (summary.shardSig,
+   * written by tools/sync-server/split.js; the digest covers every field the page reads from the shard). On a later visit,
+   * even after the server published newer worlds, a shard whose digest is unchanged is read from the device instead of
+   * downloaded (about 100 of 103 shards are unchanged between worlds 6 blocks apart). A changed or missing digest, another
+   * rules signature, a missing id or any storage error falls back to the download, so the page shows exactly what the
+   * published files say. Display only: burns are still checked against the full world. */
+  var keepDb = null, keepRsig = '', keepFail = false, keepQ = {}, keepT = 0;
+  function keepOn() { return !keepFail && typeof indexedDB !== 'undefined' && !!me() && q('keep') !== '0'; }
+  function keepOpen() {
+    if (keepDb) return keepDb;
+    keepDb = new Promise(function (res) {
+      var r;
+      try { r = indexedDB.open('xcpets-mine', 1); } catch (e) { keepFail = true; res(null); return; }
+      r.onupgradeneeded = function () { try { r.result.createObjectStore('s'); } catch (e) {} };
+      r.onsuccess = function () { res(r.result); };
+      r.onerror = r.onblocked = function () { keepFail = true; res(null); };
+    });
+    return keepDb;
+  }
+  function keepKey(nm) { return me() + '|' + keepRsig + '|' + nm; }
+  var keepMemo = {};
+  /* one read per shard and digest for this page (a 30,000-pet wallet asks for the same shard from ~1,300 pages) */
+  function keepGet(nm, sig) {
+    if (!sig || !keepOn() || !keepRsig) return Promise.resolve(null);
+    var mk = keepKey(nm) + '|' + sig;
+    if (!keepMemo[mk]) keepMemo[mk] = keepRead(nm, sig);
+    return keepMemo[mk];
+  }
+  function keepRead(nm, sig) {
+    return keepOpen().then(function (db) {
+      if (!db) return null;
+      return new Promise(function (res) {
+        try {
+          var g = db.transaction('s', 'readonly').objectStore('s').get(keepKey(nm));
+          g.onsuccess = function () { var v = g.result; res(v && v.sig === sig && v.pets ? v : null); };
+          g.onerror = function () { res(null); };
+        } catch (e) { res(null); }
+      });
+    }, function () { return null; });
+  }
+  /* Remember the records of these ids from a downloaded shard (only the block hashes they use). Written a moment later, a
+   * shard per transaction, so a 30,000-pet wallet never stores one huge value in one go. */
+  function keepPut(nm, sig, pack, ids) {
+    if (!sig || !keepOn() || !keepRsig || !pack || !pack.pets) return;
+    var e = keepQ[nm];
+    if (!e || e.sig !== sig) e = keepQ[nm] = { sig: sig, hashes: [], at: {}, pets: {}, base: null };
+    var src = pack.pets, hs = pack.hashes || [], i, k, rec, copy, f, hx;
+    for (i = 0; i < ids.length; i++) {
+      k = String(ids[i]); rec = src[k];
+      if (!rec || e.pets[k]) continue;
+      copy = {}; for (f in rec) if (Object.prototype.hasOwnProperty.call(rec, f)) copy[f] = rec[f];
+      if (rec._h != null && pack.v === 3) {
+        hx = hs[rec._h];
+        if (e.at[hx] == null) { e.at[hx] = e.hashes.length; e.hashes.push(hx); }
+        copy._h = e.at[hx];
+      }
+      e.pets[k] = copy;
+    }
+    clearTimeout(keepT); keepT = setTimeout(keepFlush, 1500);
+  }
+  function keepFlush() {
+    var names = Object.keys(keepQ); if (!names.length) return;
+    keepOpen().then(function (db) {
+      if (!db) return;
+      (function next() {
+        var nm = names.shift(); if (nm == null) return;
+        var e = keepQ[nm]; delete keepQ[nm];
+        /* add to the saved entry of the same digest (a wallet's pets in one shard can arrive over several pages) */
+        keepGet(nm, e.sig).then(function (old) {
+          var k;
+          if (old) {
+            var at = {}, i; for (i = 0; i < old.hashes.length; i++) at[old.hashes[i]] = i;
+            for (k in e.pets) if (!old.pets[k]) {
+              var c = e.pets[k];
+              if (c._h != null) { var hx = e.hashes[c._h]; if (at[hx] == null) { at[hx] = old.hashes.length; old.hashes.push(hx); } c._h = at[hx]; }
+              old.pets[k] = c;
+            }
+            e = { sig: old.sig, hashes: old.hashes, pets: old.pets };
+          }
+          try {
+            var tx = db.transaction('s', 'readwrite');
+            tx.objectStore('s').put({ v: 1, sig: e.sig, hashes: e.hashes, pets: e.pets, at: Date.now() }, keepKey(nm));
+            tx.oncomplete = tx.onerror = tx.onabort = function () { delete keepMemo[keepKey(nm) + '|' + e.sig]; setTimeout(next, 30); };
+          } catch (x) { setTimeout(next, 30); }
+        });
+      })();
+    });
+  }
+  /* A new rules signature: this wallet's copies made under other rules are dropped once. */
+  function keepStart(rsig) {
+    keepRsig = rsig || '';
+    if (!keepOn() || !keepRsig) return;
+    keepOpen().then(function (db) {
+      if (!db) return;
+      try {
+        var who = me(), tx = db.transaction('s', 'readwrite'), st = tx.objectStore('s');
+        var c = st.openKeyCursor ? st.openKeyCursor(IDBKeyRange.bound(who + '|', who + '|\uffff')) : null;
+        if (!c) return;
+        c.onsuccess = function () { var cur = c.result; if (!cur) return; if (String(cur.key).split('|')[1] !== keepRsig) st.delete(cur.key); cur.continue(); };
+      } catch (e) {}
+    });
+  }
+  function keepSig(nm) { var m = lastSummary && lastSummary.shardSig; return m && typeof m[nm] === 'string' ? m[nm] : ''; }
+  var keepStat = { device: 0, net: 0 };
+  /* One shard for these ids: the saved copy when its digest matches and it holds every id, else the download (then saved). */
+  function shardFor(folder, nm, ids, keep) {
+    var sig = keep ? keepSig(nm) : '';
+    var net = function () {
+      keepStat.net++;
+      return idShard(folder + 'view/p/' + nm + '.json').then(function (pack) { if (sig && keep) keepPut(nm, sig, pack, ids); return pack; });
+    };
+    if (!sig) return net();
+    return keepGet(nm, sig).then(function (v) {
+      var i;
+      if (!v) return net();
+      for (i = 0; i < ids.length; i++) if (!v.pets[String(ids[i])]) return net();
+      keepStat.device++;
+      return { v: 3, hashes: v.hashes, pets: v.pets };
+    });
+  }
+  function resolveIdsNow(ids, keep) {
     var folder = viewFolder, need = {}, i, id, name, names;
     for (i = 0; i < ids.length; i++) {
       id = ids[i] | 0;
@@ -517,7 +646,7 @@
     }
     names = Object.keys(need);
     return Promise.all(names.map(function (nm) {
-      return idShard(folder + 'view/p/' + nm + '.json').then(function (pack) {
+      return shardFor(folder, nm, need[nm], keep).then(function (pack) {
         var map = pack && pack.pets || {}, hashes = pack && pack.hashes || [], j, src, out = [];
         for (j = 0; j < need[nm].length; j++) {
           src = map[String(need[nm][j])];
@@ -610,7 +739,7 @@
         chain = chain.then(function () {
           var page = row.page;
           if (!page || page.pets || !page.ids) return null;
-          return resolveIds(page.ids).then(function (pets) { page.pets = pets; });
+          return resolveIds(page.ids, true).then(function (pets) { page.pets = pets; });
         });
       });
       return chain.then(function () {
@@ -631,11 +760,31 @@
    * gave up first. Pages with a separate living count (every current owner file) now load newest first: step n reads page pages - n.
    * The fetches also went out up to 256 at once with a 12 s limit that counted the time spent waiting in the browser's queue, and a page
    * that missed it dropped its 24 pets for good. Now 24 at a time, and a failed page is asked once more with a longer limit. Display only. */
+  /* Device copy (Nov 24 2026): page 0 of a big wallet carries every living id in page order (delta-coded 'ord'). The
+   * server's page k is exactly ord.slice(k*size, (k+1)*size) under page 0's header (tools/split-order-test.js checks this
+   * against the written files), so those 1,000+ tiny requests are made here instead. Older worlds have no 'ord'. */
+  function idOrder(page0) {
+    var d = page0 && page0.ord, out, i, id = 0;
+    if (!Array.isArray(d) || !(page0.pages > 1) || page0.alive == null || d.length !== page0.alive) return null;
+    out = new Array(d.length);
+    for (i = 0; i < d.length; i++) { id += d[i]; out[i] = id; }
+    return { ids: out, head: { v: page0.v, tip: page0.tip, rsig: page0.rsig, owner: page0.owner, n: page0.n, alive: page0.alive, dead: page0.dead, pages: page0.pages, pageSize: page0.pageSize } };
+  }
+  function pageFromOrder(pg, n) {
+    var o = pg && pg.ord, size, h, page, k;
+    if (!o || !(n > 0) || n >= o.head.pages) return null;
+    size = o.head.pageSize || 24; h = o.head; page = {};
+    for (k in h) if (Object.prototype.hasOwnProperty.call(h, k)) page[k] = h[k];
+    page.page = n; page.ids = o.ids.slice(n * size, (n + 1) * size);
+    return page;
+  }
   function pageNo(pg, ni) { return pg && pg.rev ? pg.pages - ni : ni; }
   function ownPages(pg, nums) {
     var out = new Array(nums.length), next = 0, LANES = 24;
     function one(k) {
       var url = pg.folder + 'view/own/' + pg.key + '.' + pageNo(pg, nums[k]) + '.json';
+      var made = pageFromOrder(pg, pageNo(pg, nums[k]));
+      if (made) { out[k] = { n: nums[k], page: made }; return Promise.resolve(); }
       return getJson(url, 20000).then(null, function () { return getJson(url, 45000); }).then(function (page) { out[k] = { n: nums[k], page: page }; }, function () { out[k] = { n: nums[k], page: null }; });
     }
     function lane() { if (next >= nums.length) return Promise.resolve(); var k = next++; return one(k).then(lane); }
@@ -673,7 +822,7 @@
         chain = chain.then(function () {
           var page = row.page;
           if (!page || page.pets || !page.ids) return null;
-          return resolveIds(page.ids).then(function (pets) { page.pets = pets; });
+          return resolveIds(page.ids, true).then(function (pets) { page.pets = pets; });
         });
       });
       return chain.then(function () {
@@ -1265,5 +1414,5 @@
     zombieP = getJson(folder + 'view/zombies.json').then(function (z) { return applyZombies(z); }, function () { return scanZombies(folder, onProg); });
     return zombieP;
   }
-  window.V2Split = { loadLead: loadLead, remergeLead: remergeLead, STALE: STALE, SCREEN_PAGES: SCREEN_PAGES, AUTO_CAP: AUTO_CAP, prepare: prepare, recheck: recheck, install: install, assemble: assemble, startVerify: startVerify, checkPlans: checkPlans, serverCheck: serverCheck, serverShop: serverShop, publishedShop: publishedShop, serverStat: function () { return serverStat; }, rest: rest, more: more, loadBoard: loadBoard, loadZombies: loadZombies, dress: dress, boardBytes: function () { return { bytes: boardBytes, files: boardFiles }; }, ensureDead: ensureDead, ensurePet: ensurePet, ownerShard: function (addr, cb) { sha2(addr).then(function (h) { cb(h.slice(0, 2)); }); }, petSig: petSig, healthTip: function () { return healthTipN; }, noteHealth: noteHealth, pingHealth: pingHealth, ownersReady: ownersReady, ownersKnown: ownersKnown, adoptOwners: adoptOwners, openOwnerPets: openOwnerPets, openList: openList, notePets: notePets, ownerTable: ownerTable, pageWallet: pageWallet, resolveWorld: resolveWorld, newestPages: newestPages, rowsToLog: rowsToLog, loadNewest: loadNewest };
+  window.V2Split = { loadLead: loadLead, remergeLead: remergeLead, STALE: STALE, SCREEN_PAGES: SCREEN_PAGES, AUTO_CAP: AUTO_CAP, prepare: prepare, recheck: recheck, install: install, assemble: assemble, startVerify: startVerify, checkPlans: checkPlans, serverCheck: serverCheck, serverShop: serverShop, publishedShop: publishedShop, serverStat: function () { return serverStat; }, rest: rest, more: more, loadBoard: loadBoard, loadZombies: loadZombies, dress: dress, boardBytes: function () { return { bytes: boardBytes, files: boardFiles }; }, ensureDead: ensureDead, ensurePet: ensurePet, ownerShard: function (addr, cb) { sha2(addr).then(function (h) { cb(h.slice(0, 2)); }); }, petSig: petSig, healthTip: function () { return healthTipN; }, noteHealth: noteHealth, pingHealth: pingHealth, ownersReady: ownersReady, ownersKnown: ownersKnown, adoptOwners: adoptOwners, openOwnerPets: openOwnerPets, openList: openList, notePets: notePets, ownerTable: ownerTable, pageWallet: pageWallet, resolveWorld: resolveWorld, newestPages: newestPages, rowsToLog: rowsToLog, loadNewest: loadNewest, keepStat: function () { return keepStat; }, _order: { idOrder: idOrder, pageFromOrder: pageFromOrder } };
 })();
