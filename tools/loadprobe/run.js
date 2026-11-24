@@ -178,8 +178,23 @@ function taskFns(profile, t0Page, lt) {
 }
 function ltSum(lt, from, to) { const a = lt.filter(x => x[0] >= (from || 0) && x[0] < (to == null ? Infinity : to)); return { n: a.length, total: a.reduce((s, x) => s + x[1], 0), max: a.reduce((m, x) => Math.max(m, x[1]), 0), over1s: a.filter(x => x[1] >= 1000).length }; }
 const MB = b => (b / 1e6).toFixed(2) + ' MB', S = s => s == null ? '–' : s.toFixed(1) + ' s';
+/* Is the game server compressing its view files? (a ~1 MB pet shard is ~0.1 MB compressed) */
+async function wire() {
+  try {
+    const get = (u, enc) => fetch(u, { headers: enc ? { 'accept-encoding': enc } : {} });
+    const latest = await (await get('https://node.xcpets.fun/xp/v1/world/latest.json')).json();
+    const dir = 'https://node.xcpets.fun' + String(latest.manifest).replace(/[^/]+$/, '');
+    const out = [];
+    for (const f of ['view/summary.json', 'view/p/00090.json', 'part-000.json']) {
+      const r = await get(dir + f, 'br, gzip'); const b = Buffer.from(await r.arrayBuffer());
+      out.push(f + ': ' + (r.headers.get('content-encoding') || 'not compressed') + ', ' + (r.headers.get('content-length') || '?') + ' bytes on the wire, ' + b.length + ' bytes');
+    }
+    return out.join(' · ');
+  } catch (e) { return 'wire check failed: ' + String(e.message || e).slice(0, 80); }
+}
 (async () => {
   const { chromium } = require('playwright-core');
+  const wireNote = await wire(); log('server compression:', wireNote);
   const browser = await chromium.launch({ executablePath: process.env.CHROME || (fs.existsSync('/opt/google/chrome/chrome') ? '/opt/google/chrome/chrome' : undefined), args: ['--no-sandbox', '--enable-precise-memory-info'] });
   let md = '# Load probe\n\n' + SITE + (SLOW ? ' · phone network + 4x slower CPU' : ' · fast network') + (NO_WORLD ? ' · **server world blocked (in-browser rebuild)**' : '') + ' · ' + new Date().toISOString() + '\n\n| Page | Wallet | Page shows | First card | Own pets in world | Pet drawn | All pages | Living pets (pages) | Downloaded | Requests | Heap | Errors |\n|---|---|---|---|---|---|---|---|---|---|---|---|\n';
   const detail = [];
@@ -205,7 +220,7 @@ const MB = b => (b / 1e6).toFixed(2) + ' MB', S = s => s == null ? '–' : s.toF
       if (v.err) md += '- error: ' + String(v.err).replace(/\|/g, '/') + '\n';
       if (v.line) md += '- status line after: ' + v.line.replace(/\|/g, '/') + '\n';
       md += '\n'; } }
-  md += '\n## Where the bytes go\n\n';
+  md += '\n## Where the bytes go\n\nServer compression: ' + wireNote + '\n\n';
   for (const r of detail) {
     md += `**${r.page}${r.branch ? ' (branch)' : ''}${WARM ? ' · ' + MODE[r.mode] : ''} · ${r.addr.slice(0, 8)}…** ` + Object.entries(r.by).sort((a, b) => b[1].b - a[1].b).map(([k, v]) => `${k} ${MB(v.b)} (${v.n})`).join(' · ') + '\n\nBiggest: ' + r.big.map(b => b.u.replace(/\?.*/, '').split('/').slice(-2).join('/') + ' ' + MB(b.b)).join(' · ') + '\n\n';
   }
