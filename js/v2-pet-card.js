@@ -26,10 +26,12 @@
   function acts(p, mine, known) {
     if (p.dead || p.released || p.burnedTo) { var gone = p.dead ? '🪦 Resting in the Pet Cemetery.' : (p.usedUp ? sacLine(p.usedUp) : 'Out of play.'); return '<p class="small muted pc-none">' + gone + '</p>'; }
     var own = mine && !viewOnly(), passRr = !known || !!mine; /* rare room keeps the id when this pet is yours, or the wallet is not known yet */
-    if (isZ(p)) { var zp = own ? 'play.html#pet-' + p.id : 'play.html'; /* zombies: no breeding, quests, raids or XCPETS meals (engine rejects them); they eat pets and hunt */
-      return '<div class="pc-actrow"><a class="pc-act pc-zb" href="' + zp + '"><span class="pc-ico" aria-hidden="true">🧟</span><b>Feed it pets</b><small>' + (own ? 'Your discarded pets, on Play' : mine ? 'Connect the wallet on Play' : 'Owner only, on Play') + '</small></a>' +
+    if (isZ(p)) { /* zombies: no breeding, quests, raids or XCPETS meals (engine rejects them); they eat pets and hunt.
+       * pet-page-zombies (Nov 23 2026): feeding, halo points, Resurrect and Hunt all happen on this page now (🧟 Zombie care, below the card) */
+      var cured = !!(p.zombie && p.zombie.mfed); /* a Mythic-fed zombie never eats again */
+      return '<div class="pc-actrow"><a class="pc-act pc-zb" href="#pcZombie" data-pcz="' + (own && !cured ? 'zfeed' : '') + '"><span class="pc-ico" aria-hidden="true">🧟</span><b>' + (own && !cured ? 'Feed it pets' : 'Zombie care') + '</b><small>' + (own ? (cured ? 'Cured: never hungry' : 'From your Discard pile') : mine ? 'Connect the owner wallet' : 'Hunger, halo, hunting') + '</small></a>' +
         '<a class="pc-act pc-bt" href="fight.html#' + (own ? 'battle-' + p.id : 'kekimus') + '"><span class="pc-ico" aria-hidden="true">⚔️</span><b>Battle</b><small>The arena</small></a></div>' +
-        '<p class="small muted pc-note">🧟 Risen zombie: no breeding, quests or XCPETS meals. It eats pets at the altar or wins hunts.' + (own ? '' : mine ? ' View only: connect the owner wallet on Play to act.' : '') + '</p>'; }
+        '<p class="small muted pc-note">🧟 Risen zombie: no breeding, quests or XCPETS meals. It eats pets from your Discard pile, wins hunts, and can be resurrected.' + (own ? '' : mine ? ' View only: connect the owner wallet to act.' : '') + '</p>'; }
     var PAGE = function (h) { return /^(battle|kekimus)/.test(h) ? 'fight.html' : /^(breed|gooby|no-tail)/.test(h) ? 'breed.html' : /^rare-room/.test(h) ? 'rare-room.html' : 'play.html'; }; /* species-ranks-split: straight to the place's own page */
     var b = function (href, ico, label, sub, cls) { return '<a class="pc-act ' + cls + '" href="' + PAGE(href) + '#' + href + '"><span class="pc-ico" aria-hidden="true">' + ico + '</span><b>' + label + '</b><small>' + sub + '</small></a>'; };
     return '<div class="pc-actrow">' + b(passRr ? 'rare-room-' + p.id : 'rare-room', '💎', 'Rare Room', passRr ? 'Gear for #' + p.id : 'Gear & spins', 'pc-rr') +
@@ -41,7 +43,7 @@
   function questsOn() { var V = window.V2Rules; return !!(V && V.questInfo && V.questOn && V.QUEST_CODES && V.QUESTS && V.questOn(tip() + 1)); }
   function quests(w, p, mine) {
     var h = '<h3 class="pc-qh">🗺️ Quests</h3>';
-    if (isZ(p)) return h + '<p class="pc-soon">Zombies cannot go on quests.</p>';
+    if (isZ(p)) return ''; /* pet-page-zombies: the 🧟 Zombie care box takes this spot */
     if (!questsOn()) return h + '<p class="pc-soon">Quests open soon. Mythic pets will go on quests to Spam City, Cold Storage, Lord Kek\'s Swamp, the Wizard\'s Tower and the Burning Mines.</p>';
     var V = window.V2Rules, b = tip() + 1, I = V.questInfo(w, p, b) || {};
     if (I.away) { var A = I.away, Q = V.QUESTS[A.code] || {}, done = Math.max(0, Math.min(1, (b - A.start) / ((A.end - A.start) || 1)));
@@ -136,10 +138,26 @@
     $('pcBackTxt').innerHTML = 'Pet #' + p.id + '<br>hatched in block ' + fmt(p.hatchBlock) + '<br><span class="muted">burn-to-play on Bitcoin</span>';
     $('pcActs').innerHTML = acts(p, mine, known);
     if (window.V2Places && V2Places.stampRare) V2Places.stampRare(p.id, !known || mine);
-    $('pcQuests').innerHTML = quests(w, p, mine);
+    $('pcQuests').innerHTML = quests(w, p, mine); $('pcQuests').hidden = zb;
+    zombieCare(p, zb);
     if (!$('pcTok')) { var tb = document.createElement('div'); tb.id = 'pcTok'; tb.className = 'pc-tokbox'; $('pcQuests').parentNode.insertBefore(tb, $('pcQuests')); }
     $('pcQuests').querySelectorAll('[data-pcq]').forEach(function (x) { x.onclick = function () { if (x.disabled || !window.V2Quests || !V2Quests.start) return; V2Quests.start(p.id, x.getAttribute('data-pcq')); }; });
   }
+  /* pet-page-zombies (Nov 23 2026, Jake: one pet page for every pet): a risen zombie gets the Pet Cemetery's zombie card right here
+   * (js/v2-cemetery-scene.js zombieBox: food and halo bars, Feed / Add halo points / Resurrect for the owner, Hunt for other players when it
+   * is feral). It signs on this page with the cemetery's own sheets; play.html#pet-ID for a zombie now forwards here. UI only. */
+  var zLoad = 0;
+  function zombieCare(p, zb) { var box = $('pcZombie');
+    if (!zb) { if (box) { box.innerHTML = ''; box.hidden = true; } return; }
+    if (!window.V2Render || !window.V2Rules || !window.V2Mock) { last = ''; return; } /* v2-render.js loads after the first paint: try again on the next tick */
+    if (!box) { box = document.createElement('div'); box.id = 'pcZombie'; box.className = 'pc-zcare'; $('pcQuests').parentNode.insertBefore(box, $('pcQuests')); }
+    var ctx = { M: window.V2Mock, R: window.V2Render, V: window.V2Rules, ME: me(), fmt: function (n) { return Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: 8 }); }, shortAddr: shortA };
+    if (window.V2CemeteryScene && V2CemeteryScene.zombieBox) { try { V2CemeteryScene.zombieBox(box, p.id, ctx); } catch (e) { if (window.console) console.error(e); } return; }
+    if (!box.innerHTML) box.innerHTML = '<h3 class="pc-qh">🧟 Zombie care</h3><p class="small muted">Loading the zombie\'s hunger and halo…</p>';
+    if (zLoad) return; zLoad = 1; var me0 = document.querySelector('script[src*="v2-pet-card.js"]'), v = me0 ? (me0.getAttribute('src').split('?')[1] || '') : '', sc = document.createElement('script');
+    sc.src = 'js/v2-cemetery-scene.js' + (v ? '?' + v : ''); sc.onload = function () { last = ''; paint(); }; sc.onerror = function () { zLoad = 0; }; document.head.appendChild(sc); }
+  document.addEventListener('click', function (e) { var a = e.target && e.target.closest && e.target.closest('a[data-pcz]'); if (!a) return; var box = $('pcZombie'); if (!box) return; e.preventDefault();
+    box.scrollIntoView({ block: 'start', behavior: 'smooth' }); var k = a.getAttribute('data-pcz'), b = k && box.querySelector('[data-zsac="' + k + '"]'); if (b && !b.disabled) b.click(); });
   function flip(on) { var f = $('pcFront'), bk = $('pcBack'), c = $('petCard'); if (!f || !bk) return; c.classList.toggle('pc-flipped', on); bk.hidden = !on; f.style.visibility = on ? 'hidden' : ''; $('pcFlip').setAttribute('aria-pressed', String(on)); }
   document.addEventListener('click', function (e) { var t = e.target && e.target.closest; if (!t) return; if (e.target.closest('#pcFlip')) flip(true); else if (e.target.closest('#pcFlip2')) flip(false); });
   var n = 0; (function tick() { n++; try { paint(); tokPaint(); } catch (e) { } setTimeout(tick, n < 60 ? 500 : 3000); })();
