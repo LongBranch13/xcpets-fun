@@ -481,4 +481,4 @@ function event(ctx, w, ev) {
   if (k === 'shine') return anim(shine(S, Object.assign({}, cap, { bottom, halo: ev.halo !== false, color: ev.color && C[ev.color] })));
   return anim(idle(S, cap));
 }
-module.exports = { load, event, spriteSet, png, gif, readPng, imageSprite, Img, EXTRA, text, _scenes: { idle, shine, hatch, rise, miracle, dust, breed, devour, rage, grind, raid, banner, lineup } };
+module.exports = { load, event, spriteSet, png, gif, readPng, imageSprite, Img, EXTRA, text, textW, _scenes: { idle, shine, hatch, rise, miracle, dust, breed, devour, rage, grind, raid, banner, lineup } };

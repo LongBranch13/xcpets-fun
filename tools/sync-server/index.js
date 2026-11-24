@@ -205,7 +205,7 @@ function ckStart() {
     if (!m || child !== CK.proc) return;
     if (m.cmd === 'loaded') { CK.busy = false; CK.rssMB = m.rssMB || 0;
       if (m.ok) { CK.tip = m.tip; CK.loads++; CK.crashes = 0; CK.lastMs = m.ms || 0; CK.state = 'ready'; CK.why = ''; } else { CK.fails++; CK.tip = 0; CK.manifest = ''; CK.state = 'failed'; CK.why = String(m.error || '').slice(0, 60); CK.restAt = Date.now(); } return; }
-    if (m.cmd === 'checked' || m.cmd === 'shopped') { const fn = CK.pend.get(m.id); if (fn) { CK.pend.delete(m.id); fn(m); } }
+    if (m.cmd === 'checked' || m.cmd === 'shopped' || m.cmd === 'carded') { const fn = CK.pend.get(m.id); if (fn) { CK.pend.delete(m.id); fn(m); } }
   });
   child.on('exit', (code, sig) => { if (child !== CK.proc) return; CK.crashes++; CK.why = sig ? 'signal ' + sig : 'exit ' + code; CK.restAt = Date.now(); ckStop('crashed'); });
   child.on('error', () => { if (child !== CK.proc) return; CK.crashes++; CK.restAt = Date.now(); ckStop('crashed'); });
@@ -252,6 +252,16 @@ function ckShop(state) {
     CK.pend.set(id, m => { clearTimeout(t); const out = Object.assign({}, m); delete out.cmd; delete out.id;
       if (out.ok) { SHOP.tip = out.tip; SHOP.loads = CK.loads; SHOP.body = out; } res(out); });
     try { CK.proc.send({ cmd: 'shop', id: id }); } catch (e) { clearTimeout(t); CK.pend.delete(id); res({ ok: false, error: 'not ready' }); }
+  });
+}
+/* Pet share cards (GET /xp/v1/pet/<id>.png, share.js): the check service draws the card from its world (card.js). Any loaded world
+ * will do (a card a few blocks old is fine); share.js keeps at most 2 in flight and serves the copy on disk otherwise. */
+function ckCard(id) {
+  return new Promise(res => {
+    if (CK.state !== 'ready' || !CK.proc || CK.busy) { res({ ok: false, error: 'not ready' }); return; }
+    const rid = ++CK.seq, t = setTimeout(() => { CK.pend.delete(rid); res({ ok: false, error: 'slow' }); }, 4000);
+    CK.pend.set(rid, m => { clearTimeout(t); res(m); });
+    try { CK.proc.send({ cmd: 'card', id: rid, pet: id }); } catch (e) { clearTimeout(t); CK.pend.delete(rid); res({ ok: false, error: 'not ready' }); }
   });
 }
 /* Nov 24 2026 (never freeze): the follow loop's heartbeat. Nov 23 2026 the first follow step after a restart never finished (an
@@ -342,7 +352,7 @@ function main() {
   { const l0 = readLatest(dataDir); if (l0 && l0.tip) state.world = { ready: true, rsig: l0.rsig, tip: l0.tip, manifest: l0.manifest }; }
   state.loop = loopInfo; state.check = ckInfo; state.mem = memInfo; state.snap = snapState;
   /* listen first: the published world on disk is served again within a second of a restart, before the rules (a few seconds) load */
-  const httpd = createServer({ getState: () => state, dataDir: dataDir, check: body => ckAsk(state, body), shop: () => ckShop(state) });
+  const httpd = createServer({ getState: () => state, dataDir: dataDir, check: body => ckAsk(state, body), shop: () => ckShop(state), card: id => ckCard(id) });
   const port = +(process.env.XP_PORT || 8787);
   httpd.server.listen(port, '127.0.0.1');
   const rules = follower(dataDir);
@@ -393,4 +403,4 @@ function main() {
   return { server: httpd.server, state, stop() { clearInterval(timer); clearInterval(guard); httpd.server.close(); } };
 }
 if (require.main === module) main();
-module.exports = { main, errHint, backoffMs, loopInfo, stallCheck, errCode, saveFollow, readFollow, recordStart, _LOOP: LOOP, chainFns, seedHashes, writeLatest, backfillRsigLatest, PUBLIC, memInfo, ckInfo, _CK: CK, ckTick, ckAsk, ckShop, ckStop };
+module.exports = { main, errHint, backoffMs, loopInfo, stallCheck, errCode, saveFollow, readFollow, recordStart, _LOOP: LOOP, chainFns, seedHashes, writeLatest, backfillRsigLatest, PUBLIC, memInfo, ckInfo, _CK: CK, ckTick, ckAsk, ckShop, ckCard, ckStop };
