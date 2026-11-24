@@ -1,0 +1,6 @@
+{
+  "_about": "Which species may be sold as a physical figurine. Jake decides; edit this file to change it. stop = the tool will not make a print file unless run with --allow-stop (real people, big franchises). ask = Pepe-derived or someone else's well-known meme: fine for a private one-off for the pet's owner, ask Jake before selling it publicly. ok = no known outside owner. A hybrid takes the strictest level of its parents. Not legal advice.",
+  "stop": ["funtrump", "homer", "bojackson", "borp", "starlordkek", "jackson"],
+  "ask": ["pepe", "peepo", "kek", "djpepe", "kevin", "rarepigeon", "doge", "wojak", "chud", "chad", "bobo", "mumu", "lenny", "rabbit", "nakamoto", "sarutobi"],
+  "ok": ["snibby", "dodo", "wizard", "viking", "orangedragon"]
+}
