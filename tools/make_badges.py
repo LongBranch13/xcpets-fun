@@ -62,7 +62,7 @@ B=[('burn-chain','CHAIN GANG','chain','tiered'),('daily-burn','NUMBER GO UP','up
 ('first-hybrid','MAD SCIENTIST','egg2','uncommon'),('bred-true','PURE BLOOD','dna','uncommon'),
 ('dex','GOTTA BURN EM ALL','dex','tiered'),('legendary','SHINY HUNTER','star','rare'),('nakamoto','SATOSHI SAW YOU','btc','legendary'),
 ('breeder','BREEDER','nest','tiered'),('single-mother','SINGLE MOTHER','pram','uncommon'),
-('black-eye','RIGHT IN THE EYE','eye','common'),('ngmi','NGMI','wojak','uncommon'),('rip','PRESS F','grave','common'),('day-one-degen','DAY ONE DEGEN','bird','uncommon')]
+('black-eye','RIGHT IN THE EYE','eye','common'),('ngmi','NGMI','wojak','uncommon'),('rip','PRESS F','grave','common'),('day-one-degen','DAY ONE DEGEN','bird','uncommon')]  # og-backer.png is NOT drawn here: it is a mini replica of img/xcpets_fun_d_token.png (the XCPETS.FUN.D token art) (gold coin rim, 64x64)
 files=[]
 for bid,name,icon,r in B:
     if r=='tiered':
