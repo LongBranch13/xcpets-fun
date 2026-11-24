@@ -233,7 +233,9 @@ function compare(fast, full, partial) {
   const results = [];
   for (const addr of wallets) {
     const r = await fastDump(browser, addr); log(addr.slice(0, 12) + '… ' + (r.error || ('tip ' + r.dump.tip + ', ' + Object.keys(r.dump.pets).length + ' pets' + (r.partial ? ' (partial load)' : ''))) + ' in ' + r.secs.toFixed(0) + ' s');
-    if (r.dump) { const F = fullAt(r.dump.tip), full = dump(F.w, F.V, addr, r.dump.tip, r.dump.ids); r.diffs = compare(r.dump, full, r.partial); r.fullPets = Object.keys(full.pets).length; }
+    /* a page that never loaded (tip 0: the server was restarting) is not a match: replaying "to block 0" gives 0 pets on both sides */
+    if (r.dump && !(r.dump.tip > 0)) { r.diffs = [{ kind: 'page did not load', key: '-', fast: 'tip 0', full: 'tip ' + boot.tip }]; r.fullPets = '?'; }
+    else if (r.dump) { const F = fullAt(r.dump.tip), full = dump(F.w, F.V, addr, r.dump.tip, r.dump.ids); r.diffs = compare(r.dump, full, r.partial); r.fullPets = Object.keys(full.pets).length; }
     delete r.dump; results.push(r);
   }
   const CEM_N = +opt('--cem', 5), cems = [];

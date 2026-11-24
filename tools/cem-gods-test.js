@@ -14,7 +14,7 @@ const world = { pets };
 const g = S.godsOf(world);
 ok(JSON.stringify(g.map(x => x.id)) === '[2,1]', 'godsOf: living Gods only, newest first (' + g.map(x => x.id) + ')');
 ok(g[0].owner === 'b' && g[0].block === 30 && g[0].name === 'B', 'godsOf keeps id, name, owner, block');
-ok(/gods: godsOf\(world\)/.test(rd('tools/sync-server/split.js')), 'the summary carries gods');
+ok(/const gods = godsOf\(world\);\n  return spill\(\)/.test(rd('tools/sync-server/split.js')) && /\n    gods: gods\n/.test(rd('tools/sync-server/split.js')), 'the summary takes gods before spill() frees world.pets');
 ok(/_gods: summary\.gods \|\| null/.test(rd('js/v2-split.js')), 'the fast world keeps them as w._gods');
 /* the cemetery's gods(): run the real function text on a fast world that loaded only one God */
 const src = rd('js/v2-cemetery-scene.js'), a = src.indexOf('    function gods() {'), b = src.indexOf('return out.sort', a);
@@ -28,4 +28,15 @@ ok(ctx.r2.length === 1, 'an older summary without gods: falls back to the pets i
 vm.runInContext('w._gods = [{ id: 1, block: 10 }]; w.pets[0].dead = true; this.r3 = gods();', ctx);
 ok(ctx.r3.length === 0, 'a God that died after the summary (the page knows) is not listed');
 ok(/var H = gods\(\);/.test(src), 'the Gods door uses gods()');
+/* the real writer, end to end (the first version read world.pets after spill() had freed it, so every summary said gods: []) */
+(async () => {
+  const os = require('os'), out = fs.mkdtempSync(path.join(os.tmpdir(), 'cemgods-'));
+  const W = { tip: 40, pets: JSON.parse(JSON.stringify(pets)).map(p => Object.assign({ species: 'pepe', tier: 0, stats: {}, hatchBlock: 1 }, p)), items: {}, community: { burned: 0 }, log: [] };
+  try { await S.write(out, W, { tip: 40, rsig: 'rtest' }); const sm = JSON.parse(fs.readFileSync(path.join(out, 'summary.json'), 'utf8'));
+    ok(Array.isArray(sm.gods) && JSON.stringify(sm.gods.map(x => x.id)) === '[2,1]', 'split.write: summary.json lists the living Gods (' + JSON.stringify(sm.gods && sm.gods.map(x => x.id)) + ')');
+  } catch (e) { ok(false, 'split.write ran: ' + String(e && e.message || e).split('\n')[0]); }
+  done();
+})();
+function done() {
 console.log(`cem-gods: ${n - fails} passed, ${fails} failed`); process.exit(fails ? 1 : 0);
+}
