@@ -113,9 +113,13 @@ function ownerSide(rows, world) {
     rise: rise
   };
 }
-function communityCopy(c) {
+function communityCopy(c, world) {
   if (!c) return null;
   const o = copy(c) || {};
+  /* raise-tip (Nov 24 2026, display only): each wallet's share of the current community pet's care (the rules' w[<pet>].by map),
+   * so the fast page can show 'you raised X (#N of M)' without a replay. Rounded to 8 decimals, biggest first. */
+  const R = world && c.current && world[c.current];
+  if (R && R.by) o.raisers = { pet: c.current, list: Object.keys(R.by).filter(a => R.by[a] > 0).map(a => [a, Math.round(R.by[a] * 1e8) / 1e8]).sort((x, y) => y[1] - x[1] || (x[0] < y[0] ? -1 : 1)) };
   if (Array.isArray(o.leaderboard)) o.leaderboard = o.leaderboard.slice(0, 20);
   if (Array.isArray(o.gearLog)) o.gearLog = o.gearLog.slice(-40);
   return o;
@@ -165,7 +169,7 @@ function fromWorld(world) {
     v: 1, tip: world.tip || 0, n: all.length, alive: alive, dead: dead, released: released,
     burned: world.community && world.community.burned || 0,
     burns: world.log ? world.log.length : 0,
-    community: communityCopy(world.community),
+    community: communityCopy(world.community, world),
     cold: coldCopy(world),
     leaderboard: (world.community && world.community.leaderboard || []).slice(0, 20),
     wagmi: copy(world.wagmi) || {}
@@ -412,7 +416,7 @@ function write(dir, world, meta) {
     pageSize: PAGE,
     burned: world.community && world.community.burned || 0,
     burns: world.log ? world.log.length : 0,
-    community: communityCopy(world.community),
+    community: communityCopy(world.community, world),
     cold: coldCopy(world),
     leaderboard: (world.community && world.community.leaderboard || []).slice(0, 20),
     wagmi: copy(world.wagmi) || {},
