@@ -1286,7 +1286,12 @@
     var hunt = plans[0].label === 'hunt', ttl = hunt ? '🗡️ Zombie hunt' : '🕯️ Cemetery: ' + (nPets ? fmt(nPets) + ' pet' + (nPets > 1 ? 's' : '') + ' in ' : '') + plans.length + ' burn' + (plans.length > 1 ? 's' : '');
     saveResume(ttl, plans); resumeShown = true; /* cemetery-handoff (Nov 1 2026): the link's burns are saved before the sheet opens, so Cancel, a wallet reload or a closed tab no longer loses them (the usual Continue / Dismiss note offers them again) */
     confirmPlans(ttl, plans); return true; }
-  function actRoute() { if (cemRoute()) return true; if (giftRoute()) return true; var m = /^#act-(feed|roll|froll|oroll)-(\d+)(-pet)?$/.exec(location.hash); if (!m) return false;
+  /* pet-page-zombies: play.html#act-unleash-ID (the Unleash link on the pet page and in the Pet Cemetery) opens that zombie's pop-up here,
+   * where the Unleash button keeps its live chain-tip checks */
+  function unleashRoute() { var m = /^#act-unleash-(\d+)$/.exec(location.hash); if (!m) return false; var w = world(), p = w && w.byId[m[1]];
+    if (!p || !ME || !S.rows || !S.rows.length) { unleashRoute.n = (unleashRoute.n || 0) + 1; if (unleashRoute.n === 3 && !ME) toast('🩸 Connect ' + (window.V2Wallet && V2Wallet.label ? V2Wallet.label() : 'XCP Wallet') + ' to unleash #' + m[1] + '.', 15000); if (unleashRoute.n < 90) setTimeout(unleashRoute, 2000); return true; }
+    history.replaceState(null, '', location.pathname + location.search); detailId = p.id; detail(p); return true; }
+  function actRoute() { if (cemRoute()) return true; if (giftRoute()) return true; if (unleashRoute()) return true; var m = /^#act-(feed|roll|froll|oroll)-(\d+)(-pet)?$/.exec(location.hash); if (!m) return false;
     var w = world(), p = w && w.byId[m[2]], a = m[1]; if (!p || !ME || !S.rows || !S.rows.length) { actRoute.n = (actRoute.n || 0) + 1; if (actRoute.n < 90) setTimeout(actRoute, 2000); return true; } /* wait for the chain replay */
     history.replaceState(null, '', location.pathname + location.search); var back = !!m[3] && a === 'feed', bounce = function () { if (back) setTimeout(function () { petBackGo(p.id); }, 3500); return true; };
     if (!ME || p.owner !== ME || p.dead || p.released) { toast('Only the owner of a living pet can do that. Connect the wallet that owns #' + p.id + '.'); return true; } /* stays on Play: the wallet connect is here */
@@ -2022,7 +2027,12 @@
   function showTx(tx) { var w = world(), l = w.log.filter(function (x) { return x.tx === tx; })[0], r = S.rows.filter(function (x) { return x.tx_hash === tx; })[0]; if (!l) return;
     $('txInfo').innerHTML = '<p class="small"><b>' + esc(l.kind) + '</b> · ' + esc(window.XcpSlots ? XcpSlots.text(l.msg) : l.msg) + '</p><table class="small"><tr><td>block</td><td>' + l.block + '</td></tr><tr><td>tx</td><td><code>' + esc(tx) + '</code></td></tr>' + (r ? '<tr><td>from</td><td>' + esc(r.source) + '</td></tr><tr><td>tag</td><td><code>' + esc(r.tag) + '</code></td></tr><tr><td>amount</td><td>' + fmt(r.amount) + ' XCPETS</td></tr>' : '') + '</table><p class="small muted">Burn sent from your ' + esc((window.V2Wallet && V2Wallet.label ? V2Wallet.label() : 'XCP Wallet')) + '.</p>'; open('txBox'); }
   ['pending', 'log'].forEach(function (id) { $(id).onclick = function (e) { var drop = e.target.closest('[data-drop]'); if (drop && window.V2Wallet && V2Wallet.dismissPending) { e.preventDefault(); V2Wallet.dismissPending(drop.getAttribute('data-drop')); renderLog(world()); return; } var a = e.target.closest('a[data-tx]'); if (!a) return; e.preventDefault(); showTx(a.dataset.tx); }; });
-  function route() { if (actRoute()) return; var m = /^#pet-(\d+)$/.exec(location.hash); if (m && world().byId[m[1]]) { detailId = Number(m[1]); detail(world().byId[detailId]); }
+  /* pet-page-zombies (Nov 23 2026, Jake: one pet page for every pet): a risen zombie's old link play.html#pet-ID forwards to pet.html?id=ID,
+   * which now feeds, pledges, resurrects and hunts it. Other pets still open the pop-up here ('More in the game' on the pet page). */
+  function route() { if (actRoute()) return; var m = /^#pet-(\d+)$/.exec(location.hash), mp = m && world().byId[m[1]];
+    if (mp && ZB(mp)) { location.replace('pet.html?id=' + mp.id); return; }
+    if (m && !mp && window.V2Split && V2Split.ensurePet && !route.ask) { route.ask = 1; V2Split.ensurePet(+m[1]).then(function () { route.ask = 0; if (location.hash === m[0] && world().byId[m[1]]) route(); }, function () { route.ask = 0; }); }
+    if (mp) { detailId = Number(m[1]); detail(mp); }
     var dm = /^#discard-(\d+)$/.exec(location.hash); if (dm) { var dp = world().byId[dm[1]]; history.replaceState(null, '', location.pathname + location.search);
       if (dp && dp.owner === ME) setTimeout(function () { discardIds([dp.id]); }, 300); else toast('Connect the wallet that owns that pet to discard it.'); } }
   window.addEventListener('hashchange', route);
