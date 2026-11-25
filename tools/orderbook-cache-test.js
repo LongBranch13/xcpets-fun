@@ -119,8 +119,10 @@ async function browser() {
   page.on('console', m => { const line = m.type() + ' ' + m.text(); if (m.type() === 'error' || /orderbook/.test(line)) logs.push(line); });
   try {
     await page.goto('http://127.0.0.1:' + PORT + '/shop.html?sync=' + encodeURIComponent('https://node.xcpets.fun'), { waitUntil: 'domcontentloaded', timeout: 60000 });
-    await page.waitForFunction(() => { const s = document.getElementById('shop'); const t = s ? s.innerText : ''; return t.trim() && !/Reading the order book/.test(t); }, null, { timeout: 240000 }); /* trim: a blank #shop between renders passed the old wait and read as an empty book */
-    const book = await page.locator('#shop').innerText();
+    /* The text is taken in the same tick the wait sees it: #shop is rebuilt when the world refreshes, and reading it a moment
+     * later twice caught it blank on CI ("order book rendered:" with nothing after it). */
+    const got = await page.waitForFunction(() => { const s = document.getElementById('shop'); const t = s ? s.innerText : ''; return t.trim() && !/Reading the order book/.test(t) ? t : false; }, null, { timeout: 240000 });
+    const book = String(await got.jsonValue());
     ok(!/Could not read the order book/.test(book), 'order book has no read error');
     ok(/binder|Buy|No pets match|empty/i.test(book) && !/Could not read/.test(book), 'order book rendered: ' + book.replace(/\s+/g, ' ').slice(0, 220));
     if (logs.length) console.log(logs.join('\n'));
