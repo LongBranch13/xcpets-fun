@@ -12,8 +12,10 @@ node tools/playtest/run.js                                    # every flow, phon
 node tools/playtest/run.js --sizes phone --flows hatch,feed   # just some
 ```
 
-Options: `--wallet <address>` (default Evan's big wallet), `--shots` (save a screenshot per step), `--out <dir>`
-(default `previews/playtest`, git-ignored), `--freeze <ms>` (default 1000).
+Options: `--wallet <address | keen | evan>` (default `keen`, a steady wallet of ~2,000 living pets; `evan` has 40,000+ since
+Nov 25 2026 and runs in CI as a job that reports but never blocks), `--shots` (save a screenshot per step), `--out <dir>`
+(default `previews/playtest`, git-ignored), `--freeze <ms>` (default 1000), `--freeze-load <ms>` (a page's first paint, default 2000),
+`--why-freeze` (samples each page so a freeze report names the busiest functions; CI uses it).
 
 ## What it checks
 
@@ -24,7 +26,7 @@ Options: `--wallet <address>` (default Evan's big wallet), `--shots` (save a scr
 - **feed**: Daily chores / Feed hungry. Mines the burns and checks the referee says every pet it paid for actually ate.
 - **grinder**, **petpage**, **gift**, **places** (every page loads, buttons reachable, Pantheon draws).
 
-Every step fails on: a freeze over 1 s, a script error, a pop-up that never opens, a button covered by something else,
+Every step fails on: a freeze over 1 s (2 s while a page first loads), a script error, a pop-up that never opens, a button covered by something else,
 a price that differs from the rules, a result that never shows.
 
 ## Known findings

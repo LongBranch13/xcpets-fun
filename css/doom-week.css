@@ -57,7 +57,7 @@ html.dw .cem-scene { min-height: 180px; background: #14060c; }
   font-family: "Press Start 2P", monospace; font-size: 8px; line-height: 1.45; color: #fff; background: #c8102e; border: 3px solid #1a1020;
   padding: 6px 8px; box-shadow: 3px 3px 0 #000; }
 @keyframes dw-neon { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
-.dw-cemfx { position: absolute; inset: 0; pointer-events: none; z-index: 3; }
+.dw-cemfx { position: absolute; inset: 0; pointer-events: none; z-index: 3; overflow: hidden; } /* layout-check Nov 25 2026: the fog is 120% wide and drifts; clip it to the scene or the cemetery scrolls sideways (tablet) */
 .dw-fog { position: absolute; left: -10%; right: -10%; height: 28px; background: linear-gradient(transparent, rgba(120, 8, 24, .45), transparent);
   animation: dw-fog 14s linear infinite; }
 .dw-fog1 { top: 28%; } .dw-fog2 { top: 48%; animation-duration: 18s; opacity: .7; }

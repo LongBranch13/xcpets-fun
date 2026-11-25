@@ -20,7 +20,13 @@ const ROOT = path.resolve(__dirname, '../..');
 const BASE = opt('--base', 'http://127.0.0.1:8080').replace(/\/+$/, ''), SYNC = opt('--sync', 'http://127.0.0.1:8125').replace(/\/+$/, '');
 const OUT = path.resolve(ROOT, opt('--out', 'previews/playtest')), SHOTS = A.includes('--shots');
 const FREEZE = +opt('--freeze', 1000);
-const EVAN = 'bc1pfvkpmllr7mtn5uazqxumwp39h2ny3c8l6fmrgvjv2cqn5wlpt7hssf3gqd'; /* a big real wallet (~2,000 living pets) */
+/* the first paint of a page builds the whole wallet (2,000+ pets) once; it may hold the page up to 2 s. Every press after that: 1 s. */
+const FREEZE_LOAD = +opt('--freeze-load', 2000);
+/* The wallet the robot plays (--wallet): a real wallet with about 2,000 living pets and 12,000 graves, the size of a keen player.
+ * Evan's wallet grew to 40,000+ living pets on Nov 25 2026 (Shock Boxes) and every step's timing became a coin toss; it runs as the
+ * separate 'big wallet' job (--wallet evan), which reports but does not block a merge. */
+const WALLETS = { keen: 'bc1pd8pantl2vmvdf5uvtvvn0r3xnnuxvp0wln8xmlxqmykxfnte3mwqmes2ut', evan: 'bc1pfvkpmllr7mtn5uazqxumwp39h2ny3c8l6fmrgvjv2cqn5wlpt7hssf3gqd' };
+const EVAN = WALLETS.keen;
 const sizes = opt('--sizes', 'phone,desktop').split(',').filter(s => L.SIZES[s]);
 const only = opt('--flows', '') ? opt('--flows').split(',') : null;
 const report = [];
@@ -32,12 +38,28 @@ const fmt = (n) => Number(n).toLocaleString('en-US', { maximumFractionDigits: 8 
 function getJson(u) { return new Promise((res) => require('http').get(u, r => { let s = ''; r.on('data', d => { s += d; }); r.on('end', () => { try { res(JSON.parse(s)); } catch (e) { res(null); } }); }).on('error', () => res(null))); }
 async function truth(me) { const t = await getJson(SYNC + '/_t/truth?me=' + encodeURIComponent(me)); if (!t || t.error) throw new Error('referee failed: ' + (t && t.error)); return t; }
 
+/* What froze? With --why-freeze (or PT_PROF=1) every page load is sampled (Chrome's profiler, 1 ms) and a freeze report names
+ * the busiest functions during the long stretches of work, e.g. "draw v2-petdex.js:116 1200ms". */
+const WHY = A.includes('--why-freeze') || !!process.env.PT_PROF;
+function busiest(profile, budget) {
+  const byId = {}, par = {}; profile.nodes.forEach(n => { byId[n.id] = n; (n.children || []).forEach(c => { par[c] = n.id; }); });
+  const idle = id => byId[id].callFrame.functionName === '(idle)';
+  const runs = []; let cur = null;
+  profile.samples.forEach((id, i) => { const dt = (profile.timeDeltas[i] || 0) / 1000; if (idle(id)) { if (cur && cur.ms >= budget * 0.6) runs.push(cur); cur = null; return; } (cur = cur || { ms: 0, ids: [] }).ms += dt; cur.ids.push([id, dt]); });
+  if (cur && cur.ms >= budget * 0.6) runs.push(cur);
+  const incl = {};
+  runs.forEach(r => r.ids.forEach(([id, dt]) => { const seen = new Set(); for (let x = byId[id]; x; x = byId[par[x.id]]) { const cf = x.callFrame; if (!cf.url && !/^\((program|garbage collector)\)$/.test(cf.functionName)) continue; const k = (cf.functionName || '(anon)') + ' ' + cf.url.split('/').pop().split('?')[0] + ':' + (cf.lineNumber + 1); if (!seen.has(k)) { seen.add(k); incl[k] = (incl[k] || 0) + dt; } } }));
+  return Object.entries(incl).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([k, v]) => k + ' ' + Math.round(v) + 'ms').join(', ');
+}
+
 /* ------------------------------------------------------------------ a player's hands */
 function hands(pg) {
+  let cdp = null;
   const H = {
     pg,
     async open(page) {
       const t0 = Date.now();
+      if (WHY) { try { if (!cdp) { cdp = await pg.context().newCDPSession(pg); await cdp.send('Profiler.enable'); await cdp.send('Profiler.setSamplingInterval', { interval: 1000 }); } await cdp.send('Profiler.stop').catch(() => {}); await cdp.send('Profiler.start'); } catch (e) { cdp = null; } }
       await pg.goto(BASE + '/' + page, { waitUntil: 'domcontentloaded', timeout: 90000 });
       const game = /^(play|fight|breed|rare-room|raid|cemetery|shop|pet)\.html/.test(page);
       if (game && !(await L.worldReady(pg, 180000))) { problem('no-world', page + ': the pets never loaded (3 min)'); return false; }
@@ -45,12 +67,22 @@ function hands(pg) {
       const s = (Date.now() - t0) / 1000; if (s > 30) problem('slow-load', page + ' took ' + s.toFixed(0) + ' s to show pets'); else ok(page + ' loaded in ' + s.toFixed(1) + ' s');
       return true;
     },
-    /* close what a player would close first: the welcome / arrival / away cards and Coach Peepo's tips */
-    async dismiss() {
-      for (let i = 0; i < 6; i++) {
-        const b = pg.locator('.reveal.on button, .tut-tip button, [role=dialog] button').filter({ hasText: /^\s*(Skip|Got it|Close|✕|×|OK|Later|Not now|Continue)\s*$/i }).filter({ visible: true }).first();
-        if (!(await b.count())) break;
-        await b.click({ timeout: 3000 }).catch(() => {}); await pg.waitForTimeout(500);
+    /* close what a player would close first: the welcome / arrival / farewell scenes, life scenes ("tap to skip"), the "while you
+     * were away" box reveal (Later keeps the eggs in the pill) and Coach Peepo's tips. Pop-ups open one after another on a
+     * returning wallet, so it keeps going until nothing new shows for a moment. Never touches the Sign & burn sheet. */
+    async dismiss(ms) {
+      const until = Date.now() + (ms || 0);
+      for (let i = 0; i < 24; i++) {
+        const hit = await pg.evaluate(() => {
+          const vis = e => { const r = e.getBoundingClientRect(), c = getComputedStyle(e); return r.width > 2 && r.height > 2 && c.display !== 'none' && c.visibility !== 'hidden'; };
+          const la = document.querySelector('.la-ov'); if (la) { la.click(); return 'life scene'; }
+          const WORDS = /^\s*(Skip|Got it|Close|✕|×|OK|Later|Not now|Continue)\s*$/i;
+          const boxes = [...document.querySelectorAll('.reveal.on, .tut-tip, [role=dialog]')].filter(e => e.id !== 'confirmBox' && !e.closest('#confirmBox') && vis(e));
+          for (const box of boxes) { const btn = [...box.querySelectorAll('button')].find(x => WORDS.test(x.textContent || '') && vis(x) && !x.disabled); if (btn) { btn.click(); return (box.id || box.className) + ': ' + btn.textContent.trim(); } }
+          return '';
+        }).catch(() => '');
+        if (!hit) { if (Date.now() >= until) break; await pg.waitForTimeout(1000); continue; }
+        await pg.waitForTimeout(600);
       }
     },
     /* press a visible button by its words (regex) or css, like a finger would. Returns false (and reports) when there is none. */
@@ -63,7 +95,13 @@ function hands(pg) {
       const t = await now(pg);
       /* something popped up in front (a fight replay, Coach Peepo)? a player closes it first, then presses again */
       let pressed = false;
-      try { await el.click({ timeout: 2500 }); pressed = true; } catch (e0) { await H.dismiss(); await pg.waitForTimeout(400); }
+      const onTop = () => el.evaluate(n => { const r = n.getBoundingClientRect(), t = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return !!t && (t === n || n.contains(t)); }).catch(() => false);
+      try { await el.click({ timeout: 2500 }); pressed = true; } catch (e0) { await H.dismiss(2500); await pg.waitForTimeout(400); }
+      /* a button that wobbles (the hatch buttons wiggle) never counts as 'stable' to the browser robot, but a finger taps it fine:
+       * if nothing covers its middle, tap it there */
+      if (!pressed && await onTop()) { try { await el.click({ force: true, timeout: 2500 }); pressed = true; } catch (e1) {} }
+      /* scenes can come one after another (a life scene after an arrival): close again and look once more */
+      if (!pressed) { await H.dismiss(3000); if (await onTop()) { try { await el.click({ force: true, timeout: 2500 }); pressed = true; } catch (e2) {} } }
       try { if (!pressed) await el.click({ timeout: 5000 }); } catch (e) { const by = (e.message.match(/<[^>]+>(?: from <[^>]+> subtree)? intercepts pointer events/g) || []).pop(); await H.shot('blocked');
         const top = await el.evaluate(n => { const r = n.getBoundingClientRect(), t = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); if (!t) return ''; const c = t.closest('[id]'); return (t.tagName + '.' + String(t.className).slice(0, 40) + (c ? ' in #' + c.id : '') + ' "' + (t.innerText || '').replace(/\s+/g, ' ').slice(0, 50) + '"'); }).catch(() => '');
         problem('button-blocked', (why || String(what)) + ': ' + (by ? 'covered by ' + (top || by) : e.message.split('\n')[0])); return false; }
@@ -71,17 +109,20 @@ function hands(pg) {
       await H.freezes(t, why || String(what));
       return true;
     },
-    async freezes(since, what) {
+    async freezes(since, what, budget) {
       const ms = await L.responsive(pg, 10000); if (ms < 0) { problem('freeze', what + ': the page stopped answering for 10 s'); return; }
-      const long = (await L.longSince(pg, since)).filter(x => x.ms > FREEZE);
+      const long = (await L.longSince(pg, since)).filter(x => x.ms > (budget || FREEZE));
       if (long.length) problem('freeze', what + ': page froze for ' + Math.max(...long.map(x => x.ms)) + ' ms');
+      if (long.length && cdp) { try { const { profile } = await cdp.send('Profiler.stop'); console.log('     busiest while frozen: ' + busiest(profile, budget || FREEZE)); await cdp.send('Profiler.start'); } catch (e) {} }
     },
     /* a player's page finishes its background check (the newest blocks + this wallet's pets) within a few seconds of opening */
     async settled() { const t0 = Date.now(); for (let i = 0; i < 30; i++) { if (await pg.evaluate(() => { const S = V2Mock.state(); return !!(S.verified || S.viewChecked || !S.view); }).catch(() => true)) break; await pg.waitForTimeout(2000); }
       const s = (Date.now() - t0) / 1000; if (s > 45) problem('slow-check', 'the page took ' + s.toFixed(0) + ' s to finish checking the newest blocks'); },
     async sheet() { return pg.evaluate(() => { const c = document.getElementById('confirmBox'); return c && c.classList.contains('on') ? { title: (document.getElementById('cfTitle') || {}).textContent || '', amt: (document.getElementById('cfAmt') || {}).textContent || '', body: (document.getElementById('cfBody') || {}).innerText || '' } : null; }); },
     async openSheets() { return pg.evaluate(() => [...document.querySelectorAll('.reveal.on, [aria-modal=true], [role=dialog]')].filter(e => { const r = e.getBoundingClientRect(); return r.width > 2 && r.height > 2 && getComputedStyle(e).visibility !== 'hidden' && getComputedStyle(e).display !== 'none'; }).map(e => e.id || String(e.className).split(' ')[0])); },
-    async layout(where) { const a = await L.audit(pg); a.filter(x => /off-screen|out-of-view|too-tall|covered|wider/.test(x.kind)).slice(0, 4).forEach(x => problem('layout', where + ': ' + x.kind + ' ' + x.where + ' ' + x.detail)); },
+    /* a small floating pill (wallet, new pets) over the page is fine while the page scrolls under it, like a pinned bar (the audit's sticky rule) */
+    async layout(where) { const a = await L.audit(pg); const scrolls = await pg.evaluate(() => document.scrollingElement.scrollHeight > innerHeight + 80).catch(() => false);
+      a.filter(x => !(scrolls && x.kind === 'control-covered' && /#(xwPill|hatchTray)\b/.test(x.detail || '')) && /off-screen|out-of-view|too-tall|covered|wider/.test(x.kind)).slice(0, 4).forEach(x => problem('layout', where + ': ' + x.kind + ' ' + x.where + ' ' + x.detail)); },
     async cancel() { await pg.keyboard.press('Escape').catch(() => {}); await pg.waitForTimeout(300); const s = await H.sheet(); if (s) await pg.click('#cfNo', { timeout: 2000 }).catch(() => {}); await pg.waitForTimeout(300);
       await pg.evaluate(() => { document.querySelectorAll('.reveal.on').forEach(e => e.classList.remove('on')); }).catch(() => {}); },
     async shot(name) { if (SHOTS || name === 'blocked') await pg.screenshot({ path: path.join(OUT, FLOW + '-' + SIZE + '-' + name + '.png') }).catch(() => {}); },
@@ -95,6 +136,12 @@ function hands(pg) {
 async function now(pg) { return L.now(pg); }
 
 /* ------------------------------------------------------------------ the flows */
+/* in the page: did the hatch reveal of the new eggs start? the egg-crack scene, the box reveal, or a new count on the pill */
+const NEW_REVEAL = `window.newReveal = function (tb) {
+  if (document.querySelector('.la-ov[data-anim^="hatch"]')) return 'egg-crack scene';
+  var pk = document.getElementById('packBox'); if (pk && pk.classList.contains('on')) return 'box reveal';
+  var t = document.querySelector('#hatchTray .htn'); if (t && t.textContent !== tb) return 'pill: ' + t.textContent;
+  return null; };`;
 const FLOWS = {};
 
 /* the game opens, the numbers match a full replay, the Fire Sale / prices are right */
@@ -102,7 +149,7 @@ FLOWS.open = async (H, T) => {
   if (!(await H.open('play.html'))) return;
   const away = await H.pg.evaluate(() => !!document.querySelector('#ipAway, .ip-away, #returnBox.on, .returnov'));
   ok('away card or bell: ' + away);
-  await H.dismiss(); await H.settled(); await H.shot('open');
+  await H.dismiss(8000); await H.settled(); await H.shot('open');
   const s = await H.pg.evaluate(() => { const w = V2Mock.world(); const t = (id) => ((document.getElementById(id) || {}).textContent || '');
     return { mine: V2UI.mine(w).length, alive: V2UI.mine(w).filter(p => !p.dead).length, sale: !!document.querySelector('.fs-banner, #fsBanner, .firesale, [data-firesale]') || /FIRE SALE/i.test(document.body.innerText.slice(0, 20000)),
       hatch: t('hatchBtn'), dozen: t('dozenBtn'), kase: t('caseBtn'), zap: t('zapBtn'), feed: t('cfeedBtn'), tip: V2Mock.state().tip, wtip: w.tip }; });
@@ -123,7 +170,7 @@ FLOWS.open = async (H, T) => {
 /* hatch one egg and a pack: the sheet opens, the burn is the rules' price, then the block lands and the eggs show up without a reload */
 FLOWS.hatch = async (H, T, ctx) => {
   if (!(await H.open('play.html'))) return;
-  await H.dismiss();
+  await H.dismiss(8000);
   const before = await H.pg.evaluate(() => V2UI.mine(V2Mock.world()).filter(p => !p.dead).length);
   const got = [];
   for (const [btn, tag, want] of [['#hatchBtn', 'pet:hatch', T.costs.hatch], ['#dozenBtn', 'pet:hatch12', T.costs.hatch12]]) {
@@ -140,6 +187,10 @@ FLOWS.hatch = async (H, T, ctx) => {
   if (!got.length || ctx.size !== ctx.first) return; /* the pretend chain moves once per run */
   /* a player sits on the page: let it finish its own background work first (the burn check), so the block below is news to it */
   for (let i = 0; i < 24; i++) { if (await H.pg.evaluate(() => !!(V2Mock.state().verified || V2Mock.state().viewChecked))) break; await H.pg.waitForTimeout(5000); }
+  /* the egg reveal of THIS block must be new: close what is already up (the away reveal goes to the pill) and note the pill */
+  await H.dismiss(8000);
+  await H.pg.evaluate(NEW_REVEAL);
+  const trayBefore = await H.pg.evaluate(() => ((document.querySelector('#hatchTray .htn') || {}).textContent || ''));
   /* the block lands with both burns in it (same block, like a player double-pressing) */
   const blk = await L.post(SYNC, '/_t/block', { burns: got.map(x => ({ source: ctx.me, tag: x.tag, qty: x.amount })) });
   ctx.mined.push(blk.tip); ok('mined block ' + blk.tip + ' with ' + got.length + ' hatch burns (' + 13 * got.length / 2 + ' eggs expected)');
@@ -147,16 +198,17 @@ FLOWS.hatch = async (H, T, ctx) => {
   const t0 = Date.now(); let seen = 0, pop = null;
   for (let i = 0; i < 36; i++) { /* a player waits ~3 minutes on the page */
     await H.pg.waitForTimeout(5000);
-    const s = await H.pg.evaluate(() => ({ n: V2UI.mine(V2Mock.world()).filter(p => !p.dead).length, pop: [...document.querySelectorAll('#packBox.on, #animBox.on, #hatchTray, .reveal.on')].filter(e => { const r = e.getBoundingClientRect(), c = getComputedStyle(e); return r.width > 2 && r.height > 2 && c.visibility !== 'hidden' && c.display !== 'none'; }).map(e => e.id || e.className).slice(0, 3) }));
-    seen = s.n - before; if (s.pop.length) pop = s.pop;
+    const s = await H.pg.evaluate((tb) => ({ n: V2UI.mine(V2Mock.world()).filter(p => !p.dead).length, pop: newReveal(tb) }), trayBefore).catch(() => ({ n: 0, pop: null }));
+    seen = s.n - before; if (s.pop) pop = s.pop;
     if (seen >= want) break;
   }
   /* the eggs crack open first (a few seconds of animation), then the box reveal opens */
-  for (let i = 0; i < 8 && seen >= want && !pop; i++) { await H.pg.waitForTimeout(2500); const q = await H.pg.evaluate(() => [...document.querySelectorAll('#packBox.on, #hatchTray')].map(e => e.id)); if (q.length) pop = q; }
+  for (let i = 0; i < 12 && seen >= want && !pop; i++) { await H.pg.waitForTimeout(2500); pop = await H.pg.evaluate(newRevealSrc => newReveal(newRevealSrc), trayBefore).catch(() => null); }
   const secs = Math.round((Date.now() - t0) / 1000);
   if (seen < want) problem('result-never-shows', 'hatched ' + want + ' eggs; after the block landed the page still showed ' + Math.max(0, seen) + ' of them after ' + secs + ' s on the page (no reload)');
-  else ok(want + ' new eggs showed up ' + secs + ' s after the block' + (pop ? ' (pop-up: ' + pop.join(',') + ')' : ''));
-  if (!pop) problem('no-reveal', 'no hatch reveal pop-up or pill appeared for the new eggs');
+  else ok(want + ' new eggs showed up ' + secs + ' s after the block' + (pop ? ' (' + pop + ')' : ''));
+  if (!pop) { const why = await H.pg.evaluate(() => ({ open: [...document.querySelectorAll('.reveal.on, .la-ov, .tut-tip')].map(e => e.id || e.className), tray: (document.querySelector('#hatchTray') || {}).innerText || '', held: window.V2Held ? V2Held.list() : null })).catch(() => ({}));
+    problem('no-reveal', 'no hatch reveal pop-up or pill appeared for the new eggs (' + JSON.stringify(why).slice(0, 200) + ')'); }
   await H.shot('landed');
   /* and after a reload */
   await H.pg.reload({ waitUntil: 'domcontentloaded' }); await L.worldReady(H.pg, 180000);
@@ -169,7 +221,7 @@ FLOWS.hatch = async (H, T, ctx) => {
 /* Select all -> Discard selected -> Cancel: no freeze at thousands of pets, nothing lost */
 FLOWS.select = async (H) => {
   if (!(await H.open('play.html'))) return;
-  await H.dismiss(); await H.settled();
+  await H.dismiss(8000); await H.settled();
   const n0 = await H.pg.evaluate(() => V2UI.mine(V2Mock.world()).length);
   if (!(await H.press('#mpcSelBtn', 'Select button', { quiet: true })) && !(await H.press(/☑️ Select|^Select$/, 'Select button'))) return;
   if (!(await H.press('#selAll', 'Select all'))) return;
@@ -179,7 +231,10 @@ FLOWS.select = async (H) => {
   const t0 = Date.now();
   if (await H.press(/Discard selected/, 'Discard selected', { wait: 2500 })) {
     const sheets = await H.openSheets(); const sh = await H.sheet(), dlg = H.pg.__lastDialog && H.pg.__lastDialog.at >= t0 ? H.pg.__lastDialog : null;
+    /* starred pets are never discarded (owner): when every picked pet is starred the game says so in a toast instead of asking */
+    const note = await H.pg.evaluate(() => [...document.querySelectorAll('#toasts > *')].map(e => e.innerText).filter(t => /Skipped|never discarded|Discarded|Undo/i.test(t)).pop() || '').catch(() => '');
     if (dlg) ok('discard asks first (browser box)');
+    else if (!sheets.length && !sh && note) ok('discard answered: ' + note.replace(/\s+/g, ' ').slice(0, 100));
     else if (!sheets.length && !sh) problem('no-sheet', 'Discard selected opened nothing');
     else { ok('discard asks first: ' + (sh ? sh.title.slice(0, 80) : sheets.join(','))); await H.layout('discard sheet'); }
     if (sh && !/forever|permanent|cannot come back|can't come back/i.test(sh.title + sh.body)) problem('discard-warning', 'the discard sheet does not say it is permanent');
@@ -195,7 +250,7 @@ FLOWS.select = async (H) => {
 /* feeding: the one-burn "Do it all" (Daily chores), then Feed selected; the chores burn lands and the referee counts who really ate */
 FLOWS.feed = async (H, T, ctx) => {
   if (!(await H.open('play.html'))) return;
-  await H.dismiss(); await H.settled();
+  await H.dismiss(8000); await H.settled();
   let land = null;
   for (const [what, why] of [[/Do it all in one burn|Daily chores/i, 'Do it all in one burn'], [/Feed hungry|Feed all hungry/i, 'Feed the hungry pets']]) {
     if (!(await H.press(what, why, { wait: 2500, quiet: true }))) { ok(why + ': button not offered right now'); continue; }
@@ -225,7 +280,7 @@ FLOWS.feed = async (H, T, ctx) => {
 /* the Grinder opens on screen, its filter works, GRIND reaches the sheet */
 FLOWS.grinder = async (H) => {
   if (!(await H.open('play.html#grinder'))) return;
-  await H.dismiss();
+  await H.dismiss(8000);
   let on = await H.pg.evaluate(() => { const g = document.querySelector('.mgr-bg, #mgr, [class*=grind]'); if (!g) return null; const r = g.getBoundingClientRect(); return { top: Math.round(r.top), h: Math.round(r.height) }; });
   if (!on) { await H.pg.evaluate(() => window.V2Grinder && V2Grinder.open()); await H.pg.waitForTimeout(1500); on = await H.pg.evaluate(() => { const g = document.querySelector('.mgr-bg, #mgr, [class*=grind]'); if (!g) return null; const r = g.getBoundingClientRect(); return { top: Math.round(r.top), h: Math.round(r.height) }; }); }
   if (!on) return problem('no-sheet', 'the Grinder never opened');
@@ -243,7 +298,7 @@ FLOWS.grinder = async (H) => {
 /* a pet page opens and its buttons answer */
 FLOWS.petpage = async (H) => {
   if (!(await H.open('play.html'))) return;
-  await H.dismiss();
+  await H.dismiss(8000);
   if (!(await H.press(/Open ▸/, 'Open a pet', { wait: 2000 }))) return;
   const sheets = await H.openSheets(); if (!sheets.length && !/pet\.html/.test(H.pg.url())) problem('no-sheet', 'Open ▸ on a pet card opened nothing'); else ok('pet page: ' + (sheets.join(',') || H.pg.url()));
   await H.layout('pet page'); await H.shot('pet');
@@ -253,7 +308,7 @@ FLOWS.petpage = async (H) => {
 /* gifts: the picker opens */
 FLOWS.gift = async (H) => {
   if (!(await H.open('play.html'))) return;
-  await H.dismiss();
+  await H.dismiss(8000);
   if (!(await H.press('#gfMany', 'Gift several pets', { wait: 2000, quiet: true }))) return ok('gift button not on this screen');
   const sheets = await H.openSheets(); if (!sheets.length) problem('no-sheet', 'Gift several pets opened nothing'); else ok('gift picker: ' + sheets.join(','));
   await H.layout('gift picker'); await H.cancel();
@@ -269,10 +324,10 @@ FLOWS.places = async (H) => {
   for (const [page, want] of PLACES) {
     const t0 = Date.now();
     if (!(await H.open(page))) continue;
-    await H.dismiss();
+    await H.dismiss(8000);
     const s = await H.pg.evaluate(() => ({ text: document.body.innerText.length, words: document.body.innerText.slice(0, 40000) }));
     if (s.text < 400 || !want.test(s.words)) problem('empty-page', page + ' shows almost nothing (' + s.text + ' characters)'); else ok(page + ' content ok (' + ((Date.now() - t0) / 1000).toFixed(1) + ' s)');
-    await H.freezes(0, page + ' load');
+    await H.freezes(0, page + ' load', FREEZE_LOAD);
   }
   /* Pantheon on fast pages used to be empty */
   if (await H.open('pantheon.html')) {
@@ -285,7 +340,7 @@ FLOWS.places = async (H) => {
 (async () => {
   fs.mkdirSync(OUT, { recursive: true });
   let allow = []; try { allow = fs.readFileSync(path.join(__dirname, 'allow.txt'), 'utf8').split('\n').map(s => s.trim()).filter(s => s && s[0] !== '#'); } catch (e) {}
-  let me = opt('--wallet', EVAN);
+  let me = opt('--wallet', EVAN); if (WALLETS[me]) me = WALLETS[me];
   console.log('referee: replaying the whole chain with the rules (about a minute)…');
   let T = await truth(me);
   console.log('referee: block ' + T.tip + ', ' + T.pets + ' pets, wallet ' + me.slice(0, 10) + '… has ' + T.me.alive + ' living, ' + T.me.dead + ' dead, ' + T.me.zombies + ' zombies; Fire Sale ' + (T.sale ? 'ON' : 'off'));
@@ -300,6 +355,9 @@ FLOWS.places = async (H) => {
       const pg = await cx.newPage();
       pg.on('pageerror', e => problem('script-error', String(e.message || e).slice(0, 160) + ' @ ' + String(e.stack || '').split('\n').slice(1, 30).map(x => x.trim().replace(/\?v=[^:]+/, '').replace(BASE + '/', '')).join(' < ')));
       pg.on('crash', () => problem('crash', 'the tab crashed'));
+      /* a game script that never arrived explains the 'X is not defined' that follows it */
+      pg.on('requestfailed', r => { const u = r.url(), why = (r.failure() || {}).errorText || ''; if (/\.js(\?|$)/.test(u) && u.startsWith(BASE) && !/ERR_ABORTED/.test(why)) problem('script-load-failed', u.replace(BASE + '/', '') + ' did not load (' + why + ')'); });
+      pg.on('response', r => { const u = r.url(); if (/\.js(\?|$)/.test(u) && u.startsWith(BASE) && r.status() >= 400) problem('script-load-failed', u.replace(BASE + '/', '') + ' answered ' + r.status()); });
       /* native confirm()/alert(): a player reads it and presses Cancel (the robot never confirms a native dialog); long ones are reported */
       pg.on('dialog', d => { const m = d.message(); pg.__lastDialog = { at: Date.now(), m }; ok('browser dialog (' + d.type() + '): ' + m.slice(0, 100).replace(/\s+/g, ' ')); if (m.length > 600) problem('dialog-wall', 'a ' + d.type() + ' box with ' + m.length + ' characters of text: ' + m.slice(0, 120).replace(/\s+/g, ' ')); d.dismiss().catch(() => {}); });
       const t0 = Date.now();
