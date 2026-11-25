@@ -18,6 +18,8 @@
  *   XP_RULES_FOLLOW=0  do not follow main (see rules-follow.js). By default the world builder runs from a copy of main's
  *                  files that this service downloads itself, so a rules change on main reaches the server without anyone logging in.
  *   XP_RULES_EVERY_S   how often to ask GitHub whether main moved (default 180)
+ *   XP_CHECK_ADVANCE=0  reload the check service's world for every new block instead of applying only the new burns (Nov 25 2026);
+ *                  XP_CHECK_ADVANCE_MAX (default 12) is the most blocks one advance may apply.
  *   XP_CHECK=0     do not run the burn check service (checker.js). XP_CHECK_HEAP (MB, default 1400) caps its heap;
  *                  XP_CHECK_NEED (MB, default 1200) is the free memory it needs before it starts. */
 const fs = require('fs'), path = require('path'), http = require('http'), { spawn, fork } = require('child_process'), os = require('os');
@@ -189,8 +191,10 @@ function memInfo() {
   } catch (e) { }
   return out;
 }
-const CK = { proc: null, state: process.env.XP_CHECK === '0' ? 'off' : 'idle', tip: 0, manifest: '', busy: false, loads: 0, fails: 0, crashes: 0, lastMs: 0, rssMB: 0, why: '', seq: 0, pend: new Map(), restAt: 0 };
-function ckInfo() { return { state: CK.state, tip: CK.tip, loads: CK.loads, fails: CK.fails, crashes: CK.crashes, loadSec: Math.round(CK.lastMs / 100) / 10, rssMB: CK.rssMB, why: CK.why || null }; }
+const CK = { proc: null, state: process.env.XP_CHECK === '0' ? 'off' : 'idle', tip: 0, manifest: '', busy: false, loads: 0, fails: 0, crashes: 0, lastMs: 0, rssMB: 0, why: '', seq: 0, pend: new Map(), restAt: 0,
+  hashAt: '', advances: 0, advFails: 0, advMs: 0 };
+function ckInfo() { return { state: CK.state, tip: CK.tip, loads: CK.loads, fails: CK.fails, crashes: CK.crashes, loadSec: Math.round(CK.lastMs / 100) / 10, rssMB: CK.rssMB, why: CK.why || null,
+  advances: CK.advances, advFails: CK.advFails, advanceSec: Math.round(CK.advMs / 100) / 10 }; }
 function ckStop(why) {
   if (CK.proc) { try { CK.proc.kill('SIGKILL'); } catch (e) { } }
   CK.proc = null; CK.busy = false; CK.tip = 0; CK.manifest = ''; CK.rssMB = 0; if (CK.state !== 'off') { CK.state = why || 'idle'; }
@@ -203,12 +207,23 @@ function ckStart() {
   child.stderr.on('data', d => { const s = String(d).trim(); if (s) console.error('check: ' + s.split('\n')[0].slice(0, 160)); });
   child.on('message', m => {
     if (!m || child !== CK.proc) return;
+    /* a new block applied to the world in memory (checker.js advance); a failed one loads the checkpoint again on the next tick */
+    if (m.cmd === 'advanced') { CK.busy = false; CK.rssMB = m.rssMB || CK.rssMB;
+      if (m.ok) { CK.tip = m.tip; CK.hashAt = CK.pendFp || ''; CK.advances++; CK.advMs = m.ms || 0; CK.state = 'ready'; } else { CK.advFails++; CK.tip = 0; CK.manifest = ''; CK.hashAt = ''; CK.state = 'loading'; CK.why = 'advance: ' + String(m.error || '').slice(0, 50); } return; }
     if (m.cmd === 'loaded') { CK.busy = false; CK.rssMB = m.rssMB || 0;
-      if (m.ok) { CK.tip = m.tip; CK.loads++; CK.crashes = 0; CK.lastMs = m.ms || 0; CK.state = 'ready'; CK.why = ''; } else { CK.fails++; CK.tip = 0; CK.manifest = ''; CK.state = 'failed'; CK.why = String(m.error || '').slice(0, 60); CK.restAt = Date.now(); } return; }
+      if (m.ok) { CK.tip = m.tip; CK.hashAt = CK.pendFp || ''; CK.loads++; CK.crashes = 0; CK.lastMs = m.ms || 0; CK.state = 'ready'; CK.why = ''; } else { CK.fails++; CK.tip = 0; CK.manifest = ''; CK.state = 'failed'; CK.why = String(m.error || '').slice(0, 60); CK.restAt = Date.now(); } return; }
     if (m.cmd === 'checked' || m.cmd === 'shopped' || m.cmd === 'carded') { const fn = CK.pend.get(m.id); if (fn) { CK.pend.delete(m.id); fn(m); } }
   });
   child.on('exit', (code, sig) => { if (child !== CK.proc) return; CK.crashes++; CK.why = sig ? 'signal ' + sig : 'exit ' + code; CK.restAt = Date.now(); ckStop('crashed'); });
   child.on('error', () => { if (child !== CK.proc) return; CK.crashes++; CK.restAt = Date.now(); ckStop('crashed'); });
+}
+/* What the checker's world was built from up to block `tip`: the burns (all counted, the last 30 blocks by tx) and the block hashes of
+ * those 30 blocks. A reorg or a re-read that changes any of it no longer matches, so the checker loads again instead of advancing. */
+function ckFp(state, tip) {
+  const h = require('crypto').createHash('sha1'); let n = 0;
+  for (const r of state.rows || []) { if (!r || !(r.block_index <= tip)) continue; n++; if (r.block_index > tip - 30) h.update(r.block_index + ':' + (r.tx_hash || '') + ':' + (r.tx_index != null ? r.tx_index : '') + ';'); }
+  const hs = state.hashes || {}; for (let b = tip - 29; b <= tip; b++) if (hs[b]) h.update(b + '=' + hs[b] + ';');
+  return n + ':' + h.digest('hex');
 }
 /* every sync tick: keep the check service's world at the follower's tip, or keep it stopped */
 function ckTick(state, dataDir, codeDir) {
@@ -228,6 +243,15 @@ function ckTick(state, dataDir, codeDir) {
   if (CK.busy) return;
   if (CK.manifest === latest.manifest && CK.tip === state.tip) return;
   const view = pageInputs(state);
+  /* Nov 25 2026: same published world, chain moved on by a few blocks, and the block the checker's world ends on is still on the chain
+   * (no reorg): apply only the new burns (about 1.5 s) instead of a full load (tens of seconds without answers). */
+  const ADV_MAX = +(process.env.XP_CHECK_ADVANCE_MAX || 12);
+  if (CK.state === 'ready' && CK.manifest === latest.manifest && CK.tip && state.tip > CK.tip && state.tip - CK.tip <= ADV_MAX && CK.hashAt && ckFp(state, CK.tip) === CK.hashAt && process.env.XP_CHECK_ADVANCE !== '0') {
+    CK.busy = true; CK.pendFp = ckFp(state, state.tip);
+    try { CK.proc.send({ cmd: 'advance', rows: view.rows, hashes: view.hashes, tip: view.tip, dex: view.dex }); } catch (e) { CK.busy = false; ckStop('crashed'); }
+    return;
+  }
+  CK.pendFp = ckFp(state, state.tip);
   const worldDir = path.join(dataDir, 'world', latest.rsig, String(latest.tip));
   CK.busy = true; CK.manifest = latest.manifest; if (CK.state !== 'ready') CK.state = 'loading';
   try { CK.proc.send({ cmd: 'load', codeDir: codeDir || '', worldDir: worldDir, rsig: latest.rsig, rows: view.rows, hashes: view.hashes, tip: view.tip, dex: view.dex }); }
