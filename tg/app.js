@@ -222,7 +222,7 @@
   /* ---------------------------------------------------------------- pet art (lazy) */
   function loadScript(src) { return new Promise(function (ok, no) { var s = D.createElement('script'); s.src = src; s.onload = ok; s.onerror = no; D.head.appendChild(s); }); }
   function art() {
-    if (!S.artP) S.artP = loadScript(siteUrl('js/pet-core.js?v=e6db15afb2')).then(function () { return loadScript(siteUrl('js/v2-art.js?v=a543bcdc56')); }).then(function () { return !!(W.PetCore && W.XcpArt && XcpArt.buildArt); }, function () { return false; });
+    if (!S.artP) S.artP = loadScript(siteUrl('js/pet-core.js?v=e6db15afb2')).then(function () { return loadScript(siteUrl('js/v2-art.js?v=fa5e112502')); }).then(function () { return !!(W.PetCore && W.XcpArt && XcpArt.buildArt); }, function () { return false; });
     return S.artP;
   }
   var artCache = {};

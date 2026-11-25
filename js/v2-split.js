@@ -172,10 +172,30 @@
       _view: 1, _counts: { n: summary.n, alive: summary.alive, dead: summary.dead, burned: summary.burned, burns: summary.burns }
     };
     if (pack && pack.roster) w._roster = pack.roster;
-    if (pack && pack.cem) w.cem = cemFill(pack.cem);
+    /* FAST WORLD STATE (Nov 25 2026, root fix; see STATE_OWN/STATE_SKIP/STATE_SLIM in tools/sync-server/split.js): every other rules
+     * table rides in summary.state (saved spins, player numbers, gift inbox, burn totals, Mythic discount marks, swaps, listings, Rug Me
+     * ads, re-wear grants, the cemetery's seats and grudges...). Each world gets its own copy, since the rules write to some of them. */
+    var st = stateCopy(summary);
+    if (st) {
+      Object.keys(st).forEach(function (k) { if (STATE_MERGE[k]) return; if (w[k] === undefined || STATE_OVER[k]) w[k] = st[k]; });
+      w.mythicOwners = Object.assign(st.mythicOwners || {}, mythicOwners); /* every wallet's Mythic discount; the owner page's own mark wins */
+      w.lookCopies = Object.assign(st.lookCopies || {}, pageLooks); /* copies worn by another pet + every copy of the owner pages read */
+      if (st.cem) w.cem = cemFill(st.cem, true);
+    }
+    if (!w.cem && pack && pack.cem) w.cem = cemFill(pack.cem);
     poolSwitches(w);
     return w;
   }
+  /* summary.state tables assemble() merges itself, and the ones the summary carries but the slim world fills with an empty stand-in */
+  var STATE_MERGE = { mythicOwners: 1, lookCopies: 1, cem: 1 }, STATE_OVER = { tokens: 1 };
+  var stCache = { s: null, t: null };
+  function stateCopy(summary) {
+    if (!summary || !summary.state) return null;
+    if (stCache.s !== summary) { stCache.s = summary; stCache.t = JSON.stringify(summary.state); }
+    return JSON.parse(stCache.t);
+  }
+  /* look copies a wallet holds, from every owner page 0 this page read (page.looks) */
+  var pageLooks = {};
   /* Nov 22 2026: the rules keep 'has this community Mythic reached Cold Storage' switches in memory (FUNTRUMP, DJ Pepe, White Rabbit,
    * Homer, Kek, Wizard pools and breeding). A replay or V2Rules.reindex sets them; the fast world never ran either, so FUNTRUMP-line
    * pets showed 'FUNTRUMP can breed once he reaches Cold Storage' here while the game allowed the breed. Set only the switches: a stub
@@ -501,6 +521,7 @@
   function openOwnerPets(page, who) {
     if (!page || page.v !== 3) return page;
     var known = page.owner || who || '';
+    if (page.looks) Object.keys(page.looks).forEach(function (k) { pageLooks[k] = page.looks[k]; });
     if (page.pets) page.pets = openList(page.pets, page.hashes, known);
     if (page.rise) page.rise = openList(page.rise, page.hashes, known);
     return page;
@@ -1413,8 +1434,10 @@
   }
   /* The slim world only carries part of w.cem. Give it the same shape the rules engine builds (cemW in v2-rules.js),
    * so cemView and the altar do not crash on a missing altars table (seance button stayed off, Nov 22 2026). Display only. */
-  function cemFill(c) { c = c || {}; if (!c.altars) c.altars = {}; if (!c.altarList) c.altarList = []; if (!c.zombies) c.zombies = []; if (!c.hunts) c.hunts = [];
-    if (!c.huntDay) c.huntDay = {}; if (!c.raisedBy) c.raisedBy = {}; if (!c.huntedBy) c.huntedBy = {}; if (!c.log) c.log = []; c._slim = 1; return c; }
+  function cemFill(c, full) { c = c || {}; if (!c.altars) c.altars = {}; if (!c.altarList) c.altarList = []; if (!c.zombies) c.zombies = []; if (!c.hunts) c.hunts = [];
+    if (!c.huntDay) c.huntDay = {}; if (!c.raisedBy) c.raisedBy = {}; if (!c.huntedBy) c.huntedBy = {}; if (!c.log) c.log = [];
+    /* full: the summary's state.cem is the rules' own table (seats, clocks, grudges...), so it is not a stand-in */
+    if (full && c.mg) delete c._slim; else c._slim = 1; return c; }
   /* Mythic God table (Nov 25 2026): zombies.json now carries w.cem.mg (Pantheon seats, meals, the unleash list and the
    * per-wallet clocks). Keep it exactly as published; a world without it must stay without it, so V2MgRoad.mgReady can
    * tell "no seats yet" from "not loaded on this page" and no page offers an unleash the rules would then reject. */
@@ -1422,7 +1445,8 @@
   var zombieP = null;
   function applyZombies(z) {
     if (!z || !z.pets) return 0;
-    viewHold.cem = cemMg(cemFill({ huntedBy: z.huntedBy || {}, altars: z.altars || {} }), z.mg);
+    var sc = stateCopy(lastSummary); /* the summary's full cemetery table wins over this file's three tables */
+    viewHold.cem = sc && sc.cem ? cemFill(sc.cem, true) : cemMg(cemFill({ huntedBy: z.huntedBy || {}, altars: z.altars || {} }), z.mg);
     if (z.pets.length) mergePets(openList(z.pets, null, ''));
     else if (window.V2Mock && V2Mock.world && V2Mock.setViewWorld) {
       var cur = V2Mock.world();
