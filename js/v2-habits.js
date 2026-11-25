@@ -9,6 +9,7 @@
     if (!p) return 'not found'; if (p.owner !== me) return 'not yours'; if (p.dead) return 'dead'; if (p.released) return 'released';
     if (V && V.questOn && V.questAway && V.questOn(nb) && V.questAway(p, nb)) return 'away on a quest';
     if (p.hd && p.hd === me) return 'discarded (the rules never feed a discarded pet)'; /* Nov 25 2026 playtest: Daily chores charged for 1,698 discarded pets */
+    if (pend && pend.hd && pend.hd[p.id]) return 'being discarded (your discard burn is still waiting to confirm)'; /* Nov 25 2026 (G Money): feeds signed while the pet:hd burns were unconfirmed paid for pets the rules then refused */
     if (p.zombie && !p.zombie.end) return 'a risen zombie (it eats pets, feed it in the Cemetery)';
     if (p.mythicCare || p.stage >= 5) return 'Mythic (never starves)'; if (p.fedToday) return 'already fed this chain day';
     if (pend && pend[p.id]) return 'a feed burn is still waiting to confirm'; if (!(p.nextMeal > 0) || !p.hungry) return 'no meal due';
