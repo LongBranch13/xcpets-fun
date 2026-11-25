@@ -17,7 +17,8 @@ function load() { const store = {}; const ls = { getItem: k => store[k] || null,
   return ctx; }
 let fails = 0; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) fails++; };
 const hex = s => Buffer.from(s, 'utf8').toString('hex');
-const ctx = load(), V = ctx.V2Rules, E = ctx.LiveEngine;
+/* one live replay, then each scenario continues from a copy of it (tools/lib/fork-replay): 10 full replays ran ~600 s and hit the CI limit */
+const ctx = require('./lib/fork-replay').load(), V = ctx.V2Rules, E = ctx.LiveEngine;
 const boot = JSON.parse(fs.readFileSync(path.resolve(opt('--boot') || path.join(ROOT, 'api', 'boot.json')), 'utf8'));
 const rows = boot.rows.slice().sort((a, b) => a.block_index - b.block_index || a.tx_index - b.tx_index), tip = boot.tip || rows[rows.length - 1].block_index;
 const hashes = Object.assign({}, ctx.XCPETS_BLOCK_HASHES || {}, boot.hashes || {}), nb = tip + 1, opts = t => ({ tip: t, live: E && E.RealCore, dex: boot.dex });
@@ -29,8 +30,9 @@ const sig = w => JSON.stringify(w.pets.map(p => [p.id, p.owner, p.care, p.lastFe
 const last = w => w.log[w.log.length - 1];
 
 /* pick two adult pets of one owner that can breed each other now, breed them at nb, then dip at nb + 100 */
-const w0 = V.replay(rows, hashes, [], opts(tip));
-ok(V.dipGate() > tip, 'ACTIVATE_POOL_DIP_BLOCK (' + V.dipGate() + ') is above the feed tip ' + tip);
+const w0 = V.replay(rows, hashes, [], Object.assign(opts(tip), { _forkSave: true }));
+/* Written before the gate was mined. Each case below sets its own activation block, so a mined gate (feed tip past it) is fine too. */
+ok(Number.isFinite(V.dipGate()), 'ACTIVATE_POOL_DIP_BLOCK is set (' + V.dipGate() + (V.dipGate() > tip ? ', above' : ', mined before') + ' the feed tip ' + tip + ')');
 ok(V.parseTag('pet:dip:12').action === 'dip' && V.parseTag('pet:dip:12').petId === 12 && V.parseTag('pet:dip').action !== 'dip', 'parseTag reads pet:dip:ID only');
 const by = {}; w0.pets.forEach(p => { if (p.owner && !V.breedable(p, nb)) (by[p.owner] = by[p.owner] || []).push(p); });
 let pair = null;
@@ -41,15 +43,15 @@ const brd = row(o, 'pet:breed:' + PA.id + ':' + PB.id, 690, nb);
 
 /* 1. gate off */
 const gOff = V.dipGate(); V._setDipActivation(b2 + 1);
-const wB = V.replay(rows.concat([brd]), H(b2), [], opts(b2)), a0 = wB.byId[PA.id];
+const wB = V.replay(rows.concat([brd]), H(b2), [], Object.assign(opts(b2), { _forkUse: tip })), a0 = wB.byId[PA.id];
 ok(a0.lastBreed === nb, 'the breed landed (#' + PA.id + ' lastBreed ' + a0.lastBreed + ')');
-const wOff = V.replay(rows.concat([brd, row(o, 'pet:dip:' + PA.id, 345, b2)]), H(b2), [], opts(b2));
+const wOff = V.replay(rows.concat([brd, row(o, 'pet:dip:' + PA.id, 345, b2)]), H(b2), [], Object.assign(opts(b2), { _forkUse: tip }));
 ok(last(wOff).kind === 'rejected' && /unknown pet: tag/.test(last(wOff).msg) && wOff.byId[PA.id].dipFor == null, 'gate off: pet:dip is an unknown tag (' + last(wOff).msg + ')');
 
 /* 2. gate on */
 V._setDipActivation(nb);
 const left0 = V.dipLeft(wB.byId[PA.id], b2);
-const wOn = V.replay(rows.concat([brd, row(o, 'pet:dip:' + PA.id, 345, b2)]), H(b2), [], opts(b2)), a1 = wOn.byId[PA.id];
+const wOn = V.replay(rows.concat([brd, row(o, 'pet:dip:' + PA.id, 345, b2)]), H(b2), [], Object.assign(opts(b2), { _forkUse: tip })), a1 = wOn.byId[PA.id];
 ok(last(wOn).kind === 'dip' && a1.dipFor === nb && a1.dipCut === Math.floor(left0 / 2), 'dip lands: ' + last(wOn).msg);
 const left1 = V.dipLeft(a1, b2);
 ok(left1 === left0 - Math.floor(left0 / 2), 'cooldown left ' + left0 + ' -> ' + left1);
@@ -58,7 +60,7 @@ ok(/cooldown/.test(V.breedable(a1, ready - 1) || '') && !V.breedable(a1, ready),
 ok(!wOn.byId[PB.id].dipFor && V.dipLeft(wOn.byId[PB.id], b2) === left0, 'the partner keeps its full cooldown');
 
 /* 3. rejections */
-const rej = (tag, amt, src, why) => { const w = V.replay(rows.concat([brd, row(o, 'pet:dip:' + PA.id, 345, b2)], [row(src, tag, amt, b2 + 1)]), H(b2 + 1), [], opts(b2 + 1)); ok(last(w).kind === 'rejected' && why.test(last(w).msg), last(w).msg); };
+const rej = (tag, amt, src, why) => { const w = V.replay(rows.concat([brd, row(o, 'pet:dip:' + PA.id, 345, b2)], [row(src, tag, amt, b2 + 1)]), H(b2 + 1), [], Object.assign(opts(b2 + 1), { _forkUse: tip })); ok(last(w).kind === 'rejected' && why.test(last(w).msg), last(w).msg); };
 rej('pet:dip:' + PA.id, 345, o, /already dipped/);
 rej('pet:dip:' + PB.id, V.dipInfo(wB, wB.byId[PB.id], b2 + 1).cost / 2, o, /below dip cost/);
 const other = Object.keys(by).find(x => x !== o);
@@ -67,10 +69,14 @@ const fresh = by[Object.keys(by).find(x => x !== o)][0];
 rej('pet:dip:' + fresh.id, 345, fresh.owner, /not on breed cooldown/);
 
 /* 4. the next breed opens a new dip */
-const dips = [brd, row(o, 'pet:dip:' + PA.id, 345, b2), row(o, 'pet:dip:' + PB.id, 345, b2)], wD = V.replay(rows.concat(dips), H(b2), [], opts(b2));
-const b3 = nb + Math.max(V.mgBreedCool(wD.byId[PA.id]), V.mgBreedCool(wD.byId[PB.id])) + 5, wR = V.replay(rows.concat(dips, [row(o, 'pet:breed:' + PA.id + ':' + PB.id, 690, b3), row(o, 'pet:dip:' + PA.id, 345, b3 + 10)]), H(b3 + 10), [], opts(b3 + 10));
+const dips = [brd, row(o, 'pet:dip:' + PA.id, 345, b2), row(o, 'pet:dip:' + PB.id, 345, b2)], wD = V.replay(rows.concat(dips), H(b2), [], Object.assign(opts(b2), { _forkUse: tip }));
+const b3 = nb + Math.max(V.mgBreedCool(wD.byId[PA.id]), V.mgBreedCool(wD.byId[PB.id])) + 5, wR = V.replay(rows.concat(dips, [row(o, 'pet:breed:' + PA.id + ':' + PB.id, 690, b3), row(o, 'pet:dip:' + PA.id, 345, b3 + 10)]), H(b3 + 10), [], Object.assign(opts(b3 + 10), { _forkUse: tip }));
 ok(wR.byId[PA.id].lastBreed === b3 && last(wR).kind === 'dip', 'both dipped, bred again at ' + b3 + ', and the pet can dip again (' + last(wR).msg + ')');
 const info = V.dipInfo(wB, wB.byId[PA.id], b2);
 ok(info && info.on && info.cost > 0 && info.after === left0 - Math.floor(left0 / 2) && info.why === null && info.tag === 'pet:dip:' + PA.id, 'dipInfo: cost ' + (info && info.cost) + ', ' + (info && info.left) + ' -> ' + (info && info.after));
+/* the shortcut must not change the answer: the gate-on dip scenario, forked vs a full replay */
+{ V._setDipActivation(nb); const ex = rows.concat([brd, row(o, 'pet:dip:' + PA.id, 345, b2)]);
+  const f = V.replay(ex, H(b2), [], Object.assign(opts(b2), { _forkUse: tip })), full = V.replay(ex, H(b2), [], opts(b2));
+  ok(sig(f) === sig(full) && JSON.stringify(f.byId[PA.id]) === JSON.stringify(full.byId[PA.id]), 'forked replay = full replay (pets and the dipped pet)'); }
 V._setDipActivation(gOff);
 console.log(fails ? '\n' + fails + ' failed' : '\nall passed'); process.exit(fails ? 1 : 0);

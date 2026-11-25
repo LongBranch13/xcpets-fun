@@ -35,7 +35,10 @@ V._setRetireActivation(null); const w0 = V.replay(rows, hashes, [], Object.assig
 V._setRetireActivation(nb); const w1 = V.replay(rows, hashes, [], fork(tip));
 ok(strip(w0) === strip(w1) && stripLog(w0) === stripLog(w1), 'full replay of ' + rows.length + ' burns: identical with the gate at tip + 1 or off (past effects stay)');
 /* sample tags: the latest real burn of each retired action, re-sent by the same wallet */
-const sample = {}; rows.forEach(r => { let s; try { s = unhex(r.tag); } catch (e) { return; } const t = V.parseTag(s); if (t && V.RETIRED_ACTIONS[t.action]) sample[t.action] = { tag: s, src: r.source, amt: r.quantity / 1e8 }; });
+/* only burns whose pets are still in the world: since the 14-day dead-pet rule (977,026) a sample naming a retired pet gets
+ * "No such pet" from the send guard before the retired-tag check, which is right but not what this test is about */
+const idsOf = t => [t.petId, t.a, t.b, t.mine, t.theirs, t.grave, t.zombie, t.target].concat(t.ids || []).filter(x => typeof x === 'number' && x > 0);
+const sample = {}; rows.forEach(r => { let s; try { s = unhex(r.tag); } catch (e) { return; } const t = V.parseTag(s); if (t && V.RETIRED_ACTIONS[t.action] && idsOf(t).every(id => w0.byId[id])) sample[t.action] = { tag: s, src: r.source, amt: r.quantity / 1e8 }; });
 const owner = Object.keys(w0.pets.reduce((m, p) => { if (p.owner && !p.dead && !p.released && !p.community) m[p.owner] = 1; return m; }, {}))[0];
 const mine = w0.pets.filter(p => p.owner === owner && !p.dead && !p.released), pa = mine[0] ? mine[0].id : 1, pb = mine[1] ? mine[1].id : 2;
 [['sd', 'pet:sd:' + pa + ':' + pb], ['tt', 'pet:tt:' + pa + '.' + pb + ':' + pa + '.' + pb], ['join', 'pet:join:1:' + pa], ['unad', 'pet:unad:1'], ['release', 'pet:rel:' + pa], ['rug', 'pet:rug:' + pa + ':1'], ['wsign', 'pet:sign']]
@@ -51,7 +54,8 @@ const at = K.map(k => mk(G, sample[k].src, sample[k].amt, sample[k].tag, 'at-' +
 const b1 = V.replay(rows.concat(at), hashes, [], fork(G)), b2 = V.replay(rows.concat(unk), hashes, [], fork(G));
 K.forEach((k, i) => { const la = b1.log.filter(x => x.tx === at[i].tx_hash);
   ok(la.length === 1 && la[0].kind === 'rejected' && /was retired at block \d+ \(community food\)/.test(la[0].msg), sample[k].tag.slice(0, 26) + ' at ' + G + ' (the gate): rejected [' + (la[0] && la[0].msg) + ']');
-  ok(/was retired at block/.test(V.sendBlock(w0, { tag: sample[k].tag, amount: sample[k].amt }, G - 1, { me: sample[k].src }) || ''), '  ... send guard blocks it once the next block is the gate'); });
+  const sb = V.sendBlock(w0, { tag: sample[k].tag, amount: sample[k].amt }, G - 1, { me: sample[k].src }) || '';
+  ok(/was retired at block/.test(sb), '  ... send guard blocks it once the next block is the gate' + (/was retired at block/.test(sb) ? '' : ' [got: ' + sb + ']')); });
 const sum = K.reduce((t, k) => t + sample[k].amt, 0);
 ok(strip(b1) === strip(b2) && Math.abs(b1.community.burned - w0.community.burned - sum) < 1e-6, 'at the gate: all ' + K.length + ' burns are community food (+' + sum.toFixed(8) + '), world identical to the same burns with an unknown pet: tag');
 /* 4. open ads close at the gate */

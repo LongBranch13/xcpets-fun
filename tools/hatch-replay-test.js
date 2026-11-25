@@ -13,9 +13,14 @@ let pass = 0, fail = 0;
 const ok = (c, m) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (c) pass++; else fail++; };
 function md5(rel) { return crypto.createHash('md5').update(fs.readFileSync(path.join(ROOT, rel))).digest('hex'); }
 const src = fs.readFileSync(path.join(ROOT, 'js/v2.js'), 'utf8');
-ok(md5('js/v2-rules.js') === 'c6c9f5d10e75aa163fb6a3086ee69d07', 'rules MD5 stays c6c9f5d10e75aa163fb6a3086ee69d07');
-ok(/function onChainDiscarded\(p\) \{ return !!\(p && ME && p\.hd === ME\); \}/.test(src), 'on-chain discard is the pet.hd flag for this wallet');
-ok(/!onChainDiscarded\(p\)/.test(src.slice(src.indexOf('function mine(w)'), src.indexOf('function mine(w)') + 220)), 'My Pets hides an on-chain discard');
+ok(md5('js/v2-rules.js') === require('./lib/rules-pin').pin('js/v2-rules.js'), 'rules MD5 stays pinned');
+/* run the real onChainDiscarded / inPile / mine (not their source text): a risen zombie's old hd flag does not count (inPile rule) */
+const pileFns = ['function onChainDiscarded(p)', 'function inPile(p, h)', 'function mine(w)'].map(k => { const i = src.indexOf('  ' + k); return i < 0 ? '' : src.slice(i, src.indexOf('\n', i) + 1); }).join('');
+const pileBox = vm.createContext({ ME: 'bc1qme', ZB: p => !!(p && p.zombie && !p.zombie.end), hiddenSet: () => new Set([5]) });
+vm.runInContext(pileFns + 'this.F = { onChainDiscarded, mine };', pileBox);
+const PF = pileBox.F || {}, pp = (id, o) => Object.assign({ id, owner: 'bc1qme' }, o || {});
+ok(PF.onChainDiscarded && PF.onChainDiscarded(pp(1, { hd: 'bc1qme' })) && !PF.onChainDiscarded(pp(2, { hd: 'bc1qother' })) && !PF.onChainDiscarded(pp(3)) && !PF.onChainDiscarded(pp(4, { hd: 'bc1qme', zombie: {} })), 'on-chain discard is the pet.hd flag for this wallet');
+ok(PF.mine && PF.mine({ pets: [pp(1, { hd: 'bc1qme' }), pp(2), pp(4, { hd: 'bc1qme', zombie: {} }), pp(5), pp(6, { released: true }), pp(7, { owner: 'x' })] }).map(p => p.id).join() === '2,4', 'My Pets hides an on-chain discard');
 ok(/p\.hungry && !onChainDiscarded\(p\)/.test(src), 'Feed all hungry skips an on-chain discard');
 
 const start = src.indexOf('  function hatchListSettled');
@@ -127,7 +132,7 @@ const ids = after.reduce(function (a, g) { return a.concat(g.eggs.map(function (
 ok(ids.join(',') === '9', 'after an empty baseline, only a newer hatch opens (got ' + ids.join(',') + ')');
 
 const mineSrc = src.slice(src.indexOf('function mine(w)'), src.indexOf('function mine(w)') + 240);
-ok(/onChainDiscarded/.test(mineSrc), 'mine() is the profile filter');
+ok(/inPile\(p, h\)|onChainDiscarded/.test(mineSrc), 'mine() is the profile filter');
 const box = { ME: ME, onChainDiscarded: sandbox.onChainDiscarded };
 vm.createContext(box);
 vm.runInContext('function onChainDiscarded(p) { return !!(p && ME && p.hd === ME); }\n' +

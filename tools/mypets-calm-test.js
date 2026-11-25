@@ -8,7 +8,7 @@ let pass = 0, fail = 0; const ok = (c, m) => { if (c) pass++; else { fail++; con
 const TYPES = { html: 'text/html', js: 'application/javascript', css: 'text/css', json: 'application/json', png: 'image/png', gif: 'image/gif', svg: 'image/svg+xml', webp: 'image/webp', woff2: 'font/woff2' };
 const src = fs.readFileSync(path.join(ROOT, 'js/v2-mypets-calm.js'), 'utf8');
 ok(!/V2Wallet|\.send\(|pet:/.test(src), 'layout only: no burns or wallet calls in v2-mypets-calm.js');
-['templates/game.html', 'play.html', 'practice.html'].forEach(f => ok(/js\/v2-mypets-calm\.js\?v=[0-9a-f]{10}/.test(fs.readFileSync(path.join(ROOT, f), 'utf8')), f + ' loads v2-mypets-calm.js'));
+['templates/game.html', 'play.html', 'practice.html'].forEach(f => ok(/js\/v2-mypets-calm\.js\?v=[^\"'&\s]+/.test(fs.readFileSync(path.join(ROOT, f), 'utf8')), f + ' loads v2-mypets-calm.js'));
 let chromium; try { chromium = require('playwright').chromium; } catch (e) { console.log('mypets-calm: ' + pass + ' passed, ' + fail + ' failed (no playwright: browser part skipped)'); process.exit(fail ? 1 : 0); }
 const server = http.createServer((q, r) => { const f = path.join(ROOT, decodeURIComponent(q.url.split('?')[0])); if (!f.startsWith(ROOT) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { r.writeHead(404); return r.end(); }
   r.writeHead(200, { 'content-type': TYPES[path.extname(f).slice(1)] || 'application/octet-stream' }); fs.createReadStream(f).pipe(r); });

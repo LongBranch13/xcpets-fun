@@ -38,7 +38,9 @@ let AW, BW, aC, bC, Gc, Gr, B;
   AW = wallets[0]; BW = wallets[1]; ok(!!AW && !!BW, 'two test wallets found (' + (AW || '').slice(0, 10) + '…, ' + (BW || '').slice(0, 10) + '…)');
   const com = o => (own[o] || []).filter(p => (p.tier | 0) === 0).map(p => p.id).sort((a, b) => a - b);
   aC = com(AW); bC = com(BW);
-  const graves = w.pets.filter(p => !V.cemView(w, p, nb).zombie && V.cemView(w, p, nb).grave && !V.cemView(w, p, nb).why && !V.cemView(w, p, nb).altar && !p.mgDead);
+  /* graves the 14-day dead-pet rule will not retire inside the scenarios (they run to about nb + 300) */
+  const stays = p => !V.retireDeadDue || !V.retireDeadDue(w, p, nb + 400);
+  const graves = w.pets.filter(p => !V.cemView(w, p, nb).zombie && V.cemView(w, p, nb).grave && !V.cemView(w, p, nb).why && !V.cemView(w, p, nb).altar && !p.mgDead && stays(p));
   Gc = graves.filter(p => (p.tier | 0) === 0).map(p => p.id); Gr = graves.filter(p => (p.tier | 0) === 2).map(p => p.id)[0];
   ok(Gc.length >= 8 && Gr != null, 'raisable graves found (' + Gc.length + ' Common, Rare #' + Gr + ')');
   const plan = (kind, g, ids, b) => { const q = V.cemPlan(w, kind, g, ids, b); return V.cemPetAmount ? V.cemPetAmount(w, q, b) : q; };
@@ -84,7 +86,7 @@ const noPledge = (w2, from) => w2.log.filter(x => x.block >= from && /pledg/i.te
   ok(L && L.kind === 'rejected' && /Uncommon\+/.test(L.msg) && free(w2, aC.slice(0, 3)) && Al.status === 'missed' && !w2.byId[G].zombie, 'min offering missed (Rare grave, Commons only): seance rejected, nothing used, pieces handed back (' + (L && L.msg) + ')'); }
 /* 7. pieces held with no seance: handed back after 144 blocks, no auto-raise for anyone */
 { const G = Gc[3], p = B.p3; let w2 = go([p], nb + 143);
-  ok(w2.byId[aC[0]].pledge === G && w2.cem.altars[G].status === 'open', 'parts stay held for ' + 143 + ' blocks');
+  ok(w2.byId[aC[0]] && w2.byId[aC[0]].pledge === G && w2.cem.altars[G] && w2.cem.altars[G].status === 'open', 'parts stay held for ' + 143 + ' blocks' + (w2.byId[aC[0]] && w2.cem.altars[G] && w2.cem.altars[G].status === 'open' && w2.byId[aC[0]].pledge === G ? '' : ' [part ' + (w2.byId[aC[0]] ? 'pledge ' + w2.byId[aC[0]].pledge : 'gone, retired ' + w2.retiredDead) + ', altar ' + (w2.cem.altars[G] && w2.cem.altars[G].status) + ', grave ' + (w2.byId[G] ? 'here' : 'gone') + ']'));
   w2 = null; let w3 = go([p], nb + 144); const Lc = w3.log.find(x => x.kind === 'altarClosed' && x.petId === G);
   ok(Lc && !w3.byId[G].zombie && free(w3, aC.slice(0, 2)) && !/pledg/i.test(Lc.msg), 'after 144 blocks with no seance: everything handed back, nothing raised (' + (Lc && Lc.msg) + ')');
   w3 = null; const p2 = B.p3b, w4 = go([p, p2], nb + 144); ok(w4.cem.altars[G].status === 'open' && w4.cem.altars[G].closesAt === nb + 244, 'a later part keeps the pieces held 144 blocks from the latest part'); }

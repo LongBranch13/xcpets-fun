@@ -51,9 +51,9 @@ const tokPaintSafe = pg => { try { pg.win.V2PetCard.paint(); } catch (e) { } };
   /* 2) look still running: no live step 1 button meanwhile */
   { const pg = page({ hold: u => /\/balances\?limit=1000/.test(u) }); const b0 = pg.box();
     ok(!b0.mint && !b0.tie && /Looking on the chain/.test(b0.txt), 'while the chain look runs: "checking", no step 1 button (was: live step 1)');
-    pg.opt.release(); await pg.flush(); const b1 = pg.box(); ok(b1.tie && !b1.mint, 'look done: step 2'); }
-  /* 3) look fails (both :4000 nodes unreachable): step 1 paused, not offered */
-  { let down = true; const pg = page({ down: u => down && /:4000\//.test(u) }); pg.box(); await pg.flush(); const b = pg.box();
+    await pg.flush(); /* the request pacer starts the fetch a tick later */ pg.opt.release(); await pg.flush(); const b1 = pg.box(); ok(b1.tie && !b1.mint, 'look done: step 2'); }
+  /* 3) look fails (every chain node unreachable: node.xcpets.fun and both :4000 nodes): step 1 paused, not offered */
+  { let down = true; const pg = page({ down: u => down && /:4000\/|node\.xcpets\.fun/.test(u) }); pg.box(); await pg.flush(); const b = pg.box();
     ok(b.mint && b.mintOff && !b.tie, 'failed look: step 1 button disabled (was: enabled = a second token)');
     ok(/could not check the chain/.test(b.txt), 'failed look says why: ' + b.txt.slice(b.txt.indexOf('Can'), b.txt.indexOf('Can') + 90));
   }
@@ -62,7 +62,7 @@ const tokPaintSafe = pg => { try { pg.win.V2PetCard.paint(); } catch (e) { } };
     ok(b.mintOff && !b.tie, 'node error: step 1 paused');
     bad = false; pg.later(31e3); pg.box(); await pg.flush(); const b2 = pg.box(); ok(b2.tie && !b2.mint, 'retry after 30 s finds the token: step 2'); }
   /* 5) chainPend API: failure rejects (lookFailed), is not memoized; success still memoized */
-  { let down = true; const pg = page({ err: u => down && /:4000\//.test(u) }); let e = null;
+  { let down = true; const pg = page({ err: u => down && /:4000\/|node\.xcpets\.fun/.test(u) }); let e = null;
     await pg.T.chainPend(ID, ME, { deeds: {} }).then(null, x => { e = x; });
     ok(e && e.lookFailed, 'chainPend rejects when the chain cannot be read (was: null = "no token")');
     down = false; const pd = await pg.T.chainPend(ID, ME, { deeds: {} }); ok(pd && pd.asset === TOK[0][0], 'next look reads again (failure not cached)');
@@ -86,7 +86,7 @@ const tokPaintSafe = pg => { try { pg.win.V2PetCard.paint(); } catch (e) { } };
   { const a = api0(); a['/addresses/' + ME + '/balances'] = { result: [] }; const pg = page({ api: a }); pg.box(); await pg.flush(); pg.box();
     pg.el('pcTokMint').onclick(); for (let i = 0; i < 5; i++) await pg.flush();
     ok(pg.sent.length === 1 && pg.sent[0].kind === 'issuance', 'no token anywhere: step 1 still mints (one wallet window, ' + (pg.sent[0] && pg.sent[0].kind) + ')'); }
-  { const pg = page({ down: u => /:4000\//.test(u) }); pg.box(); await pg.flush(); pg.box(); const btn = pg.el('pcTokMint'); btn.disabled = false; btn.onclick(); for (let i = 0; i < 4; i++) await pg.flush();
+  { const pg = page({ down: u => /:4000\/|node\.xcpets\.fun/.test(u) }); pg.box(); await pg.flush(); pg.box(); const btn = pg.el('pcTokMint'); btn.disabled = false; btn.onclick(); for (let i = 0; i < 4; i++) await pg.flush();
     ok(pg.sent.length === 0 && /^Not sent: could not check the chain/.test(pg.el('pcTokMsg').textContent), 'chain unreadable at click time: nothing sent (' + pg.el('pcTokMsg').textContent.slice(0, 70) + ')'); }
   /* 7) tokenize-cap-1102: an owner with MORE than 4 unbound tokens (bc1qfgqx… made 14 at 974170) - the pet's token is older than the 4 newest */
   { const a = api0(), bal = a['/addresses/' + ME + '/balances'], OLD = TOK[2][0], d = id => ({ asset_info: { description: V.deedDesc(id) } });

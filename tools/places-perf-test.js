@@ -103,13 +103,15 @@ async function renderMeasure(page, label) {
     return {
       label: label, renderMs: renderMs, delayMax: Math.max(0, ...delays), longN: neu.length, longMax: neu.reduce((a, b) => Math.max(a, b), 0),
       gridB: document.querySelectorAll('#bGridB .pet.card, #bGridB button').length,
-      ez: document.querySelectorAll('#ezBreed .ez-c').length,
+      ez: document.querySelectorAll('#ezBreed .ez-c, #ezBreed .pk2-c').length, /* .pk2-c: the pet picker's cards (Nov 22 2026 pet-picker) */
       place: !!(window.V2Motel && V2Motel.placeOn && V2Motel.placeOn()),
       checks: checks,
       ezGo: vis(document.getElementById('ezBGo')),
       bell: vis(document.getElementById('bGo')),
       extras: Array.from(document.querySelectorAll('button')).filter(b => /check in/i.test(b.textContent || '') && vis(b) && b.id !== 'ezBGo' && !(b.className || '').includes('qw-hint')).map(b => (b.id || '(no id)') + ' ' + (b.className || '') + ' ' + (b.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 40)),
       gap: sc && btn ? Math.round(btn.getBoundingClientRect().top - sc.getBoundingClientRect().bottom) : null,
+      /* pet-picker order (js/v2-easy-flows.js placeCheck): motel scene -> picker (#ezBreed) -> check-in bar (#ezCheck) */
+      pickGap: (() => { const ez = document.getElementById('ezBreed'), bar = document.getElementById('ezCheck'); return sc && ez && bar ? [Math.round(ez.getBoundingClientRect().top - sc.getBoundingClientRect().bottom), Math.round(bar.getBoundingClientRect().top - ez.getBoundingClientRect().bottom)] : null; })(),
       btnAboveCols: !!(btn && document.querySelector('.ez-cols') && btn.getBoundingClientRect().top < document.querySelector('.ez-cols').getBoundingClientRect().top),
       solo: (() => { const t = document.querySelector('#rmTabs'); if (!t) return 'absent'; const s = getComputedStyle(t); return t.classList.contains('rm-solo') ? 'solo-' + s.display : 'tabs-' + s.display; })(),
       overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
@@ -119,7 +121,7 @@ async function renderMeasure(page, label) {
 }
 (async () => {
   fs.mkdirSync(ART, { recursive: true });
-  const RULES_MD5 = '11b5c6c1959c56a7fd51c09a8b2a2309';
+  const RULES_MD5 = require('./lib/rules-pin').pin('js/v2-rules.js');
   RULES.forEach(f => { const a = md5(path.join(ROOT, f)); ok(f === 'js/v2-rules.js' ? a === RULES_MD5 : a === crypto.createHash('md5').update(gitFile(f)).digest('hex'), f === 'js/v2-rules.js' ? 'js/v2-rules.js MD5 is ' + RULES_MD5 : 'rule unchanged ' + f + ' ' + a); });
   const PS = require(path.join(ROOT, 'js/v2-pet-search.js'));
   const hay = PS.haystack({ id: 9, name: 'Zed', species: 'pepe', tier: 1, stage: 3, stats: { vigor: 3 }, art: { rareHatch: { version: 1, kind: 'two-headed' } } }, null);
@@ -146,12 +148,18 @@ async function renderMeasure(page, label) {
     page.__errors = errors; page.__ctx = ctx;
     return page;
   }
+  /* Two suite files share this one (PLACES_PART): 'desk' = the 1280 desktop pages (this file), 'more' = phone and view-only
+   * (places-perf-more-test.js), 'calm' = reduced motion, the origin/main baseline and Spam City (places-perf-calm-test.js). Every context replays the whole feed
+   * cold (~50 s), and the six of them in one file passed 600 s on CI under --jobs 4. PLACES_PART=all runs every part. */
+  const PART = process.env.PLACES_PART || 'desk';
+  let desk, phone, view, rm, basePage, shopPage, stressM = { gridB: 0 };
   try {
-    const desk = await context(1280, 800);
+    if (PART === 'all' || PART === 'desk') {
+    desk = await context(1280, 800);
     let ms = await boot(desk, origin, 'rare-room.html');
     let info = await desk.evaluate(() => {
       const w = V2Mock.world(), rare = (w.pets || []).filter(p => p.art && p.art.rareHatch && p.art.rareHatch.version === 1).length;
-      return { msLabel: 'real-feed', pets: w.pets.length, rare: rare, place: V2Motel.placeOn(), hall: document.querySelectorAll('#rhGrid .rh-card').length, gridB: document.querySelectorAll('#bGridB .pet.card').length, longMax: Math.max(0, ...(window.__long || [0])), overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth };
+      return { msLabel: 'real-feed', pets: w.pets.length, rare: rare, place: !!(window.V2Motel && V2Motel.placeOn && V2Motel.placeOn()), hall: document.querySelectorAll('#rhGrid .rh-card').length, gridB: document.querySelectorAll('#bGridB .pet.card').length, longMax: Math.max(0, ...(window.__long || [0])), overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth };
     });
     results.pages.rareCold = Object.assign({ bootMs: ms }, info);
     ok(info.place === false, 'rare room does not run the motel picker');
@@ -172,7 +180,7 @@ async function renderMeasure(page, label) {
     ok(info.gridB === 0, 'breed page does not build a card per partner');
     ok(info.ezGo && !info.bell && !info.extras.length, 'one check-in, beside the motel (' + JSON.stringify(info.extras) + ')');
     ok(info.solo === 'absent' || info.solo === 'solo-none', 'retired top Check in is not shown (' + info.solo + ')');
-    ok(info.gap != null && info.gap < 240 && info.btnAboveCols, 'check-in sits by the motel animation (gap ' + info.gap + 'px)');
+    ok(info.pickGap && info.pickGap[0] >= 0 && info.pickGap[0] < 240 && info.pickGap[1] >= 0 && info.pickGap[1] < 40, 'the pet picker sits under the motel and the check-in right after it (gaps ' + JSON.stringify(info.pickGap) + 'px)');
     ok(info.overflow <= 8, 'no horizontal overflow at 1280 (' + info.overflow + ')');
     console.log('MEASURE real breed', JSON.stringify(info));
     const warm = await boot(desk, origin, 'breed.html');
@@ -180,7 +188,7 @@ async function renderMeasure(page, label) {
     console.log('MEASURE breed warm boot', warm);
     const added = await stress(desk);
     results.stress = added;
-    const stressM = await renderMeasure(desk, 'synthetic-stress');
+    stressM = await renderMeasure(desk, 'synthetic-stress');
     results.pages.breedStress = stressM;
     ok(stressM.gridB === 0, 'stress world still builds no hidden partner cards');
     ok(stressM.renderMs < 8000, 'stress render stays under 8s on a shared runner (' + stressM.renderMs + 'ms)');
@@ -192,39 +200,41 @@ async function renderMeasure(page, label) {
     console.log('MEASURE breed stress warm', JSON.stringify(stressW));
     ok(stressM.ez > 0 && stressM.ez <= 96, 'easy flow shows a page of mates, not the world (' + stressM.ez + ')');
     console.log('MEASURE breed stress', JSON.stringify(stressM));
+    /* the pet picker (js/v2-pick.js, Nov 22 2026) replaced the easy-flow strips: one search box per side, cards .pk2-c,
+     * a pet that cannot go is .no with its reason in the title (a tap toasts it) */
     const searchMs = await desk.evaluate(async () => {
       const t0 = performance.now();
-      const q = document.getElementById('ezBqB'); q.value = 'giant'; q.dispatchEvent(new Event('input', { bubbles: true }));
+      const q = document.querySelector('#ezBreed [data-pk2q]'); q.value = 'giant'; q.dispatchEvent(new Event('input', { bubbles: true }));
       await new Promise(r => setTimeout(r, 80));
-      return { ms: Math.round(performance.now() - t0), n: document.querySelectorAll('#ezBreed .ez-c').length };
+      return { ms: Math.round(performance.now() - t0), n: document.querySelectorAll('#ezBreed .pk2-c').length };
     });
     results.pages.mateSearch = searchMs;
     ok(searchMs.ms < 800, 'mate search does not rescore the world (' + searchMs.ms + 'ms)');
     console.log('MEASURE mate search', JSON.stringify(searchMs));
-    const why = await desk.evaluate(() => {
-      const b = document.getElementById('ezFall'); if (b && b.getAttribute('aria-pressed') !== 'true') b.click();
+    const why = await desk.evaluate(async () => {
       const p = V2Mock.world().pets.find(x => x.owner === V2UI.ME && x.stage === 1 && !x.dead);
-      const q = document.getElementById('ezBqA'); if (q && p) { q.value = String(p.id); q.dispatchEvent(new Event('input', { bubbles: true })); }
-      const w = document.querySelector('#ezBreed .ez-why');
-      return (w && w.textContent) || '';
+      const q = document.querySelector('#ezBreed [data-pk2q]'); if (q && p) { q.value = String(p.id); q.dispatchEvent(new Event('input', { bubbles: true })); }
+      await new Promise(r => setTimeout(r, 120));
+      const c = p && document.querySelector('#ezBreed .pk2-c.no[data-pk2id="' + p.id + '"]');
+      return c ? c.getAttribute('title') || '' : '(no disabled card for #' + (p && p.id) + ')';
     });
     ok(/young|adult|breed|stage|cooldown|neglected/i.test(why), 'a pet that cannot breed shows the reason (' + why.slice(0, 80) + ')');
-    await desk.evaluate(() => {
-      const q = document.getElementById('ezBqA'); if (q && q.value) { q.value = ''; q.dispatchEvent(new Event('input', { bubbles: true })); }
-      const b = document.getElementById('ezFall'); if (b && b.getAttribute('aria-pressed') === 'true') b.click();
+    await desk.evaluate(async () => {
+      const q = document.querySelector('#ezBreed [data-pk2q]'); if (q && q.value) { q.value = ''; q.dispatchEvent(new Event('input', { bubbles: true })); }
+      await new Promise(r => setTimeout(r, 80));
     });
     await desk.evaluate(() => {
       window.__sends = 0;
       if (window.V2Wallet) ['send', 'sendDex'].forEach(k => { if (V2Wallet[k]) V2Wallet[k] = function () { window.__sends++; return Promise.reject(new Error('test blocked send')); }; });
-      const a = document.querySelectorAll('#ezBreed .ez-strip')[0].querySelector('[data-ez]');
-      a.click();
+      const a = document.querySelector('#ezBreed .pk2-pick[data-pk2side="A"] .pk2-c:not(.no)') || document.querySelector('#ezBreed .pk2-c:not(.no)'); if (a) a.click();
     });
-    await desk.waitForTimeout(50);
-    await desk.evaluate(() => { const strips = document.querySelectorAll('#ezBreed .ez-strip'); const b = strips[1] && strips[1].querySelector('[data-ez]:not([aria-disabled="true"])'); if (b) b.click(); });
-    await desk.waitForTimeout(50);
+    await desk.waitForTimeout(80);
+    await desk.evaluate(() => { const b = document.querySelector('#ezBreed .pk2-pick[data-pk2side="B"] .pk2-c:not(.no):not(.on)'); if (b) b.click(); }); /* the date comes from the B side's list */
+    await desk.waitForTimeout(80);
     const go = await desk.evaluate(() => { const b = document.getElementById('ezBGo'); const on = b && !b.disabled; if (on) b.click(); return { on: on, text: b ? b.textContent : '' }; });
     await desk.waitForTimeout(80);
     const cf = await desk.evaluate(() => ({ on: document.getElementById('confirmBox').classList.contains('on'), log: (document.getElementById('cfLog') || {}).textContent || '', sends: window.__sends || 0, title: (document.getElementById('cfTitle') || {}).textContent || '' }));
+    if (!(go.on && cf.on && /pet:breed:/.test(cf.log))) console.log('  confirm detail', JSON.stringify({ go, cf: Object.assign({}, cf, { log: cf.log.slice(0, 300) }), ab: await desk.evaluate(() => [document.getElementById('bA').value, document.getElementById('bB').value, (document.getElementById('cfBody') || {}).textContent ? document.getElementById('cfBody').textContent.slice(0, 300) : null]) }));
     ok(go.on && cf.on && /pet:breed:/.test(cf.log), 'check-in opens the normal breed confirm (' + cf.title + ')');
     ok(cf.sends === 0, 'opening confirm does not send');
     await desk.evaluate(() => document.getElementById('cfNo').click());
@@ -305,9 +315,13 @@ async function renderMeasure(page, label) {
       document.getElementById('fReset').click();
       await new Promise(r => setTimeout(r, 50));
       const many = []; for (let i = 0; i < 5000; i++) many.push(String(800000 + i)); many[0] = String(want[0]);
+      /* Time until the list shows the result, not a fixed 500 ms sleep plus whatever the other test jobs cost the timer
+       * (CI, Nov 25 2026: the sleep was inside the 1,500 ms budget and a loaded runner went over with the page fine). */
+      const note0 = (document.getElementById('fShowing') || {}).textContent || '';
       const t0 = performance.now(); el.value = many.join(' '); el.dispatchEvent(new Event('input', { bubbles: true }));
-      await new Promise(r => setTimeout(r, 500));
-      const bigMs = Math.round(performance.now() - t0), bigN = document.querySelectorAll('#pets .pet.card').length, bigNote = (document.getElementById('fShowing') || {}).textContent || '';
+      let bigMs = 0; for (let i = 0; i < 250; i++) { await new Promise(r => setTimeout(r, 20)); const t = (document.getElementById('fShowing') || {}).textContent || ''; if (t !== note0 && /5,000/.test(t)) { bigMs = Math.round(performance.now() - t0); break; } }
+      if (!bigMs) bigMs = Math.round(performance.now() - t0);
+      const bigN = document.querySelectorAll('#pets .pet.card').length, bigNote = (document.getElementById('fShowing') || {}).textContent || '';
       document.getElementById('fReset').click();
       const pileQ = [weird[3], weird[4], legend ? legend.id : weird[5], 424242425]; /* weird[3] and weird[4] are already in the pile */
       window.__demo.discardIds(pileQ.filter(id => w.byId[id] && w.byId[id].owner === ME));
@@ -337,7 +351,9 @@ async function renderMeasure(page, label) {
     console.log('MEASURE id list', JSON.stringify(results.pages.idList));
     await desk.screenshot({ path: path.join(ART, 'discard-weird-1280.png') });
     await desk.evaluate(() => { const s = document.querySelector('#discardPile [data-ds="sort"]'); s.value = 'weird'; s.dispatchEvent(new Event('change', { bubbles: true })); });
-    const phone = await context(390, 844, { mobile: true });
+    }
+    if (PART === 'all' || PART === 'more') {
+    phone = await context(390, 844, { mobile: true });
     await boot(phone, origin, 'breed.html');
     await stress(phone);
     const m390 = await renderMeasure(phone, 'synthetic-390');
@@ -352,7 +368,7 @@ async function renderMeasure(page, label) {
     const hall390 = await phone.evaluate(() => document.querySelectorAll('#rhGrid .rh-card').length);
     ok(hall390 === 0 || (hall390 > 0 && hall390 <= 8), 'rare hall is absent or pages at most 8 cards at 390 (' + hall390 + ')');
     await phone.screenshot({ path: path.join(ART, 'rare-hall-390.png') });
-    const view = await context(1280, 800, { view: true });
+    view = await context(1280, 800, { view: true });
     await boot(view, origin, 'breed.html?addr=' + encodeURIComponent(OTHER));
     const vo = await view.evaluate(() => {
       window.__sends = 0;
@@ -365,16 +381,18 @@ async function renderMeasure(page, label) {
     results.pages.viewOnly = vo;
     ok(vo.only && !vo.confirm && vo.sends === 0, 'view only does not open a signable confirm');
     console.log('MEASURE view-only', JSON.stringify(vo));
-    const rm = await context(1280, 800, { reduced: true });
+    }
+    if (PART === 'all' || PART === 'calm') {
+    rm = await context(1280, 800, { reduced: true });
     await boot(rm, origin, 'breed.html');
     const reduced = await rm.evaluate(async () => {
       const a = window.__rafN; await new Promise(r => setTimeout(r, 600)); const n = window.__rafN - a;
-      return { frames: n, reduce: matchMedia('(prefers-reduced-motion: reduce)').matches, place: V2Motel.placeOn() };
+      return { frames: n, reduce: matchMedia('(prefers-reduced-motion: reduce)').matches, place: !!(window.V2Motel && V2Motel.placeOn && V2Motel.placeOn()) };
     });
     results.pages.reduced = reduced;
     ok(reduced.reduce && reduced.frames < 8, 'reduced motion does not keep the motel frame loop (' + reduced.frames + ' frames / 600ms)');
     console.log('MEASURE reduced motion', JSON.stringify(reduced));
-    const basePage = await context(1280, 800, { old: true });
+    basePage = await context(1280, 800, { old: true });
     let baseline;
     try {
       await boot(basePage, origin, 'breed.html');
@@ -389,7 +407,7 @@ async function renderMeasure(page, label) {
     console.log('MEASURE baseline origin/main scripts', JSON.stringify(baseline));
     if (baseline.timedOut || baseline.error) console.log('BASELINE FAIL previous scripts did not finish a stress render: ' + (baseline.error || 'still running at 20s'));
     else if (baseline.gridB != null) ok(baseline.gridB >= stressM.gridB && stressM.gridB === 0, 'hidden partner cards stay at none (previous scripts ' + baseline.gridB + ', this branch ' + stressM.gridB + ')');
-    const shopPage = await context(1280, 800);
+    shopPage = await context(1280, 800);
     let shop;
     try {
       const t0 = Date.now();
@@ -402,9 +420,10 @@ async function renderMeasure(page, label) {
     console.log('MEASURE shop', JSON.stringify(shop));
     if (shop.scene) ok(!shop.breed, 'Spam City has its scene and no motel panel');
     else console.log('BASELINE NOTE shop did not finish booting in 20s with chain calls blocked: ' + (shop.error || ''));
-    [desk, phone, view, rm, basePage, shopPage].forEach(p => { const bad = (p.__errors || []).filter(e => !/favicon|net::ERR_FAILED|Failed to load resource/i.test(e)); if (bad.length) fail.push('console/page errors: ' + bad.slice(0, 4).join(' | ')); else console.log('ok no page errors'); });
+    }
+    [desk, phone, view, rm, basePage, shopPage].filter(Boolean).forEach(p => { const bad = (p.__errors || []).filter(e => !/favicon|net::ERR_FAILED|Failed to load resource/i.test(e)); if (bad.length) fail.push('console/page errors: ' + bad.slice(0, 4).join(' | ')); else console.log('ok no page errors'); });
   } finally {
-    fs.writeFileSync(path.join(ART, 'places-perf-results.json'), JSON.stringify({ fail: fail, results: results }, null, 2));
+    fs.writeFileSync(path.join(ART, 'places-perf-results' + (PART === 'desk' ? '' : '-' + PART) + '.json'), JSON.stringify({ fail: fail, results: results }, null, 2));
     await browser.close(); server.close();
   }
   console.log(fail.length ? 'FAILED ' + fail.length : 'places-perf-test PASS');

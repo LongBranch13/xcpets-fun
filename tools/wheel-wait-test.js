@@ -16,7 +16,7 @@ ok(!/0\.006/.test(shop), 'the slow mempool spin rate is gone from the shop');
 ok(shop.includes('PEPE WHEEL \\u00b7 WAITING'), 'the wheel plate has a waiting caption');
 ok(shop.includes('You can keep using the shop.'), 'the panel says the shop stays open');
 ok(anim.includes('tap to skip') && /prefers-reduced-motion/.test(anim) && anim.includes('function play'), 'landing overlay still plays, skips on tap, and keeps reduced motion');
-const RULES_MD5 = '11b5c6c1959c56a7fd51c09a8b2a2309';
+const RULES_MD5 = require('./lib/rules-pin').pin('js/v2-rules.js');
 ok(require('crypto').createHash('md5').update(fs.readFileSync(path.join(ROOT, 'js/v2-rules.js'))).digest('hex') === RULES_MD5, 'js/v2-rules.js MD5 is ' + RULES_MD5);
 const changed = cp.execSync('git diff --name-only origin/main', { cwd: ROOT, encoding: 'utf8' });
 ok(!/pet-core\.js|burn-core\.js|real-core\.js|game-core\.js|v2-wheel-anim\.js/.test(changed), 'other rule files and the landing animation are not in the diff');
@@ -211,14 +211,17 @@ window.V2Wallet = { tracker: { list: () => __tracker }, label: () => 'XCP Wallet
     const paid = await page.evaluate(() => __sent.map(s => s.tag));
     ok(paid.indexOf('pet:spin') >= 0, 'the Spin button still opens a paid spin while a saved spin is in flight');
 
+    /* Where g1 hangs comes from the room itself: a frame on the wall (S.hits) when the mirror pet wears it, else its "Gear that fits" card
+       (rare-room-simple, Nov 22: the six wall frames show what the mirror pet wears; a spare piece is tapped on its fit card). */
     const gear = await page.evaluate(() => {
       const c = document.querySelector('#shopScene canvas'), r = c.getBoundingClientRect();
-      return { x: r.x + r.width * (20 / 320), y: r.y + r.height * (30 / 150) };
+      const h = (V2Shop._state().hits || []).filter(q => q.it && q.it.gid === 'g1')[0];
+      return h ? { x: r.x + r.width * ((h.x + h.w / 2) / c.width), y: r.y + r.height * ((h.y + h.h / 2) / c.height) } : null;
     });
-    await page.mouse.click(gear.x, gear.y);
+    if (gear) await page.mouse.click(gear.x, gear.y); else await page.click('[data-fgid="g1"]');
     await sleep(50);
     const sel = await page.evaluate(() => { const s = V2Shop._state().sel; return s && s.gid; });
-    ok(sel === 'g1', 'a gear card on the wall still selects while the roll is in flight');
+    ok(sel === 'g1', 'a gear card in the room still selects while the roll is in flight');
 
     await page.click('[data-usespin="1"]');
     const once = await page.evaluate(() => __sent.filter(s => s.tag === 'pet:usespin').length);

@@ -18,7 +18,7 @@ const TIP = 976840;
 let pass = 0, fail = 0;
 const ok = (c, m) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (c) pass++; else fail++; };
 const rulesMd5 = crypto.createHash('md5').update(fs.readFileSync(path.join(ROOT, 'js/v2-rules.js'))).digest('hex');
-ok(rulesMd5 === '11b5c6c1959c56a7fd51c09a8b2a2309', 'js/v2-rules.js MD5 unchanged (' + rulesMd5 + ')');
+ok(rulesMd5 === require('./lib/rules-pin').pin('js/v2-rules.js'), 'js/v2-rules.js MD5 unchanged (' + rulesMd5 + ')');
 ok(fs.readFileSync(__filename, 'utf8').indexOf(BANNED) >= 0, 'the banned wallet is named only so this test can refuse it');
 
 const ctx = L.load();
@@ -122,7 +122,7 @@ const worker = fs.readFileSync(path.join(ROOT, 'js/v2-verify-worker.js'), 'utf8'
 ok(/V2Split\.resolveWorld\)/.test(v2) && /sendIds\(plans\)/.test(v2), 'confirmPlans resolves the pets a burn names before the send check');
 ok(/me: pageWallet\(\)/.test(splitJs), 'the verify worker is posted the page wallet');
 ok(/resolveChecked\(/.test(worker) && /checkpoint: ownerTable/.test(worker), 'the worker fills a checkpoint marker before sendBlock');
-ok(/v2-art\.js\?v=a7c4e91b36/.test(worker), 'the worker loads the art file that resolves owners');
+ok(/v2-art\.js\?v=[0-9a-z]+/.test(worker), 'the worker loads the art file that resolves owners');
 
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

@@ -9,19 +9,7 @@ const ok = (c, m) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (c) pass++; 
 function rd(rel) { return fs.readFileSync(path.join(ROOT, rel), 'utf8'); }
 function md5(rel) { return crypto.createHash('md5').update(fs.readFileSync(path.join(ROOT, rel))).digest('hex'); }
 
-const RSIG = {
-  'js/v2-rules.js': '11b5c6c1959c56a7fd51c09a8b2a2309',
-  'rjs/config.js': '66e38a276cf59ade25115a80ceb7deea',
-  'rjs/pet-core.js': '47be652fe0a5dd6157a95f5b2c6585fa',
-  'rjs/game-core.js': '2784e9ccac773c4e0e58d646fc47b05f',
-  'rjs/bonus-gear.js': 'deaa0b54f40c5ab1887ea9e5fa641e6c',
-  'rjs/real-core.js': '601044a00a67c15f6013235f73fe9cdc',
-  'rjs/chain.js': '0767140323f23834ffac525de41f823e', /* hash-guard: block-hash consensus; v2-rules.js pin above is unchanged */
-  'js/pet-core.js': '1c45c5e9f400faf17b3b57fe72166f0e',
-  'js/bonus-gear.js': '36734cff209497808af0142e2510630d',
-  'js/v2-gear.js': 'd0d440f3b7d6ded06837e2992651778d',
-  'js/v2-fit.js': '4930f92ad62596d94c263173c4b61cdb'
-};
+const RSIG = require('./lib/rules-pin').PIN; /* rules-pin: every rule file's MD5 lives in tools/fixtures/rules-pin.json */
 Object.keys(RSIG).forEach(rel => ok(md5(rel) === RSIG[rel], rel + ' bytes unchanged'));
 
 const split = rd('js/v2-split.js');
@@ -41,9 +29,10 @@ ok(!/loading all /.test(ui), 'the pager no longer says it is loading every pet')
 ok(/readViewBalance\(/.test(rd('js/v2-chain.js')), 'the published view still reads the wallet balance');
 
 const sw = rd('sw.js');
-ok(/sw66-1/.test(sw) && /isRules\(url\) \{ return \/\^?\/js\\\/v2-rules/.test(sw) === false, 'service worker version moved');
+const SWV = (/var VERSION = '([^']+)'/.exec(sw) || [])[1];
+ok(SWV && /isRules\(url\) \{ return \/\^?\/js\\\/v2-rules/.test(sw) === false, 'service worker version moved');
 ok(/!\/\[\?&\]v=\/.test\(url\.search\)/.test(sw), 'only an unversioned rules file stays network-first');
-ok(/sw\.js\?v=sw66-1/.test(rd('js/v2-events.js')), 'pages register the new worker');
+ok(SWV && rd('js/v2-events.js').indexOf('sw.js?v=' + SWV) >= 0, 'pages register the current worker (' + SWV + ')'); /* one version in sw.js, read here: no hand-kept copy to go stale */
 
 const play = rd('templates/game.html');
 ok(/function __go\(\)/.test(play), 'game scripts after boot wait until the document is ready');
@@ -52,7 +41,7 @@ ok(/wizard-sprite\.js\?v=[^"]+" defer/.test(play), 'sprite scripts do not block 
 ok(/js\/v2-rules\.js\?v=/.test(play) && !/v2-rules\.js\?v=[^"]+" defer/.test(play), 'the rules file is still loaded before boot');
 ok(/split=\(\?:0\|off\)/.test(play), 'the light view does not prefetch the full burn list');
 ok(/function loadBoard\(/.test(split) && !/\/xp\/v1\/sync/.test(split), 'rankings read pet shards, not the full sync');
-ok(/w\._ranked/.test(rd('js/v2-token-gallery.js')) && /!p && w && w\._ranked/.test(rd('js/v2-token-gallery.js')), 'Proof Parade keeps feed rows until the whole living world is read');
+ok(/w\._ranked/.test(rd('js/v2-token-gallery.js')) && /!p && w && \(?w\._ranked/.test(rd('js/v2-token-gallery.js')), 'Proof Parade keeps feed rows until the whole living world is read');
 
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

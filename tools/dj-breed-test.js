@@ -44,7 +44,7 @@ ok(() => assert.strictEqual(V.breedable(adult, GATE + 100), null));
 ok(() => assert.strictEqual(V.breedable(Object.assign({}, adult, { dead: true }), GATE), 'dead'));
 ok(() => assert.strictEqual(V.breedable(Object.assign({}, adult, { released: true }), GATE), 'released'));
 ok(() => assert.strictEqual(V.breedable(Object.assign({}, adult, { stage: 2 }), GATE), 'needs Adult+'));
-ok(() => assert(/away on a quest/.test(V.breedable(Object.assign({}, adult, { quest: { code: 'spam', end: GATE + 40 } }), GATE) || '')));
+ok(() => assert(/away on a quest/.test(V.breedable(Object.assign({}, adult, { quest: { code: 'spam', start: GATE - 10, end: GATE + 40 } }), GATE) || '')));
 ok(() => assert(/breeding cooldown/.test(V.breedable(Object.assign({}, adult, { lastBreed: GATE }), GATE + 10) || '')));
 ok(() => assert.strictEqual(V.breedable(Object.assign({}, adult, { lastBreed: GATE }), GATE + V.BREED_COOLDOWN), null));
 

@@ -79,7 +79,9 @@ const dueOf = (start, n) => L.load().V2Rules.spanAt(start, n);
   const due = dueOf(FED, 864), { w } = W(RISE, due);
   const c = logs(w, 'crumble').filter(e => e.petId === GRAVE);
   const Z = w.byId[GRAVE];
-  ok(c.length === 1 && c[0].block === due && Z.dead && !(Z.zombie && !Z.zombie.end), 'crumbles at ' + due + ' (' + (c[0] && c[0].block) + ')');
+  /* From the 14-day dead-pet rule (block 977,026) a crumbled zombie whose last real meal is old leaves w.byId at once (w.retiredDead):
+   * retireDeathClock falls back to lastFed after cemEnd. This test only pins the crumble block; that retire question is a rules decision. */
+  ok(c.length === 1 && c[0].block === due && (!Z ? w.retiredDead > 0 : Z.dead && !(Z.zombie && !Z.zombie.end)), 'crumbles at ' + due + ' (' + (c[0] && c[0].block) + ')');
   ok(!logs(w, 'crumble').some(e => e.petId === GRAVE && e.block === FED + 864), 'the raw sum is not the crumble block');
 }
 

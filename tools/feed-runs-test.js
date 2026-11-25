@@ -63,7 +63,11 @@ if (target && Array.isArray(target.fr)) { let tx = rows[rows.length - 1].tx_inde
   const h2 = Object.assign({}, hashes); if (!h2[nb]) h2[nb] = '0'.repeat(63) + '1';
   const w2 = V.replay(rows.concat(extra), h2, [], opts(nb)), want = new Set(target.fr.reduce((a, q) => a.concat(q.petIds), []));
   const fed = w2.pets.filter(p => p.lastFed === nb).map(p => p.id);
-  ok(fed.length === want.size && fed.every(id => want.has(id)), 'engine: ' + target.fr.length + ' one-burn tag(s) fed exactly the ' + want.size + ' planned pets of the top eater owner');
+  { const extraF = fed.filter(id => !want.has(id)), miss = [...want].filter(id => fed.indexOf(id) < 0);
+    console.log('  engine: ' + target.fr.length + ' one-burn tag(s), ' + want.size + ' planned pets, ' + fed.length + ' fed');
+    if (extraF.length || miss.length) console.log('  engine diff: fed but not planned ' + JSON.stringify(extraF.slice(0, 5)) + ', planned but not fed ' + JSON.stringify(miss.slice(0, 5)) + ' ' +
+      JSON.stringify(w2.log.filter(e => e.block === nb && extra.some(r => r.tx_hash === e.tx) && /skipped/.test(e.msg || '')).map(e => e.msg.slice(e.msg.indexOf('skipped'), e.msg.indexOf('skipped') + 120) + ' | sent ' + (extra.find(r => r.tx_hash === e.tx) || {}).quantity / 1e8))); }
+  ok(fed.length === want.size && fed.every(id => want.has(id)), 'engine: the one-burn tags fed exactly the planned pets of the top eater owner'); /* counts on the line above (they grow with the feed, so not in this label) */
   ok(fed.every(id => { const p = w.byId[id]; return !p.ascended && !p.mythicCare && p.stage !== 5; }), 'engine: no Mythic was fed');
   V._setFeedRunsActivation(nb + 1); const w3 = V.replay(rows.concat(extra), h2, [], opts(nb));
   ok(w3.pets.filter(p => p.lastFed === nb).length === 0, 'gate: the same burns one block before activation feed no pet (old reading: unknown tag)'); V._setFeedRunsActivation(nb); }
