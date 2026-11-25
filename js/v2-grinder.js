@@ -83,7 +83,13 @@
     box.querySelector('.mgr-no').onclick = close;
     var pm = box.querySelector('#mgPerm'); if (pm) pm.onclick = function () { close(); var m = $('hdMigrate'); if (m) m.click(); else if (U().toast) U().toast('Open the 🗑️ Discard pile at the bottom of My Pets and press "Make my browser discards permanent".'); };
     box.querySelector('.mgr-go').onclick = function () { if (!pv.ok || viewOnly() || PREVIEW) return; var plan = v.grindPlan(w, a, tipB(w)); if (!plan || !plan.ok) return;
-      var cp = d.confirmPlans || U().confirmPlans; if (!cp) return; box.classList.add('go');
+      var cp = d.confirmPlans || U().confirmPlans; if (!cp) return;
+      /* Nov 24 2026 (one safety check for every pet button): the Grinder takes every pet discarded on chain, so special ones (Legendary,
+       * starred, fed in the last 2 days) get the same sheet as a sacrifice; to keep one, add it back from the Discard pile first. */
+      if (window.V2SacGuard && !open._sg) { var gx = (plan.ids || []).slice(); return V2SacGuard.check({ w: w, ids: gx, me: a, verb: 'grind them', all: true,
+        allNote: 'The Grinder takes every pet you discarded on chain. To keep one, cancel and use "Add discarded pets back" in the Discard pile first.',
+        onGo: function () { open._sg = true; try { box.querySelector('.mgr-go').onclick(); } finally { open._sg = false; } } }); }
+      box.classList.add('go');
       setTimeout(function () { close(); cp('🥩 Meat Grinder: ' + fmt(plan.n) + ' pet' + (plan.n === 1 ? '' : 's') + ' → ' + fmt(plan.meat) + ' meat', [{ tag: plan.tag, amount: plan.amount, label: plan.label }], function () { if (U().toast) U().toast('🥩 Into the Grinder! Your spins and eggs show up when the burn confirms.', 8000); }); }, 500); }; }
 
   /* the result card, once per confirmed grind of this wallet */
