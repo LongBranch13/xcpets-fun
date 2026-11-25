@@ -1,5 +1,6 @@
 /* Static and snapshot cache. The cache key is the full URL, so a new ?v= is a new file,
- * and a world file under /xp/v1/world/<rules-sig>/<tip>/ changes address when the tip changes.
+ * and a world file under /xp/v1/world/<rules-sig>/<tip>/ changes address when the tip changes. latest.json may come from
+ * the world copy (COPY, below) when the game server is down or behind.
  * HTML navigations and js/v2-rules.js stay network-first. latest.json, /xp/v1/sync, /xp/v1/health
  * and the chain API are never stored. This script is not intercepted, so an update can land.
  * Old cache names are deleted on activate. World files from tips older than the two newest
@@ -10,6 +11,13 @@ var CACHE = 'xcpets-' + VERSION;
 /* One large wallet is about 1,900 living pages. Two tips are already dropped above. */
 var MAX_ENTRIES = 4000;
 var KEEP_TIPS = 2;
+/* World copy (Nov 25 2026): a copy of the published world on Cloudflare (cloud/world/worker.js), built and copied by GitHub
+ * (tools/world-copy.js). When the game server's latest.json does not answer, fails, or names a world 6+ blocks older than the
+ * copy's for the same rules, the page gets the copy's latest.json instead. Its manifest is an absolute URL on the copy, so every
+ * file of that world then comes from the copy, never mixed with the server's. Empty = off. */
+var COPY = '';
+var NODE_HOST = 'node.xcpets.fun';
+var COPY_AHEAD = 6, NODE_WAIT_MS = 6000, COPY_WAIT_MS = 1500;
 
 self.addEventListener('install', function () { self.skipWaiting(); });
 self.addEventListener('activate', function (ev) {
@@ -51,6 +59,32 @@ function isWorldFile(url) {
   if (/\/view\/own\/[0-9a-f]{64}(?:\.\d+|\.d(?:\.\d+)?)?\.json$/.test(url.pathname)) return true;
   if (/\/view\/p\/\d{5}\.json$/.test(url.pathname)) return true;
   return false;
+}
+
+function isLatest(url) {
+  return url.pathname === '/xp/v1/world/latest.json' || /^\/xp\/v1\/world\/r[0-9a-f]{32}\/latest\.json$/.test(url.pathname);
+}
+function within(p, ms) { return Promise.race([p, new Promise(function (r) { setTimeout(function () { r(null); }, ms); })]); }
+function jsonOf(res) { return res && res.ok ? res.clone().json().then(function (j) { return j && typeof j === 'object' ? j : null; }, function () { return null; }) : Promise.resolve(null); }
+function worldOk(j) { return !!(j && j.rsig && j.tip && (j.manifest || j.url)); }
+/* node: { res, json } or null; copy: latest from the copy or null -> which latest the page gets */
+function pickLatest(node, copy) {
+  if (!worldOk(copy)) return 'node';
+  if (!node || !node.res || !node.res.ok || !worldOk(node.json)) return 'copy';
+  if (copy.rsig === node.json.rsig && copy.tip - node.json.tip >= COPY_AHEAD) return 'copy';
+  return 'node';
+}
+function latestWithCopy(req, url) {
+  var copyP = fetch(COPY + url.pathname, { cache: 'no-store', mode: 'cors', credentials: 'omit' }).then(function (r) { return jsonOf(r); }).catch(function () { return null; });
+  var nodeP = fetch(req).then(function (res) { return jsonOf(res).then(function (j) { return { res: res, json: j }; }); }).catch(function () { return null; });
+  return within(nodeP, NODE_WAIT_MS).then(function (node) {
+    var answered = !!(node && node.res && node.res.ok);
+    return within(copyP, answered ? COPY_WAIT_MS : NODE_WAIT_MS + 2000).then(function (copy) {
+      if (pickLatest(node, copy) === 'copy') return new Response(JSON.stringify(copy), { status: 200, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' } });
+      if (node && node.res) return node.res;
+      return nodeP.then(function (n) { if (n && n.res) return n.res; throw new Error('latest'); });
+    });
+  });
 }
 
 function trim(cache) {
@@ -95,7 +129,8 @@ self.addEventListener('fetch', function (ev) {
   if (url.protocol !== 'https:' && url.protocol !== 'http:') return;
   if (/\/sw\.js$/.test(url.pathname)) return;
   if (isNav(req) || isRules(url)) { ev.respondWith(networkFirst(req)); return; }
+  if (COPY && url.hostname === NODE_HOST && isLatest(url)) { ev.respondWith(latestWithCopy(req, url)); return; }
   if (versionedStatic(url) || isWorldFile(url)) { ev.respondWith(cacheFirst(req)); return; }
 });
 
-self.__sw = { isWorldFile: isWorldFile, versionedStatic: versionedStatic, isRules: isRules, isNav: isNav, worldTip: worldTip, trim: trim, MAX_ENTRIES: MAX_ENTRIES, KEEP_TIPS: KEEP_TIPS, VERSION: VERSION };
+self.__sw = { isWorldFile: isWorldFile, isLatest: isLatest, pickLatest: pickLatest, COPY: COPY, versionedStatic: versionedStatic, isRules: isRules, isNav: isNav, worldTip: worldTip, trim: trim, MAX_ENTRIES: MAX_ENTRIES, KEEP_TIPS: KEEP_TIPS, VERSION: VERSION };
