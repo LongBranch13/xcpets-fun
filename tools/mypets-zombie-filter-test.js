@@ -10,6 +10,7 @@ const ROOT = path.join(__dirname, '..');
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) pass++; else { fail++; console.log('FAIL', m); } };
 const S = snap(process.argv[2]), c = load(), V = c.V2Rules;
 global.V2Rules = V; if (c.PetCore) global.PetCore = c.PetCore;
+global.V2Own = require(path.join(ROOT, 'js', 'v2-own.js')).V2Own; /* v2-zombie-filter asks V2Own (root cause #2, Nov 25 2026) */
 const ZF = require(path.join(ROOT, 'js', 'v2-zombie-filter.js'));
 const PS = require(path.join(ROOT, 'js', 'v2-pet-search.js'));
 

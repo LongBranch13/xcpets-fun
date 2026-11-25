@@ -363,7 +363,7 @@
     if (FO.a && (!w.byId[FO.a] || w.byId[FO.a].owner !== ME)) FO.a = null; if (FO.b && (!w.byId[FO.b] || w.byId[FO.b].owner === ME)) FO.b = null;
     /* 2026-10-19: no default pet on your side. It used to auto-pick your first eligible fighter (lowest pet number), which hid that the card opens the picker.
      * Your side now starts empty ('Pick your pet') unless you arrived with a pet on purpose (UXB.battleWith / play.html#battle-ID). */
-    if (FO.want != null) { var wp = w.byId[FO.want]; if (wp && wp.owner === ME && !wp.dead && !wp.released) { FO.a = wp.id; FO.want = null; var bp = $('battlePanel'); if (bp) setTimeout(function () { bp.scrollIntoView(); }, 0); }
+    if (FO.want != null) { var wp = w.byId[FO.want]; if (wp && V2Own.isLiving(wp, ME)) { FO.a = wp.id; FO.want = null; var bp = $('battlePanel'); if (bp) setTimeout(function () { bp.scrollIntoView(); }, 0); }
       /* fight-preselect (owner Oct 24 2026): fight.html#battle-ID for someone else's living pet puts it on the opponent side (you still pick yours) */
       else if (wp && ME && wp.owner !== ME && !wp.dead && !wp.released) { FO.b = wp.id; FO.want = null; } }
     var A = FO.a && w.byId[FO.a], B = FO.b && w.byId[FO.b], okA = A && !whyNot(A, w), okB = B && !whyNot(B, w), sw = okA && okB && window.V2UI && V2UI.sendWhy ? V2UI.sendWhy({ tag: 'pet:fight:' + A.id + ':' + B.id }) : null; if (sw) okA = false; /* wasted-burn guard: engine rules (open challenge, etc.) */
