@@ -6,7 +6,7 @@
  *
  *   node tools/layout-check/rig.js &   (builds the real-data world from api/boot.json and serves this checkout; prints "ready")
  *   node tools/layout-check/run.js --base http://127.0.0.1:8080 [--sync http://127.0.0.1:8125] [--wallet addr] [--sizes phone,desktop]
- *        [--pages play.html,cemetery.html] [--out previews/layout] [--shots]
+ *        [--pages play.html,cemetery.html] [--out dir] [--shots]
  *
  * --base is a static server of this checkout (any). --sync points the pages at a sync server (tools/sync-server) for the fast world,
  * else pages build the world from api/boot.json in the browser (slow). Exit 1 when any problem is found (known ones listed in
@@ -16,7 +16,7 @@ const fs = require('fs'), path = require('path');
 const A = process.argv.slice(2), opt = (k, d) => { const i = A.indexOf(k); return i >= 0 ? A[i + 1] : d; };
 const ROOT = path.resolve(__dirname, '../..');
 const BASE = opt('--base', 'http://127.0.0.1:8080').replace(/\/+$/, ''), SYNC = opt('--sync', ''), SHOTS = A.includes('--shots');
-const OUT = path.resolve(ROOT, opt('--out', 'previews/layout'));
+const OUT = path.resolve(ROOT, opt('--out', path.join(require('os').tmpdir(), 'xcpets-layout'))); /* never inside the repo by default */
 const WALLET = opt('--wallet', 'bc1pfvkpmllr7mtn5uazqxumwp39h2ny3c8l6fmrgvjv2cqn5wlpt7hssf3gqd'); /* Evan, ~2,200 pets */
 const AUDIT = fs.readFileSync(path.join(__dirname, 'audit.js'), 'utf8');
 const SIZES = { phone: { width: 390, height: 844, mobile: true }, 'small-phone': { width: 360, height: 640, mobile: true }, tablet: { width: 820, height: 1180, mobile: true },
