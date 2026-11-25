@@ -1611,7 +1611,7 @@
    * cost (sale amount / 0.31, rounded up, plus 2 sats per pet for the 8-place rounding), keeping the sale cost as the other choice. */
   var FIRE_END_WARN = 6, FIRE_SALE_PART = 0.31; /* sale-guard (Nov 23 2026): 2 -> 6 blocks (about an hour): a player sent feeds 3 blocks before the end and they landed after it */
   function fireEndPlans(w, plans) { if (!V.fireInfo || !plans || !plans.length) return null; var f; try { f = V.fireInfo(w, S.tip || 0); } catch (e) { return null; }
-    var sl = f && f.live; if (!sl) return null; var left = sl.end - f.nextBlock; if (left > FIRE_END_WARN) return null; var any = false;
+    var sl = f && f.live; if (!sl) return null; var left = sl.end - f.nextBlock; if (left + (f.grace || 0) > FIRE_END_WARN) return null; /* FIRE SALE GRACE (rules, from block 977,560): a sale-priced burn that lands up to 6 blocks after the end still counts, so no warning is needed */ var any = false;
     /* wasted-burns audit (Nov 25 2026): a plan that was already priced at full cost was divided by 0.31 again (block 977,493: a 2-pet meal of
      * 17.25 went out as 55.65). Only a plan at the sale price is raised: priced actions take their full cost from the rules at the first block
      * after the sale (planAmount), meals from the pets' own sale-priced next meals. A plan already at (or above) full cost is left alone. */
