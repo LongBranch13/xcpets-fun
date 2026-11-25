@@ -127,6 +127,10 @@
       /* keep the opened worn list on the copy: publishOwner re-assembles from these copies as more owner pages arrive, and a copy
        * without worn dropped page 0's gear again on the next rebuild (fastcheck, Nov 22 2026). */
       copy.worn = []; (p.worn || []).forEach(function (g) { var it = addItem(g, copy.id, (typeof copy.owner === 'string' && copy.owner) || addPet.owner || ''); if (it) copy.worn.push(it); });
+      /* Nov 25 2026 (robot, breed page froze 1-2 s per batch on a 40,000-pet wallet): every batch re-copies every pet, and fillWorld
+       * then walked each fresh copy again (expandOwners, 130-400 ms a batch). A copy of a pet already filled with the current owner
+       * table holds the same strings and shares its nested objects, so it counts as filled too. */
+      if (filledSet && filledFor === viewOwners && filledSet.has(p)) { filledSet.add(copy); copy.worn.forEach(function (it) { filledSet.add(it); }); }
     }
     function takeDeeds(src) { if (!src) return; Object.keys(src).forEach(function (k) { deeds[k] = src[k]; }); }
     function takeMythic(src) { if (!src) return; Object.keys(src).forEach(function (k) { if (src[k] != null) mythicOwners[k] = src[k]; }); }
@@ -714,6 +718,9 @@
       return { v: 3, hashes: v.hashes, pets: v.pets };
     });
   }
+  /* Nov 25 2026 (robot, 40,000-pet wallet): shards that arrive together were all opened (art built for every pet) in one run of promise
+   * callbacks, one long freeze. Each shard now opens in its own task, so the page can paint and take taps in between. Same pets. */
+  function nextTask(v) { return typeof setTimeout === 'function' ? new Promise(function (r) { setTimeout(function () { r(v); }, 0); }) : v; }
   function resolveIdsNow(ids, keep) {
     var folder = viewFolder, need = {}, i, id, name, names;
     for (i = 0; i < ids.length; i++) {
@@ -723,7 +730,7 @@
     }
     names = Object.keys(need);
     return Promise.all(names.map(function (nm) {
-      return shardFor(folder, nm, need[nm], keep).then(function (pack) {
+      return shardFor(folder, nm, need[nm], keep).then(nextTask).then(function (pack) {
         var map = pack && pack.pets || {}, hashes = pack && pack.hashes || [], j, src, out = [];
         for (j = 0; j < need[nm].length; j++) {
           src = map[String(need[nm][j])];
