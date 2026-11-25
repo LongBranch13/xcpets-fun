@@ -13,7 +13,7 @@ const BANNED = 'bc1ps9av86ymmlzy9zj3a8pn6g94pz4j5e0kagv3td3wutaagfjvekjs26m3s4';
 let pass = 0, fail = 0;
 const ok = (c, m) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (c) pass++; else fail++; };
 const rulesMd5 = crypto.createHash('md5').update(fs.readFileSync(path.join(ROOT, 'js/v2-rules.js'))).digest('hex');
-ok(rulesMd5 === '11b5c6c1959c56a7fd51c09a8b2a2309', 'js/v2-rules.js MD5 unchanged (' + rulesMd5 + ')');
+ok(rulesMd5 === require('./lib/rules-pin').pin('js/v2-rules.js'), 'js/v2-rules.js MD5 unchanged (' + rulesMd5 + ')');
 ok(fs.readFileSync(path.join(ROOT, 'tools/owner-backfill-test.js'), 'utf8').indexOf(BANNED) >= 0, 'the banned wallet is named only so this test can refuse it');
 ok(ME !== BANNED && PREV !== BANNED, 'the fixture wallets are not the banned wallet');
 

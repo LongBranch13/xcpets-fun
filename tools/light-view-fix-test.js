@@ -12,22 +12,11 @@ const ok = (c, m) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (c) pass++; 
 function rd(rel) { return fs.readFileSync(path.join(ROOT, rel), 'utf8'); }
 function md5(rel) { return crypto.createHash('md5').update(fs.readFileSync(path.join(ROOT, rel))).digest('hex'); }
 
-const RSIG = {
-  'js/v2-rules.js': '11b5c6c1959c56a7fd51c09a8b2a2309',
-  'rjs/config.js': '66e38a276cf59ade25115a80ceb7deea',
-  'rjs/pet-core.js': '47be652fe0a5dd6157a95f5b2c6585fa',
-  'rjs/game-core.js': '2784e9ccac773c4e0e58d646fc47b05f',
-  'rjs/bonus-gear.js': 'deaa0b54f40c5ab1887ea9e5fa641e6c',
-  'rjs/real-core.js': '601044a00a67c15f6013235f73fe9cdc',
-  'rjs/chain.js': '0767140323f23834ffac525de41f823e', /* hash-guard: block-hash consensus; v2-rules.js pin above is unchanged */
-  'js/pet-core.js': '1c45c5e9f400faf17b3b57fe72166f0e',
-  'js/bonus-gear.js': '36734cff209497808af0142e2510630d',
-  'js/v2-gear.js': 'd0d440f3b7d6ded06837e2992651778d',
-  'js/v2-fit.js': '4930f92ad62596d94c263173c4b61cdb'
-};
+const RSIG = require('./lib/rules-pin').PIN; /* rules-pin: every rule file's MD5 lives in tools/fixtures/rules-pin.json */
 Object.keys(RSIG).forEach(rel => ok(md5(rel) === RSIG[rel], rel + ' bytes unchanged'));
 const ui = rd('js/v2-split.js');
-ok(/AUTO_CAP = 12000/.test(ui) && /SCREEN_PAGES = 7/.test(ui) && /DRAIN_MAX = 64/.test(ui), "wallets up to 12,000 load through in growing batches; bigger ones still page 7 at a time");
+const num = re => Number((re.exec(ui) || [])[1]); /* the floors this fix needs; later raises (AUTO_CAP 60,000, DRAIN_MAX 256 on Nov 23) still pass */
+ok(num(/var AUTO_CAP = (\d+)/) >= 12000 && num(/var SCREEN_PAGES = (\d+)/) === 7 && num(/DRAIN_MAX = (\d+)/) >= 64, "wallets up to 12,000 load through in growing batches; bigger ones still page 7 at a time");
 ok(/function drain\(/.test(ui) && /underCap\(/.test(ui), 'background drain is only for wallets under the cap');
 ok(!/for \(i = 1; i < pg\.pages; i\+\+\) left\.push\(i\)/.test(ui), 'owner pages are still not all queued at once');
 ok(/deeds: deeds, mythicOwners: mythicOwners/.test(ui), 'assemble keeps deeds and mythicOwners');

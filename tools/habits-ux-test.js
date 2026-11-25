@@ -13,7 +13,7 @@ const V = ctx.V2Rules, H = ctx.V2Habits;
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) pass++; else { fail++; console.log('FAIL', m); } };
 const ME = 'bc1qme', NB = 980000;
 const W = (() => { const w = { pets: [], byId: {} }; const add = (id, o) => { const p = Object.assign({ id, owner: ME, hungry: true, nextMeal: 0.5, stage: 1, care: 1, lastFed: 970000, fedToday: false, dead: false, released: false }, o || {}); w.pets.push(p); w.byId[id] = p; };
-  for (let i = 1; i <= 12; i++) add(i); add(20, { fedToday: true, hungry: false }); add(21, { dead: true }); add(22, { quest: { end: NB + 500 } }); add(23, { owner: 'bc1qother' }); add(24, { quest: { end: NB - 1 } }); return w; })();
+  for (let i = 1; i <= 12; i++) add(i); add(20, { fedToday: true, hungry: false }); add(21, { dead: true }); add(22, { quest: { code: 'spam', start: NB - 10, end: NB + 500 } }); add(23, { owner: 'bc1qother' }); add(24, { quest: { code: 'spam', start: NB - 100, end: NB - 1 } }); return w; })();
 const qcount = { n: 0 }, queue = ids => { qcount.n++; return [{ tag: 'pet:fl:rebuilt', amount: ids.length, petIds: ids.slice() }]; };
 const O = (o) => Object.assign({ me: ME, pend: {}, nb: NB, V, queue, idList: ids => '#' + ids.join(', #') }, o || {});
 const ids = plans => plans.reduce((a, q) => a.concat(q.petIds || []), []);

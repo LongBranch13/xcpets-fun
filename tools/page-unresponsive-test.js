@@ -39,7 +39,7 @@ function harness(o) {
   ok(!/wkOff = true; wkKill\(\); fin\(\); \}, WORKER_MS/.test(src) && /setTimeout\(slow, WORKER_MS\)/.test(src), 'a slow worker is waited for, never a main-thread fallback');
   ok(!/wkBusy = 0; try \{ world\(\)/.test(src), 'burn check no longer forces a main-thread rebuild');
   ok(/if \(pend\) \{ if \(pend\.sig === sig0 && pend\.oj === oj0\) return pend\.p;/.test(src), 'same inputs join the running worker job');
-  ok(/wk\.postMessage\(\{ id: id, scripts: urls, rows: S\.rows, hashes: S\.hashes, ops: ops, tip: S\.tip, dex: S\.dex \|\| undefined, idbKey: key \}\)/.test(src), 'worker gets the same replay inputs');
+  ok(/wk\.postMessage\(\{ id: id, scripts: urls, rows: S\.rows, hashes: S\.hashes, ops: ops, tip: S\.tip, dex: S\.dex \|\| undefined, idbKey: key[,} ]/.test(src), 'worker gets the same replay inputs');
   ok(/cache = V\.replay\(S\.rows, S\.hashes, S\.ops, \{ tip: S\.tip, live: E\.RealCore, dex: S\.dex \|\| undefined \}\)/.test(src), 'main-thread fallback replay unchanged');
   console.log('page-unresponsive-test: ' + pass + ' pass, ' + fail + ' fail'); process.exit(fail ? 1 : 0);
 })().catch(e => { console.log('FAIL error', e && e.stack); process.exit(1); });

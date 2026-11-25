@@ -29,7 +29,7 @@ function run(hash, pet, opts) {
     setTimeout: (f, ms) => timers.push({ f, ms }), MutationObserver: function (f) { this.observe = () => obs.push(f); this.disconnect = () => {}; },
     __t: h => toasts.push(String(h)), __c: (t, pl, after) => confirms.push({ t, pl, after }) });
   vm.runInContext('var ME = "bc1qme", S = { rows: [1], tip: 100 }, V = { freeRollPlan: id => ({ tag: "pet:fr:" + id }), overflowRollPlan: id => ({ tag: "pet:of:" + id }), rollQueue: () => [{ tag: "pet:roll" }] };' +
-    'var W = { byId: {} }; function world() { return W; } function cemRoute() { return false; } function giftRoute() { return false; } function toast(h) { __t(h); } function esc(s) { return String(s); }' +
+    'var W = { byId: {} }; function world() { return W; } function cemRoute() { return false; } function giftRoute() { return false; } function unleashRoute() { return false; } function toast(h) { __t(h); } function esc(s) { return String(s); }' +
     'function ZB() { return false; } function feedQ(w, me, ids) { return [{ tag: "pet:feed:" + ids[0] }]; } function confirmPlans(t, pl, after) { __c(t, pl, after); }' +
     'var BODY = { insertAdjacentHTML: function (w, h) { BODY.h = h; } }; function $(id) { return id === "confirmBox" ? __cb : id === "cfBody" ? BODY : null; }\n' + block + '\nthis.T = { actRoute: actRoute, W: W, BODY: BODY };', Object.assign(ctx, { __cb: cb }));
   ctx.T.W.byId[pet.id] = pet; const r = ctx.T.actRoute();

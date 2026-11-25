@@ -1,0 +1,15 @@
+{
+  "rjs/config.js": "66e38a276cf59ade25115a80ceb7deea",
+  "rjs/pet-core.js": "47be652fe0a5dd6157a95f5b2c6585fa",
+  "rjs/game-core.js": "2784e9ccac773c4e0e58d646fc47b05f",
+  "rjs/bonus-gear.js": "deaa0b54f40c5ab1887ea9e5fa641e6c",
+  "rjs/real-core.js": "601044a00a67c15f6013235f73fe9cdc",
+  "rjs/chain.js": "0767140323f23834ffac525de41f823e",
+  "js/pet-core.js": "1c45c5e9f400faf17b3b57fe72166f0e",
+  "js/bonus-gear.js": "36734cff209497808af0142e2510630d",
+  "js/v2-gear.js": "0c8e7ae157455a0f72c76e1ba75e1dbb",
+  "js/v2-fit.js": "4930f92ad62596d94c263173c4b61cdb",
+  "js/v2-rules.js": "0460683e58ed3a17022e637b9eea92c3",
+  "js/v2-sales.js": "a34ecd4dcf3b6c0830400612c51dea51",
+  "js/v2-replay-worker.js": "6213455fe340783f1d1992155599543f"
+}

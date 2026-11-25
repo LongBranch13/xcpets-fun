@@ -119,7 +119,7 @@ async function renderMeasure(page, label) {
 }
 (async () => {
   fs.mkdirSync(ART, { recursive: true });
-  const RULES_MD5 = '11b5c6c1959c56a7fd51c09a8b2a2309';
+  const RULES_MD5 = require('./lib/rules-pin').pin('js/v2-rules.js');
   RULES.forEach(f => { const a = md5(path.join(ROOT, f)); ok(f === 'js/v2-rules.js' ? a === RULES_MD5 : a === crypto.createHash('md5').update(gitFile(f)).digest('hex'), f === 'js/v2-rules.js' ? 'js/v2-rules.js MD5 is ' + RULES_MD5 : 'rule unchanged ' + f + ' ' + a); });
   const PS = require(path.join(ROOT, 'js/v2-pet-search.js'));
   const hay = PS.haystack({ id: 9, name: 'Zed', species: 'pepe', tier: 1, stage: 3, stats: { vigor: 3 }, art: { rareHatch: { version: 1, kind: 'two-headed' } } }, null);
@@ -151,7 +151,7 @@ async function renderMeasure(page, label) {
     let ms = await boot(desk, origin, 'rare-room.html');
     let info = await desk.evaluate(() => {
       const w = V2Mock.world(), rare = (w.pets || []).filter(p => p.art && p.art.rareHatch && p.art.rareHatch.version === 1).length;
-      return { msLabel: 'real-feed', pets: w.pets.length, rare: rare, place: V2Motel.placeOn(), hall: document.querySelectorAll('#rhGrid .rh-card').length, gridB: document.querySelectorAll('#bGridB .pet.card').length, longMax: Math.max(0, ...(window.__long || [0])), overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth };
+      return { msLabel: 'real-feed', pets: w.pets.length, rare: rare, place: !!(window.V2Motel && V2Motel.placeOn && V2Motel.placeOn()), hall: document.querySelectorAll('#rhGrid .rh-card').length, gridB: document.querySelectorAll('#bGridB .pet.card').length, longMax: Math.max(0, ...(window.__long || [0])), overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth };
     });
     results.pages.rareCold = Object.assign({ bootMs: ms }, info);
     ok(info.place === false, 'rare room does not run the motel picker');
@@ -369,7 +369,7 @@ async function renderMeasure(page, label) {
     await boot(rm, origin, 'breed.html');
     const reduced = await rm.evaluate(async () => {
       const a = window.__rafN; await new Promise(r => setTimeout(r, 600)); const n = window.__rafN - a;
-      return { frames: n, reduce: matchMedia('(prefers-reduced-motion: reduce)').matches, place: V2Motel.placeOn() };
+      return { frames: n, reduce: matchMedia('(prefers-reduced-motion: reduce)').matches, place: !!(window.V2Motel && V2Motel.placeOn && V2Motel.placeOn()) };
     });
     results.pages.reduced = reduced;
     ok(reduced.reduce && reduced.frames < 8, 'reduced motion does not keep the motel frame loop (' + reduced.frames + ' frames / 600ms)');
