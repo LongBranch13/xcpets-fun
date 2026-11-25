@@ -24,7 +24,10 @@
   function sacLine(u) { u = String(u == null ? '' : u); var m = /^offered to #(\d+)$/i.exec(u); if (m) return 'Sacrificed to #' + m[1]; if (/^offered to\b/i.test(u) || !u) return 'Sacrificed'; m = /#(\d+)/.exec(u); if (m && (/^eaten by\b/i.test(u) || /^Resurrection of\b/i.test(u))) return 'Sacrificed to #' + m[1]; return 'Sacrificed'; }
 
   function acts(p, mine, known) {
-    if (p.dead || p.released || p.burnedTo) { var gone = p.dead ? '🪦 Resting in the Pet Cemetery.' : (p.usedUp ? sacLine(p.usedUp) : 'Out of play.'); return '<p class="small muted pc-none">' + gone + '</p>'; }
+    if (p.dead || p.released || p.burnedTo) { var gone = p.dead ? '🪦 Resting in the Pet Cemetery.' : (p.usedUp ? sacLine(p.usedUp) : 'Out of play.');
+      /* mg-road (Nov 25 2026): a violet grave (a Mythic eaten by its owner's zombie) is a step on the road to Mythic God, not a dead end. */
+      var gr = ''; try { if (window.V2MgRoad && p.mgDead) gr = V2MgRoad.html(window.V2Mock.world(), p, me()); } catch (e) { gr = ''; }
+      return '<p class="small muted pc-none">' + gone + '</p>' + gr; }
     var own = mine && !viewOnly(), passRr = !known || !!mine; /* rare room keeps the id when this pet is yours, or the wallet is not known yet */
     if (isZ(p)) { /* zombies: no breeding, quests, raids or XCPETS meals (engine rejects them); they eat pets and hunt.
        * pet-page-zombies (Nov 23 2026): feeding, halo points, Resurrect and Hunt all happen on this page now (🧟 Zombie care, below the card) */
