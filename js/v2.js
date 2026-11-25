@@ -9,7 +9,7 @@
     /* offer-discards-only-1105: when the cemetery token/discard gate is on, only Discarded pets (browser Discard pile) can be offered/eaten.
      * Discard is not on chain; the picker enforces it. Tied pets are also refused by cemOfferWhy under the same gate. */
     var discOnly = !!(V.cemTokenOfferOn && V.cemTokenOfferOn(b)), H0 = discOnly ? zDiscarded(w) : null;
-    var L = !V.cemOfferWhy ? [] : (w.pets || []).filter(function (a) { return a.owner === me && !a.dead && !a.released && !ZB(a) && !V.cemOfferWhy(w, a, me, b) && (!discOnly || H0[a.id]); })
+    var L = !V.cemOfferWhy ? [] : (w.pets || []).filter(function (a) { return V2Own.isLiving(a, me, { zombies: false }) && !V.cemOfferWhy(w, a, me, b) && (!discOnly || H0[a.id]); })
       .sort(function (a, c) { return (a.tier | 0) - (c.tier | 0) || (a.stage | 0) - (c.stage | 0) || a.id - c.id; }); zMealsMemo = { w: w, me: me, b: b, d: zHidRev, L: L }; return L; }
   /* zombie-feed-pets (owner Oct 30 2026 "I fed the zombie but it was xcpets instead of other pets I dont want"): the meal is a PICK, never a default.
    * Nothing is pre-selected (the old dropdown silently pre-picked the weakest pet), starred pets and pets already in an unconfirmed zombie meal are
@@ -432,7 +432,7 @@
   function hdLive() { return !!(ME && V.hdOn && V.hdPlan && V.hdOn((S.tip || 0) + 1)); }
   function hdLater(ids) { if (!hdLive()) return; ids.forEach(function (id) { id = Number(id); if (hdQueue.indexOf(id) < 0) hdQueue.push(id); }); clearTimeout(hdTimer); hdTimer = setTimeout(hdFlush, 900); }
   function hdFlush() { clearTimeout(hdTimer); if (!hdQueue.length) return; if (rev || ($('packBox') && $('packBox').classList.contains('on'))) return; /* closeReveal flushes */
-    var w = world(), ids = hdQueue.filter(function (id) { var p = w.byId[id]; return p && p.owner === ME && !p.dead && !p.released && p.hd !== ME && !isKept(id); }); hdQueue = [];
+    var w = world(), ids = hdQueue.filter(function (id) { var p = w.byId[id]; return p && V2Own.isLiving(p, ME) && p.hd !== ME && !isKept(id); }); hdQueue = [];
     if (ids.length) chainDiscardIds(ids, false); }
   function idList(ids) { return '#' + ids.slice(0, 5).join(', #') + (ids.length > 5 ? ' +' + (ids.length - 5) + ' more' : ''); }
   var JUST_BACK = []; /* restore-fix (owner Oct 27 2026, "I can't find my never fed pets I took out of the discard pile"): pets restored this visit go to the top of My Pets, outside the Never fed fold, so they show right away (they used to land folded inside Never fed, often past the first 150 cards) */
@@ -455,7 +455,7 @@
     if (S.ui_starOnly || $('fSort').value === 'starred' || /\b(starred|kept|favorite)\b/i.test(($('fSearch') || {}).value || '')) setTimeout(render, 0); return on; }
   /* pickIds() = the CHECKED pets you own that are alive, not released and not discarded in this browser. The Rare Room multi-pet roll, Auto-equip,
    * Outfit, the lair 'Acts on' chip and the swipe view act on them (as before starred-acts). starIds stays as an alias for older callers. */
-  function pickIds(w) { w = w || world(); if (!ME || !w) return []; var hs = new Set(hiddenIds()); return S.sel.map(Number).filter(function (id) { var p = w.byId[id]; return p && p.owner === ME && !p.dead && !p.released && !hs.has(id); }); }
+  function pickIds(w) { w = w || world(); if (!ME || !w) return []; var hs = new Set(hiddenIds()); return S.sel.map(Number).filter(function (id) { var p = w.byId[id]; return p && V2Own.isLiving(p, ME) && !hs.has(id); }); }
   var starIds = pickIds;
   /* owner add-on 2026-10-21 (restored Oct 29 2026): a feed burn sent from this browser stars the fed pets (never un-stars), so a later bulk discard can't take them. UI/localStorage only. */
   function keepFed(tag, plan) { var t = V.parseTag(tag), ids = !t ? [] : t.action === 'feed' ? [t.petId] : (t.action === 'feedm' || t.action === 'feedl') ? t.ids : [];
@@ -1243,7 +1243,7 @@
     else title += ' · 1 burn · 1 dander, plus the Bitcoin fee.' + (plan.why ? ' ' + plan.why : '');
     confirmPlans(title, plan.plans, restore ? function () { noteHuSent(plan.plans.reduce(function (a, q) { return a.concat(q.petIds || []); }, [])); } : null); }
   function chainDiscardBar(w) { if (!ME || !V.hdPlan || !V.hdOn) return null; var b = (S.tip || 0) + 1, on = V.hdOn(b);
-    var hid = hiddenIds().map(Number).filter(function (id) { var p = w.byId[id]; return p && p.owner === ME && !p.dead && !p.released && !ZB(p) && !isKept(id); });
+    var hid = hiddenIds().map(Number).filter(function (id) { var p = w.byId[id]; return p && V2Own.isLiving(p, ME, { zombies: false }) && !isKept(id); });
     var chain = (w.pets || []).filter(function (p) { return p.owner === ME && onChainDiscarded(p) && !p.dead && !p.released; }); /* inPile rule: an old flag on a risen zombie does not count */
     if (!hid.length && !chain.length) return null;
     var el = document.createElement('div'); el.className = 'small hdbar'; el.id = 'hdBar';
@@ -1710,7 +1710,7 @@
 
   // ---------------------------------------------------------------- battles
   function fighters(w, owner, not) { var oc = {}; if (!not) { (w.fights || []).forEach(function (f) { if (f.status === 'open' && (S.tip || 0) + 1 - f.block <= V.FIGHT_WINDOW) { oc[f.a] = 1; oc[f.b] = 1; } }); myPendingTags().forEach(function (g) { var t = V.parseTag(g); if (t && t.action === 'fight') { oc[t.a] = 1; oc[t.b] = 1; } }); } /* engine: a challenger may not have an open challenge (sent or received) */
-    return w.pets.filter(function (p) { return (not ? p.owner !== owner : p.owner === owner) && !p.dead && !p.released && p.stage >= 2 && !p.neglected && !oc[p.id]; }); }
+    return w.pets.filter(function (p) { return (not ? p.owner !== owner : V2Own.isLiving(p, owner)) && p.stage >= 2 && !p.neglected && !oc[p.id]; }); }
   function opt(p) { return '<option value="' + p.id + '">#' + p.id + ' ' + esc(p.name) + ' (' + spLabel(p) + ' ' + (V.stageLabelOf ? V.stageLabelOf(p) : p.stageName) + ')' + (p.owner !== ME ? ' — ' + esc(p.owner) : '') + '</option>'; }
   /* pending challenges (2026-10-15, Jake): the battles box lists the connected player's open challenges in BOTH directions:
    * sent (still waiting for acceptance) and received (with Accept). Confirmed ones come from the replayed world (w.fights, status 'open');

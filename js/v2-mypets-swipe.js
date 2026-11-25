@@ -39,7 +39,7 @@
   function idx(L) { var i = L.findIndex(function (p) { return p.id === st.id; }); return i < 0 ? 0 : i; }
   function gearHtml(u, w, p) { var R = window.V2Render, g = R && R.worn ? R.worn(w, p.id) : []; if (!g.length) return '<div class="mps-gear muted">🎒 No gear worn (' + (p.capacity || 0) + ' slots)</div>';
     return '<div class="mps-gear">🎒 ' + g.map(function (x) { return esc((x.slot ? x.slot + ': ' : '') + (x.label || x.item || x.gid)); }).join(' · ') + '</div>'; }
-  function acts(u, w, p) { var V = window.V2Rules, me = u.ME, own = !!me && p.owner === me && !p.dead && !p.released, h = '';
+  function acts(u, w, p) { var V = window.V2Rules, me = u.ME, own = !!me && V2Own.isLiving(p, me), h = '';
     if (own) { h += '<button type="button" class="btn ico-flame" data-m="feed"' + (p.hungry ? '' : ' disabled title="Not hungry right now"') + '>🍼 Feed' + (p.hungry && p.nextMeal ? ' (' + Number(p.nextMeal).toLocaleString() + ')' : '') + '</button>';
       var canF = $('fMine') && [].some.call($('fMine').options, function (o) { return o.value === String(p.id); }); h += '<button type="button" class="btn ghost" data-m="fight"' + (canF ? '' : ' disabled title="Not eligible to fight right now"') + '>⚔️ Fight</button>';
       var bw = null; try { var L = V.breedPicker(w, me, w.tip || u.S().tip, '', u.pendingBreedIds ? u.pendingBreedIds() : []); var m = L.mine.filter(function (x) { return x.p.id === p.id; })[0]; bw = m ? m.why || null : 'Not eligible to breed'; } catch (e) { bw = null; }

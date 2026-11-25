@@ -88,7 +88,7 @@
     el.querySelector('[data-send]').onclick = function () { send(p.id, ops, function (ok) { if (ok) { st.want = {}; } }); };
     return { owned: owned.length, ops: ops }; }
   /* one-tap move row for My Looks: a pet menu (pets this look is not on) + Move, and Off when it is on a pet */
-  function moveRow(w, ME, L, i) { var V = window.V2Rules, open = V.lookPickOn(tip(w) + 1), pets = w.pets.filter(function (q) { return q.owner === ME && !q.dead && !q.released && !q.community && L.on.indexOf(q.id) < 0; }).sort(function (a, b) { return a.id - b.id; });
+  function moveRow(w, ME, L, i) { var V = window.V2Rules, open = V.lookPickOn(tip(w) + 1), pets = w.pets.filter(function (q) { return V2Own.isLiving(q, ME) && L.on.indexOf(q.id) < 0; }).sort(function (a, b) { return a.id - b.id; });
     if (!pets.length && !L.on.length) return '';
     var full = L.kind === 'flame' && L.cap > 1 && L.on.length >= L.cap;
     /* label only: the burn really moves the look only when it is on as many pets as it can be (flame limit 1, or every copy placed); otherwise it goes on as well */
@@ -103,7 +103,7 @@
         '<p class="lp-note">Pick a pet and tap ' + NAMES.wear + ' or ' + NAMES.move + ' (one burn). ' + NAMES.move + ' shows when the look is already on as many pets as it can be, so it comes off a pet it is on now. ' + NAMES.off + ' takes it off every card it is on (one burn per card). For several changes at once use a pet\'s ' + NAMES.panel + ' or the ' + NAMES.station + ' in The Rare Room.</p>' : '<p class="lp-note">No looks yet. Go earn some!</p>') + '</details>';
     el.querySelectorAll('[data-mv]').forEach(function (b) { b.onclick = function () { var L = owned[+b.dataset.mv], sel = el.querySelector('xc-select[data-mvs="' + b.dataset.mv + '"]'), to = sel && +sel.value; if (!to) return; send(to, [{ code: L.code, on: true }]); }; });
     el.querySelectorAll('[data-off]').forEach(function (b) { b.onclick = function () { var L = owned[+b.dataset.off]; L.on.forEach(function (pid) { send(pid, [{ code: L.code, on: false }]); }); }; });
-    var first = null; el.querySelectorAll('canvas[data-i]').forEach(function (c) { var L = owned[+c.dataset.i], p = w.byId[L.on[0]] || first || (first = w.pets.filter(function (q) { return q.owner === ME && !q.dead && !q.released; })[0]); if (p) previewSoon(c, w, p, lookFx(L)); }); }
+    var first = null; el.querySelectorAll('canvas[data-i]').forEach(function (c) { var L = owned[+c.dataset.i], p = w.byId[L.on[0]] || first || (first = w.pets.filter(function (q) { return V2Own.isLiving(q, ME); })[0]); if (p) previewSoon(c, w, p, lookFx(L)); }); }
   /* shownLooks() asks copyList() to sort every look copy in the world. Doing that inside a sort of every living pet
    * (about 9k for the owner wallet, each comparison sorting the copies again) was one long task of tens of seconds
    * and Chrome's "Page Unresponsive" on the Rare Room: the room had already painted, so it showed up when you

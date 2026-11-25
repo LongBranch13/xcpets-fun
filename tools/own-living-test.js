@@ -17,10 +17,16 @@ ok(ids(O.living(w, 'a')) === '1,6,8', 'living: alive, own, not released, not com
 ok(ids(O.living(w, 'a', { zombies: false })) === '1,8', 'living without zombies: a Resurrected pet stays (' + ids(O.living(w, 'a', { zombies: false })) + ')');
 ok(O.living(null, 'a').length === 0 && O.living(w, null).length === 0 && !O.isLiving(pets[0], ''), 'no world or no wallet: nothing');
 /* no copies left, and the script is loaded where it is used */
-const FILES = ['js/v2-cemetery-scene.js', 'js/v2-gift.js', 'js/v2-look-picker.js', 'js/v2-mypets-top.js', 'js/v2-rugme.js', 'js/v2-sales.js'];
-const COPY = /owner === (ME|me) && !p\.dead && !p\.released && !p\.community/;
-FILES.forEach(f => ok(!COPY.test(rd(f)) && /V2Own\./.test(rd(f)), f + ' asks V2Own (no inline copy)'));
+/* Nov 25 2026 (root cause #2, one answer to "is this my pet?"): no game script writes the inline "my living pet" test any more */
+const SKIP = /^(v2-rules|v2-own|v2-merge|practice-engine)\.js$|worker/;
+const ALL = fs.readdirSync(path.join(ROOT, 'js')).filter(f => f.endsWith('.js') && !SKIP.test(f)).map(f => 'js/' + f);
+const COPY = /([A-Za-z_][\w.\[\]]*)\.owner === [\w.()]+ && !\1\.dead && !\1\.released/;
+const copies = ALL.filter(f => COPY.test(rd(f)));
+ok(!copies.length, 'no inline "owner, not dead, not released" copy left in js/' + (copies.length ? ' (' + copies.join(', ') + ')' : ''));
+const FILES = ALL.filter(f => /V2Own\./.test(rd(f)));
+ok(FILES.length >= 17, FILES.length + ' scripts ask V2Own');
 const pages = fs.readdirSync(ROOT).filter(f => f.endsWith('.html')).concat(['templates/game.html']);
-const bad = pages.filter(f => { const s = rd(f), i = s.indexOf('js/v2-own.js'); return FILES.some(u => { const j = s.indexOf(u); return j >= 0 && (i < 0 || i > j); }); });
-ok(bad.length === 0, 'every page loading one of those files loads js/v2-own.js before it' + (bad.length ? ' (not: ' + bad.join(', ') + ')' : ''));
+const bad = [];
+pages.forEach(f => { const s = rd(f).replace(/<link rel="prefetch"[^>]*>/g, ''), i = s.indexOf('js/v2-own.js'); FILES.forEach(u => { const j = s.indexOf('"' + u + '?'); if (j >= 0 && (i < 0 || i > j)) bad.push(f + ':' + u); }); });
+ok(bad.length === 0, 'every page loading a V2Own user loads js/v2-own.js before it' + (bad.length ? ' (not: ' + bad.slice(0, 8).join(', ') + ')' : ''));
 console.log(`own-living: ${n - fails} passed, ${fails} failed`); process.exit(fails ? 1 : 0);
