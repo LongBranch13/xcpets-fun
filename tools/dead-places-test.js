@@ -21,7 +21,7 @@ const GM = 'bc1qtke38j72qv4d8eljn7pccaykypw8luytfwdn7q', TIP = 977472;
 const rows = boot.rows.filter(r => r.block_index <= TIP).sort((a, b) => a.block_index - b.block_index || a.tx_index - b.tx_index);
 if (!rows.some(r => r.block_index === 977472 && r.source === GM)) { console.log('skip: api/boot.json does not reach block 977,472'); process.exit(0); }
 const c = load(), V = c.V2Rules;
-ok(typeof V.ACTIVATE_DEAD_PLACES_BLOCK === 'number' && V.ACTIVATE_DEAD_PLACES_BLOCK > boot.tip, 'live gate ' + V.ACTIVATE_DEAD_PLACES_BLOCK + ' is after the replayed chain (' + boot.tip + ')');
+ok(typeof V.ACTIVATE_DEAD_PLACES_BLOCK === 'number' && V.ACTIVATE_DEAD_PLACES_BLOCK > TIP, 'live gate ' + V.ACTIVATE_DEAD_PLACES_BLOCK + ' is after the replayed burns (' + TIP + '; once the feed passes it the replay is the gate-on one, tools/rebuild-bench.js checked SAME when it shipped)');
 const LIVE = V.ACTIVATE_DEAD_PLACES_BLOCK;
 const w = V.replay(rows, Object.assign({}, c.XCPETS_BLOCK_HASHES || {}, boot.hashes || {}), [], { tip: TIP, live: c.LiveEngine && c.LiveEngine.RealCore, dex: boot.dex });
 const hd = rows.filter(r => r.source === GM && r.block_index >= 977453).map(r => ({ b: r.block_index, t: V.parseTag(Buffer.from(r.tag, 'hex').toString()) })).filter(x => x.t && x.t.action === 'hd');
