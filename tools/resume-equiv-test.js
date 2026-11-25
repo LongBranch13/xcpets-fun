@@ -3,7 +3,7 @@
  * The rules file is patched in memory only. js/v2-rules.js on disk is not written.
  *   node tools/resume-equiv-test.js               both halves (about 10 minutes)
  *   XP_SNAP_ONLY=1 node tools/resume-equiv-test.js   the snap fixtures only (also what the suite runs for this file)
- *   node tools/resume-equiv-live-test.js          the live burn list only: the suite's other half
+ *   node tools/resume-equiv-live-test.js          the live burn list: full list + half split (also -back-test.js and -tip-test.js)
  * Each half replays the whole game several times, so together they ran into the suite's 600 s per-test limit. */
 'use strict';
 const fs = require('fs'), path = require('path'), vm = require('vm'), crypto = require('crypto');
@@ -152,10 +152,14 @@ function predicateChecks(rows, hashes, tip) {
   const boot = JSON.parse(fs.readFileSync(path.join(ROOT, 'api/boot.json'), 'utf8'));
   ok(boot.rows.length > 1000 && boot.tip > 0, 'live burn list ' + boot.tip + ' has ' + boot.rows.length + ' rows');
   const dex = boot.dex || null;
-  await samePair('live list', boot.rows, boot.hashes || {}, boot.tip, dex, []);
+  /* XP_LIVE_ONLY picks the part: 1 = all of it (by hand), a = full list + half split, back = three blocks back, tip = tip-only.
+   * Each part is its own suite file (resume-equiv-live / -back / -tip): the whole live half was ~375 s alone and passed 600 s under --jobs 4. */
+  const part = process.env.XP_LIVE_ONLY || '1', want = k => part === '1' || part === k;
+  if (want('a')) await samePair('live list', boot.rows, boot.hashes || {}, boot.tip, dex, []);
   /* 0.5 and three-blocks-back: a checkpoint far back and one just behind the tip. 0.9 sits between them and costs a
    * near-full replay of the live list, so it is covered on the snap fixtures instead. */
   for (const sp of splitsOf(boot.rows, boot.tip, [0.5])) {
+    if (!want(/^fraction/.test(sp.name) ? 'a' : 'back')) continue;
     const baseDex = dex;
     await resumeCase('live ' + sp.name, boot.rows, boot.hashes || {}, boot.tip, dex, sp.baseRows, sp.baseTip, baseDex, []);
   }
@@ -165,7 +169,7 @@ function predicateChecks(rows, hashes, tip) {
     dex2 = JSON.parse(JSON.stringify(dex));
     dex2.credits = (dex2.credits || []).concat([{ asset: 'A99999999999999999', block_index: boot.tip + 1, quantity: 1, address: 'bc1qtest', tx_index: 9, credit_index: 1, tx_hash: 'e'.repeat(64), calling_function: 'test' }]);
   }
-  await resumeCase('live tip-only', boot.rows, hashes2, boot.tip + 1, dex2, boot.rows, boot.tip, dex, []);
+  if (want('tip')) await resumeCase('live tip-only', boot.rows, hashes2, boot.tip + 1, dex2, boot.rows, boot.tip, dex, []);
   console.log(fail ? fail + ' failed' : 'all passed');
   process.exit(fail ? 1 : 0);
 })().catch(e => { console.error('FAIL', e && e.stack || e); process.exit(1); });

@@ -138,7 +138,7 @@ function jsonRes(obj, status) {
     return res;
   }
   const small = await measure('small', SMALL, { pets: 8, files: 1, loaded: 1, capped: false, alive: function (n) { return n === 8; } });
-  await measure('huge', HUGE, { pets: 24, files: 7, loaded: 7, capped: true, alive: function (n) { return n > 20000; } });
+  await measure('huge', HUGE, { pets: 24, files: 7, loaded: 7, capped: true, alive: function (n) { return n > 10000; } }); /* live wallet: 16,253 alive on Nov 25 2026 after crumbles became permanent; the point is that it is capped */
   await measure('read', READ, { pets: 24, files: 7, loaded: 7, capped: true, alive: function (n) { return n > 1000 && n <= 5000; } });
   const petId = small.pets[0].id;
   const pctx = bootLookup({

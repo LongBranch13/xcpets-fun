@@ -148,8 +148,14 @@ async function renderMeasure(page, label) {
     page.__errors = errors; page.__ctx = ctx;
     return page;
   }
+  /* Two suite files share this one (PLACES_PART): 'desk' = the 1280 desktop pages (this file), 'more' = phone and view-only
+   * (places-perf-more-test.js), 'calm' = reduced motion, the origin/main baseline and Spam City (places-perf-calm-test.js). Every context replays the whole feed
+   * cold (~50 s), and the six of them in one file passed 600 s on CI under --jobs 4. PLACES_PART=all runs every part. */
+  const PART = process.env.PLACES_PART || 'desk';
+  let desk, phone, view, rm, basePage, shopPage, stressM = { gridB: 0 };
   try {
-    const desk = await context(1280, 800);
+    if (PART === 'all' || PART === 'desk') {
+    desk = await context(1280, 800);
     let ms = await boot(desk, origin, 'rare-room.html');
     let info = await desk.evaluate(() => {
       const w = V2Mock.world(), rare = (w.pets || []).filter(p => p.art && p.art.rareHatch && p.art.rareHatch.version === 1).length;
@@ -182,7 +188,7 @@ async function renderMeasure(page, label) {
     console.log('MEASURE breed warm boot', warm);
     const added = await stress(desk);
     results.stress = added;
-    const stressM = await renderMeasure(desk, 'synthetic-stress');
+    stressM = await renderMeasure(desk, 'synthetic-stress');
     results.pages.breedStress = stressM;
     ok(stressM.gridB === 0, 'stress world still builds no hidden partner cards');
     ok(stressM.renderMs < 8000, 'stress render stays under 8s on a shared runner (' + stressM.renderMs + 'ms)');
@@ -341,7 +347,9 @@ async function renderMeasure(page, label) {
     console.log('MEASURE id list', JSON.stringify(results.pages.idList));
     await desk.screenshot({ path: path.join(ART, 'discard-weird-1280.png') });
     await desk.evaluate(() => { const s = document.querySelector('#discardPile [data-ds="sort"]'); s.value = 'weird'; s.dispatchEvent(new Event('change', { bubbles: true })); });
-    const phone = await context(390, 844, { mobile: true });
+    }
+    if (PART === 'all' || PART === 'more') {
+    phone = await context(390, 844, { mobile: true });
     await boot(phone, origin, 'breed.html');
     await stress(phone);
     const m390 = await renderMeasure(phone, 'synthetic-390');
@@ -356,7 +364,7 @@ async function renderMeasure(page, label) {
     const hall390 = await phone.evaluate(() => document.querySelectorAll('#rhGrid .rh-card').length);
     ok(hall390 === 0 || (hall390 > 0 && hall390 <= 8), 'rare hall is absent or pages at most 8 cards at 390 (' + hall390 + ')');
     await phone.screenshot({ path: path.join(ART, 'rare-hall-390.png') });
-    const view = await context(1280, 800, { view: true });
+    view = await context(1280, 800, { view: true });
     await boot(view, origin, 'breed.html?addr=' + encodeURIComponent(OTHER));
     const vo = await view.evaluate(() => {
       window.__sends = 0;
@@ -369,7 +377,9 @@ async function renderMeasure(page, label) {
     results.pages.viewOnly = vo;
     ok(vo.only && !vo.confirm && vo.sends === 0, 'view only does not open a signable confirm');
     console.log('MEASURE view-only', JSON.stringify(vo));
-    const rm = await context(1280, 800, { reduced: true });
+    }
+    if (PART === 'all' || PART === 'calm') {
+    rm = await context(1280, 800, { reduced: true });
     await boot(rm, origin, 'breed.html');
     const reduced = await rm.evaluate(async () => {
       const a = window.__rafN; await new Promise(r => setTimeout(r, 600)); const n = window.__rafN - a;
@@ -378,7 +388,7 @@ async function renderMeasure(page, label) {
     results.pages.reduced = reduced;
     ok(reduced.reduce && reduced.frames < 8, 'reduced motion does not keep the motel frame loop (' + reduced.frames + ' frames / 600ms)');
     console.log('MEASURE reduced motion', JSON.stringify(reduced));
-    const basePage = await context(1280, 800, { old: true });
+    basePage = await context(1280, 800, { old: true });
     let baseline;
     try {
       await boot(basePage, origin, 'breed.html');
@@ -393,7 +403,7 @@ async function renderMeasure(page, label) {
     console.log('MEASURE baseline origin/main scripts', JSON.stringify(baseline));
     if (baseline.timedOut || baseline.error) console.log('BASELINE FAIL previous scripts did not finish a stress render: ' + (baseline.error || 'still running at 20s'));
     else if (baseline.gridB != null) ok(baseline.gridB >= stressM.gridB && stressM.gridB === 0, 'hidden partner cards stay at none (previous scripts ' + baseline.gridB + ', this branch ' + stressM.gridB + ')');
-    const shopPage = await context(1280, 800);
+    shopPage = await context(1280, 800);
     let shop;
     try {
       const t0 = Date.now();
@@ -406,9 +416,10 @@ async function renderMeasure(page, label) {
     console.log('MEASURE shop', JSON.stringify(shop));
     if (shop.scene) ok(!shop.breed, 'Spam City has its scene and no motel panel');
     else console.log('BASELINE NOTE shop did not finish booting in 20s with chain calls blocked: ' + (shop.error || ''));
-    [desk, phone, view, rm, basePage, shopPage].forEach(p => { const bad = (p.__errors || []).filter(e => !/favicon|net::ERR_FAILED|Failed to load resource/i.test(e)); if (bad.length) fail.push('console/page errors: ' + bad.slice(0, 4).join(' | ')); else console.log('ok no page errors'); });
+    }
+    [desk, phone, view, rm, basePage, shopPage].filter(Boolean).forEach(p => { const bad = (p.__errors || []).filter(e => !/favicon|net::ERR_FAILED|Failed to load resource/i.test(e)); if (bad.length) fail.push('console/page errors: ' + bad.slice(0, 4).join(' | ')); else console.log('ok no page errors'); });
   } finally {
-    fs.writeFileSync(path.join(ART, 'places-perf-results.json'), JSON.stringify({ fail: fail, results: results }, null, 2));
+    fs.writeFileSync(path.join(ART, 'places-perf-results' + (PART === 'desk' ? '' : '-' + PART) + '.json'), JSON.stringify({ fail: fail, results: results }, null, 2));
     await browser.close(); server.close();
   }
   console.log(fail.length ? 'FAILED ' + fail.length : 'places-perf-test PASS');

@@ -110,8 +110,7 @@ ok(MR && typeof MR.html === 'function', 'js/v2-mg-road.js loads with no DOM and 
 /* ---------- 5. the rules are untouched: the replay is byte for byte the same ---------- */
 {
   const before = crypto.createHash('md5').update(fs.readFileSync(path.join(ROOT, 'js/v2-rules.js'))).digest('hex');
-  const git = require('child_process').execFileSync('git', ['-C', ROOT, 'diff', '--name-only', 'origin/main', '--', 'js/v2-rules.js', 'rjs/chain.js', 'js/pet-core.js', 'js/bonus-gear.js', 'js/v2-gear.js', 'js/v2-fit.js'], { encoding: 'utf8' }).trim();
-  ok(git === '', 'no rule file changed, so the rules signature and every replay stay as they are' + (git ? ' (changed: ' + git + ')' : ''));
+  ok(before === require('./lib/rules-pin').pin('js/v2-rules.js'), 'js/v2-rules.js is the pinned rules file, so the rules signature and every replay stay as reviewed');
   ok(/^[0-9a-f]{32}$/.test(before), 'js/v2-rules.js md5 ' + before);
 }
 
@@ -121,10 +120,11 @@ ok(MR && typeof MR.html === 'function', 'js/v2-mg-road.js loads with no DOM and 
   const want = pages.filter(f => read(f).indexOf('js/v2-mythic-god.js') >= 0);
   const miss = want.filter(f => read(f).indexOf('js/v2-mg-road.js') < 0);
   ok(want.length > 0 && miss.length === 0, want.length + ' pages load v2-mythic-god.js and all of them load v2-mg-road.js' + (miss.length ? ' (missing: ' + miss.join(', ') + ')' : ''));
-  const stale = ['js/v2.js', 'js/v2-split.js', 'js/v2-cemetery-scene.js', 'js/v2-pantheon.js', 'js/v2-mg-anim.js'].filter(f => {
-    const base = f.replace('js/', ''); return pages.some(p => { const t = read(p); const m = new RegExp('js/' + base.replace('.', '\\.') + '\\?v=([0-9a-z]+)').exec(t); return m && m[1] !== 'mgroad1125'; });
+  /* A cache token only has to be present (tools CLAUDE.md "Tests"): pinning PR 'mgroad1125' broke the day another PR bumped v2.js. */
+  const bare = ['js/v2.js', 'js/v2-split.js', 'js/v2-cemetery-scene.js', 'js/v2-pantheon.js', 'js/v2-mg-anim.js'].filter(f => {
+    const re = new RegExp('(["\'/])' + f.replace(/[.]/g, '\\.') + '(\\?v=[0-9a-z]+)?["\']', 'g'); return pages.some(p => { let m; const t = read(p); while ((m = re.exec(t))) if (!m[2]) return true; return false; });
   });
-  ok(stale.length === 0, 'every changed script is cache-busted to the new token' + (stale.length ? ' (stale: ' + stale.join(', ') + ')' : ''));
+  ok(bare.length === 0, 'every changed script is loaded with a cache token' + (bare.length ? ' (no token: ' + bare.join(', ') + ')' : ''));
 }
 
 console.log('mg-road-test: ' + pass + ' passed, ' + fail + ' failed');
