@@ -178,6 +178,10 @@ function resolveChecked(plan) {
   }
 }
 function check(m) {
+  /* raid-wallet-slow: an error inside the rules check answers the page instead of leaving the burn waiting forever */
+  try { check0(m); } catch (e) { self.postMessage({ id: m.id, cmd: 'check', ok: false, error: String(e && e.message || e), skip: ['The check hit an error (' + String(e && e.message || e).slice(0, 120) + '). Nothing was burned.'] }); }
+}
+function check0(m) {
   if (!world || !self.V2Rules || !self.V2Rules.sendBlock) { self.postMessage({ id: m.id, cmd: 'check', ok: false, error: 'not ready' }); return; }
   var plans = m.plans || [], pending = (m.pending || []).slice(), kept = [], skip = [], i, why;
   for (i = 0; i < plans.length; i++) {

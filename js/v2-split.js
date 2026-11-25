@@ -962,7 +962,7 @@
     var scripts = scriptList();
     if (!scripts || typeof Worker === 'undefined') return Promise.resolve(null);
     readyP = new Promise(function (res) {
-      try { worker = new Worker(new URL('js/v2-verify-worker.js?v=stable1123a', location.href).href); }
+      try { worker = new Worker(new URL('js/v2-verify-worker.js?v=stable1125a', location.href).href); }
       catch (e) { res(null); return; }
       worker.onmessage = function (ev) {
         var m = ev.data || {};
@@ -971,7 +971,8 @@
         if (m.cmd === 'mine') { takeMine(m); return; }
         if (m.cmd === 'ready') { if (m.t) window.__xcpVerifyT = m.t; if (m.ok) { unlock(m); requestSync(); } else { window.__xcpVerifyErr = String(m.error || ''); failed(); } res(m); }
       };
-      worker.onerror = function (ev) { window.__xcpVerifyErr = 'worker: ' + String(ev && ev.message || ''); failed(); res({ ok: false }); };
+      /* raid-wallet-slow: a worker error also answers every burn still waiting for its check (it used to wait forever) */
+      worker.onerror = function (ev) { window.__xcpVerifyErr = 'worker: ' + String(ev && ev.message || ''); var w0 = pending; pending = {}; Object.keys(w0).forEach(function (k) { try { w0[k]({ ok: false, skip: ['The check stopped with an error. Nothing was burned. Press Retry.'] }); } catch (e) {} }); failed(); res({ ok: false }); };
       /* a failed check (network, bad hash) must not stick: the next burn or Verify starts a fresh one */
       function failed() {
         var b = wantBar && document.getElementById('splitViewBar'); if (b) b.textContent = 'The check did not finish. The published world is still on screen.';
@@ -1050,6 +1051,8 @@
       }, function () { return null; });
     });
   }
+  /* raid-wallet-slow: what the burn sheet shows while a burn waits for this check */
+  function checkNote() { return ready ? 'Checking your pets against the rules…' : progressText(lastProg) + ' (this device is loading the full game check once; the server check did not answer)'; }
   function checkPlans(plans) {
     return serverCheck(plans).then(function (out) { return out || deviceCheck(plans); });
   }
@@ -1454,5 +1457,5 @@
     zombieP = getJson(folder + 'view/zombies.json').then(function (z) { return applyZombies(z); }, function () { return scanZombies(folder, onProg); });
     return zombieP;
   }
-  window.V2Split = { loadLead: loadLead, remergeLead: remergeLead, STALE: STALE, SCREEN_PAGES: SCREEN_PAGES, AUTO_CAP: AUTO_CAP, prepare: prepare, recheck: recheck, install: install, assemble: assemble, startVerify: startVerify, checkPlans: checkPlans, serverCheck: serverCheck, serverShop: serverShop, publishedShop: publishedShop, serverStat: function () { return serverStat; }, rest: rest, more: more, loadBoard: loadBoard, loadZombies: loadZombies, dress: dress, boardBytes: function () { return { bytes: boardBytes, files: boardFiles }; }, ensureDead: ensureDead, ensurePet: ensurePet, ownerShard: function (addr, cb) { sha2(addr).then(function (h) { cb(h.slice(0, 2)); }); }, petSig: petSig, healthTip: function () { return healthTipN; }, noteHealth: noteHealth, pingHealth: pingHealth, ownersReady: ownersReady, ownersKnown: ownersKnown, adoptOwners: adoptOwners, openOwnerPets: openOwnerPets, openList: openList, notePets: notePets, ownerTable: ownerTable, pageWallet: pageWallet, resolveWorld: resolveWorld, newestPages: newestPages, rowsToLog: rowsToLog, loadNewest: loadNewest, keepStat: function () { return keepStat; }, _order: { idOrder: idOrder, pageFromOrder: pageFromOrder } };
+  window.V2Split = { loadLead: loadLead, remergeLead: remergeLead, STALE: STALE, SCREEN_PAGES: SCREEN_PAGES, AUTO_CAP: AUTO_CAP, prepare: prepare, recheck: recheck, install: install, assemble: assemble, startVerify: startVerify, checkPlans: checkPlans, checkNote: checkNote, serverCheck: serverCheck, serverShop: serverShop, publishedShop: publishedShop, serverStat: function () { return serverStat; }, rest: rest, more: more, loadBoard: loadBoard, loadZombies: loadZombies, dress: dress, boardBytes: function () { return { bytes: boardBytes, files: boardFiles }; }, ensureDead: ensureDead, ensurePet: ensurePet, ownerShard: function (addr, cb) { sha2(addr).then(function (h) { cb(h.slice(0, 2)); }); }, petSig: petSig, healthTip: function () { return healthTipN; }, noteHealth: noteHealth, pingHealth: pingHealth, ownersReady: ownersReady, ownersKnown: ownersKnown, adoptOwners: adoptOwners, openOwnerPets: openOwnerPets, openList: openList, notePets: notePets, ownerTable: ownerTable, pageWallet: pageWallet, resolveWorld: resolveWorld, newestPages: newestPages, rowsToLog: rowsToLog, loadNewest: loadNewest, keepStat: function () { return keepStat; }, _order: { idOrder: idOrder, pageFromOrder: pageFromOrder } };
 })();
