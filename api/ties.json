@@ -1,6 +1,6 @@
 {
- "lastBlock": 977447,
- "count": 458,
+ "lastBlock": 977449,
+ "count": 466,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -5498,6 +5498,102 @@
    "speciesLabel": "Dodjking (hybrid)",
    "rarity": "Legendary",
    "stage": "Hatchling"
+  },
+  {
+   "id": 8540,
+   "asset": "A10103381459745372772",
+   "tiedBlock": 977449,
+   "tiedTx": "ee92e19b1375db8d2bc0bcad7d4ac6c2b522564d1667ac3a5d68f7a353ce4ff5",
+   "kind": "deed",
+   "name": "Neto",
+   "species": "lenny",
+   "speciesLabel": "Lenny",
+   "rarity": "Rare",
+   "stage": "Mythic"
+  },
+  {
+   "id": 8574,
+   "asset": "A18031674085848065740",
+   "tiedBlock": 977449,
+   "tiedTx": "f3180cd612a6250f93ccbb8799d37c1e5e4cce9502591b6d68e14bb73d5824d8",
+   "kind": "deed",
+   "name": "Lune",
+   "species": "peepo",
+   "speciesLabel": "Peepo",
+   "rarity": "Rare",
+   "stage": "Mythic"
+  },
+  {
+   "id": 42070,
+   "asset": "A7595948561937117742",
+   "tiedBlock": 977449,
+   "tiedTx": "c2ec909d0457eb4608c511d0b1b4fc51fe1ee5f4f027a1df9531edde5f8e5b4f",
+   "kind": "deed",
+   "name": "Vanopakin",
+   "species": "wojak",
+   "speciesLabel": "Wojak",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 42167,
+   "asset": "A14454950786218928989",
+   "tiedBlock": 977449,
+   "tiedTx": "9b292d8f939af1f8270419518126063101a187e61c0020d8096bae96f141fc0d",
+   "kind": "deed",
+   "name": "Chigamik",
+   "species": "snibby",
+   "speciesLabel": "Snibby",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 52066,
+   "asset": "A12782496002483420438",
+   "tiedBlock": 977449,
+   "tiedTx": "767514501f15ca034e8022360c6ee892af9fe199e6979e79d20b0d095e6302b1",
+   "kind": "deed",
+   "name": "Refinoboo",
+   "species": "funtrump",
+   "speciesLabel": "FUNTRUMP",
+   "rarity": "Rare",
+   "stage": "Mythic"
+  },
+  {
+   "id": 66511,
+   "asset": "A11423227706272487708",
+   "tiedBlock": 977449,
+   "tiedTx": "3f836cb5037776b0cf394ff0d0c6701cb56e68de9b444d6bc3bbb50d4f252299",
+   "kind": "deed",
+   "name": "Shujotipip",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 78352,
+   "asset": "A1356562249831857750",
+   "tiedBlock": 977449,
+   "tiedTx": "077382c8b6d8e4f2a8b36289f4dea254fc2f143d21391910657fbcec527cd766",
+   "kind": "deed",
+   "name": "Zunoon",
+   "species": "hyb:kek:bobo",
+   "speciesLabel": "Kekbo (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 78353,
+   "asset": "A13184437401315701482",
+   "tiedBlock": 977449,
+   "tiedTx": "487635412e28b853230730b818a39c3b9505a8e782cf9f4f0de2a3a96b1ac715",
+   "kind": "deed",
+   "name": "Charafook",
+   "species": "hyb:funtrump:wojak",
+   "speciesLabel": "Funjak (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Mythic"
   }
  ]
 }
