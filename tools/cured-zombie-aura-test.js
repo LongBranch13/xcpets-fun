@@ -225,7 +225,7 @@ function bootFull() {
   };
   win.window = win; win.self = win; win.globalThis = win;
   const ctx = vm.createContext(win);
-  for (const f of ['rjs/config.js', 'rjs/pet-core.js', 'rjs/game-core.js', 'rjs/bonus-gear.js', 'js/pet-core.js', 'js/bonus-gear.js', 'js/v2-gear.js', 'js/v2-fit.js', 'js/v2-rules.js', 'js/v2-render.js', 'js/v2-zombie-look.js', 'js/v2-zombies.js', 'js/v2-mythic-god.js']) {
+  for (const f of ['rjs/config.js', 'rjs/pet-core.js', 'rjs/game-core.js', 'rjs/bonus-gear.js', 'js/pet-core.js', 'js/bonus-gear.js', 'js/v2-gear.js', 'js/v2-fit.js', 'js/v2-rules.js', 'js/species-registry.js', 'js/v2-render.js', 'js/v2-zombie-look.js', 'js/v2-zombies.js', 'js/v2-mythic-god.js']) {
     vm.runInContext(fs.readFileSync(path.join(ROOT, f), 'utf8'), ctx, { filename: f });
   }
   return ctx;

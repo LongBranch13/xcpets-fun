@@ -10,7 +10,7 @@ const ctx={MutationObserver:class{observe(){}},console,document,ImageData,Uint8C
 const load=f=>vm.runInContext(fs.readFileSync(root+'/'+f,'utf8'),ctx,{filename:f});
 for(const f of ['rjs/config.js','rjs/pet-core.js','rjs/game-core.js','rjs/bonus-gear.js','rjs/real-core.js','rjs/chain.js'])load(f);
 ctx.LiveEngine={RealCore:ctx.RealCore};
-for(const f of ['js/pet-core.js','js/bonus-gear.js','js/v2-gear.js','js/v2-fit.js','js/v2-rules.js','js/block-hashes.js','js/v2-render.js','js/v2-zombie-look.js'])load(f);
+for(const f of ['js/pet-core.js','js/bonus-gear.js','js/v2-gear.js','js/v2-fit.js','js/v2-rules.js','js/block-hashes.js','js/species-registry.js', 'js/v2-render.js','js/v2-zombie-look.js'])load(f);
 let snap=JSON.parse(fs.readFileSync(root+'/tools/snapshots/snap-972901.json'));let w=ctx.V2Rules.replay(snap.rows,Object.assign({},ctx.XCPETS_BLOCK_HASHES,snap.hashes),[],{tip:snap.tip,live:ctx.RealCore});
 load('js/v2-cem-anim.js');
 const R=ctx.V2Render, original=R.framesWith, originalZ=ctx.V2ZombieLook.transparent;
