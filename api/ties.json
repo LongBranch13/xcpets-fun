@@ -1,6 +1,6 @@
 {
- "lastBlock": 977431,
- "count": 457,
+ "lastBlock": 977436,
+ "count": 458,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -5484,6 +5484,18 @@
    "name": "Zootip",
    "species": "hyb:dodo:snibby",
    "speciesLabel": "Dosnib (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 216449,
+   "asset": "A336699336699336699",
+   "tiedBlock": 977432,
+   "tiedTx": "73684767819f8319f55d56cf59de223deca3b09b88a908aa0aafa4722a59c93c",
+   "kind": "deed",
+   "name": "Booyuyemi",
+   "species": "hyb3:dodo:djpepe:viking",
+   "speciesLabel": "Dodjking (hybrid)",
    "rarity": "Legendary",
    "stage": "Hatchling"
   }
