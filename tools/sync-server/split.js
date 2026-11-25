@@ -468,8 +468,8 @@ function write(dir, world, meta) {
     world.pets = null;
   }
   /* before spill(): it frees world.pets as it goes (memory), so anything read from the pets must be taken first */
-  const gods = godsOf(world);
   const crossNames = crossNamesOf(world, meta && meta.ctx && meta.ctx.V2Rules);
+  const gods = godsOf(world);
   return spill().then(() => {
   const summary = {
     v: 3, tip: tip, rsig: rsig, n: n, alive: alive, dead: dead, released: released,
@@ -497,11 +497,11 @@ function write(dir, world, meta) {
      * so the Motel desk, the 'Asking you' shelf and the pending box were empty on every fast load. Only the open ones (not used,
      * inside the 144-block window plus the page's 48-block staleness margin) ride here; a few small records. */
     breedReqs: liveBreedReqs(world, tip),
+    /* shown species name of each cross pet (see crossNamesOf) */
+    crossNames: crossNames,
     /* Nov 24 2026 (fastcheck): the cemetery's Gods door counted only the Gods a fast page happened to load (0, 2 or 6 instead of 19).
      * Every living Resurrected pet rides here (id, name, owner, block): a few dozen tiny records. */
-    gods: gods,
-    /* shown species name of each cross pet (see crossNamesOf) */
-    crossNames: crossNames
+    gods: gods
   };
   /* the biggest burners by XCPETS burned (the Top burners board), not the community pet's feeders list this used to read */
   const leadBurners = Object.keys(summary.burnBy || {}).map(a => ({ address: a, amount: summary.burnBy[a][0] })).sort((a, b) => b.amount - a.amount || (a.address < b.address ? -1 : 1));
