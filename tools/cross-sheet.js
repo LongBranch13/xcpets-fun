@@ -25,7 +25,7 @@
 const fs = require('fs'), path = require('path'), vm = require('vm'), crypto = require('crypto'), zlib = require('zlib');
 const ROOT = process.env.XC_REPO || path.resolve(__dirname, '..');
 const SCRIPTS = ['rjs/config.js', 'rjs/pet-core.js', 'rjs/game-core.js', 'rjs/bonus-gear.js', 'rjs/real-core.js', 'rjs/chain.js', '@LIVE', 'js/pet-core.js', 'js/bonus-gear.js', 'js/v2-gear.js', 'js/v2-fit.js', 'js/v2-rules.js',
-  'js/wizard-sprite.js', 'js/kek-sprite.js', 'js/funtrump-sprite.js', 'js/homer-sprite.js', 'js/viking-sprite.js', 'js/bo-sprite.js', 'js/rarepigeon-sprite.js', 'js/contest-sprite.js', 'js/block-hashes.js', 'js/v2-bg.js', 'js/v2-looks.js', 'js/v2-render.js'];
+  'js/species-registry.js'].concat(require(path.join(ROOT, 'js/species-registry.js')).scripts(), ['js/block-hashes.js', 'js/v2-bg.js', 'js/v2-looks.js', 'js/v2-render.js']);
 function load() {
   const st = {}, ls = { getItem: k => st[k] || null, setItem: (k, v) => { st[k] = String(v); }, removeItem: k => { delete st[k]; } };
   const el = () => ({ getContext: () => null, style: {}, setAttribute() {}, appendChild() {}, addEventListener() {}, classList: { add() {}, remove() {}, toggle() {} } });
