@@ -153,7 +153,7 @@
    * burn modal on "building..." forever. withTimeout rejects with a plain message; nothing is signed or sent on a timeout. */
   function withTimeout(p, ms, msg, flag) { var t; return Promise.race([Promise.resolve(p), new Promise(function (_, j) { t = setTimeout(function () { var e = new Error(msg); e.timeout = true; if (flag) e[flag] = true; j(e); }, ms); })])
     .then(function (x) { clearTimeout(t); return x; }, function (e) { clearTimeout(t); throw e; }); }
-  var FEE_MS = d.feeMs != null ? d.feeMs : 8000, COMPOSE_TOTAL_MS = d.composeTotalMs != null ? d.composeTotalMs : 90000, FRESH_MS = d.freshMs != null ? d.freshMs : 8000; /* burn-stuck-1101 [pt2589u]: was 90 s of 'checking the latest chain data' with no way out; 8 s then a clear stop + Retry (the background re-reads keep going). chores-fresh-1110: that 8 s covers only a read that has not verified yet. Once the servers have answered, a local pet rebuild is not a server timeout; Cancel is the way out. */ /* burn-check-fast: 90 s backstop (was 45 s) */ /* direct-counterparty-api: was 120 s of spinner */
+  var FEE_MS = d.feeMs != null ? d.feeMs : 8000, COMPOSE_TOTAL_MS = d.composeTotalMs != null ? d.composeTotalMs : 90000, FRESH_MS = d.freshMs != null ? d.freshMs : 8000; var CHECK_MS = d.checkMs != null ? d.checkMs : 3 * 60e3; /* raid-wallet-slow: longest wait for the pre-sign pet check */ /* burn-stuck-1101 [pt2589u]: was 90 s of 'checking the latest chain data' with no way out; 8 s then a clear stop + Retry (the background re-reads keep going). chores-fresh-1110: that 8 s covers only a read that has not verified yet. Once the servers have answered, a local pet rebuild is not a server timeout; Cancel is the way out. */ /* burn-check-fast: 90 s backstop (was 45 s) */ /* direct-counterparty-api: was 120 s of spinner */
   /* cheaper-fees (owner Oct 27 2026, "cheaper fees asap"): read mempool.space /v1/fees/precise (decimal rates) instead of /v1/fees/recommended
    * (rounded up to whole sat/vB, never below 1). Default = the precise economy rate, or the precise hour rate when that is lower and sane
    * (a number, at least the 0.1 sat/vB relay floor and at least minimumFee). Floor 0.1 sat/vB, no rounding up to 1. If precise fails or looks
@@ -360,15 +360,24 @@
     var viewGate = !!(VS && VS.view && !VS.stale && window.V2Split && V2Split.checkPlans);
     if (VS && VS.prod && !VS.verified && !viewGate) { var ev = new Error(VS.stale ? 'Still checking the latest chain data, so pet numbers could be out of date. Nothing was burned. Try again in a moment.' : "Couldn't verify every block yet" + (VS.missingBlocks && VS.missingBlocks.length ? ' (block ' + VS.missingBlocks[0] + ')' : '') + ', so pet numbers could be wrong. Nothing was burned. Reload the page and press Retry.'); ev.unverified = true; return Promise.reject(ev); }
     /* The published view is on screen. The full world stays in the check worker. Ask it before anything is signed. */
-    if (!checked && VS && VS.view && window.V2Split && V2Split.checkPlans) return V2Split.checkPlans([plan]).then(function (out) {
+    /* raid-wallet-slow (Nov 25 2026, Jake: "the xcp wallet is not opening"): when the game server's quick check does not answer, this device
+     * builds its own full check world first (can take a minute or more). The sheet used to sit on "building ..., then approve it" with no
+     * word of that wait and no end. Now it says what it is doing (with the check's own progress), Cancel stops it, and it ends in a clear
+     * Retry message after CHECK_MS. Nothing is signed or sent while it runs; the check keeps warming in the background for the Retry. */
+    if (!checked && VS && VS.view && window.V2Split && V2Split.checkPlans) { var tick = null, note = function () { if (onTry) onTry(0, 0, 'precheck', { text: V2Split.checkNote ? V2Split.checkNote() : '' }); };
+      note(); tick = setTimeout(function again() { note(); tick = setTimeout(again, 1000); }, 1000);
+      var stopTick = function (x) { if (tick) clearTimeout(tick); tick = null; return x; };
+      return Promise.race([cancelP(), withTimeout(V2Split.checkPlans([plan]), CHECK_MS, 'The safety check on your pets is taking too long on this device (over ' + Math.round(CHECK_MS / 60000) + ' minutes). Nothing was signed or sent. Press Retry: the check keeps loading in the background, so the next try is quicker.', 'checkTimeout')]).then(stopTick, function (e) { stopTick(); if (e && e.checkTimeout) e.retry = true; throw e; }).then(function (out) {
       if (!out || out.ok === false) { var e = new Error((out && out.skip && out.skip[0]) || 'The check did not finish. Nothing was burned.'); e.unverified = true; e.retry = true; throw e; }
       if (out.skip && out.skip.length) { var e2 = new Error(out.skip[0]); e2.retry = false; throw e2; }
+      if (g0 !== cancelGen) throw cancelErr();
       return send0(plan, viewed, onTry, g0, freshSame, true);
-    });
+    }); }
     if (signing && Date.now() - signing < LOCK_MS) return Promise.reject(busyErr());
     var mine = signing = Date.now();
     function release() { if (signing === mine) signing = 0; }
     function done(x) { release(); return x; }
+    if (onTry) onTry(0, 0, 'wallet'); /* raid-wallet-slow: a locked XCP Wallet asks to be unlocked here first */
     return getWallet().then(function (w) {
       if (viewed && viewed !== w.address) { var e = new Error('The connected wallet (' + w.address + ') is not the address shown on this page (' + viewed + '). Reload to view the connected wallet.'); e.reload = true; throw e; }
       if (pendingChain() >= CHAIN_CAP) { var ec = new Error(CHAIN_CAP + ' of your burns are still waiting for their first confirmation (Bitcoin allows about 25 unconfirmed in a row). Wait for the next block, then press Continue.'); ec.chainCap = true; throw ec; }
