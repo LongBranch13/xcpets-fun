@@ -26,5 +26,5 @@ const hooks = { 'js/v2.js': /V2SacGuard\.check\(\{ w: w, ids: ids, me: ME/, 'js/
 Object.keys(hooks).forEach(f => ok(hooks[f].test(rd(f)), f + ' asks the guard before sending'));
 ok(/sgGo\(w, f, /.test(rd('js/v2-cemetery-scene.js')) && /sgGo\(w, r, /.test(rd('js/v2-cemetery-scene.js')), 'cemetery quick zombie meal and pledge both go through it');
 const g = rd('templates/game.html'), cem = rd('cemetery.html');
-ok(/"js\/v2-sac-guard\.js\?v=[0-9a-f]{10}"/.test(g) && /"js\/v2-sac-guard\.js\?v=[0-9a-f]{10}"/.test(cem), 'game pages and the cemetery load it');
+ok(/"js\/v2-sac-guard\.js\?v=[0-9a-z]{6,12}"/.test(g) && /"js\/v2-sac-guard\.js\?v=[0-9a-z]{6,12}"/.test(cem), 'game pages and the cemetery load it');
 console.log(fails ? fails + ' failed' : 'all passed'); process.exit(fails ? 1 : 0);

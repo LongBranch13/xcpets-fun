@@ -17,6 +17,8 @@ const V = ctx.V2Rules, src = rd('js/v2.js');
 const a = src.indexOf('  function keepKey()');
 const endDisc = src.indexOf('\n', src.indexOf('hideLocal(ids); }', src.indexOf('  function discardIds(ids)')));
 ok(a > 0 && endDisc > a, 'star block found in js/v2.js');
+/* since root cause #4 (Nov 24 2026) discardIds asks js/v2-sac-guard.js (V2SacGuard.split), which reads the star through V2UI.isKept */
+win.V2UI = { isKept: id => win.T.isKept(id) }; vm.runInContext(rd('js/v2-sac-guard.js'), ctx, { filename: 'js/v2-sac-guard.js' });
 ctx.__toast = (h) => toasts.push(String(h)); ctx.__hide = (ids) => hidden.push.apply(hidden, ids);
 vm.runInContext('var NET = "mainnet", ME = "bc1qme", V = V2Rules, S = {}; function $() { return { value: "" }; } function render() { } function world() { return null; } function ZB(p) { return !!(p && p.zombie && !p.zombie.end); } function toast(h) { __toast(h); } function fmt(n) { return String(n); } function idList(ids) { return "#" + ids.join(", #"); } function hideLocal(ids) { __hide(ids); }\n' + src.slice(a, endDisc) + '\nthis.T = { keepKey, keptIds, isKept, toggleKeep, keepFed, autoStarBackfill, dropKept, discardIds };', ctx, { filename: 'js/v2.js (star block)' });
 const T = ctx.T, KK = 'xcpets-keep-mainnet-bc1qme', kept = () => JSON.parse(st[KK] || '[]').map(Number).sort((x, y) => x - y), reset = () => { for (const k in st) delete st[k]; toasts.length = 0; hidden.length = 0; };

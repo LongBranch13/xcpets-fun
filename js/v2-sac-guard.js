@@ -3,7 +3,12 @@
  * Legendaries, Bitcoin Wizards, starred pets and pets fed in the last 2 chain days. Gods and Mythics can't be sacrificed at all (owner, Nov 23 2026),
  * so the rules already keep them out of every list. The easy button leaves them out; keeping them in takes a tick first.
  * V2SacGuard.check({ w, ids, me, verb, onGo(ids) }): calls onGo at once when nothing is special, else shows the sheet.
- * V2SacGuard.flags(w, p, me): the reasons for one pet ([] = ordinary). */
+ * V2SacGuard.flags(w, p, me): the reasons for one pet ([] = ordinary).
+ * Nov 24 2026 (root cause #4, "each button has its own guards"): this file is now the ONE place that says which pets a pet-removing button may
+ * take. never(action, w, p, me) is the hard 'no' (a discard never takes a starred pet or a risen zombie); flags() is the 'are you sure' list.
+ * Every path goes through it: browser discard (V2UI discardIds: card, pet page, Select all, Hide all Commons, Clear the pile, #discard-ID),
+ * the permanent on-chain discard, the Meat Grinder, zombie meals, Resurrection pledges and altar offerings.
+ * check({ ..., all: true }) is for a burn that takes the whole list (the Grinder takes every pet discarded on chain): no 'leave them out'. */
 (function () {
   'use strict';
   var FED_RECENT = 288; /* 2 chain days of 144 blocks */
@@ -17,8 +22,15 @@
     if (kept(me, p.id)) f.push({ k: 'star', t: '⭐ STARRED' });
     if (p.lastFed != null && tip - p.lastFed >= 0 && tip - p.lastFed < FED_RECENT) f.push({ k: 'fed', t: '🍖 FED ' + ago(tip - p.lastFed).toUpperCase() });
     return f; }
+  /* the hard 'no' per action: a reason, or null. Starred and risen zombies: owner rules, Nov 23-24 2026 (the rules refuse pet:hd for zombies). */
+  var NEVER = {
+    discard: function (w, p, me) { if (!p) return null; if (kept(me, p.id)) return 'starred'; if (p.zombie && !p.zombie.end) return 'zombie'; return null; }
+  };
+  function never(action, w, p, me) { var f = NEVER[action]; return f ? f(w, p, me) : null; }
+  /* split(action, w, ids, me): { go: [ids], no: { reason: [ids] } } */
+  function split(action, w, ids, me) { var go = [], no = {}; (ids || []).forEach(function (id) { var p = w && w.byId ? w.byId[id] : null, why = never(action, w, p || { id: id }, me); if (why) (no[why] = no[why] || []).push(id); else go.push(id); }); return { go: go, no: no }; }
   function css() { if (document.getElementById('sgCss')) return; var s = document.createElement('style'); s.id = 'sgCss';
-    s.textContent = '.sg-bg{position:fixed;inset:0;z-index:9600;background:rgba(5,4,12,.82);display:flex;align-items:center;justify-content:center;padding:12px}' +
+    s.textContent = '.sg-bg{position:fixed;inset:0;z-index:10100;background:rgba(5,4,12,.82);display:flex;align-items:center;justify-content:center;padding:12px}' +
       '.sg{width:100%;max-width:520px;max-height:90vh;overflow:auto;background:#1c1830;color:#f3ecd8;border:3px solid #000;box-shadow:0 0 0 3px #ff4d4d,6px 6px 0 #000;padding:14px;font-family:"Comic Neue","Comic Sans MS",sans-serif}' +
       '.sg h3{margin:0 0 6px;font-family:Bangers,Impact,sans-serif;font-weight:400;font-size:28px;letter-spacing:.04em;color:#ff6b6b;text-shadow:2px 2px 0 #000;line-height:1.05}' +
       '.sg p{margin:6px 0;font-size:15px;line-height:1.4}.sg-l{list-style:none;padding:0;margin:8px 0;display:grid;gap:6px}' +
@@ -37,12 +49,13 @@
     css(); var bg = document.createElement('div'); bg.className = 'sg-bg'; bg.setAttribute('role', 'dialog'); bg.setAttribute('aria-modal', 'true'); bg.setAttribute('aria-labelledby', 'sgT');
     var n = bad.length, verb = o.verb || 'sacrifice';
     bg.innerHTML = '<div class="sg"><h3 id="sgT">⚠ Wait! ' + (n === 1 ? 'A special pet is' : n + ' special pets are') + ' in this pick</h3>' +
-      '<p>You\'re about to ' + esc(verb) + '. Once the burn confirms, every pet in it is <b>gone for good</b>. Check ' + (n === 1 ? 'this one' : 'these') + ':</p>' +
+      '<p>' + (o.lead ? esc(o.lead) + ' ' : 'You\'re about to ' + esc(verb) + '. Once the burn confirms, every pet in it is <b>gone for good</b>. ') + 'Check ' + (n === 1 ? 'this one' : 'these') + ':</p>' +
       '<ul class="sg-l">' + bad.map(function (x) { var p = x.p; return '<li><canvas width="32" height="32" data-sgp="' + p.id + '" aria-hidden="true"></canvas><div><div class="sg-n">' + esc(p.name || '#' + p.id) + ' <span class="muted">#' + p.id + '</span></div>' + x.f.map(function (f) { return '<i class="' + f.k + '">' + esc(f.t) + '</i>'; }).join('') + '</div></li>'; }).join('') + '</ul>' +
-      '<div class="sg-b">' + (ok.length ? '<button type="button" class="sg-ok" data-sg="ok">✅ Leave ' + (n === 1 ? 'it' : 'them') + ' out · go on with ' + ok.length + ' pet' + (ok.length === 1 ? '' : 's') + '</button>' : '') +
-      '<button type="button" class="sg-no" data-sg="no">' + (ok.length ? 'Cancel' : '✅ Cancel, keep ' + (n === 1 ? 'it' : 'them')) + '</button>' +
+      (o.all && o.allNote ? '<p>' + esc(o.allNote) + '</p>' : '') +
+      '<div class="sg-b">' + (ok.length && !o.all ? '<button type="button" class="sg-ok" data-sg="ok">✅ Leave ' + (n === 1 ? 'it' : 'them') + ' out · go on with ' + ok.length + ' pet' + (ok.length === 1 ? '' : 's') + '</button>' : '') +
+      '<button type="button" class="sg-no" data-sg="no">' + (ok.length && !o.all ? 'Cancel' : '✅ Cancel, keep ' + (n === 1 ? 'it' : 'them')) + '</button>' +
       '<label class="sg-tick"><input type="checkbox" id="sgSure"> I\'m sure. ' + (n === 1 ? 'This pet goes' : 'These ' + n + ' pets go') + ' too.</label>' +
-      '<button type="button" class="sg-yes" data-sg="all" disabled>🔥 ' + (ok.length ? 'Include ' + (n === 1 ? 'it' : 'them') + ' too · ' + ids.length + ' pets in all' : 'Yes, go on with ' + (n === 1 ? 'it' : 'them')) + '</button></div></div>';
+      '<button type="button" class="sg-yes" data-sg="all" disabled>🔥 ' + (ok.length ? (o.all ? 'Go on · ' : 'Include ' + (n === 1 ? 'it' : 'them') + ' too · ') + ids.length + ' pets in all' : 'Yes, go on with ' + (n === 1 ? 'it' : 'them')) + '</button></div></div>';
     document.body.appendChild(bg);
     bg.querySelectorAll('[data-sgp]').forEach(function (c) { var p = w.byId[+c.getAttribute('data-sgp')]; if (p) sprite(c, p, w); });
     var sure = bg.querySelector('#sgSure'), yes = bg.querySelector('[data-sg=all]'); sure.onchange = function () { yes.disabled = !sure.checked; };
@@ -53,5 +66,5 @@
       if (k === 'all' && !sure.checked) return; done();
       if (k === 'ok') o.onGo(ok); else if (k === 'all') o.onGo(ids); else if (o.onCancel) o.onCancel(); });
     var f = bg.querySelector('.sg-ok') || bg.querySelector('.sg-no'); try { f.focus(); } catch (e) { } }
-  window.V2SacGuard = { check: check, flags: flags, FED_RECENT: FED_RECENT };
+  window.V2SacGuard = { check: check, flags: flags, never: never, split: split, FED_RECENT: FED_RECENT };
 })();

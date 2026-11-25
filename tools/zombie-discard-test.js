@@ -26,6 +26,8 @@ vm.runInContext([
   cut('  function discardIds(ids)', '\n  function hiddenSet()'),
   'this.setW = function (w) { W = w; }; this.mine = mine; this.inPile = inPile; this.discardIds = discardIds; this.hiddenSet = hiddenSet;'
 ].join('\n'), ctx);
+/* since root cause #4 (Nov 24 2026) the discard rules live in js/v2-sac-guard.js (V2SacGuard.split): load it, with the star list above */
+ctx.V2UI = { isKept: id => +id === 9 }; vm.runInContext(rd('js/v2-sac-guard.js'), ctx);
 
 const plain = { id: 1, owner: 'me', lastFed: null, feedDays: {} };
 const zombie = { id: 3, owner: 'me', lastFed: null, feedDays: {}, zombie: { gen: 1, raisedAt: 977000 } };

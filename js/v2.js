@@ -485,10 +485,12 @@
   function keepBtn(id) { var on = isKept(id); return '<button type="button" class="keepbtn" data-keep="' + id + '" aria-pressed="' + on + '" aria-label="Favorite #' + id + '" title="' + (on ? 'Favorite: never discarded. Click to unstar.' : 'Star this pet as a favorite (never discarded)') + '">' + (on ? '★' : '☆') + '</button>'; } /* favorite-star-restore: the original ☆/★ button (css .keepbtn) */
   function dropKept(ids) { var k = new Set(keptIds()); return ids.filter(function (id) { return !k.has(Number(id)); }); }
   /* discard-pile 2026-10-21 (restored Oct 29 2026): starred pets are NEVER discarded, on every path (card 🗑️, detail, Discard selected, pack review, #discard-ID). Unstar first. */
-  function discardIds(ids) { if (!ids.length) { toast('Tick the box on at least one pet first.'); return; } var kset = new Set(keptIds()), kk = [], keep = [], zz = [], i, wz = world();
+  function discardIds(ids) { if (!ids.length) { toast('Tick the box on at least one pet first.'); return; } var kk = [], keep = [], zz = [], wz = world();
     /* ROOT FIX (Nov 24 2026): every discard path (card, pet page, Select all, Hide all Commons, Clear the pile, #discard-ID) ends here, so the
      * zombie rule lives here once instead of in each button: a risen zombie is never discarded (the rules refuse it on chain too). */
-    for (i = 0; i < ids.length; i++) { var dp = wz && wz.byId && wz.byId[ids[i]]; (kset.has(Number(ids[i])) ? kk : ZB(dp) ? zz : keep).push(ids[i]); } ids = keep;
+    /* Nov 24 2026: the rule itself now lives in js/v2-sac-guard.js (V2SacGuard.never), the one table every pet-removing button uses. */
+    if (!window.V2SacGuard || !V2SacGuard.split) return toast('Discard is still loading. Try again in a moment.');
+    var sp = V2SacGuard.split('discard', wz, ids, ME); kk = sp.no.starred || []; zz = sp.no.zombie || []; keep = sp.go; ids = keep;
     if (zz.length) toast('🧟 Skipped ' + idList(zz) + ': zombies are never discarded. Feed ' + (zz.length > 1 ? 'them' : 'it') + ' zombie meals, or leave ' + (zz.length > 1 ? 'them' : 'it') + ' hungry and ' + (zz.length > 1 ? 'they turn' : 'it turns') + ' to dust on ' + (zz.length > 1 ? 'their' : 'its') + ' own.', 8000);
     if (kk.length) toast('★ Skipped ' + idList(kk) + ': starred pets are never discarded. Unstar ' + (kk.length > 1 ? 'them' : 'it') + ' first.', 7000); if (ids.length) hideLocal(ids); }
   function hiddenSet() { var a = hiddenIds(), s = new Set(); for (var i = 0; i < a.length; i++) s.add(a[i]); return s; }
@@ -1230,6 +1232,10 @@
     return true; }
   function chainDiscardIds(ids, restore) { var w = world(), b = (S.tip || 0) + 1; if (!V.hdOn(b)) return toast('On-chain discard opens at block ' + fmt(V.ACTIVATE_ONCHAIN_DISCARD_BLOCK) + '. Until then, Discard only hides pets in this browser.');
     if (hdSettleThen(ids, restore)) return;
+    /* Nov 24 2026 (one safety check): a permanent discard is what feeds the Meat Grinder, so special pets get the same sheet as a sacrifice first */
+    if (!restore && !chainDiscardIds._ok && window.V2SacGuard) return V2SacGuard.check({ w: w, ids: ids, me: ME, verb: 'discard them permanently',
+      lead: 'You\'re about to discard these pets permanently, on every device. Pets discarded on chain can go in the Meat Grinder, where they are gone for good.',
+      onGo: function (go) { if (!go.length) return; chainDiscardIds._ok = true; try { chainDiscardIds(go, false); } finally { chainDiscardIds._ok = false; } } });
     var plan = V.hdPlan(w, ME, ids, b, { restore: !!restore }); if (!plan || !plan.ok) return toast((plan && plan.why) || 'No exact burn for that selection.');
     var n = plan.plans.reduce(function (a, q) { return a + ((q.petIds && q.petIds.length) || 0); }, 0);
     var title = (restore ? 'Add ' + fmt(n) + ' pets back to My Pets' : 'Discard ' + fmt(n) + ' pet' + (n === 1 ? '' : 's') + ' permanently (every device)');
