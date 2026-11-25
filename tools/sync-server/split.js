@@ -497,6 +497,9 @@ function write(dir, world, meta) {
      * so the Motel desk, the 'Asking you' shelf and the pending box were empty on every fast load. Only the open ones (not used,
      * inside the 144-block window plus the page's 48-block staleness margin) ride here; a few small records. */
     breedReqs: liveBreedReqs(world, tip),
+    /* Nov 25 2026 (Jake: 'fire sale ... i dont see it'): the slim world had no Fire Sale record, so fast pages showed no banner and priced
+     * every burn at full price during a live sale. The armed sales (a few tiny records) ride here; the page's rules read them like a replay. */
+    fire: copy(world.fire) || null,
     /* shown species name of each cross pet (see crossNamesOf) */
     crossNames: crossNames,
     /* Nov 24 2026 (fastcheck): the cemetery's Gods door counted only the Gods a fast page happened to load (0, 2 or 6 instead of 19).
