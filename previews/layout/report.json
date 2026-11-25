@@ -1,0 +1,10 @@
+[
+ {
+  "page": "play.html",
+  "size": "small-phone",
+  "scene": "pet-page",
+  "kind": "sheet-button-out-of-view",
+  "where": "a#dOpenPet \"Open pet page →\"",
+  "detail": "the sheet's button sits at 639px, the sheet shows 13..627px"
+ }
+]

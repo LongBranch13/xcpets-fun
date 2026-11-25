@@ -106,7 +106,7 @@
     say: function (l) { if (l === G.said) return; G.said = l; G.saidAt = performance.now(); var el = document.getElementById('motelGooby');
       if (!el) { var sc = document.getElementById('motelScene'); if (!sc || !sc.parentNode) return; el = document.createElement('p'); el.id = 'motelGooby'; el.className = 'mg-cap'; sc.parentNode.insertBefore(el, sc.nextSibling); }
       var tip = ''; try { tip = localStorage.getItem('xcpets-gooby-tapped') ? '' : '<span class="mg-tip">Tap Gooby or his guest book, a room window or the can machine</span>'; } catch (e) { }
-      el.innerHTML = '<b class="mg-who">GOOBY</b><span class="mg-line">' + esc(l) + '</span>' + tip; },
+      el.innerHTML = '<b class="mg-who">GOOBY</b><span class="mg-say">' + esc(l) + '</span>' + tip; },
     wake: function (l) { var n = performance.now(); G.it = n; S.bubble = l; S.lt = n; try { localStorage.setItem('xcpets-gooby-tapped', '1'); } catch (e) { } G.said = ''; if (!S.raf && S.c) draw(n); },
     hit: function (lx, ly) { if (lx >= 125 && lx <= 140 && ly >= 88 && ly <= 103) return 'book'; /* guestbook-close: the little ledger on the desk */ if (lx >= 112 && lx <= 139 && ly >= 70 && ly <= 100) return 'gooby'; if (lx >= 70 && lx <= 86 && ly >= 108 && ly <= 141) return 'can';
       var R = [194, 266, 306]; for (var j = 0; j < 3; j++) if (lx >= R[j] - 1 && lx <= R[j] + 13 && ly >= 84 && ly <= 103) return 'room' + j; if (lx >= 206 && lx <= 232 && ly >= 70 && ly <= 121) return 'door'; if (lx >= POOL.x - 3 && lx <= POOL.x + POOL.w + 3 && ly >= POOL.y - 10 && ly <= POOL.y + POOL.h + 3) return 'pool'; return null; },
@@ -456,7 +456,7 @@
     var x = function () { d.remove(); }; d.querySelector('#epClose').onclick = x; d.onclick = function (e) { if (e.target === d) x(); }; }
   if (typeof document !== 'undefined' && !document.getElementById('gbCss')) { var gs = document.createElement('style'); gs.id = 'gbCss'; /* gooby-guestbook */
     gs.textContent = '.mg-cap{margin:-2px 0 8px;padding:6px 8px;border:3px solid #000;background:#fff8e1;color:#1b1b1b;box-shadow:4px 4px 0 #000;font-size:14px;line-height:1.35;display:flex;flex-wrap:wrap;gap:4px 8px;align-items:baseline;overflow-wrap:anywhere}' +
-      '.mg-who{font-family:"Press Start 2P",monospace;font-size:9px;color:#fff;background:#111;padding:3px 5px;border-bottom:2px solid #6ef04a}.mg-line{flex:1 1 180px;font-weight:700}.mg-tip{flex-basis:100%;font-size:12px;color:#6a4a5a}' +
+      '.mg-who{font-family:"Press Start 2P",monospace;font-size:9px;color:#fff;background:#111;padding:3px 5px;border-bottom:2px solid #6ef04a}.mg-say{flex:1 1 180px;font-weight:700}.mg-tip{flex-basis:100%;font-size:12px;color:#6a4a5a}' +
       '.gb-leaf{position:absolute;z-index:3;pointer-events:none;will-change:transform}.gb-fwd{transform-origin:0 50%}.gb-back{transform-origin:100% 50%}' +
       '.gb-leaf>.gb-front,.gb-backface{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden}.gb-leaf>.gb-front{box-shadow:none}' +
       '.gb-backface{transform:rotateY(180deg);border:3px solid #000;background:#e9dfc6 repeating-linear-gradient(#e9dfc6 0 15px,#c9b996 15px 17px);box-shadow:inset 6px 0 0 #d6c7a6}' +

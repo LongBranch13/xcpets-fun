@@ -1,0 +1,35 @@
+# Layout check (Nov 25 2026, Jake: "I want this game to be perfect on every screen"). On every pull request that touches pages, styles
+# or scripts (and by hand), opens every page plus the main sheets (hatch review with 1,000 eggs, Sign & burn, pet page, Grinder) at
+# phone, tablet, laptop and desktop sizes on a real-data world built from api/boot.json, and fails on: page wider than the screen, a
+# sheet or its buttons out of reach, a button covered by something else, cut-off text, oversized titles, freezes over 3 s.
+# View-only: nothing is signed or sent, nothing reaches xcpets.fun or the game server. Screenshots + report.json are attached as the
+# run's artifact. Known, accepted findings go in tools/layout-check/allow.txt.
+name: layout-check
+on:
+  pull_request:
+    paths: ['**.html', 'css/**', 'js/**', 'templates/**', 'tools/layout-check/**', '.github/workflows/layout-check.yml']
+  workflow_dispatch:
+permissions: { contents: read }
+concurrency: { group: 'layout-check-${{ github.ref }}', cancel-in-progress: true }
+jobs:
+  screens:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix: { size: [phone, tablet, laptop, desktop] }
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 1 }
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: npm install --no-save --no-package-lock playwright-core@1
+      - name: Build the world and serve it locally
+        run: |
+          node --max-old-space-size=6000 tools/layout-check/rig.js > rig.log 2>&1 &
+          for i in $(seq 1 120); do grep -q '^ready' rig.log && break; sleep 5; done; cat rig.log; grep -q '^ready' rig.log
+      - name: Check every page and sheet
+        run: CHROME=$(which google-chrome || which chromium) node tools/layout-check/run.js --sync http://127.0.0.1:8125 --sizes ${{ matrix.size }} --shots --out layout-${{ matrix.size }}
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with: { name: 'layout-${{ matrix.size }}', path: 'layout-${{ matrix.size }}', retention-days: 14 }

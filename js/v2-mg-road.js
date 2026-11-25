@@ -109,31 +109,31 @@
     var seats = MG().SEATS || 21, left = null; try { left = V.mgSeatsLeft ? V.mgSeatsLeft(w) : null; } catch (e) { left = null; }
     var chips = STEPS.map(function (s, i) {
       var cls = S.done || i < S.step ? 'on' : i === S.step ? 'now' : 'off';
-      return '<span class="mgr-st ' + cls + '" title="' + esc(s.d) + '">' + (i + 1) + '. ' + esc(s.t) + '</span>';
+      return '<span class="mgod-st ' + cls + '" title="' + esc(s.d) + '">' + (i + 1) + '. ' + esc(s.t) + '</span>';
     }).join('');
     var head = S.done ? '🌕 <b>Mythic God</b>' : '🌕 <b>Road to Mythic God</b> · step ' + (S.step + 1) + ' of ' + STEPS.length;
-    var h = '<div class="mgr" data-mgr="' + p.id + '"><p class="mgr-h">' + head + '</p><div class="mgr-steps">' + chips + '</div>' +
-      '<p class="mgr-next">' + S.next + '</p>';
-    if (S.risk) h += '<p class="mgr-risk">⚠️ ' + S.risk + '</p>';
+    var h = '<div class="mgod" data-mgod="' + p.id + '"><p class="mgod-h">' + head + '</p><div class="mgod-steps">' + chips + '</div>' +
+      '<p class="mgod-next">' + S.next + '</p>';
+    if (S.risk) h += '<p class="mgod-risk">⚠️ ' + S.risk + '</p>';
     if (S.jump) h += '<p class="small"><a href="pet.html?id=' + S.jump + '">Open the violet grave of #' + S.jump + ' ▸</a></p>';
-    if (!S.done && !mgReady(w)) h += '<p class="small mgr-wait">Reading the Pantheon from the chain… seats and unleash clocks are not loaded on this page yet.</p>';
-    else if (!S.done && left != null) h += '<p class="small mgr-seats">' + nf(left) + ' of ' + seats + ' Pantheon seats still open.</p>';
+    if (!S.done && !mgReady(w)) h += '<p class="small mgod-wait">Reading the Pantheon from the chain… seats and unleash clocks are not loaded on this page yet.</p>';
+    else if (!S.done && left != null) h += '<p class="small mgod-seats">' + nf(left) + ' of ' + seats + ' Pantheon seats still open.</p>';
     return h + '</div>';
   }
 
   function css() {
     try {
-      if (document.getElementById('mgrCss')) return; var s = document.createElement('style'); s.id = 'mgrCss';
-      s.textContent = '.mgr{margin:6px 0;padding:7px 8px;border:1px solid #6a4aa0;border-radius:6px;background:#160f24}' +
-        '.mgr-h{margin:0 0 5px;font-size:13px;color:#e2c8ff}' +
-        '.mgr-steps{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:5px}' +
-        '.mgr-st{font-size:10px;padding:2px 5px;border-radius:10px;border:1px solid #4a3a6a;background:#1c1430;color:#9b90b8;white-space:nowrap}' +
-        '.mgr-st.on{background:#2a1a46;border-color:#8a4fe0;color:#d9c4ff}' +
-        '.mgr-st.now{background:#b46cff;border-color:#e2c8ff;color:#160f24;font-weight:700}' +
-        '.mgr-next{margin:0;font-size:13px;color:#f3ecff}' +
-        '.mgr-risk{margin:5px 0 0;font-size:12px;color:#ffb4a8;font-weight:600}' +
-        '.mgr-seats,.mgr-wait{margin:4px 0 0;color:#b9b0d6}' +
-        '@media (max-width:600px){.mgr-st{font-size:9px}}';
+      if (document.getElementById('mgodCss')) return; var s = document.createElement('style'); s.id = 'mgodCss';
+      s.textContent = '.mgod{margin:6px 0;padding:7px 8px;border:1px solid #6a4aa0;border-radius:6px;background:#160f24}' +
+        '.mgod-h{margin:0 0 5px;font-size:13px;color:#e2c8ff}' +
+        '.mgod-steps{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:5px}' +
+        '.mgod-st{font-size:10px;padding:2px 5px;border-radius:10px;border:1px solid #4a3a6a;background:#1c1430;color:#9b90b8;white-space:nowrap}' +
+        '.mgod-st.on{background:#2a1a46;border-color:#8a4fe0;color:#d9c4ff}' +
+        '.mgod-st.now{background:#b46cff;border-color:#e2c8ff;color:#160f24;font-weight:700}' +
+        '.mgod-next{margin:0;font-size:13px;color:#f3ecff}' +
+        '.mgod-risk{margin:5px 0 0;font-size:12px;color:#ffb4a8;font-weight:600}' +
+        '.mgod-seats,.mgod-wait{margin:4px 0 0;color:#b9b0d6}' +
+        '@media (max-width:600px){.mgod-st{font-size:9px}}';
       (document.head || document.documentElement).appendChild(s);
     } catch (e) {}
   }

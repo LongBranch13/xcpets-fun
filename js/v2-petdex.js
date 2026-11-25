@@ -120,13 +120,19 @@
       for (var i = 0; i < 4096; i += 4) { var r = s[i], gg = s[i + 1], b = s[i + 2]; if (r > 200 && gg < 110 && b > 200 && r - gg > 120) { o[i + 3] = 0; continue; } /* magenta key, incl. the lighter backdrop texture */
         if (sil) { o[i] = 34; o[i + 1] = 30; o[i + 2] = 48; o[i + 3] = 255; } else { o[i] = r; o[i + 1] = gg; o[i + 2] = b; o[i + 3] = 255; } }
       g.putImageData(id, 0, 0); } catch (e) { } }
+  /* screens (Nov 25 2026): a tall screen shows ~100 squares at once and drawing them all in one go froze the page for 3+ s
+   * (tools/layout-check, tablet and desktop). Squares now draw in slices of ~12 ms, one slice per frame. */
+  var drawQ = [], drawT = 0;
+  function drawSoon(c) { drawQ.push(c); if (!drawT) drawT = (root.requestAnimationFrame || setTimeout)(drawRun); }
+  function drawRun() { drawT = 0; var t0 = Date.now(); while (drawQ.length && Date.now() - t0 < 12) { var c = drawQ.shift(); if (c.isConnected) draw(c); }
+    if (drawQ.length) drawT = (root.requestAnimationFrame || setTimeout)(drawRun); }
   /* board pets (view/rank.json) carry no art until V2Split.dress fetches it, the same way Rankings paints its sprites */
   function dressThen(cs) { var B = root.V2Split, ids = [], todo = [];
     cs.forEach(function (c) { var x = CELLS[+c.getAttribute('data-pdx')], p = x && (x.mine ? x.best || x.sample : x.sample); if (p && !p.art) { ids.push(p.id); todo.push(c); } });
-    if (!ids.length || !B || !B.dress) return; B.dress(ids).then(function () { todo.forEach(function (c) { if (c.isConnected) draw(c); }); }, function () { }); }
+    if (!ids.length || !B || !B.dress) return; B.dress(ids).then(function () { todo.forEach(function (c) { if (c.isConnected) drawSoon(c); }); }, function () { }); }
   function watch(scope) { var cs = scope.querySelectorAll('canvas[data-pdx]'); dressThen(Array.prototype.slice.call(cs));
     if (!('IntersectionObserver' in root)) { cs.forEach(draw); return; }
-    if (!obs) obs = new IntersectionObserver(function (es) { es.forEach(function (e) { if (e.isIntersecting) { obs.unobserve(e.target); draw(e.target); } }); }, { root: el, rootMargin: '200px' });
+    if (!obs) obs = new IntersectionObserver(function (es) { es.forEach(function (e) { if (e.isIntersecting) { obs.unobserve(e.target); drawSoon(e.target); } }); }, { root: el, rootMargin: '200px' });
     cs.forEach(function (c) { obs.observe(c); }); }
   var CELLS = [];
   function cellHtml(c, col, tag) { if (!c) return '<span class="pdx-c none"></span>';
