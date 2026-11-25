@@ -49,7 +49,10 @@ ok(/Reset the practice pet\?/.test(ui) && /Real pets are not touched/.test(ui), 
 ok(/api\|t/.test(guard) || /\/\(api\|t\)/.test(guard), 'guard refuses the real api and feed files');
 ok(/'xcpets-practice-ledger'/.test(eng), "pretend chain key is 'xcpets-practice-ledger'");
 const realJs = fs.readdirSync(path.join(ROOT, 'js')).filter(f => /\.js$/.test(f) && !OWN.includes(f)).map(f => 'js/' + f).concat(fs.readdirSync(path.join(ROOT, 'rjs')).filter(f => /\.js$/.test(f)).map(f => 'rjs/' + f));
-ok(realJs.every(f => rd(f).indexOf('xcpets-practice') < 0 && rd(f).indexOf('XcpPractice') < 0), 'no real-game script reads practice data (rankings, feeds, replay never see practice pets)');
+/* A real script may ask "is this the practice page?" (window.XcpPractice truthy, e.g. the Pantry hides itself there) but never reads practice
+ * storage keys or anything off XcpPractice (XcpPractice.x / XcpPractice[...]). */
+const readsPractice = f => { const t = rd(f); return t.indexOf('xcpets-practice') >= 0 || /XcpPractice\s*[.\[(]/.test(t); };
+ok(realJs.every(f => !readsPractice(f)), 'no real-game script reads practice data (rankings, feeds, replay never see practice pets): ' + realJs.filter(readsPractice).join(', '));
 ok(!fs.existsSync(path.join(ROOT, 'js/v2-practice.js')), 'old stand-alone practice script removed');
 const own = OWN.filter(f => f !== 'practice-guard.js').map(f => rd('js/' + f).replace(/\/\*[\s\S]*?\*\//g, '')).join('\n');
 ok(!/\bsignPsbt|signTransaction|broadcast\w*\(|sendBeacon|WebSocket|EventSource/.test(own), 'practice code never signs, broadcasts or opens sockets');

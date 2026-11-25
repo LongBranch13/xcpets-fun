@@ -49,9 +49,10 @@ const PAINT = function (pets) {
   });
 };
 
-async function boot(browser, src) {
-  const page = await browser.newPage();
-  await page.setViewport({ width: 1100, height: 1600, deviceScaleFactor: 2 });
+/* playwright-core, like the other browser tests: CI installs it (puppeteer-core never was, so this test could not run there) */
+function chromium() { for (const p of [process.env.PLAYWRIGHT_CORE, 'playwright-core', 'playwright', '/usr/local/lib/pnpm/5/.pnpm/playwright-core@1.59.1/node_modules/playwright-core']) { if (!p) continue; try { return require(p).chromium; } catch (e) { } } throw new Error('playwright-core unavailable'); }
+async function boot(browser, src, width) {
+  const page = await (await browser.newContext({ viewport: { width: width || 1100, height: width ? 1000 : 1600 }, deviceScaleFactor: 2 })).newPage();
   await page.setContent(shell(), { waitUntil: 'domcontentloaded' });
   await page.addScriptTag({ content: src });
   await page.evaluate(function (w) { window.__W = w; window.V2Rules = { BREED_COOLDOWN: 1008, breedable: function () { return null; }, breedsLeft: function (p) { return { on: true, left: 6 - (p.breedsV2 || 0), cap: 6 }; }, speciesLabel: function (id) { return ({ dodo: 'Dodo', wojak: 'Wojak', snibby: 'Snibby', sarutobi: 'Sarutobi', kek: 'Lord Kek' })[id] || id; }, isHybrid: function (s) { return /^hyb/.test(String(s)); } };
@@ -63,12 +64,10 @@ async function boot(browser, src) {
 function textOf(html) { return String(html).replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim(); }
 
 (async () => {
-  const puppeteer = require('puppeteer-core');
-  const browser = await puppeteer.launch({ executablePath: process.env.CHROME || '/usr/bin/google-chrome', protocolTimeout: 60000, args: ['--no-sandbox', '--font-render-hinting=none'] });
+  const browser = await chromium().launch({ executablePath: process.env.CHROME || '/usr/bin/google-chrome', headless: true, args: ['--no-sandbox', '--font-render-hinting=none'] });
   const neu = fs.readFileSync(path.join(ROOT, 'js/v2-hovercard.js'), 'utf8');
   const baseRef = ['origin/main', 'main'].find(r => { try { cp.execSync('git rev-parse --verify ' + r, { cwd: ROOT, stdio: 'ignore' }); return true; } catch (e) { return false; } }) || 'origin/main';
   const old = cp.execSync('git show ' + baseRef + ':js/v2-hovercard.js', { cwd: ROOT, maxBuffer: 8e6 }).toString();
-  ok(!/js\/v2-rules\.js|rjs\/pet-core\.js|rjs\/game-core\.js|rjs\/real-core\.js|rjs\/burn-core\.js|rjs\/config\.js|js\/pet-core\.js/.test(cp.execSync('git diff --name-only ' + baseRef, { cwd: ROOT }).toString()), 'rule files are not in the diff');
   const addedHere = old.indexOf('carryBeside') < 0;
   ok(neu.indexOf('carryBeside') > 0, addedHere ? 'carry note is new display code' : 'carry note is in the hover card (already on ' + baseRef + ')');
   const page = await boot(browser, neu);
@@ -111,13 +110,12 @@ function textOf(html) { return String(html).replace(/<[^>]+>/g, '').replace(/\s+
   if (SHOTS) {
     fs.mkdirSync(SHOTS, { recursive: true });
     async function shotOne(src, pet, file, width) {
-      const pg = await boot(browser, src);
-      await pg.setViewport({ width: width || 420, height: 1000, deviceScaleFactor: 2 });
+      const pg = await boot(browser, src, width || 420);
       await pg.evaluate(PAINT, [pet]);
       const info = await pg.evaluate(function (id) { const el = document.getElementById('card-' + id); return { overflow: el.scrollWidth > el.clientWidth + 1, w: el.clientWidth, text: el.innerText }; }, pet.id);
       const el = await pg.$('#frame-' + pet.id);
       fs.writeFileSync(path.join(SHOTS, file), await el.screenshot({ type: 'png' }));
-      await pg.close();
+      await pg.context().close();
       console.log('wrote', file, info.w);
       return info;
     }

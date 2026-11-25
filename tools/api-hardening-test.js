@@ -67,7 +67,7 @@ const H = n => (n.toString(16) + 'a'.repeat(64)).slice(0, 64), H2 = n => (n.toSt
   { const W = fns('js/v2-wallet.js', ['petTokens']);
     ok(W.petTokens({ kind: 'send', asset: 'A12345678901234567' }).length === 1 && W.petTokens({ kind: 'send', asset: 'XCPETS' }).length === 0, 'petTokens: only numeric pet tokens are checked (not XCPETS)');
     ok(W.petTokens({ kind: 'mpma', assets: ['A12345678901234567', 'A12345678901234568'] }).length === 2 && W.petTokens({ give_asset: 'A12345678901234567' }).length === 1, 'petTokens: MPMA and sell orders too');
-    const ws = src('js/v2-wallet.js'); ok(/function sendDex\(plan, viewed\) \{ return utxoCheck\(plan\)/.test(ws), 'sendDex looks for an attached token before the wallet window');
+    const ws = src('js/v2-wallet.js'); ok(/function sendDex\(plan, viewed\) \{[^\n]*return utxoCheck\(plan\)/.test(ws), 'sendDex looks for an attached token before the wallet window');
     ok(/h\.address \|\| h\.utxo_address/.test(src('js/v2-sales.js')) && /h\.address \|\| h\.utxo_address/.test(src('js/v2-gift.js')), 'token holder falls back to utxo_address (was null for an attached token)'); }
   console.log(pass + ' passed, ' + fail + ' failed'); process.exit(fail ? 1 : 0);
 })().catch(e => { console.log('FAIL crashed: ' + (e && e.stack || e)); process.exit(1); });

@@ -1,6 +1,10 @@
 #!/usr/bin/env node
 /* A resumed replay must hash the same as a full replay. Splits of every snap fixture and of the shipped live burn list.
- * The rules file is patched in memory only. js/v2-rules.js on disk is not written. */
+ * The rules file is patched in memory only. js/v2-rules.js on disk is not written.
+ *   node tools/resume-equiv-test.js               both halves (about 10 minutes)
+ *   XP_SNAP_ONLY=1 node tools/resume-equiv-test.js   the snap fixtures only (also what the suite runs for this file)
+ *   node tools/resume-equiv-live-test.js          the live burn list: full list + half split (also -back-test.js and -tip-test.js)
+ * Each half replays the whole game several times, so together they ran into the suite's 600 s per-test limit. */
 'use strict';
 const fs = require('fs'), path = require('path'), vm = require('vm'), crypto = require('crypto');
 const { patchRules, wsDecode, canResume, checkpointMeta } = require('../js/v2-resume');
@@ -43,10 +47,10 @@ function stateHash(world) {
   return h.digest('hex');
 }
 function chainCut(rows, tip) { return rows.filter(r => r.block_index <= tip); }
-function splitsOf(rows, tip) {
+function splitsOf(rows, tip, fracs) {
   const blocks = Array.from(new Set(rows.map(r => r.block_index))).sort((a, b) => a - b);
   const out = [];
-  [0.5, 0.9].forEach(f => {
+  (fracs || [0.5, 0.9]).forEach(f => {
     const n = Math.max(1, Math.min(blocks.length - 1, Math.floor(blocks.length * f)));
     const cut = blocks[n - 1];
     if (cut < tip) out.push({ name: 'fraction ' + f, baseTip: cut, baseRows: chainCut(rows, cut) });
@@ -58,38 +62,53 @@ function splitsOf(rows, tip) {
   return out;
 }
 function mergeHashes(ctx, hashes) { return Object.assign({}, ctx.XCPETS_BLOCK_HASHES || {}, hashes || {}); }
+/* The full replay of the same burns, tip and DEX data is the same every time: hash it once (each live replay is about a minute,
+ * and the live cases used to redo it four times, which pushed this test past the 600 s limit). Keyed by the rows/dex objects. */
+const fullMemo = new WeakMap();
+function fullHash(ctx, rows, hashes, tip, dex, ops) {
+  if ((ops || []).length) { const w = ctx.V2Rules.replay(rows, hashes, ops, { tip: tip, live: ctx.LiveEngine.RealCore, dex: dex || undefined }); return { h: stateHash(w), n: w.pets.length }; }
+  let m = fullMemo.get(rows); if (!m) fullMemo.set(rows, m = new Map());
+  const k = tip + '|' + (dex ? (m.dexIds = m.dexIds || new WeakMap()).get(dex) || (m.dexIds.set(dex, (m.nd = (m.nd || 0) + 1)), m.nd) : 0);
+  if (!m.has(k)) { const w = ctx.V2Rules.replay(rows, hashes, [], { tip: tip, live: ctx.LiveEngine.RealCore, dex: dex || undefined }); m.set(k, { h: stateHash(w), n: w.pets.length }); }
+  return m.get(k);
+}
+const cpMemo = new WeakMap();
+function capture(ctx, w, seen, tip) {
+  const enc = ctx.wsEncode(w), keys = [];
+  for (const k in seen) if (Object.prototype.hasOwnProperty.call(seen, k)) keys.push(k);
+  const out = { w: wsDecode(enc.root, enc.parts), seen: keys, dexPos: w._dexPos || 0, grand: w._grand ? 1 : 0, tip: tip };
+  enc.root = null; enc.parts = null; return out;
+}
 async function samePair(label, rows, hashes, tip, dex, ops) {
   const plain = boot(false), patched = boot(true);
   hashes = mergeHashes(plain, hashes);
-  const a = plain.V2Rules.replay(rows, hashes, ops || [], { tip: tip, live: plain.LiveEngine.RealCore, dex: dex || undefined });
-  const b = patched.V2Rules.replay(rows, hashes, ops || [], { tip: tip, live: patched.LiveEngine.RealCore, dex: dex || undefined });
-  const da = stateHash(a), db = stateHash(b);
-  ok(da === db && a.pets.length === b.pets.length, label + ' patched full replay matches the unpatched rules');
+  const a = fullHash(plain, rows, hashes, tip, dex, ops);
+  let cp = null;
+  const b = patched.V2Rules.replay(rows, hashes, ops || [], { tip: tip, live: patched.LiveEngine.RealCore, dex: dex || undefined, _beforeTail: function (w, seen) { cp = capture(patched, w, seen, tip); } });
+  if (cp && !(ops || []).length) cpMemo.set(rows, Object.assign(cpMemo.get(rows) || {}, { [tip]: { dex: dex, cp: cp } }));
+  const da = a.h, db = stateHash(b);
+  ok(da === db && a.n === b.pets.length, label + ' patched full replay matches the unpatched rules');
   return da;
 }
 async function resumeCase(label, rows, hashes, finalTip, dex, baseRows, baseTip, baseDex, ops) {
   const plain = boot(false), patched = boot(true);
   hashes = mergeHashes(plain, hashes);
-  const full = plain.V2Rules.replay(rows, hashes, ops || [], { tip: finalTip, live: plain.LiveEngine.RealCore, dex: dex || undefined });
+  const full = fullHash(plain, rows, hashes, finalTip, dex, ops);
   let saved = null;
-  patched.V2Rules.replay(baseRows, hashes, ops || [], { tip: baseTip, live: patched.LiveEngine.RealCore, dex: baseDex || undefined, _beforeTail: function (w, seen) {
-    const enc = patched.wsEncode(w);
-    const keys = [];
-    for (const k in seen) if (Object.prototype.hasOwnProperty.call(seen, k)) keys.push(k);
-    saved = { w: wsDecode(enc.root, enc.parts), seen: keys, dexPos: w._dexPos || 0, grand: w._grand ? 1 : 0, tip: baseTip };
-    enc.root = null; enc.parts = null;
-  } });
+  const memo = !(ops || []).length && cpMemo.get(baseRows) && cpMemo.get(baseRows)[baseTip];
+  if (memo && memo.dex === (baseDex || null)) saved = memo.cp; /* the same base replay samePair already ran: reuse its checkpoint */
+  else patched.V2Rules.replay(baseRows, hashes, ops || [], { tip: baseTip, live: patched.LiveEngine.RealCore, dex: baseDex || undefined, _beforeTail: function (w, seen) { saved = capture(patched, w, seen, baseTip); } });
   ok(!!saved, label + ' checkpoint captured');
   if (!saved) return;
   const seen = {};
   saved.seen.forEach(k => { seen[k] = 1; });
   const resumed = patched.V2Rules.replay(rows, hashes, ops || [], { tip: finalTip, live: patched.LiveEngine.RealCore, dex: dex || undefined,
     _resume: { w: saved.w, seen: seen, dexPos: saved.dexPos, grand: saved.grand, tip: baseTip, opsFrom: (ops || []).length } });
-  const dFull = stateHash(full), dResume = stateHash(resumed);
+  const dFull = full.h, dResume = stateHash(resumed);
   console.log('HASH ' + label);
   console.log('  full   ' + dFull);
   console.log('  resume ' + dResume);
-  ok(dFull === dResume && resumed.pets.length === full.pets.length && resumed.tip === finalTip, label + ' resumed == full (' + (dFull === dResume ? dFull.slice(0, 12) : 'DIFF') + ')');
+  ok(dFull === dResume && resumed.pets.length === full.n && resumed.tip === finalTip, label + ' resumed == full (' + (dFull === dResume ? dFull.slice(0, 12) : 'DIFF') + ')');
 }
 function predicateChecks(rows, hashes, tip) {
   const meta = checkpointMeta({ rows: rows, hashes: hashes, dex: null, ops: [], tip: tip, rsig: 'r-test' });
@@ -128,11 +147,19 @@ function predicateChecks(rows, hashes, tip) {
     const hashes2 = Object.assign({}, hashes, { [tip + 1]: hashes[tip] || 'ab'.repeat(32) });
     await resumeCase(name + ' tip-only', rows, hashes2, tip + 1, null, rows, tip, null, []);
   }
+  /* under the test suite (XCPETS_TEST) this file is the snap half and resume-equiv-live-test.js is the live half, so each fits the 600 s limit */
+  if (process.env.XP_SNAP_ONLY || (process.env.XCPETS_TEST && !process.env.XP_LIVE_ONLY)) { console.log(fail ? fail + ' failed' : 'all passed (snap fixtures; the live burn list runs in resume-equiv-live-test.js)'); process.exit(fail ? 1 : 0); }
   const boot = JSON.parse(fs.readFileSync(path.join(ROOT, 'api/boot.json'), 'utf8'));
   ok(boot.rows.length > 1000 && boot.tip > 0, 'live burn list ' + boot.tip + ' has ' + boot.rows.length + ' rows');
   const dex = boot.dex || null;
-  await samePair('live list', boot.rows, boot.hashes || {}, boot.tip, dex, []);
-  for (const sp of splitsOf(boot.rows, boot.tip)) {
+  /* XP_LIVE_ONLY picks the part: 1 = all of it (by hand), a = full list + half split, back = three blocks back, tip = tip-only.
+   * Each part is its own suite file (resume-equiv-live / -back / -tip): the whole live half was ~375 s alone and passed 600 s under --jobs 4. */
+  const part = process.env.XP_LIVE_ONLY || '1', want = k => part === '1' || part === k;
+  if (want('a')) await samePair('live list', boot.rows, boot.hashes || {}, boot.tip, dex, []);
+  /* 0.5 and three-blocks-back: a checkpoint far back and one just behind the tip. 0.9 sits between them and costs a
+   * near-full replay of the live list, so it is covered on the snap fixtures instead. */
+  for (const sp of splitsOf(boot.rows, boot.tip, [0.5])) {
+    if (!want(/^fraction/.test(sp.name) ? 'a' : 'back')) continue;
     const baseDex = dex;
     await resumeCase('live ' + sp.name, boot.rows, boot.hashes || {}, boot.tip, dex, sp.baseRows, sp.baseTip, baseDex, []);
   }
@@ -142,7 +169,7 @@ function predicateChecks(rows, hashes, tip) {
     dex2 = JSON.parse(JSON.stringify(dex));
     dex2.credits = (dex2.credits || []).concat([{ asset: 'A99999999999999999', block_index: boot.tip + 1, quantity: 1, address: 'bc1qtest', tx_index: 9, credit_index: 1, tx_hash: 'e'.repeat(64), calling_function: 'test' }]);
   }
-  await resumeCase('live tip-only', boot.rows, hashes2, boot.tip + 1, dex2, boot.rows, boot.tip, dex, []);
+  if (want('tip')) await resumeCase('live tip-only', boot.rows, hashes2, boot.tip + 1, dex2, boot.rows, boot.tip, dex, []);
   console.log(fail ? fail + ' failed' : 'all passed');
   process.exit(fail ? 1 : 0);
 })().catch(e => { console.error('FAIL', e && e.stack || e); process.exit(1); });

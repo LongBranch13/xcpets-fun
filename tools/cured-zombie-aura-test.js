@@ -9,7 +9,7 @@ const fs = require('fs'), path = require('path'), vm = require('vm'), crypto = r
 const ROOT = path.resolve(__dirname, '..');
 const RULES = 'js/v2-rules.js';
 const md5 = crypto.createHash('md5').update(fs.readFileSync(path.join(ROOT, RULES))).digest('hex');
-assert.strictEqual(md5, '11b5c6c1959c56a7fd51c09a8b2a2309', 'v2-rules.js must stay byte-identical');
+assert.strictEqual(md5, require('./lib/rules-pin').pin('js/v2-rules.js'), 'v2-rules.js must stay byte-identical');
 let pass = 0;
 const t = (name, fn) => { fn(); pass++; console.log('ok', name); };
 const eq = (a, b) => a && b && a[0] === b[0] && a[1] === b[1] && a[2] === b[2];
@@ -286,7 +286,7 @@ t('petFrames: cured Peepo is the living sprite plus a badge; the glow is separat
   full.V2MythicGod.CURED_BADGE = 'cross';
 });
 t('rules file and replay worker are not part of this display change', () => {
-  assert.strictEqual(crypto.createHash('md5').update(fs.readFileSync(path.join(ROOT, RULES))).digest('hex'), '11b5c6c1959c56a7fd51c09a8b2a2309');
+  assert.strictEqual(crypto.createHash('md5').update(fs.readFileSync(path.join(ROOT, RULES))).digest('hex'), require('./lib/rules-pin').pin('js/v2-rules.js'));
   const src = fs.readFileSync(path.join(ROOT, 'js/v2-mythic-god.js'), 'utf8');
   assert.ok(!src.includes('isHot'));
   assert.ok(!src.includes('255, 236, 176') && !src.includes('112, 214, 198') && !src.includes('64, 150, 142'));

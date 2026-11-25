@@ -16,9 +16,11 @@ const SCRIPTS = ['rjs/config.js', 'rjs/pet-core.js', 'rjs/game-core.js', 'rjs/bo
 
 function patchRules(name, text) {
   if (name !== 'js/v2-rules.js') return text;
-  const next = text
-    .replace('function replay(rows, blockHashes, ops, opts) {', 'var FORK=null; function replay(rows, blockHashes, ops, opts) {')
-    .replace('    ev.forEach(function (e) {\n      cemFlush(w, e.b); /* SEANCE ALWAYS RAISES: finish earlier blocks\' seances first */',
+  /* Each anchor must match exactly once. A silent miss (Nov 2026: a pantrySweep line moved the old ev.forEach anchor) left
+   * every "forked" replay doing the full replay, and the tests that use this crept back to the 600 s limit. */
+  const swap = (src, from, to) => { const n = src.split(from).length - 1; if (n !== 1) throw new Error('fork-replay: js/v2-rules.js anchor found ' + n + ' times (want 1): ' + from.split('\n')[0].trim().slice(0, 80)); return src.replace(from, () => to); };
+  let next = swap(text, 'function replay(rows, blockHashes, ops, opts) {', 'var FORK=null; function replay(rows, blockHashes, ops, opts) {');
+  next = swap(next, '    ev.forEach(function (e) {\n',
 `    var __resume = !!(opts && opts._forkUse && FORK && opts._forkUse === FORK.tip);
     if (__resume) {
       w = reindex(FORK.w());
@@ -28,14 +30,16 @@ function patchRules(name, text) {
     }
     ev.forEach(function (e) {
       if (__resume && e.b <= opts._forkUse && !e.op) return;
-      cemFlush(w, e.b); /* SEANCE ALWAYS RAISES: finish earlier blocks' seances first */`)
-    .replace('    cemFlush(w, tip, true); if (saleIx) settleSales(w, tip, saleIx, true);',
+`);
+  next = swap(next, '    cemFlush(w, tip, true); if (saleIx) settleSales(w, tip, saleIx, true);',
 `    if (opts && opts._forkSave) {
-      var __snap = structuredClone(w), __seen = Object.assign({}, seen), __dex = w._dexPos, __grand = w._grand;
-      FORK = { tip: tip, seen: __seen, dex: __dex, grand: __grand, w: function () { return structuredClone(__snap); } };
+      var __seen = Object.assign({}, seen), __dex = w._dexPos, __grand = w._grand, __v8 = typeof __forkV8 !== 'undefined' ? __forkV8 : null;
+      /* With node's v8 module the checkpoint is kept as serialized bytes (a Buffer lives outside the JS heap): holding it as a second
+       * live world pushed seance-raises past its 5 GB heap on CI (Nov 25 2026, SIGABRT while cloning). Same V8 serializer as structuredClone. */
+      var __snap = __v8 ? __v8.serialize(w) : structuredClone(w);
+      FORK = { tip: tip, seen: __seen, dex: __dex, grand: __grand, w: function () { return __v8 ? __v8.deserialize(__snap) : structuredClone(__snap); } };
     }
     cemFlush(w, tip, true); if (saleIx) settleSales(w, tip, saleIx, true);`);
-  if (next === text) throw new Error('fork-replay: js/v2-rules.js no longer matches the checkpoint patch');
   return next;
 }
 
@@ -43,7 +47,7 @@ function load() {
   const st = {}, ls = { getItem: k => st[k] || null, setItem: (k, v) => { st[k] = String(v); }, removeItem: k => { delete st[k]; } };
   const win = { console: { log() {}, warn() {}, error() {}, info() {} }, localStorage: ls, sessionStorage: ls, location: { search: '', hostname: 'xcpets.fun', href: 'https://xcpets.fun/' }, navigator: { userAgent: 'node' }, setTimeout: () => 0, clearTimeout() {}, URLSearchParams, URL, TextEncoder, TextDecoder, structuredClone, fetch: () => Promise.reject(new Error('offline')) };
   win.document = { getElementById: () => null, querySelector: () => null, querySelectorAll: () => [], createElement: () => ({ getContext: () => null, style: {} }), addEventListener() {}, body: null, documentElement: { style: {} } };
-  win.addEventListener = () => {}; win.window = win; win.self = win;
+  win.addEventListener = () => {}; win.window = win; win.self = win; win.__forkV8 = require('v8');
   const c = vm.createContext(win);
   for (const f of SCRIPTS) {
     if (f === '@LIVE') { vm.runInContext('window.LiveEngine={RealCore:window.RealCore}', c); continue; }

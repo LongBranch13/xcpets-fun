@@ -149,10 +149,16 @@ function stallServer() {
   ok('server watch: /alerts subscribes and unsubscribes a private chat', /on/.test(on) && list.includes('4242') && /off/.test(off) && !(await SW.recipients(subEnv, store)).includes('4242'));
 
   /* Nov 24 2026: server-repair copies tools/sync-server and tools/lib. Every non-builtin require of the service must resolve inside them. */
+  /* What the server has: js/ (its repo copy pulls main) plus what server-repair ships, the paths on its `tar ... ss.tgz` line (read from the workflow, so a new shipped file needs no edit here). */
+  const tarLine = (fs.readFileSync(path.join(ROOT, '.github/workflows/server-repair.yml'), 'utf8').split('\n').find(l => /tar -C src -czf .*ss\.tgz/.test(l)) || '');
+  const ship = tarLine.replace(/\$\(cd src && ls ([^)]+)\)/g, '$1').split(/\s+/).slice(tarLine.trim().split(/\s+/).indexOf('"$RUNNER_TEMP/ss.tgz"') + 1).filter(Boolean);
+  const shipped = abs => { const r = path.relative(ROOT, abs).split(path.sep).join('/'); const rj = /\.js$/.test(r) ? r : r + '.js';
+    return ship.some(x => x.indexOf('*') >= 0 ? new RegExp('^' + x.replace(/\./g, '\\.').replace(/\*/g, '[^/]*') + '$').test(rj) : (r === x || rj === x || r.startsWith(x + '/'))); };
+  ok('server-repair ships the sync server and tools/lib', ship.includes('tools/sync-server') && ship.includes('tools/lib'), ship.join(' '));
   const svc = fs.readdirSync(path.join(__dirname, 'sync-server')).filter(f => f.endsWith('.js') && f !== 'checker.js');
   const outside = [];
-  svc.forEach(f => { const src = fs.readFileSync(path.join(__dirname, 'sync-server', f), 'utf8'); (src.match(/require\('(\.\.?\/[^']+)'\)/g) || []).forEach(m => { const rel = m.slice(9, -2); if (rel === '../..') return; const abs = path.resolve(__dirname, 'sync-server', rel); if (!abs.startsWith(path.join(__dirname, 'sync-server')) && !abs.startsWith(path.join(__dirname, 'lib')) && !abs.startsWith(path.join(ROOT, 'js'))) outside.push(f + ' -> ' + rel); }); });
-  ok('service requires stay inside what server-repair installs (tools/sync-server, tools/lib, js/)', outside.length === 0, outside.join(', '));
+  svc.forEach(f => { const src = fs.readFileSync(path.join(__dirname, 'sync-server', f), 'utf8'); (src.match(/require\('(\.\.?\/[^']+)'\)/g) || []).forEach(m => { const rel = m.slice(9, -2); if (rel === '../..') return; const abs = path.resolve(__dirname, 'sync-server', rel); if (!shipped(abs) && !abs.startsWith(path.join(ROOT, 'js') + path.sep)) outside.push(f + ' -> ' + rel); }); });
+  ok('service requires stay inside what the server has (js/ and the server-repair tar list)', outside.length === 0, outside.join(', '));
   { const rp = fs.readFileSync(path.join(__dirname, '..', '.github', 'workflows', 'server-repair.yml'), 'utf8');
     ok('server-repair also installs the page scripts the service reads from its own folder (the server copy was from Nov 11)', ['js/v2-boot-sync.js', 'js/v2-chain.js', 'js/block-hashes.js', 'js/v2-grave-index.js'].every(f => new RegExp('ss\\.tgz" tools/sync-server tools/lib[^\\n]*' + f.replace(/[./]/g, '\\$&')).test(rp))); }
   ok('net.js does not depend on a tools/lib helper the server may not have yet', !/require\('\.\.\/lib/.test(fs.readFileSync(path.join(__dirname, 'sync-server', 'net.js'), 'utf8')));

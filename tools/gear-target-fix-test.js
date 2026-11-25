@@ -87,7 +87,8 @@ const frVar = n => { const d = [n % 16]; n = Math.floor(n / 16); while (n > 0) {
 const dc = mk(G + 1, W2.a, 'pet:dc:2', 'dc'), bad = mk(G + 1, W2.a, 'pet:ut:1:' + plans[0].tag.split(':')[3] + ':' + frVar(V.spinList(w, W2.a, tip, G).length + 5) + '1', 'bad');
 const extra = [old1, old2, ut, ut2, dc, bad]; let rwr = null, rw2 = null, rwg = null;
 if (rwPlan) { rwr = mk(G + 3, OWNER, rwPlan.tag, 'rw'); rw2 = mk(G + 4, OWNER, rwPlan2[0].tag, 'rw2'); rwg = mk(G + 3, W2.a, rwPlan.tag, 'rwg'); extra.push(rwr, rw2, rwg); }
-const gmFed = (pets[GMONEY] || []).filter(p => p.lastFed != null).map(p => p.id), gmPlans = hasOwner ? V.rewearPlans(w, GMONEY, gmFed, G) : null; let rwgm = [];
+const gmList = new Set(V.spinList(w, GMONEY, w.tip, G).map(p => p.id)); /* only pets that can take a spin now (quests etc. are off the list), as the screen offers */
+const gmFed = (pets[GMONEY] || []).filter(p => p.lastFed != null && gmList.has(p.id)).map(p => p.id), gmPlans = hasOwner ? V.rewearPlans(w, GMONEY, gmFed, G) : null; let rwgm = [];
 if (gmPlans) { rwgm = gmPlans.map((p, j) => mk(G + 3 + j, GMONEY, p.tag, 'rwgm' + j)); extra.push(...rwgm); }
 const w2 = play(extra, G + 6), lg = t => w2.log.find(x => x.tx === t.tx_hash) || {};
 ok(lg(old1).kind === 'rejected' && /pick/.test(lg(old1).msg) && lg(old2).kind === 'rejected', 'gate on: pet:usespin:all and pet:usespin:3 rejected [' + lg(old1).msg + ']');

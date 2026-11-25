@@ -76,7 +76,9 @@ function noise(s) { return /favicon|net::ERR_|Failed to load resource|fonts\.goo
         times.push(width + ' ' + pg.id + ' ' + ms + 'ms pets=' + info.pets + ' overflow=' + info.overflow);
         ok(bad.length === 0, width + ' ' + pg.note + ' 0 page errors' + (bad.length ? ': ' + bad.slice(0, 3).join(' | ') : ' (' + ms + 'ms)'));
         ok(info.overflow < 24, width + ' ' + pg.note + ' no sideways scroll (' + info.overflow + ')');
-        await page.screenshot({ path: path.join(ART, 'feed-' + pg.id + '-' + width + '.png') });
+        /* The picture is a review artifact, not a check: on a 4-job CI runner the Rare Room's first paint after boot once took
+         * over 30 s to capture and failed the whole file. Freezes are measured in rare-unequip-perf-test.js. */
+        await page.screenshot({ path: path.join(ART, 'feed-' + pg.id + '-' + width + '.png'), timeout: 90000 }).catch(e => console.log('note: no screenshot for ' + width + ' ' + pg.id + ' (' + String(e.message || e).split('\n')[0] + ')'));
         await page.close();
       }
       const vpage = await ctx.newPage();

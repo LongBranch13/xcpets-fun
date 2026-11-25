@@ -36,7 +36,7 @@ function getJson(url) {
 
 (async () => {
   const rulesMd5 = crypto.createHash('md5').update(fs.readFileSync(path.join(ROOT, 'js/v2-rules.js'))).digest('hex');
-  ok(rulesMd5 === '11b5c6c1959c56a7fd51c09a8b2a2309', 'js/v2-rules.js bytes unchanged');
+  ok(rulesMd5 === require('./lib/rules-pin').pin('js/v2-rules.js'), 'js/v2-rules.js bytes unchanged');
   const wallet = fs.readFileSync(path.join(ROOT, 'js/v2-wallet.js'), 'utf8');
   ok(/function composeNodes\(\)[\s\S]{0,500}!\/node\\.xcpets\\.fun\/i\.test\(u\)/.test(wallet), 'composeNodes still refuses node.xcpets.fun');
   ok(!/composeList:[^\n]*node\.xcpets\.fun/.test(fs.readFileSync(path.join(ROOT, 'rjs/config.js'), 'utf8')), 'composeList does not name the read cache');
@@ -119,14 +119,17 @@ async function browser() {
   page.on('console', m => { const line = m.type() + ' ' + m.text(); if (m.type() === 'error' || /orderbook/.test(line)) logs.push(line); });
   try {
     await page.goto('http://127.0.0.1:' + PORT + '/shop.html?sync=' + encodeURIComponent('https://node.xcpets.fun'), { waitUntil: 'domcontentloaded', timeout: 60000 });
-    await page.waitForFunction(() => { const s = document.getElementById('shop'); const t = s ? s.innerText : ''; return t && !/Reading the order book/.test(t); }, null, { timeout: 240000 });
-    const book = await page.locator('#shop').innerText();
+    /* The text is taken in the same tick the wait sees it: #shop is rebuilt when the world refreshes, and reading it a moment
+     * later twice caught it blank on CI ("order book rendered:" with nothing after it). */
+    const got = await page.waitForFunction(() => { const s = document.getElementById('shop'); const t = s ? s.innerText : ''; return t.trim() && !/Reading the order book/.test(t) ? t : false; }, null, { timeout: 240000 });
+    const book = String(await got.jsonValue());
     ok(!/Could not read the order book/.test(book), 'order book has no read error');
     ok(/binder|Buy|No pets match|empty/i.test(book) && !/Could not read/.test(book), 'order book rendered: ' + book.replace(/\s+/g, ' ').slice(0, 220));
     if (logs.length) console.log(logs.join('\n'));
     await page.locator('#shop').scrollIntoViewIfNeeded();
     await page.screenshot({ path: path.join(shotDir, 'orderbook-blocked-4000.png'), fullPage: false });
     const verify = page.locator('#splitVerify');
+    await page.waitForSelector('#splitVerify', { state: 'attached', timeout: 120000 }).catch(() => {}); /* the fast-load bar adds it once the world is in */
     ok(await verify.count() === 1, 'Verify is on the page');
     await verify.click();
     await page.waitForFunction(() => { const b = document.getElementById('splitViewBar'); const t = b ? b.innerText : ''; return /Checked at block/.test(t) || /did not finish/.test(t); }, null, { timeout: 180000 });

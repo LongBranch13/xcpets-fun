@@ -11,7 +11,14 @@ const intu = fs.readFileSync(path.join(ROOT, 'js/v2-intuitive.js'), 'utf8');
 let pass = 0, fail = 0;
 const ok = (c, m) => { if (c) pass++; else { fail++; console.log('FAIL', m); } };
 
-ok(/function resumeGo\(\) \{ var o = loadResume\(\); if \(!o \|\| !o\.plans \|\| !o\.plans\.length\) return false; confirmPlans\('Continue: ' \+ \(o\.title \|\| 'burns'\), o\.plans\); return true; \}/.test(v2), 'Continue opens confirmPlans with the saved plans');
+{ /* run the real resumeGo with stubs instead of pinning its source text (maintenance guards may sit in front of it) */
+  const m = /  function resumeGo\(\) \{[^\n]*\}\n/.exec(v2), seen = [];
+  const run = (saved, maint) => { seen.length = 0; const c = vm.createContext({ window: maint ? { XcpMaint: { on: () => true, stop: () => 'maint' } } : {}, XcpMaint: { on: () => !!maint, stop: () => 'maint' },
+    loadResume: () => saved, confirmPlans: (t, pl) => seen.push({ t, pl }) }); vm.runInContext((m ? m[0] : '') + 'this.r = resumeGo();', c); return c.r; };
+  const plans = [{ tag: 'pet:feed:1', amount: 1 }];
+  ok(m && run({ title: 'Feed', plans }) === true && seen.length === 1 && seen[0].t === 'Continue: Feed' && seen[0].pl === plans, 'Continue opens confirmPlans with the saved plans');
+  ok(m && run(null) === false && !seen.length && run({ plans: [] }) === false && !seen.length, 'Continue with nothing saved opens nothing');
+}
 ok(/function resumeDrop\(\) \{ saveResume\(null, null\); return true; \}/.test(v2), 'Dismiss drops the saved resume');
 ok(/resumeGo: resumeGo, resumeDrop: resumeDrop/.test(v2), 'both actions are on V2UI');
 ok(/class="resume">Continue<\/a> · <a href="#" class="resdrop">Dismiss<\/a>/.test(v2), 'the offer still renders Continue and Dismiss');

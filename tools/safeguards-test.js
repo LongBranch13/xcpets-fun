@@ -39,7 +39,9 @@ h.DL.prerenderingchange(); ok(h.sent.length === 1 && h.sent[0].b.f === 'https://
 /* 2. every page current */
 const chk = cp.spawnSync(process.execPath, [path.join(__dirname, 'build-err-report.js'), '--check'], { encoding: 'utf8' }); ok(chk.status === 0, 'build-err-report --check: ' + chk.stdout.trim().split('\n').pop());
 const pc = cp.spawnSync(process.execPath, [path.join(__dirname, 'build-practice-page.js'), '--check'], { encoding: 'utf8' }); ok(pc.status === 0, 'practice pages match build-practice-page');
+const isRedirect = require('./build-err-report.js').isRedirect;
 fs.readdirSync(ROOT).filter(f => /\.html$/.test(f)).forEach(f => { const s = fs.readFileSync(path.join(ROOT, f), 'utf8'), pr = /^practice/.test(f);
+  if (isRedirect(s)) { ok(!/<script src=/.test(s) && /location\.replace\(/.test(s), f + ': redirect stub, no page scripts (the page it forwards to has the reporter)'); return; }
   ok((s.match(/<!--err-report-1102--><script>/g) || []).length === (pr ? 0 : 1), f + (pr ? ': practice page has no reporter (practice sends nothing anywhere)' : ': exactly one reporter'));
   /* maintenance.js is the one script that belongs before the prerender guard. The reporter still sits after that guard and before every other page script. */
   if (!pr) { const rest = s.replace(/<script src="js\/maintenance\.js\?v=[^"]*"><\/script>/, ''); ok(rest.indexOf('<!--err-report-1102-->') > rest.lastIndexOf('<!--nav-cache-1102-->') && rest.indexOf('<!--err-report-1102-->') < rest.indexOf('<script src='), f + ': after the prerender guard, before any page script'); } });

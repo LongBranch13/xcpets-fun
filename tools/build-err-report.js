@@ -29,8 +29,11 @@ function apply(h) { h = h.replace(RE, '');
   if (nc2 >= 0) { const at = nc2 + '<!--nav-cache-1102-->'.length; return h.slice(0, at) + SNIP + h.slice(at); }
   const m = /<meta charset="utf-8">/i.exec(h); if (!m) throw new Error('no <meta charset> to put the reporter after');
   return h.slice(0, m.index + m[0].length) + SNIP + h.slice(m.index + m[0].length); }
-const pages = () => fs.readdirSync(ROOT).filter(f => /\.html$/.test(f) && !/^practice/.test(f)).concat(['templates/game.html']);
-module.exports = { SNIP, JS, URL: URL_, apply, pages, RE };
+/* A redirect stub (<meta name="xcpets-redirect">, e.g. hall-of-fame.html, watch.html since the Nov 23 page merges) runs no page script:
+ * it only forwards to the merged page, which has its own reporter. */
+const isRedirect = h => /<meta name="xcpets-redirect"/.test(h);
+const pages = () => fs.readdirSync(ROOT).filter(f => /\.html$/.test(f) && !/^practice/.test(f) && !isRedirect(fs.readFileSync(path.join(ROOT, f), 'utf8'))).concat(['templates/game.html']);
+module.exports = { SNIP, JS, URL: URL_, apply, pages, RE, isRedirect };
 if (require.main === module) {
   const check = process.argv.includes('--check'); let bad = 0;
   pages().forEach(f => { const p = path.join(ROOT, f), h = fs.readFileSync(p, 'utf8'), out = apply(h);

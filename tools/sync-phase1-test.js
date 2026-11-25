@@ -49,14 +49,14 @@ function fixtureState() {
   const C = bootSync();
   ok(PUBLIC.join(' ') === 'https://api.counterparty.io:4000/v2 https://api.unspendablelabs.com:4000/v2', 'default upstreams are the two public Core nodes');
   const tree = fs.readdirSync(path.join(ROOT, 'tools/sync-server')).filter(f => f.endsWith('.js') || f.endsWith('.md')).map(f => fs.readFileSync(path.join(ROOT, 'tools/sync-server', f), 'utf8')).concat(['js/v2-boot-sync.js', 'js/v2-seed-worker.js', 'js/v2-catchup-worker.js', 'js/v2-resume.js', 'js/v2-chain.js', 'js/v2-sales.js'].map(f => fs.readFileSync(path.join(ROOT, f), 'utf8'))).join('\n');
-  ok(!/\.onion\b|start9/i.test(tree), 'no onion or private proxy host in the new code');
+  ok(!/\b[a-z2-7]{16,56}\.onion\b|start9/i.test(tree), 'no onion or private proxy host in the new code'); /* a real onion address (16-56 base32 chars), not the log scrubber's .onion pattern */
   ok(!/method:\s*'POST'|method:\s*"POST"/.test(fs.readFileSync(path.join(ROOT, 'tools/sync-server/index.js'), 'utf8') + fs.readFileSync(path.join(ROOT, 'tools/sync-server/server.js'), 'utf8')), 'the sync service does not POST');
 
   const wallet = fs.readFileSync(path.join(ROOT, 'js/v2-wallet.js'), 'utf8');
   ok(/function composeNodes\(\)[\s\S]{0,400}node\\.xcpets\\.fun/.test(wallet), 'composeNodes still drops node.xcpets.fun');
   const cfg = fs.readFileSync(path.join(ROOT, 'rjs/config.js'), 'utf8');
   ok(/composeList: \[COUNTERPARTY_CORE, CORE_BACKUP\]/.test(cfg) && cfg === gitBuf('rjs/config.js').toString('utf8'), 'compose list unchanged and config.js is byte-identical');
-  const RULES_MD5 = '11b5c6c1959c56a7fd51c09a8b2a2309';
+  const RULES_MD5 = require('./lib/rules-pin').pin('js/v2-rules.js');
   RULE7.forEach(f => { const a = crypto.createHash('md5').update(fs.readFileSync(path.join(ROOT, f))).digest('hex'); ok(f === 'js/v2-rules.js' ? a === RULES_MD5 : a === crypto.createHash('md5').update(gitBuf(f)).digest('hex'), f === 'js/v2-rules.js' ? 'js/v2-rules.js MD5 is ' + RULES_MD5 : 'rule MD5 unchanged ' + f); });
   RULE11.forEach(f => ok(f === 'js/v2-rules.js' ? crypto.createHash('md5').update(fs.readFileSync(path.join(ROOT, f))).digest('hex') === RULES_MD5 : fs.readFileSync(path.join(ROOT, f)).equals(gitBuf(f)), f === 'js/v2-rules.js' ? 'replay script MD5 is ' + RULES_MD5 : 'replay script unchanged ' + f));
   ok(fs.readFileSync(path.join(ROOT, 'js/v2-replay-worker.js')).equals(gitBuf('js/v2-replay-worker.js')), 'worker bytes unchanged');

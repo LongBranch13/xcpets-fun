@@ -1,5 +1,6 @@
-/* Stacked Rare Room gear cards: one card per piece ("Gold aviators ×44"), full official names,
- * drag onto the pet preview wears one copy (mouse and touch), and a refused drop shows equipCheck's reason.
+/* Stacked gear in the Dress drawer (js/v2-dress.js), the one place pets are dressed since the Nov 23 2026 rare-room rethink
+ * (#dressing-room now opens the Closet door + this drawer; the old #rrDress grid with drag-to-wear is no longer reachable):
+ * one row per piece with "×N" equal to the spare copies you own, Wear uses one copy, the Closet counts match the world, desktop and phone.
  * Practice ledger only. Nothing is signed or sent. Rule files are not modified.
  *   node tools/gear-stack-ui-test.js
  */
@@ -69,19 +70,15 @@ const SEED = `() => {
 
 (async () => {
   fs.mkdirSync(ART, { recursive: true });
-  const RULES_MD5 = '11b5c6c1959c56a7fd51c09a8b2a2309';
+  const RULES_MD5 = require('./lib/rules-pin').pin('js/v2-rules.js');
   RULES.forEach(f => { const a = md5(path.join(ROOT, f)); ok(f === 'js/v2-rules.js' ? a === RULES_MD5 : a === crypto.createHash('md5').update(gitFile(f)).digest('hex'), f === 'js/v2-rules.js' ? 'js/v2-rules.js MD5 is ' + RULES_MD5 : 'rule unchanged ' + f); });
-  const oldShop = gitFile('js/v2-shop.js');
-  const mainStacks = /function stackPieces/.test(oldShop);
-  ok(mainStacks, 'origin/main already stacks gear cards');
-  ok(/function stackPieces/.test(fs.readFileSync(path.join(ROOT, 'js/v2-shop.js'), 'utf8')), 'this branch stacks gear cards');
+  ok(/function stackPieces/.test(fs.readFileSync(path.join(ROOT, 'js/v2-shop.js'), 'utf8')), 'the shop still stacks gear pieces');
   const server = await serve();
   const origin = 'http://127.0.0.1:' + server.address().port;
   const browser = await chromium().launch({ executablePath: process.env.CHROME || '/usr/bin/google-chrome', headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage'] });
   const errors = [];
-  async function boot(width, height, shopBody) {
+  async function boot(width, height) {
     const ctx = await browser.newContext({ viewport: { width: width, height: height }, ...(width < 500 ? { isMobile: true, hasTouch: true, deviceScaleFactor: 2 } : {}) });
-    if (shopBody) await ctx.route('**/js/v2-shop.js*', route => route.fulfill({ status: 200, contentType: 'text/javascript', headers: { 'cache-control': 'no-store' }, body: shopBody }));
     const page = await ctx.newPage();
     page.setDefaultTimeout(180000);
     page.on('pageerror', e => errors.push(String(e)));
@@ -90,182 +87,77 @@ const SEED = `() => {
     return { ctx: ctx, page: page };
   }
   async function hush(page) { await page.evaluate(() => { var bs = [].slice.call(document.querySelectorAll('button')); var b = bs.filter(function (x) { return /No thanks/i.test(x.textContent || ''); })[0]; if (b) b.click(); }); await page.waitForTimeout(200); }
-  async function openDress(page, pid) {
-    await page.evaluate(id => { location.hash = 'dressing-room'; if (id && window.V2Shop) { V2Shop._state().pet = id; if (V2Shop.refreshRoll) V2Shop.refreshRoll(); } }, pid || null);
-    await page.waitForSelector('#rrDress .dr-grid', { timeout: 30000 });
-    if (pid) await page.evaluate(async id => { var b = document.querySelector('[data-dpid="' + id + '"]'); if (b) return b.click(); /* pet-picker: Change pet, search the number, tap the card */
-      var c = document.querySelector('#drChg'); if (!c) return; c.click(); var q = document.querySelector('#drPk [data-pk2q]'); if (q) { q.value = String(id); q.dispatchEvent(new Event('input')); }
-      var k = document.querySelector('#drPk [data-pk2="' + id + '"]'); if (k) k.click(); }, pid);
-    await page.waitForTimeout(400);
-    await page.evaluate(() => { var d = document.getElementById('rrDress'); if (d) d.scrollIntoView({ block: 'start' }); });
-    await page.waitForTimeout(200);
+  /* the drawer for pet id, one slot expanded: rows [{ id, label, n }] and the world's spare count per item */
+  async function drawer(page, id, slot) {
+    return page.evaluate(async a => {
+      const wait = ms => new Promise(r => setTimeout(r, ms));
+      for (let k = 0; k < 240 && !(window.V2Dress && V2Dress.ready && V2Dress.ready()); k++) await wait(500);
+      for (let k = 0; k < 60 && !document.querySelector('#dzModal [data-sl]'); k++) { if (k % 10 === 0) V2Dress.open(a.id); await wait(500); }
+      if (!document.querySelector('#dzModal [data-sl]')) return { rows: [], spare: {}, worn: [], row: '', err: 'drawer did not open (ready ' + (V2Dress.ready && V2Dress.ready()) + ', pet ' + !!V2UI.world().byId[a.id] + ')' };
+      let dz = document.getElementById('dzModal'), ex = dz && dz.querySelector('[data-exp="' + a.slot + '"]');
+      if (ex && ex.getAttribute('aria-expanded') !== 'true') { ex.click(); await wait(400); dz = document.getElementById('dzModal'); }
+      const rows = [].slice.call(dz.querySelectorAll('[data-try^="' + a.slot + '|"]')).map(e => { const t = e.innerText.replace(/\s+/g, ' '), m = / ×(\d+)/.exec(t); return { id: e.getAttribute('data-try').split('|')[1], text: t, n: m ? +m[1] : 1 }; });
+      const w = V2UI.world(), spare = {}; (w.itemList || []).forEach(g => { if (g.owner === V2UI.ME && g.on == null) spare[g.item] = (spare[g.item] || 0) + 1; });
+      const row = dz.querySelector('[data-sl="' + a.slot + '"]');
+      return { rows, spare, worn: V2Rules.wornOf(w, a.id).map(x => x.slot + ':' + x.item), row: row ? row.innerText.replace(/\s+/g, ' ') : '' };
+    }, { id, slot });
   }
+  async function wear(page, id, slot, item) {
+    return page.evaluate(async a => {
+      const wait = ms => new Promise(r => setTimeout(r, ms)); let dz = document.getElementById('dzModal');
+      const t = dz.querySelector('[data-try="' + a.slot + '|' + a.item + '"]'); if (!t) return { err: 'no row for ' + a.item }; t.click(); await wait(400);
+      dz = document.getElementById('dzModal'); const b = dz.querySelector('[data-wear="' + a.slot + '|' + a.item + '"]'); if (!b) return { err: 'no Wear button for ' + a.item }; b.click();
+      for (let k = 0; k < 20 && !V2Rules.wornOf(V2UI.world(), a.id).some(x => x.item === a.item); k++) await wait(250);
+      return { worn: V2Rules.wornOf(V2UI.world(), a.id).map(x => x.slot + ':' + x.item) };
+    }, { id, slot, item });
+  }
+  const stacked = (d, label) => {
+    const ids = d.rows.map(r => r.id), dup = ids.filter((x, i) => ids.indexOf(x) !== i);
+    ok(d.rows.length > 0 && !dup.length, label + ': one row per piece (' + d.rows.length + ' rows' + (dup.length ? ', dup ' + dup.join() : '') + ')');
+    const off = d.rows.filter(r => r.n !== (d.spare[r.id] || 0) && !(d.spare[r.id] == null && r.n === 1));
+    ok(!off.length, label + ': every ×N is the spare copies owned' + (off.length ? ' (' + off.map(r => r.text + ' vs ' + d.spare[r.id]).join('; ') + ')' : ''));
+  };
   try {
-    const before = await boot(1280, 900, oldShop);
-    const seeded = await before.page.evaluate(s => (0, eval)('(' + s + ')()'), SEED);
+    const desk = await boot(1280, 900);
+    const seeded = await desk.page.evaluate(s => (0, eval)('(' + s + ')()'), SEED);
     console.log('fixture', JSON.stringify(seeded));
     ok(seeded && !seeded.error && seeded.made >= 44 && !(seeded.left && seeded.left.length), 'practice spins created the stacked pile (' + (seeded && seeded.made) + ' burns, left ' + JSON.stringify(seeded && seeded.left) + ')');
     ok(seeded && seeded.petId, 'practice keeps one pet, and that pet is the dress target (' + (seeded && seeded.species) + ')');
-    await before.page.reload({ waitUntil: 'domcontentloaded' });
-    await before.page.waitForFunction(() => window.V2UI && document.querySelector('#drEnter'), null, { timeout: 180000 });
-    await openDress(before.page, seeded.otherId);
-    await hush(before.page);
-    const beforeGrid = await before.page.evaluate(() => {
-      var cards = [].slice.call(document.querySelectorAll('#rrDress .rr-card'));
-      var names = cards.map(c => (c.querySelector('.rr-nm') || {}).textContent || '');
-      var avi = names.filter(n => n.indexOf('Gold aviators') === 0).length;
-      return { n: cards.length, avi: avi, sample: names.slice(0, 6) };
-    });
-    console.log('before grid', JSON.stringify(beforeGrid));
-    ok(mainStacks ? beforeGrid.avi >= 1 && beforeGrid.avi <= 8 : beforeGrid.avi > 8, mainStacks ? 'main already stacks, Gold aviators is one card (' + beforeGrid.avi + ')' : 'before: Gold aviators is repeated as separate cards (' + beforeGrid.avi + ' on the first page)');
-    const dress = await before.page.$('#rrDress');
-    await dress.screenshot({ path: path.join(ART, 'gear_grid_before_unstacked.png') });
-    const dump = await before.page.evaluate(() => {
-      var P = 'xcpets-practice-', out = {};
-      for (var i = 0; ; i++) { var k = localStorage.key(i); if (k == null) break; out[P + k] = localStorage.getItem(k); }
-      out.__info = sessionStorage.getItem('stack-fixture');
-      return out;
-    });
-    await before.ctx.close();
-
-    async function bootLedger(width, height, data) {
-      const ctx = await browser.newContext({ viewport: { width: width, height: height }, ...(width < 500 ? { isMobile: true, hasTouch: true, deviceScaleFactor: 2 } : {}) });
-      await ctx.addInitScript(data => { try { Object.keys(data).forEach(function (k) { if (k === '__info') return; localStorage.setItem(k, data[k]); }); } catch (e) {} }, data);
-      const page = await ctx.newPage();
-      page.setDefaultTimeout(180000);
-      page.on('pageerror', e => errors.push(String(e)));
-      await page.goto(origin + '/practice-rare.html#dressing-room', { waitUntil: 'domcontentloaded', timeout: 120000 });
-      await page.waitForFunction(() => window.V2Shop && V2Shop.stackPieces && (document.querySelector('#rrDress .dr-grid') || document.querySelector('#drEnter')), null, { timeout: 180000 });
-      return { ctx: ctx, page: page };
+    await desk.page.reload({ waitUntil: 'domcontentloaded' });
+    await desk.page.waitForFunction(() => window.V2UI && window.V2Dress, null, { timeout: 180000 });
+    await hush(desk.page);
+    /* #dressing-room (old links, the room's mirror) lands on the Closet door, whose gear counts match the world */
+    const closet = await desk.page.evaluate(async () => { location.hash = 'dressing-room'; const wait = ms => new Promise(r => setTimeout(r, ms));
+      for (let k = 0; k < 240; k++) { const c = document.getElementById('rrCloset'); if (c && /pieces/.test(c.innerText)) break; await wait(500); }
+      const c = document.getElementById('rrCloset'), w = V2UI.world(), L = (w.itemList || []).filter(g => g.owner === V2UI.ME);
+      return { hash: location.hash, txt: c ? (/([\d,]+) pieces? · ([\d,]+) spare/.exec(c.innerText) || [''])[0] : '', all: L.length, spare: L.filter(g => g.on == null).length }; });
+    ok(closet.hash === '#closet' && closet.txt === closet.all + ' pieces · ' + closet.spare + ' spare', 'old #dressing-room link opens the Closet, counts match the world ("' + closet.txt + '", ' + closet.hash + ')');
+    const id = seeded.petId;
+    const d0 = await drawer(desk.page, id, 'face');
+    stacked(d0, 'Guise drawer');
+    const pick = d0.rows.filter(r => !d0.worn.includes('face:' + r.id) && r.n >= 2)[0] || d0.rows.filter(r => !d0.worn.includes('face:' + r.id))[0];
+    ok(!!pick, 'a spare Guise piece to wear (' + (pick && pick.text) + ')');
+    if (pick) {
+      const before = d0.spare[pick.id] || 0, wr = await wear(desk.page, id, 'face', pick.id);
+      ok(wr.worn && wr.worn.includes('face:' + pick.id), 'Wear puts ' + pick.id + ' on #' + id + (wr.err ? ' (' + wr.err + ')' : ''));
+      const d1 = await drawer(desk.page, id, 'face');
+      ok((d1.spare[pick.id] || 0) === before - 1, 'wearing uses one copy: spare ' + before + ' -> ' + (d1.spare[pick.id] || 0));
+      stacked(d1, 'Guise drawer after Wear');
+      ok(new RegExp(pick.text.replace(/ ×\d+.*$/, '').replace(/ [+-]?\d+$/, '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).test(d1.row), 'the Guise row now shows the worn piece ("' + d1.row.slice(0, 80) + '")');
     }
-    const after = await bootLedger(1280, 900, dump);
-    const dbg = await after.page.evaluate(() => {
-      var info = { hash: location.hash, enter: !!document.querySelector('#drEnter'), dress: !!document.querySelector('#rrDress'), grid: !!document.querySelector('#rrDress .dr-grid') };
-      try { var w = V2UI.world(); var owners = {}; (w.pets || []).forEach(function (p) { owners[p.owner] = (owners[p.owner] || 0) + 1; }); info.pets = (w.pets || []).length; info.mine = V2UI.mine(w).length; info.me = V2UI.ME; info.mock = window.V2Mock && V2Mock.ME; info.owners = owners; info.items = (w.itemList || []).filter(function (g) { return g.owner === V2UI.ME; }).length; info.sample = (w.pets || []).slice(0, 4).map(function (p) { return p.id + ' ' + p.species + ' ' + p.owner; }); } catch (e) { info.err = String(e); }
-      try { var L = JSON.parse(localStorage.getItem('xcpets-practice-ledger') || 'null'); info.rows = L && L.rows && L.rows.length; info.tip = L && L.tip; } catch (e) { info.lerr = String(e); }
-      return info;
-    });
-    console.log('after dbg', JSON.stringify(dbg));
-    await openDress(after.page, seeded.otherId);
-    await hush(after.page);
-    const grid = await after.page.evaluate(info => {
-      var cards = [].slice.call(document.querySelectorAll('#rrDress .rr-card'));
-      var by = {};
-      cards.forEach(function (c) { var id = c.getAttribute('data-ditem'); by[id] = (by[id] || 0) + 1; });
-      var avi = document.querySelector('#rrDress .rr-card[data-ditem="v2-gold-aviators"]');
-      var sig = info.sig && document.querySelector('#rrDress .rr-card[data-ditem="' + info.sig + '"]');
-      var sign = document.querySelector('#rrDress .rr-card[data-ditem="v2-crown-feather"]');
-      function txt(el) { return el ? (el.querySelector('.rr-nm') || {}).textContent.replace(/\\s+/g, ' ').trim() : ''; }
-      return { kinds: Object.keys(by).length, dup: Object.keys(by).filter(function (k) { return by[k] > 1; }), avi: txt(avi), aviN: avi && avi.getAttribute('data-n'), sig: txt(sig), sign: txt(sign), signN: sign && sign.getAttribute('data-n') };
-    }, seeded);
-    console.log('after grid', JSON.stringify(grid));
-    ok(grid.dup.length === 0, 'after: one card per piece (no duplicate item ids)');
-    ok(grid.avi === 'Gold aviators ×44' && grid.aviN === '44', 'Gold aviators card reads "' + grid.avi + '" (n ' + grid.aviN + ')');
-    ok(grid.sign && grid.sign.indexOf('Black-feather crown') === 0 && grid.sign.indexOf('×') > 0, 'long official name is not cut off ("' + grid.sign + '")');
-    const dress2 = await after.page.$('#rrDress');
-    await dress2.screenshot({ path: path.join(ART, 'gear_grid_after_stacked.png') });
-
-    await after.page.evaluate(() => { var d = document.querySelector('details.rr-browse'); if (d) d.open = true; });
-    await after.page.waitForTimeout(200);
-    await after.page.click('#rrGallery [data-bslot="face"]');
-    await after.page.waitForTimeout(200);
-    const binder = await after.page.evaluate(() => {
-      var cards = [].slice.call(document.querySelectorAll('#rrGallery .rr-card'));
-      var ids = cards.map(c => c.getAttribute('data-ditem'));
-      var avi = document.querySelector('#rrGallery .rr-card[data-ditem="v2-gold-aviators"]');
-      return { n: cards.length, unique: new Set(ids).size, avi: avi && (avi.querySelector('.rr-nm') || {}).textContent.replace(/\s+/g, ' ').trim() };
-    });
-    ok(binder.n > 0 && binder.n === binder.unique, 'binder page is one card per piece (' + binder.n + ')');
-    ok(binder.avi === 'Gold aviators ×44', 'binder uses the same count ("' + binder.avi + '")');
-
-    async function drag(page, item, kind) {
-      if (kind === 'touch') {
-        return page.evaluate(async function (id) {
-          var card = document.querySelector('#rrDress .rr-card[data-ditem="' + id + '"]');
-          var prev = document.querySelector('#rrDress .dr-prev');
-          if (!card || !prev) return { missing: true };
-          var a = card.getBoundingClientRect();
-          var sx = a.x + Math.min(24, a.width / 2), sy = a.y + Math.min(20, a.height / 2);
-          function ev(type, x, y, target) { (target || window).dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, clientX: x, clientY: y, pointerId: 7, pointerType: 'touch', button: 0, buttons: type === 'pointerup' ? 0 : 1, isPrimary: true })); }
-          ev('pointerdown', sx, sy, card);
-          await new Promise(function (r) { setTimeout(r, 250); });
-          var dock = document.querySelector('.dr-dock');
-          var target = dock || prev;
-          var b = target.getBoundingClientRect();
-          var tx = b.x + b.width / 2, ty = b.y + Math.max(8, Math.min(b.height / 2, 40));
-          ev('pointermove', tx, ty, window);
-          var had = !!dock;
-          ev('pointerup', tx, ty, window);
-          return { dock: had, w: Math.round(b.width), h: Math.round(b.height) };
-        }, item);
-      }
-      const card = page.locator('#rrDress .rr-card[data-ditem="' + item + '"]');
-      const prev = page.locator('#rrDress .dr-prev');
-      await page.evaluate(() => { var d = document.getElementById('rrDress'); if (d) d.scrollIntoView({ block: 'start' }); });
-      await card.scrollIntoViewIfNeeded();
-      const box = await card.boundingBox();
-      const pb = await prev.boundingBox();
-      console.log('drag box', item, JSON.stringify({ box: box, prev: pb }));
-      await card.dragTo(prev, { targetPosition: { x: 30, y: 30 }, steps: 12 });
-      return { box: box, prev: pb };
-    }
-    function worn(page, pid) {
-      return page.evaluate(id => {
-        var w = V2UI.world(), V = V2Rules, P = w.byId[id];
-        var list = V.wornOf(w, id).map(function (g) { return g.item + ':' + (g.label || ''); });
-        var face = V.wornOf(w, id).filter(function (g) { return g.slot === 'face'; })[0];
-        return { id: id, species: P && P.species, face: face && face.item, faceLabel: face && face.label, worn: list };
-      }, pid);
-    }
-
-    const touch = await drag(after.page, 'v2-crown-feather', 'touch');
-    await after.page.waitForTimeout(400);
-    const afterTouch = await worn(after.page, seeded.otherId);
-    console.log('touch', JSON.stringify(touch), JSON.stringify(afterTouch));
-    ok(afterTouch.worn.some(x => x.indexOf('v2-crown-feather') === 0), 'touch drag equips one copy of Black-feather crown');
-
-    await openDress(after.page, seeded.otherId);
-    await drag(after.page, 'v2-gold-aviators', 'mouse');
-    await after.page.waitForTimeout(500);
-    const afterMouse = await worn(after.page, seeded.otherId);
-    console.log('mouse', JSON.stringify(afterMouse));
-    ok(afterMouse.face === 'v2-gold-aviators', 'mouse drag onto the pet equips one Gold aviators');
-    const still = await after.page.evaluate(() => { var c = document.querySelector('#rrDress .rr-card[data-ditem="v2-gold-aviators"]'); return c && { n: c.getAttribute('data-n'), t: (c.querySelector('.rr-nm') || {}).textContent.replace(/\\s+/g, ' ').trim(), on: !!c.querySelector('.dr-wb') }; });
-    ok(still && still.n === '44' && still.t === 'Gold aviators ×44', 'equipping one copy keeps the stack at ×44 ("' + (still && still.t) + '")');
-    await after.page.evaluate(() => { var d = document.getElementById('rrDress'); if (d) d.scrollIntoView({ block: 'start' }); });
-    await (await after.page.$('#rrDress')).screenshot({ path: path.join(ART, 'gear_drag_equipped.png') });
-
-    await drag(after.page, 'v2-gold-aviators', 'mouse');
-    await after.page.waitForTimeout(400);
-    const again = await after.page.evaluate(() => { var n = document.querySelector('#rrDress .dr-dropwhy'); var bar = document.querySelector('#rrDress .dr-ok, #rrDress .sc-why'); return { why: n && n.textContent.trim(), bar: bar && bar.textContent.trim(), face: (V2Rules.wornOf(V2UI.world(), V2Shop._state().pet).filter(function (g) { return g.slot === 'face'; })[0] || {}).item }; });
-    console.log('reject same', JSON.stringify(again));
-    ok(again.face === 'v2-gold-aviators' && /already wear/i.test((again.why || '') + ' ' + (again.bar || '')), 'a second drop of the same piece is refused with the existing reason ("' + again.why + '" / "' + again.bar + '")');
-
-    if (seeded.sig && seeded.tier < 3) {
-      await drag(after.page, seeded.sig, 'mouse');
-      await after.page.waitForTimeout(400);
-      const sigWhy = await after.page.evaluate(() => { var n = document.querySelector('#rrDress .dr-dropwhy'); var bar = document.querySelector('#rrDress .sc-why'); return { why: n && n.textContent.trim(), bar: bar && bar.textContent.trim() }; });
-      console.log('reject sig', JSON.stringify(sigWhy));
-      ok(/only legendary/i.test((sigWhy.why || '') + ' ' + (sigWhy.bar || '')), 'a piece that pet cannot wear shows equipCheck\'s reason ("' + sigWhy.why + '")');
-      await after.page.evaluate(() => { var d = document.getElementById('rrDress'); if (d) d.scrollIntoView({ block: 'start' }); });
-      await (await after.page.$('#rrDress')).screenshot({ path: path.join(ART, 'gear_drag_rejected.png') });
-    } else console.log('signature refuse skipped: practice allows one pet' + (seeded.sig ? ' and this one is legendary' : ' and no foreign piece was rolled'));
-
-    await after.ctx.close();
-
-    const phone = await bootLedger(390, 844, dump);
-    await openDress(phone.page, seeded.otherId);
+    await desk.page.screenshot({ path: path.join(ART, 'gear-stack-drawer-1280.png') });
+    /* phone: same drawer, same stacking, tap Wear works */
+    const phone = await boot(390, 844); /* its own browser context, so its own practice ledger: seed it the same way */
+    const ps = await phone.page.evaluate(x => (0, eval)('(' + x + ')()'), SEED);
+    await phone.page.reload({ waitUntil: 'domcontentloaded' });
+    await phone.page.waitForFunction(() => window.V2UI && window.V2Dress, null, { timeout: 180000 });
     await hush(phone.page);
-    const phoneGrid = await phone.page.evaluate(() => { var c = document.querySelector('#rrDress .rr-card[data-ditem="v2-gold-aviators"]'); var nm = c && (c.querySelector('.rr-nm') || {}).textContent.replace(/\\s+/g, ' ').trim(); return { nm: nm, n: c && c.getAttribute('data-n'), cards: document.querySelectorAll('#rrDress .rr-card').length }; });
-    ok(phoneGrid.nm === 'Gold aviators ×44', 'phone grid stacks the same way ("' + phoneGrid.nm + '", ' + phoneGrid.cards + ' cards)');
-    await phone.page.evaluate(() => { var d = document.getElementById('rrDress'); if (d) d.scrollIntoView({ block: 'start' }); });
-    await (await phone.page.$('#rrDress')).screenshot({ path: path.join(ART, 'gear_grid_phone_stacked.png') });
-    const phoneTouch = await drag(phone.page, 'v2-gold-grill', 'touch');
-    await phone.page.waitForTimeout(400);
-    const phoneWorn = await worn(phone.page, seeded.otherId);
-    console.log('phone touch', JSON.stringify(phoneTouch), JSON.stringify(phoneWorn));
-    ok(phoneWorn.worn.some(x => x.indexOf('v2-gold-grill') === 0), 'phone touch-drag equips one Gold grill');
-    await phone.ctx.close();
+    const pid = ps && ps.petId, pd = await drawer(phone.page, pid, 'head'); if (pd.err) console.log('phone', pd.err);
+    stacked(pd, 'phone Headwear drawer');
+    const pp = pd.rows.filter(r => !pd.worn.includes('head:' + r.id))[0];
+    if (pp) { const pw = await wear(phone.page, pid, 'head', pp.id); ok(pw.worn && pw.worn.includes('head:' + pp.id), 'phone: Wear puts ' + pp.id + ' on #' + pid + (pw.err ? ' (' + pw.err + ')' : '')); }
+    else ok(false, 'phone: a spare Headwear piece to wear');
+    await phone.page.screenshot({ path: path.join(ART, 'gear-stack-drawer-390.png') });
   } catch (e) {
     console.log('ERR', e && e.stack || e);
     fail.push(String(e && e.message || e));

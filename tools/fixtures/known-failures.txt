@@ -1,7 +1,6 @@
 # FAIL lines that already failed on origin/main b0090a8 (2026-10-24) with the frozen fixture; format: <test file> | <line>
 # The beard sentence changed when new species joined the hybrid list. The check still fails:
 # peepo, funtrump and viking never draw a Chud beard (4000 deterministic hashes). Not a rules edit.
-breeding-v2-test.js | FAIL hybridParts: beard drawn on chad/wojak/bobo/kevin/lenny/jacksonpepe/orangedragon; none on excluded
 hatchbot-warnings-test.js | FAIL live chain now (care 6942174, not 90%): no warnings due
 pet-gift-test.js | FAIL accept only once
 pet-gift-test.js | FAIL accept swaps the owners
@@ -73,6 +72,5 @@ grant-power-boost-test.js | FAIL feed: 1-of-1s above every Burn Lord
 grant-power-boost-test.js | FAIL grant-power-boost-test: 45 pass, 3 fail
 # Re-wear / picked-pet spins on the live feed. Left for the owner. Rules file not changed.
 # The biggest wallet's scattered plan spends every saved spin but does not name each picked pet once (seen at boot tip 975637).
-gear-target-fix-test.js | FAIL planner: scattered burns cover every picked pet once
 # After two pet:rw burns the grant still counts pieces the second burn was not allowed to move (grave-locked).
 gear-target-fix-test.js | FAIL re-wear: grant note matches the stash the second burn reported
