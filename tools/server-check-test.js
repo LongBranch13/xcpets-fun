@@ -74,6 +74,32 @@ const tagText = h => /^[0-9a-f]+$/i.test(h || '') && (h.length % 2 === 0) ? Buff
   ok(pj && pj.ok === true && pj.tip === A && pj.rsig === rsig && Array.isArray(pj.listings) && Array.isArray(pj.pets) && JSON.stringify(pj.orders) === JSON.stringify((boot.dex && boot.dex.orders) || []) && mf.view && mf.view.shop === 'view/p/99901.json',
     'a world build writes the shop pack beside its view (' + (pj ? pj.listings.length + ' listings at ' + pj.tip : 'missing') + ')');
   ok((await I.ckShop(Object.assign({}, state, { tip: B + 1 }))).ok === false, 'a checker behind the follower sends no shop pack');
+  /* Nov 25 2026: a new block applies only its burns to the checker's world (checker.js advance), instead of a full reload with no
+   * answers in between. Same answers as a full replay at the new tip, for every later burn; a reorg under the checker's tip reloads. */
+  const idle = async () => { const t = Date.now(); while (I._CK.busy && Date.now() - t < 120000) await new Promise(r => setTimeout(r, 50)); };
+  async function stepTo(C) {
+    const st = Object.assign({}, state, { tip: C, rows: boot.rows.filter(r => r.block_index <= C) }), loads = I._CK.loads, adv = I._CK.advances, t = Date.now();
+    I.ckTick(st, data, ROOT); await idle();
+    return { st, ms: Date.now() - t, advanced: I._CK.advances === adv + 1 && I._CK.loads === loads };
+  }
+  const C1 = B + 5, C2 = C1 + 10, s1 = await stepTo(C1);
+  ok(s1.advanced && I._CK.tip === C1 && I._CK.state === 'ready', 'a new block advances the checker world (' + B + ' -> ' + C1 + ', ' + s1.ms + ' ms, no reload)');
+  const s2 = await stepTo(C2);
+  ok(s2.advanced && I._CK.tip === C2, 'and again (' + C1 + ' -> ' + C2 + ', ' + s2.ms + ' ms, ' + boot.rows.filter(r => r.block_index > B && r.block_index <= C2).length + ' burns applied in all)');
+  const v2 = require('./sync-server/answer').pageInputs(s2.st), full2 = S.workerFns(), fw2 = S.replayWorld(full2, v2.rows.slice(), v2.hashes, C2, v2.dex);
+  const later2 = boot.rows.filter(r => r.block_index > C2).slice(0, 150); let same2 = 0, diff2 = 0;
+  for (const r of later2) {
+    const plan = { tag: tagText(r.tag) }, me = r.source, t = full2.V2Rules.parseTag(plan.tag);
+    if (t) Art.tagPetIds(t).forEach(id => { const p = fw2.byId[id]; if (p) Art.resolvePetOwner(p, {}); });
+    const want = full2.V2Rules.sendBlock(fw2, plan, fw2.tip, { me, pending: [] }) || null, a = await I.ckAsk(s2.st, { plans: [plan], me, pending: [] }), got = a && a.ok ? (a.skip[0] || null) : 'NO ANSWER';
+    if (got === want) same2++; else { diff2++; if (diff2 <= 5) console.log('  differs after advance:', plan.tag.slice(0, 50), '| server:', got, '| device:', want); }
+  }
+  ok(diff2 === 0 && same2 === later2.length, 'after advancing, server and a full replay agree on ' + same2 + ' of ' + later2.length + ' later burns');
+  const sh2 = await I.ckShop(s2.st); ok(sh2.ok && sh2.tip === C2 && sh2 !== sh, 'the shop pack follows the advanced world');
+  const reorg = Object.assign({}, s2.st, { tip: C2 + 1, rows: boot.rows.filter(r => r.block_index <= C2 + 1).map((r, i, a) => i === a.findIndex(x => x.block_index > C2 - 10 && x.block_index <= C2) ? Object.assign({}, r, { tx_hash: 'f'.repeat(64) }) : r), hashes: s2.st.hashes }), loadsR = I._CK.loads;
+  I.ckTick(reorg, data, ROOT); await idle();
+  ok(I._CK.loads === loadsR + 1 && I._CK.tip === C2 + 1, 'a reorg under the checker\'s tip reloads from the checkpoint instead of advancing');
+  ok(typeof I.ckInfo().advances === 'number' && I.ckInfo().advances === 2, 'health shows the advances');
   I.ckStop('off'); ok(I._CK.proc === null, 'stopping the checker (before a world build) ends its process');
 
   /* POST /xp/v1/check */
