@@ -91,7 +91,21 @@ ok(sandbox.revealQ.length === 1 && sandbox.revealQ[0].eggs.join(',') === '6' && 
   ctx2.notifyHatch(P(2)); ctx2.notifyHatch(P(5));
   ok(!ctx2.__tray && ctx2.revealQ.length === 0, 'pages still arriving: no tray, no review yet');
   ctx2.notifyHatch(P(9));
-  ok(ctx2.__tray && ctx2.__tray.length === 1 && ctx2.__tray[0].length === 9 && ctx2.revealQ.length === 0, 'the settled list gives ONE tray batch of all 9 eggs and no automatic review');
+  /* box-reveal-1124 (GMONEY via owner: 'the egg boxes dont pop up to preview like before'): the away batch opens ONE box reveal again (no egg-crack animation), not the tray */
+  ok(!ctx2.__tray && ctx2.revealQ.length === 1 && ctx2.revealQ[0].eggs.length === 9 && ctx2.revealQ[0].away === 1 && ctx2.revealQ[0].hatchAnim === 1, 'the settled list opens ONE box reveal of all 9 eggs (away, no crack animation), not the tray');
+  ctx2.notifyHatch(P(9));
+  ok(ctx2.revealQ.length === 1 && ctx2.revealQ[0].eggs.length === 9, 'a second look adds nothing (still one reveal of 9)');
+}
+/* box-reveal-1124: a wallet still loading pages after the 90 s cap. Before, hSessTip was never set, so a hatch that landed while you watched went to the tray. */
+{
+  const base = { pets: page0.slice(), tip: tip, _full: 1 };
+  sandbox.hMem = null; sandbox.hatchTip = null; delete store[sandbox.HKEY]; sandbox.notifyHatch(base);
+  const ctx3 = vm.createContext(Object.assign({}, sandbox, { revealQ: [], hMem: null, hatchTip: null }));
+  vm.runInContext(slice + '\nthis.notifyHatch = notifyHatch; this.setDefer = function (t) { hDefer0 = t; };', ctx3); ctx3.trayAdd = function (ids) { ctx3.__tray = (ctx3.__tray || []).concat([ids]); };
+  const slow = extra => ({ pets: page0.concat(extra), tip: tip + (extra.length ? 9 : 6), _pages: { got: 1, pages: 40 } });
+  ctx3.notifyHatch(slow([])); ctx3.setDefer(Date.now() - 26000); ctx3.notifyHatch(slow([]));
+  ctx3.notifyHatch(slow([pet(300, 'tx-live', tip + 9)]));
+  ok(!ctx3.__tray && ctx3.revealQ.length === 1 && ctx3.revealQ[0].eggs.join(',') === '300' && !ctx3.revealQ[0].away, 'past the 25 s cap, a hatch you watch land is live (egg crack + reveal), not the tray');
 }
 
 delete store[sandbox.HKEY];

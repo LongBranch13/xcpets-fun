@@ -42,7 +42,7 @@
     [['raw', function () { return PC.generate({ blockHash: bh, petId: pid, blockHeight: hb }); }]].concat(Object.keys(RULES).filter(function (k) { return typeof V[k] === 'function'; }).map(function (k) { return [k, function () { return V[k](bh, pid, hb); }]; }))
       .forEach(function (c) { var r = null; try { r = c[1](); } catch (e) {} if (!r) return; var n = TRAITS.filter(function (t) { return same(r[t[0]], a[t[0]]); }).length; if (n > best) { best = n; rule = r; ruleName = c[0]; } });
     $('vfName').textContent = '#' + p.id + (p.name ? ' ' + p.name : '');
-    $('vfSub').textContent = (p.dead ? 'Dead' : p.released ? 'Released' : p.stageName || '') + ' · ' + (V.speciesLabel ? V.speciesLabel(p.species) : p.species) + ' · ' + (TIERS[p.tier] || '');
+    $('vfSub').textContent = (p.dead ? 'Dead' : p.released ? 'Released' : p.stageName || '') + ' · ' + (V.petSpeciesLabel ? V.petSpeciesLabel(p) : p.species) + ' · ' + (TIERS[p.tier] || '');
     var c0 = $('vfSprite'), c = c0.cloneNode(false); c0.parentNode.replaceChild(c, c0); try { if (R && R.lazy) R.lazy(c, function () { return frames(p); }, false); } catch (e) {}
     c.classList.toggle('vf-dead', !!p.dead);
     var rows = [

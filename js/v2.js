@@ -391,7 +391,7 @@
   var R = window.V2Render, paint = R.paint, petFrames = R.petFrames;
   var animated = { push: function (a) { R.animate(a.c, a.fr); } };
   var TL = V.TIER_LABELS, TC = ['#9aa3b2', '#5fd35f', '#4f9dff', '#ffb02e'];
-  function spLabel(id) { return V.speciesLabel(id); } // purebreds + hybrids ('Dobo (hybrid)')
+  function spLabel(id) { return id && typeof id === 'object' ? (V.petSpeciesLabel ? V.petSpeciesLabel(id) : V.speciesLabel(id.species)) : V.speciesLabel(id); } /* a pet object: its shown name (cross pets: 'Star-Lord Pigeon') */ // purebreds + hybrids ('Dobo (hybrid)')
 
   // ================================================================ UI on the LIVE play.html markup (ids/classes from xcpets.fun/play.html)
   var TIER_ID = ['common', 'uncommon', 'rare', 'legendary'], SL = V.slotLabel;
@@ -637,22 +637,33 @@
     /* hatch-tray-1124 (owner Nov 24 2026: one Shock Box opened as three pop-ups, 47 then 353 then 600, and 'the animation just popping up is annoying').
      * A big wallet arrives in owner pages, and each page used to open its own review. Now nothing is counted until the list has settled
      * (90 s safety cap, then the old way), so one hatch = one review. Display only: same newHatches keys, nothing signed. */
-    if (!settled) { if (!hDefer0) hDefer0 = Date.now(); if (Date.now() - hDefer0 < 90000) return []; }
+    if (!settled) { if (!hDefer0) hDefer0 = Date.now(); if (Date.now() - hDefer0 < HDEFER_MS) return []; }
+    /* box-reveal-1124: past the cap (HDEFER_MS) the list counts as settled for 'live vs away' too. Before, a wallet whose pages were still loading
+     * never set hSessTip, so every hatch (even one you watched land) went quietly into the tray. */
+    var counted = settled || !!hDefer0;
     var r = V.newHatches(w, ME, seen); hMem = r.seen;
     if (hasKeys || settled) { try { localStorage.setItem(HKEY, JSON.stringify(hPack(r.seen))); } catch (e) { } }
     var groups = hatchKeepGroups(r.groups, hatchTip, hasKeys);
-    if (hSessTip == null && settled) hSessTip = w.tip || 0;
-    /* Eggs that hatched before this page settled ('while you were away') go to the calm hatch tray (a small pill you open when you want),
-     * never an automatic pop-up or animation. Eggs that hatch while you watch still get the egg-crack moment. All of one batch = one review. */
+    if (hSessTip == null && counted) hSessTip = w.tip || 0;
+    /* box-reveal-1124 (GMONEY via owner Nov 24 2026: 'the egg boxes dont pop up to preview like before'; owner: 'I didnt want to lose that popup.
+     * It just need to be better'). A box hatches a block or more after you burn it, so most boxes land 'while you were away' and the tray pill
+     * hid them. Away eggs open the box reveal again (one pop-up per load: every away batch merges into one), without the egg-crack animation;
+     * 'Later' on the reveal puts them in the pill. Eggs that hatch while you watch still get the egg-crack moment first. Display only. */
     var away = [], live = [];
     groups.forEach(function (g) { g.eggs.forEach(function (p) { ((hSessTip == null || (p.hatchBlock || 0) <= hSessTip) ? away : live).push(p.id); }); });
-    if (away.length) trayAdd(away);
+    if (away.length) { var qa = null; for (var ia = 0; ia < revealQ.length; ia++) if (revealQ[ia].kind === 'eggs' && revealQ[ia].away) { qa = revealQ[ia]; break; }
+      if (rev && rev.kind === 'eggs' && rev.away && $('packBox').classList.contains('on')) { away = away.filter(function (id) { return rev.eggs.indexOf(id) < 0; }); if (away.length) { rev.eggs = rev.eggs.concat(away); rev.n0 = (rev.n0 || 0) + away.length; rev.luck = null; rev.best = null; drawReveal(); } }
+      else if (qa) away.forEach(function (id) { if (qa.eggs.indexOf(id) < 0) qa.eggs.push(id); });
+      else revealQ.push({ kind: 'eggs', eggs: away, away: 1, hatchAnim: 1 });
+      if (tray) { tray.eggs = tray.eggs.filter(function (id) { return away.indexOf(id) < 0; }); trayDraw(); } }
     if (live.length) { var q = null; for (var i = revealQ.length - 1; i >= 0; i--) if (revealQ[i].kind === 'eggs' && !revealQ[i].tray) { q = revealQ[i]; break; }
       if (rev && rev.kind === 'eggs' && !rev.tray && $('packBox').classList.contains('on')) { rev.eggs = rev.eggs.concat(live); rev.n0 = (rev.n0 || 0) + live.length; rev.luck = null; rev.best = null; drawReveal(); }
       else if (q) q.eggs = q.eggs.concat(live); else revealQ.push({ kind: 'eggs', eggs: live }); }
     return groups;
   }
-  var hDefer0 = 0, hSessTip = null, tray = null;
+  /* box-reveal-1124: 25 s (was 90 s). A big wallet (GMONEY, ~31k pets) took about a minute to settle, so the reveal came late. Pages load newest
+   * first, so a new box is on the first pages, and eggs from a later page now merge into the open reveal instead of opening a second one. */
+  var hDefer0 = 0, hSessTip = null, tray = null, HDEFER_MS = 25000;
   /* hatch-tray-1124: the calm 'new pets' pill. One per page, merges every away batch, shows the best finds so you know if it's worth a look. */
   function hatchFinds(w, ids) { var out = { n: 0, leg: 0, weird: 0, special: 0 };
     ids.forEach(function (id) { var x = w.byId[id]; if (!x) return; out.n++; if (x.art && x.art.tierIndex >= 3) out.leg++; var k = revStar(x);
@@ -671,7 +682,10 @@
   function trayOpen() { if (!tray) return; var ids = tray.eggs; tray = null; trayDraw(); if (rev && $('packBox').classList.contains('on')) closeReveal();
     revealQ.unshift({ kind: 'eggs', eggs: ids, tray: 1, hatchAnim: 1, away: 1 }); released = true; nextReveal(); }
   var wspinOn = false; /* wheel-spin-anim: the 8-bit Pepe Wheel reveal (js/v2-wheel-anim.js) plays once before a gear batch that came from a wheel spin. Display only. */
-  function nextReveal() { if (wspinOn || $('packBox').classList.contains('on') || !revealQ.length) return; if (holding()) { heldR = true; awayPing(); return; } rev = revealQ.shift(); rev.page = 0; rev.sel = {}; if (rev.kind === 'eggs' && rev.sort == null && rev.eggs.length > 1) rev.sort = 'rar'; if (rev.kind === 'eggs') { rev.n0 = rev.eggs.length; rev.gone = 0; } /* pet-flow-smoother: a hatch review opens Rarest first (Legendaries on page 1); the Sort menu still offers Hatch order */ if (packY == null) packY = window.scrollY || 0; if (rev.kind === 'eggs') lastHatchN = rev.eggs.length;
+  /* box-reveal-1124: never open on top of another pop-up (a community pet's arrival, a pixel scene, a burn confirm); try again when it closes */
+  var otherT = 0;
+  function otherUp() { return !!document.querySelector('.reveal.on:not(#packBox)') || !!(window.V2LifeAnim && V2LifeAnim.busy && V2LifeAnim.busy()); }
+  function nextReveal() { if (wspinOn || $('packBox').classList.contains('on') || !revealQ.length) return; if (otherUp()) { if (!otherT) otherT = setTimeout(function () { otherT = 0; nextReveal(); }, 1500); return; } if (holding()) { heldR = true; awayPing(); if (!holdT) holdT = setTimeout(function () { holdT = 0; nextReveal(); }, Math.max(50, 8050 - (Date.now() - firstDataT))); return; } /* box-reveal-1124: the 8 s hold used to end only at the next repaint (about a minute later), so the reveal came late */ rev = revealQ.shift(); rev.page = 0; rev.sel = {}; if (rev.kind === 'eggs' && rev.sort == null && rev.eggs.length > 1) rev.sort = 'rar'; if (rev.kind === 'eggs') { rev.n0 = rev.eggs.length; rev.gone = 0; if (rev.intro == null) rev.intro = rev.eggs.length >= INTRO_MIN; } /* box-reveal-1124: 7+ eggs open on the box reveal first */ /* pet-flow-smoother: a hatch review opens Rarest first (Legendaries on page 1); the Sort menu still offers Hatch order */ if (packY == null) packY = window.scrollY || 0; if (rev.kind === 'eggs') lastHatchN = rev.eggs.length;
     var WA = window.V2WheelAnim, ws = null; if (rev.kind === 'gear' && WA) try { ws = WA.fromWins(rev.wins, world(), communityName(world())); } catch (e) { ws = null; }
     var paid = rev.kind === 'gear' && !rev.gearAnim && !lifeReduced() && (rev.wins || []).some(function (x) { return x && x.src === 'roll'; }); /* pixel-anims batch 4: a paid gear roll's piece lands on the pet (js/v2-life-anim.js gearRoll, lazy) after the wheel */
     var openG = function (r2) { if (paid && !r2.gearAnim) { r2.gearAnim = 1; wspinOn = true; withLife(function (ok) { var go2 = function () { wspinOn = false; if (rev !== r2) return; drawReveal(); open('packBox'); }; if (!ok || !window.V2LifeAnim || !V2LifeAnim.gearRoll) return go2(); try { V2LifeAnim.gearRoll(world(), r2.wins, ME, go2); } catch (e) { go2(); } }); return; } drawReveal(); open('packBox'); };
@@ -698,7 +712,7 @@
   function revStar(x) { if (!x) return null; var RI = window.V2Render && V2Render.rareInfo, i = RI ? RI(x) : null; if (i) return i.weird ? 'weird' : 'special';
     if (x.hybrid || (x.art && x.art.hybrid) || (V.isHybrid && V.isHybrid(x.species))) return null; return x.species && !REV_PLAIN[x.species] ? 'special' : null; }
   function revStarLabel(x) { var RI = window.V2Render && V2Render.rareInfo, i = RI ? RI(x) : null; if (i) return i.icon + ' ' + (i.weird ? i.name.toUpperCase() : i.banner);
-    return '✨ ' + String(V.speciesLabel ? V.speciesLabel(x.species) : x.species).toUpperCase() + '!'; }
+    return '✨ ' + String(V.petSpeciesLabel ? V.petSpeciesLabel(x) : x.species).toUpperCase() + '!'; }
   function revOneIn(w, x) { var r = window.PetScore && PetScore.peek ? PetScore.peek(w, x) : null; return r && r.rarityOneIn ? r.rarityOneIn : 0; }
   /* Best finds: every weird / special pet first, then the rarest-looking Legendaries, up to 6. */
   function revBest(w, all) { var st = [], rest = [];
@@ -750,7 +764,59 @@
     d.classList.toggle('picked', on); d.setAttribute('aria-checked', String(on)); revCount(); }
   function revCount() { var n = Object.keys(rev.sel).length, b = $('packDiscard'); if (b) { b.textContent = 'Discard selected (' + n.toLocaleString('en-US') + ')'; b.disabled = !n; }
     var c = $('pkSelN'); if (c) c.textContent = n.toLocaleString('en-US'); var cl = $('pkClear'); if (cl) cl.hidden = !n; }
+  /* box-reveal-1124: the box reveal. The first screen of a hatch of 7+ eggs: a big meme headline, the rarity tally counting up,
+   * the best finds dealt in like cards (weird and special first), the Shock Box luck line, then 'See all' opens the sort & discard review.
+   * Fast (about 1.5 s, tap to skip), one screen on a phone, reduced motion = no animation. Display only: nothing is signed or discarded here. */
+  var INTRO_MIN = 7, INTRO_CAPS = { weird: ['ser... what did you just hatch?', 'WEIRD FLEX. KEEP IT.', 'this one is not like the others.'], luck: ['MUCH WOW. VERY LUCK.', 'the box loves you, anon.', 'up only.'],
+    3: ['WAGMI. legendary pull.', 'GIGABRAIN HATCH.', 'number go up.'], 2: ['wen moon? now.', 'not bad, anon.', 'rare drip, fresh eggs.'], 1: ['it\'s honest work.', 'a little something.', 'gm, new frens.'], 0: ['gm. it\'s something.', 'ser, these are Commons.', 'it\'s honest work.'] };
+  var TIER_C = ['#a9b8ad', '#3ddc84', '#5aa9ff', '#ffd166'];
+  function drawIntro(w) {
+    var all = rev.eggs.map(function (id) { return w.byId[id]; }).filter(Boolean), n = all.length, tiers = [0, 0, 0, 0], nEl = 0;
+    all.forEach(function (x) { tiers[x.art.tierIndex]++; if (revEl(x)) nEl++; });
+    if (!rev.best) rev.best = revBest(w, all).map(function (id) { return id.id; }); if (rev.luck == null) rev.luck = revLuck(w, all);
+    var best = rev.best.map(function (id) { return w.byId[id]; }).filter(Boolean).slice(0, 6), star = best.filter(revStar), wd = all.filter(function (x) { return revStar(x) === 'weird'; }).length, sp = all.filter(revStar).length - wd;
+    var box = nEl >= 100 && nEl >= n / 2, ex = Math.round(nEl * (V.ELECTRIC_TIER_10K || [3000, 4000, 2200, 800])[3] / 10000);
+    var ck = star.length ? 'weird' : box && ex && tiers[3] >= ex * 1.1 ? 'luck' : tiers[3] ? 3 : tiers[2] ? 2 : tiers[1] ? 1 : 0, caps = INTRO_CAPS[ck], cap = caps[(n + tiers[3]) % caps.length];
+    $('packTitle').textContent = box ? '⚡ Shock Box opened!' : '🥚 ' + n.toLocaleString('en-US') + ' eggs hatched!';
+    var bars = [3, 2, 1, 0].map(function (t) { var c = tiers[t], pc = n ? Math.max(c ? 2 : 0, Math.round(c * 100 / n)) : 0;
+      return '<div class="pkibar t' + t + '"><span class="pkil">' + esc(TIERS[t].label) + '</span><span class="pkit"><i data-w="' + pc + '" style="width:0;background:' + TIER_C[t] + '"></i></span><b class="pkic" data-n="' + c + '">0</b></div>'; }).join('');
+    var head = star.length ? (wd ? '🌀 ' + wd + ' weird' : '') + (wd && sp ? ' + ' : '') + (sp ? '✨ ' + sp + ' special' : '') + (star.length === 1 && !(wd + sp > 1) ? ' find!' : ' finds!') : '🏆 Your best pulls';
+    var cards = best.map(function (x, i) { var k = revStar(x), oi = revOneIn(w, x);
+      var kp = isKept(x.id);
+      return '<div class="pkic-card t' + x.art.tierIndex + (k ? ' pkb-' + k : '') + '" style="--d:' + i + '"><a class="pkic-open" href="pet.html?id=' + x.id + '" target="_blank" rel="noopener" title="Open #' + x.id + ' in a new tab"><canvas width="32" height="32" data-bid="' + x.id + '"></canvas>' +
+        '<span class="pkbtag">' + esc(k ? revStarLabel(x) : TIERS[x.art.tierIndex].label.toUpperCase()) + '</span><span class="pkbname">#' + x.id + ' ' + esc(V.speciesLabel ? V.speciesLabel(x.species) : x.species) + '</span>' + (oi ? '<span class="pkbodd">💎 1 in ' + (window.PetScore && PetScore.fmtN ? PetScore.fmtN(oi) : oi) + '</span>' : '') + '</a>' +
+        '<button type="button" class="keepbtn pkistar" data-keep="' + x.id + '" aria-pressed="' + kp + '" title="' + (kp ? 'Favorite: never discarded. Click to unstar.' : 'Star this pet as a favorite (never discarded)') + '">' + (kp ? '★' : '☆') + '</button></div>'; }).join('');
+    /* owner Nov 24 2026: 'Make it easy to find and keep the best pets'. One tap stars the best: every weird & special find plus the cards shown. Starred = never discarded. */
+    var keepL = all.filter(revStar).concat(best).filter(function (x, i, a) { return a.indexOf(x) === i; }).map(function (x) { return x.id; }), keepN = keepL.filter(function (id) { return !isKept(id); }).length;
+    $('packSummary').innerHTML = '<div class="pki' + (rev.introDone || lifeReduced() ? ' pki-done' : '') + '">' +
+      '<div class="pkisub">' + (rev.away ? 'While you were away, ' : '') + (rev.away ? 'your ' : 'Your ') + (box ? 'box' : 'eggs') + ' gave you <b>' + n.toLocaleString('en-US') + ' new pet' + (n === 1 ? '' : 's') + '</b></div>' +
+      '<div class="pkibars" role="img" aria-label="' + esc([3, 2, 1, 0].map(function (t) { return tiers[t] + ' ' + TIERS[t].label; }).join(', ')) + '">' + bars + '</div>' +
+      (cards ? '<div class="pkifinds"><div class="pkbh">' + head + '</div><div class="pkirow">' + cards + '</div></div>' : '') +
+      '<div class="pkicap" aria-hidden="true">' + esc(cap) + '</div>' + rev.luck +
+      '<div class="pkigo">' + (keepL.length ? '<button type="button" class="btn pkibest" id="pkiStar"' + (keepN ? '' : ' disabled') + ' title="Stars them: starred pets are favorites and are never discarded">' + (keepN ? '⭐ Keep the best (star ' + keepL.length + ')' : '★ Best ' + (keepL.length === 1 ? 'one' : keepL.length) + ' starred') + '</button>' : '') +
+        '<button type="button" class="btn pkiall" id="pkiAll">See all ' + n.toLocaleString('en-US') + ' &amp; sort ›</button></div>' +
+      '<div class="pkigo pkigo2"><button type="button" class="q" id="pkiKeep" title="Keep every pet. They are already in My Pets.">Done, keep all</button><button type="button" class="q" id="pkiLater" title="Puts a small button at the bottom of the page so you can open this again">Later</button></div></div>';
+    $('packSummary').querySelectorAll('canvas[data-bid]').forEach(function (c) { var x = w.byId[+c.getAttribute('data-bid')]; if (!x) return; try { var fr = petFrames(x, w); paint(c, fr[0]); R.animate(c, fr); } catch (e) { } });
+    var root = $('packSummary').querySelector('.pki'), t0 = 0, DUR = 700, fin = function () { rev && (rev.introDone = 1); root.classList.add('pki-done');
+        root.querySelectorAll('.pkic').forEach(function (b) { b.textContent = (+b.getAttribute('data-n')).toLocaleString('en-US'); }); };
+    root.querySelectorAll('.pkit i').forEach(function (b) { b.style.width = root.classList.contains('pki-done') ? b.getAttribute('data-w') + '%' : '0'; });
+    if (root.classList.contains('pki-done')) fin();
+    else { requestAnimationFrame(function () { root.querySelectorAll('.pkit i').forEach(function (b) { b.style.width = b.getAttribute('data-w') + '%'; }); });
+      var tick = function (ts) { if (!root.isConnected || root.classList.contains('pki-done')) return; if (!t0) t0 = ts; var k = Math.min(1, (ts - t0) / DUR), e = 1 - Math.pow(1 - k, 3);
+        root.querySelectorAll('.pkic').forEach(function (b) { b.textContent = Math.round(+b.getAttribute('data-n') * e).toLocaleString('en-US'); }); if (k < 1) requestAnimationFrame(tick); else setTimeout(function () { if (root.isConnected) fin(); }, 900); };
+      requestAnimationFrame(tick); root.addEventListener('click', function (e) { if (!e.target.closest('a,button')) fin(); }); }
+    $('pkiAll').onclick = function () { rev.intro = false; rev.page = 0; drawReveal(); var g = $('packGrid'); if (g) g.scrollTop = 0; };
+    $('pkiKeep').onclick = closeReveal;
+    root.querySelectorAll('.pkistar').forEach(function (b) { b.onclick = function () { rev.introDone = 1; toggleKeep(+b.getAttribute('data-keep')); drawReveal(); }; });
+    if ($('pkiStar')) $('pkiStar').onclick = function () { rev.introDone = 1; var add = keepL.filter(function (id) { return !isKept(id); }); if (!add.length) return;
+      var l = keptIds().concat(add); try { localStorage.setItem(keepKey(), JSON.stringify(l)); } catch (e) { } try { document.dispatchEvent(new CustomEvent('xcpets-stars')); } catch (e) { }
+      toast('⭐ Starred ' + plural(add.length, 'pet') + ': your favorites, never discarded. Find them with Sort → Starred in My Pets.', 6000); drawReveal(); };
+    $('pkiLater').onclick = function () { var ids = rev.eggs.slice(); if (!revealQ.length) packY = null; close('packBox'); rev = null; trayAdd(ids); render(); setTimeout(nextReveal, 250); };
+    try { $('pkiAll').focus({ preventScroll: true }); } catch (e) { }
+  }
   function drawReveal() {
+    $('packBox').classList.toggle('pkintro', !!(rev.kind === 'eggs' && rev.intro));
+    if (rev.kind === 'eggs' && rev.intro) { var wi = world(); if (rev.eggs.some(function (id) { return wi.byId[id]; })) return drawIntro(wi); rev.intro = false; }
     var w = world(), gear = rev.kind === 'gear', list = gear ? rev.wins : rev.eggs.map(function (id) { return w.byId[id]; }).filter(Boolean), tiers = [0, 0, 0, 0];
     if (!gear) list = sortEggs(w, list, rev.sort); /* egg-review-sort 2026-10-24: display order only; rev.sel is keyed by pet id, so ticks survive re-sorting */
     var all = list; list.forEach(function (x) { tiers[gear ? (x.legendary ? 3 : x.tier) : x.art.tierIndex]++; });
@@ -809,7 +875,7 @@
       var bestL = rev.best.map(function (id) { return w.byId[id]; }).filter(function (x) { return x && rev.eggs.indexOf(x.id) >= 0; });
       var best = bestL.length && all.length > 1 ? '<div class="pkbest" aria-label="Best finds"><div class="pkbh">' + (bestL.some(revStar) ? '🌀 Weird &amp; special finds!' : '✨ Best of this hatch') + '</div><div class="pkbrow">' +
         bestL.map(function (x) { var k = revStar(x), oi = revOneIn(w, x); return '<a class="pkbc t' + x.art.tierIndex + (k ? ' pkb-' + k : '') + '" href="pet.html?id=' + x.id + '" target="_blank" rel="noopener" title="Open #' + x.id + ' in a new tab"><canvas width="32" height="32" data-bid="' + x.id + '"></canvas>' +
-          '<span class="pkbtag">' + esc(k ? revStarLabel(x) : TIERS[x.art.tierIndex].label) + '</span><span class="pkbname">#' + x.id + ' ' + esc(V.speciesLabel ? V.speciesLabel(x.species) : x.species) + '</span>' + (oi ? '<span class="pkbodd">💎 1 in ' + (window.PetScore && PetScore.fmtN ? PetScore.fmtN(oi) : oi) + '</span>' : '') + '</a>'; }).join('') + '</div></div>' : '';
+          '<span class="pkbtag">' + esc(k ? revStarLabel(x) : TIERS[x.art.tierIndex].label) + '</span><span class="pkbname">#' + x.id + ' ' + esc(V.petSpeciesLabel ? V.petSpeciesLabel(x) : x.species) + '</span>' + (oi ? '<span class="pkbodd">💎 1 in ' + (window.PetScore && PetScore.fmtN ? PetScore.fmtN(oi) : oi) + '</span>' : '') + '</a>'; }).join('') + '</div></div>' : '';
       $('packSummary').innerHTML = rev.luck + best + keepRow + chips + tools;
       $('packSummary').querySelectorAll('canvas[data-bid]').forEach(function (c) { var x = w.byId[+c.getAttribute('data-bid')]; if (!x) return; try { var fr = petFrames(x, w); paint(c, fr[0]); R.animate(c, fr); } catch (e) { } }); }
     bindAeTogs($('packSummary'));
@@ -828,7 +894,7 @@
           '<div class="gwwhere">' + (x._on === 'c' ? '✓ Worn by ' + esc(commName(w)) + ' (community pet)' : x._on != null ? '✓ Equipped on #' + x._on : '📦 In your stash') + '</div>';
         d.querySelector('.ic').appendChild(V2Render.iconCanvas(x.item, 'gicon')); grid.appendChild(d); if (window.UXB) UXB.revealCard(d, x, w); return; }
       var gd = dudGuard(w, x), on = !!rev.sel[x.id]; var sk = revStar(x); d.className = 'egg pkcard t' + x.art.tierIndex + (sk ? ' pkstar' : '') + (on ? ' picked' : ''); d.tabIndex = 0; d.setAttribute('role', 'checkbox'); d.setAttribute('aria-checked', String(on)); d.setAttribute('aria-label', 'Select #' + x.id + ' to discard'); d.title = 'Tap to select or unselect';
-      d.innerHTML = '<span class="pkcheck" aria-hidden="true">✓</span><canvas width="32" height="32"></canvas><div>#' + x.id + ' ' + esc(TIERS[x.art.tierIndex].label) + (x.stageName ? ' · ' + esc(V.stageLabelOf ? V.stageLabelOf(x) : x.stageName) : '') + '</div><div class="muted">' + esc(V.speciesLabel ? V.speciesLabel(x.species) : x.species) + '</div>' + (R.eraChip ? R.eraChip(w, x) : '') + (x.parents && R.bredFrom ? '<div class="small">' + R.bredFrom(w, x, false) + '</div>' : '') + (window.PetScore && PetScore.discardInfo ? PetScore.discardInfo(w, x, V.speciesLabel ? V.speciesLabel(x.species) : null) : '') + (gd.length ? '<div class="small dudg" title="Protected: never picked for you">🛡️ Protected · ' + esc(gd.join(', ')) + '</div>' : '');
+      d.innerHTML = '<span class="pkcheck" aria-hidden="true">✓</span><canvas width="32" height="32"></canvas><div>#' + x.id + ' ' + esc(TIERS[x.art.tierIndex].label) + (x.stageName ? ' · ' + esc(V.stageLabelOf ? V.stageLabelOf(x) : x.stageName) : '') + '</div><div class="muted">' + esc(V.petSpeciesLabel ? V.petSpeciesLabel(x) : x.species) + '</div>' + (R.eraChip ? R.eraChip(w, x) : '') + (x.parents && R.bredFrom ? '<div class="small">' + R.bredFrom(w, x, false) + '</div>' : '') + (window.PetScore && PetScore.discardInfo ? PetScore.discardInfo(w, x, V.petSpeciesLabel ? V.petSpeciesLabel(x) : null) : '') + (gd.length ? '<div class="small dudg" title="Protected: never picked for you">🛡️ Protected · ' + esc(gd.join(', ')) + '</div>' : '');
       grid.appendChild(d); var c = d.querySelector('canvas'), fr = petFrames(x, w); paint(c, fr[0]); R.animate(c, fr);
       d.onclick = function (e) { if (e.target.closest && e.target.closest('a,button,input,select,xc-select')) return; revToggle(w, x, d); };
       d.onkeydown = function (e) { if (e.target === d && (e.key === ' ' || e.key === 'Enter')) { e.preventDefault(); revToggle(w, x, d); } };
@@ -1016,7 +1082,7 @@
       var ct = R.careTarget(w, p, S.tip), /* the engine's per-pet thresholds (Mythic discount), shared with the detail panel and pet page */ fed = p.dead ? '🪦 Died of neglect' : ZB(p) ? '' /* v2-zombies preview: no normal meals; the zombie hunger chip below replaces this one */ : p.fedToday ? 'Fed today: ✓' : p.nextMeal ? 'Hungry · meal ' + fmt(p.nextMeal) : 'Full';
       var head = /* mypets-checkbox: the checkbox is back; favorite-star-restore: the ★ favorite is back next to the name */ (p.dead ? '' : '<input type="checkbox" class="pick-cb" aria-label="Select #' + p.id + '"' + (on ? ' checked' : '') + '>') + '<canvas class="sprite" width="32" height="32"></canvas><h4>' + (p.dead ? '' : keepBtn(p.id)) + esc(p.name) + ' <span class="muted">#' + p.id + '</span>' + (p.blackEye ? ' 🤕' : '') + (p.crowned ? ' 👑' : '') + '</h4>';
       var mark = ZB(p) ? '<span class="chip zb-risen" title="Raised at the seance altar in the cemetery. Pets offered there are Sacrificed.">🧟 Risen</span>' : (p.resurrected ? '<span class="chip zb-halo" title="Brought back to life by a Resurrection at block ' + fmt(p.resurrected.block) + ': a halo for good, power ceiling ' + p.resurrected.cap + ' times">😇 Halo</span>' : '');
-      var idCore = tm.html + mark + (R.godBornChip ? R.godBornChip(w, p) : '') + (window.V2MythicGod ? V2MythicGod.chips(p, w) : '') + '<span class="chip">' + esc(spLabel(p.species)) + '</span>' + tierPill(p.tier, p) + '<span class="chip stg">' + esc((V.stageLabelOf ? V.stageLabelOf(p) : p.stageName)) + '</span>';
+      var idCore = tm.html + mark + (R.godBornChip ? R.godBornChip(w, p) : '') + (window.V2MythicGod ? V2MythicGod.chips(p, w) : '') + '<span class="chip">' + esc(spLabel(p)) + '</span>' + tierPill(p.tier, p) + '<span class="chip stg">' + esc((V.stageLabelOf ? V.stageLabelOf(p) : p.stageName)) + '</span>';
       var powChip = window.UXB && UXB.power ? (ZB(p) ? (function (h) { return '<span class="chip pow zb-pow" title="Zombie power, set at the seance altar' + (h ? ': ' + h.times + ' times its death stats' + (h.milestone ? ' (' + esc(h.milestone) + ')' : '') : '') + '">⚡ ' + UXB.power(p) + ' zombie</span>'; })(window.V2Zombies && V2Zombies.hunger ? V2Zombies.hunger(p, w) : null) : '<span class="chip pow"' + ptA(p) + '>⚡ ' + UXB.power(p) + '</span>') : '';
       var numChips = '<span class="chip gearchip">🎒 ' + R.worn(w, p.id).length + '/' + p.capacity + ' slots</span>' + powChip + (window.PetScore ? PetScore.badge(w, p) : '') + (window.PetScore && PetScore.rarityChip ? PetScore.rarityChip(w, p) : '') + (window.UXB ? UXB.origin(p, w) : '') + (p.neglected && !p.dead ? '<span class="chip warn">neglected</span>' : '') + (R.starveChip ? R.starveChip(w, p) : '') + (qWhy ? '<span class="chip quest-chip" title="' + esc(qWhy) + ': can\'t fight, breed, feed, gift or sell until it is home">🗺️ Gone Questing · back at ' + fmt(p.quest.end) + '</span>' : '') + (qNap ? '<span class="chip" title="Resting after a quest: can fight, breed and eat, but can\'t start a new quest yet">💤 Nap Time until ' + fmt(p.napUntil) + '</span>' : '');
       var genEra = (R.genChip ? R.genChip(w, p) : '') + (R.eraChip ? R.eraChip(w, p) : '');
@@ -1083,7 +1149,7 @@
     /* Closed pile: title, count, and tap-to-open only. Filters, sort, cards, and sprites wait until it is opened. */
     if (!DS.open) { hb.innerHTML = pileSummary(gone.length, false); pileToggle(hb.querySelector('details')); return hb; }
     var order = hiddenIds(), pos = {}; order.forEach(function (id, i) { pos[id] = i; });
-    var spOf = function (p) { return spLabel(p.species); }, spList = gone.map(spOf).filter(function (x, i, a) { return a.indexOf(x) === i; }).sort();
+    var spOf = function (p) { return spLabel(p); }, spList = gone.map(spOf).filter(function (x, i, a) { return a.indexOf(x) === i; }).sort();
     if (DS.sp !== 'all' && spList.indexOf(DS.sp) < 0) DS.sp = 'all';
     var q = DS.q.trim().toLowerCase(), iq = window.V2PetSearch && V2PetSearch.idQuery && V2PetSearch.idQuery(DS.q), idSet = iq && iq.mode === 'ids' ? {} : null; if (idSet) iq.ids.forEach(function (id) { idSet[id] = 1; });
     var kinds = [], list = gone.filter(function (p) { var i = dsRare(p); if (i && kinds.indexOf(i.kind) < 0) kinds.push(i.kind);
@@ -1247,7 +1313,7 @@
   function statBars(p) { var MAX = 31, tot = 0, st = p.stats || {}; return PetCore.STAT_KEYS.map(function (k) { var v = st[k] || 0; tot += v; return '<div class="stat"><span class="sk">' + k.toUpperCase() + '</span><span class="sbar"><i style="width:' + Math.min(100, 100 * v / MAX).toFixed(0) + '%"></i></span><b>' + v + '</b></div>'; }).join('') + '<div class="stat tot"><span class="sk">TOTAL</span><b>' + tot + '</b></div>'; }
   /* family-tree-fix (2026-10-19): the root also lists its own children (V2Render's chart replaces this ul.tree with ancestors above + children below). */
   function tree(t, kids) { if (!t) return ''; var w0 = kids && world(), ch = kids && w0 ? (t.children || []).map(function (id) { return w0.byId[id]; }).filter(Boolean) : [];
-    return '<ul class="tree"><li>#' + t.id + ' ' + esc(t.name) + ' <span class="muted">' + spLabel(t.species) + ' · ' + (t && t.resurrected ? 'God' : TL[t.tier]) + '</span>' + t.parents.map(function (x) { return tree(x); }).join('') +
+    return '<ul class="tree"><li>#' + t.id + ' ' + esc(t.name) + ' <span class="muted">' + spLabel(t) + ' · ' + (t && t.resurrected ? 'God' : TL[t.tier]) + '</span>' + t.parents.map(function (x) { return tree(x); }).join('') +
       (ch.length ? '<ul class="treekids">' + ch.map(function (c) { return '<li>child #' + c.id + ' ' + esc(c.name) + '</li>'; }).join('') + '</ul>' : '') + '</li></ul>'; }
   function goPet(id, e) { var u = 'pet.html?id=' + id; if (e && (e.ctrlKey || e.metaKey || e.button === 1)) window.open(u, '_blank'); else { try { sessionStorage.setItem('xcpets-v2-petret', JSON.stringify({ y: Math.round(window.scrollY), id: id, at: Date.now(), path: location.pathname + location.search })); } catch (x) { } location.href = u; } }
   /* flow-fixes (2026-10-22): coming back from a pet page (Back, or its back link) puts My Pets where you left it and flashes that card. UI only. */
@@ -1316,7 +1382,7 @@
     var frs = petFrames(p, w); paint($('dCanvas'), frs[0]); R.animate($('dCanvas'), frs);
     $('dStats').innerHTML = (R.eraChip ? R.eraChip(w, p) : '') + statBars(p);
     var inv = w.itemList.filter(function (g) { return g.owner === ME && g.on == null; }), legAll = V.legendaryOf(p.species), leg = legAll[0];
-    var h = '<a class="btn openpet" id="dOpenPet" href="pet.html?id=' + p.id + '">Open pet page →</a>' + (window.V2Rivals ? V2Rivals.strip(w, p.id, function (fid) { return 'fight.html#replay-' + fid; }) : '') + (R.bredFrom ? '<div class="chips dbred">' + R.bredFrom(w, p, true) + '</div>' : '') + '<p>' + esc(spLabel(p.species)) + ' · ' + p.stageName + ' · care ' + fmt(p.care) + ' / ' + fmt(R.careTarget(w, p, S.tip).mythic) + (R.careTarget(w, p, S.tip).discount ? ' (Mythic at ' + fmt(R.careTarget(w, p, S.tip).mythic) + ' care because you raised a Mythic)' : '') + (p.species === 'nakamoto' && !V.nakaNormal(S.tip) ? ' (Nakamoto: 10× thresholds until block ' + fmt(V.ACTIVATE_NAKA_NORMAL_BLOCK) + ', then normal growth)' : '') + ' · W' + (p.wins || 0) + '/L' + (p.losses || 0) + '</p>';
+    var h = '<a class="btn openpet" id="dOpenPet" href="pet.html?id=' + p.id + '">Open pet page →</a>' + (window.V2Rivals ? V2Rivals.strip(w, p.id, function (fid) { return 'fight.html#replay-' + fid; }) : '') + (R.bredFrom ? '<div class="chips dbred">' + R.bredFrom(w, p, true) + '</div>' : '') + '<p>' + esc(spLabel(p)) + ' · ' + p.stageName + ' · care ' + fmt(p.care) + ' / ' + fmt(R.careTarget(w, p, S.tip).mythic) + (R.careTarget(w, p, S.tip).discount ? ' (Mythic at ' + fmt(R.careTarget(w, p, S.tip).mythic) + ' care because you raised a Mythic)' : '') + (p.species === 'nakamoto' && !V.nakaNormal(S.tip) ? ' (Nakamoto: 10× thresholds until block ' + fmt(V.ACTIVATE_NAKA_NORMAL_BLOCK) + ', then normal growth)' : '') + ' · W' + (p.wins || 0) + '/L' + (p.losses || 0) + '</p>';
     if (ZB(p)) h += (window.V2Zombies && V2Zombies.hungerBar ? V2Zombies.hungerBar(p, world()) : '') + zZoneHtml(p, world());
     if (!p.dead && !p.released && ME && p.owner === ME) h += '<div class="row">' + (ZB(p) ? '' : '<button class="btn ico-flame" data-a="feed"' + (p.hungry ? '' : ' disabled') + '>Feed (' + fmt(p.nextMeal) + ')</button>') + /* zombie-feed-pets: a zombie never takes a normal meal, so no Feed button on its panel */ (V.wheelOn && V.wheelOn((S.tip || 0) + 1) ? '<a class="btn ghost" href="#rare-room" title="Gear rolls are Pepe Wheel spins: the piece goes to a random pet of yours">🎡 Spin the Pepe Wheel</a>' : '<button class="btn ghost ico-flame" data-a="roll" title="Burn ' + fmt(V.COSTS.roll) + ' XCPETS for one random gear piece for this pet">🎲 Roll for gear (' + fmt(V.COSTS.roll) + ')</button>') + frBtn(w) + ofBtn(w, p) + '<button class="act ghost" id="dDiscard" title="Moves it to the Discard pile (only hidden in this browser). Free, no burn; restore any time.">🗑️ Discard pet</button></div>' +
       (p.owner === ME ? rollHelp(p) : '');
@@ -1639,7 +1705,7 @@
   // ---------------------------------------------------------------- battles
   function fighters(w, owner, not) { var oc = {}; if (!not) { (w.fights || []).forEach(function (f) { if (f.status === 'open' && (S.tip || 0) + 1 - f.block <= V.FIGHT_WINDOW) { oc[f.a] = 1; oc[f.b] = 1; } }); myPendingTags().forEach(function (g) { var t = V.parseTag(g); if (t && t.action === 'fight') { oc[t.a] = 1; oc[t.b] = 1; } }); } /* engine: a challenger may not have an open challenge (sent or received) */
     return w.pets.filter(function (p) { return (not ? p.owner !== owner : p.owner === owner) && !p.dead && !p.released && p.stage >= 2 && !p.neglected && !oc[p.id]; }); }
-  function opt(p) { return '<option value="' + p.id + '">#' + p.id + ' ' + esc(p.name) + ' (' + spLabel(p.species) + ' ' + (V.stageLabelOf ? V.stageLabelOf(p) : p.stageName) + ')' + (p.owner !== ME ? ' — ' + esc(p.owner) : '') + '</option>'; }
+  function opt(p) { return '<option value="' + p.id + '">#' + p.id + ' ' + esc(p.name) + ' (' + spLabel(p) + ' ' + (V.stageLabelOf ? V.stageLabelOf(p) : p.stageName) + ')' + (p.owner !== ME ? ' — ' + esc(p.owner) : '') + '</option>'; }
   /* pending challenges (2026-10-15, Jake): the battles box lists the connected player's open challenges in BOTH directions:
    * sent (still waiting for acceptance) and received (with Accept). Confirmed ones come from the replayed world (w.fights, status 'open');
    * unconfirmed ones come from the node mempool (S.mempool, read-only) + this browser's sent-burn tracker. Display only: nothing here feeds the replay. */
@@ -1668,7 +1734,7 @@
    * 'Confirm breed'): both pets with sprite, #, species, rarity pill, Pet Score, owner badge; buttons relabelled Confirm breed / Back. */
   function breedReview(w, a, b) { if (!ME || !$('confirmBox').classList.contains('on')) return; var short = function (x) { x = String(x || ''); return x.length > 12 ? x.slice(0, 4) + '\u2026' + x.slice(-3) : x; };
     var card = function (p, lab) { if (!p) return ''; var sc = window.PetScore && PetScore.of(w, p);
-      return '<div class="brv-pet"><span class="brv-sp" data-brv="' + p.id + '"></span><div><b>' + lab + '</b><div class="brv-nm">#' + p.id + ' ' + esc(p.name || '') + '</div><div>' + esc(V.speciesLabel(p.species)) + ' ' + tierPill(p.tier, p) + ' <span class="brv-sc">⭐ ' + (sc ? sc.score : '–') + '</span></div>' +
+      return '<div class="brv-pet"><span class="brv-sp" data-brv="' + p.id + '"></span><div><b>' + lab + '</b><div class="brv-nm">#' + p.id + ' ' + esc(p.name || '') + '</div><div>' + esc((V.petSpeciesLabel ? V.petSpeciesLabel(p) : V.speciesLabel(p.species))) + ' ' + tierPill(p.tier, p) + ' <span class="brv-sc">⭐ ' + (sc ? sc.score : '–') + '</span></div>' +
         (p.owner === ME ? '<em class="bk-own me">My Pets</em>' : '<em class="bk-own" title="' + esc(p.owner) + '">Other Pets ' + esc(short(p.owner)) + '</em>') + '</div></div>'; };
     var flip = breedFlip(w, a, b); if (flip && flip.kind === 'confirmed') { var ct = $('cfTitle'); if (ct && !/accept/i.test(ct.textContent || '')) ct.textContent = 'Accept their check-in · #' + a + ' × #' + b; }
     $('cfBody').insertAdjacentHTML('afterbegin', (flip ? breedFlipNote(flip) : '') + '<div class="brv">' + card(w.byId[a], 'Pet 1') + card(w.byId[b], 'Pet 2') + '</div>');
@@ -1798,7 +1864,7 @@
   /* flow-fixes (2026-10-22): results that arrive with the first chain load are HELD for the 'While you were away' sheet (Watch all / Skip all) instead of
    * popping one after another; results that land later play as before. The arena calls V2AnimDone when a fight ends so the queue moves on (it never opens
    * the pop-up, so animClose never advanced it). A queued animation waits while the hatch/gear results are open. */
-  var heldA = [], heldR = false, released = false, firstDataT = 0;
+  var heldA = [], heldR = false, released = false, firstDataT = 0, holdT = 0;
   function dataSeen() { if (!firstDataT) firstDataT = Date.now(); }
   function holding() { return !released && document.documentElement.classList.contains('ip-hold') && firstDataT && Date.now() - firstDataT < 8000; }
   function awayPing() { if (window.V2IpChip) try { V2IpChip(); } catch (e) { } }
@@ -1852,7 +1918,7 @@
      * ONCE per world (one HTML string -> one fragment, lazy sprites, one delegated click per grid) and a pick only updates the affected cards. */
     function card(x, role, sel) { var p = x.p, on = String(p.id) === sel;
       return '<button type="button" class="pet card' + (on ? ' sel' : '') + (x.why ? ' off' : '') + '" data-role="' + role + '" data-pid="' + p.id + '" title="' + esc(x.why ? 'Can\'t pick: ' + x.why : 'Pick #' + p.id + ' as parent ' + role) + '" aria-pressed="' + on + '">' +
-        '<canvas width="32" height="32"></canvas><b style="color:var(--ink)">' + esc(p.name) + '</b><div class="muted">#' + p.id + ' ' + tierPill(p.tier, p) + ' · ' + esc(spLabel(p.species)) + ' · ' + esc((V.stageLabelOf ? V.stageLabelOf(p) : p.stageName)) + '</div>' + (p.owner !== ME ? '<div class="muted">' + shortAddr(p.owner) + '</div>' : '') + '</button>'; }
+        '<canvas width="32" height="32"></canvas><b style="color:var(--ink)">' + esc(p.name) + '</b><div class="muted">#' + p.id + ' ' + tierPill(p.tier, p) + ' · ' + esc(spLabel(p)) + ' · ' + esc((V.stageLabelOf ? V.stageLabelOf(p) : p.stageName)) + '</div>' + (p.owner !== ME ? '<div class="muted">' + shortAddr(p.owner) + '</div>' : '') + '</button>'; }
     function patch(box, pid, role) { var x = pid && box.__by[pid], d = x && box.querySelector('.pet.card[data-pid="' + pid + '"]'); if (!d) return;
       d.classList.toggle('off', !!x.why); d.title = x.why ? 'Can\'t pick: ' + x.why : 'Pick #' + pid + ' as parent ' + role; }
     function grid(box, list, sel, role, input) {
@@ -1892,7 +1958,7 @@
     if (!all) { last = []; n = 0; for (var i = 0; i < w.pets.length; i++) { var p = w.pets[i]; if (!p.parents) continue; n++; last.push(p); if (last.length > 24) last.shift(); } }
     else { n = all.length; last = all.slice(0, 24); }
     var key = n + '|' + (last[0] ? last[0].id : 0); if (box.__rk === key) return; box.__rk = key;
-    box.innerHTML = (n > last.length ? '<span class="muted">Newest ' + last.length + ' of ' + fmt(n) + ' eggs. </span>' : '') + (last.map(function (k) { return '<span class="chip">#' + k.id + ' ' + esc(k.name) + ' · ' + (V.tierLabelOf ? V.tierLabelOf(k) : TL[k.tier]) + ' ' + spLabel(k.species) + ' · ' + k.stageName + ' ← #' + k.parents.join(' × #') + '</span>'; }).join('') || '<span class="muted">none yet</span>'); }
+    box.innerHTML = (n > last.length ? '<span class="muted">Newest ' + last.length + ' of ' + fmt(n) + ' eggs. </span>' : '') + (last.map(function (k) { return '<span class="chip">#' + k.id + ' ' + esc(k.name) + ' · ' + (V.tierLabelOf ? V.tierLabelOf(k) : TL[k.tier]) + ' ' + spLabel(k) + ' · ' + k.stageName + ' ← #' + k.parents.join(' × #') + '</span>'; }).join('') || '<span class="muted">none yet</span>'); }
   function reqsLine(w) { var box = $('bReqs'); if (!box) return;
     box.innerHTML = w.breedReqs.filter(function (r) { return !r.used && S.tip - r.block <= V.BREED_WINDOW; }).map(function (r) { return '<div data-btx="' + esc(r.tx || '') + '">' + petLblT(w, r.a) + ' → ' + petLblT(w, r.b) + ' (until block ' + (r.block + V.BREED_WINDOW) + ') ' + ((w.byId[r.b] || {}).owner !== ME ? '<span class="muted">waiting for the owner of #' + r.b + ' to accept</span>' : (V.sendBlock && V.sendBlock(w, { tag: 'pet:breed:' + r.b + ':' + r.a, accept: true }, S.tip, { me: ME }) ? '<span class="muted">can\'t accept: ' + esc(V.sendBlock(w, { tag: 'pet:breed:' + r.b + ':' + r.a, accept: true }, S.tip, { me: ME })) + '</span>' : '<span class="muted">accept it in Your pending challenges above</span>')) + '</div>'; }).join('') + unconfBreeds(w) || '<div class="muted">none</div>'; }
   /* unconfirmed breed burns (node mempool + this browser's tracker) shown in the open list until the tx is in S.rows (display only) */
@@ -1941,7 +2007,7 @@
     var gear = function (p) { return V.wornOf(w, p.id).map(function (g) { var it = (V.GEAR_BY_ID || {})[g.item]; return { slot: g.slot, label: it ? it.label : (g.label || g.item), tier: it ? it.tier : (g.legendary ? 3 : (g.tier || 0)) }; }); };
     var best = function (p) { return K.reduce(function (m, k) { return p.stats[k] > p.stats[m] ? k : m; }, K[0]); };
     var hp = function (p) { return 40 + p.stats.vigor * 2 + p.stats.grit + p.stage * 6; }, gp = function (p) { return gear(p).reduce(function (t, g) { return t + 1 + g.tier * 2; }, 0); };
-    function col(p, o, who) { var g = gear(p), grip = g.filter(function (q) { return q.slot === 'hand'; })[0], h = '<div class="irqcol' + (window.V2FightTag && V2FightTag.mine(p) ? ' fme' : '') + '"><div class="small muted">' + (window.V2FightTag && x.kind === 'fight' ? V2FightTag.html(p, o) : who) + '</div><canvas width="32" height="32" class="sprite" data-irqp="' + p.id + '"></canvas><div><b>' + esc(p.name) + '</b> <span class="muted">#' + p.id + '</span></div><div class="chips">' + tierPill(p.tier, p) + '<span class="chip">' + esc(spLabel(p.species)) + '</span><span class="chip stg">' + p.stageName + '</span><span class="chip pow"' + ptA(p) + '>⚡ ' + pw(p) + '</span></div>' +
+    function col(p, o, who) { var g = gear(p), grip = g.filter(function (q) { return q.slot === 'hand'; })[0], h = '<div class="irqcol' + (window.V2FightTag && V2FightTag.mine(p) ? ' fme' : '') + '"><div class="small muted">' + (window.V2FightTag && x.kind === 'fight' ? V2FightTag.html(p, o) : who) + '</div><canvas width="32" height="32" class="sprite" data-irqp="' + p.id + '"></canvas><div><b>' + esc(p.name) + '</b> <span class="muted">#' + p.id + '</span></div><div class="chips">' + tierPill(p.tier, p) + '<span class="chip">' + esc(spLabel(p)) + '</span><span class="chip stg">' + p.stageName + '</span><span class="chip pow"' + ptA(p) + '>⚡ ' + pw(p) + '</span></div>' +
         '<table class="small irqst">' + K.map(function (k) { return '<tr><td>' + k + '</td><td><b>' + p.stats[k] + '</b>' + (x.kind === 'breed' && k === best(p) ? ' ★' : '') + '</td></tr>'; }).join('') + '</table>';
       if (x.kind === 'fight') { h += '<div class="small"><span' + (window.V2PowerTip ? V2PowerTip.attr(V2PowerTip.hp(p)) : '') + '>HP <b>' + hp(p) + '</b></span> · <span' + (window.V2PowerTip ? V2PowerTip.attr(V2PowerTip.gear(g)) : '') + '>gear dmg +<b>' + gp(p) + '</b></span> · crit <b>' + (5 + Math.floor(p.stats.luck / 4)) + '%</b> · dodge <b>' + Math.floor(p.stats.zoom / 5) + '%</b></div><div class="small">Grip: <b>' + esc(grip ? grip.label : 'bare paws') + '</b></div>' +
         '<div class="small muted">' + (g.length ? g.map(function (q) { return esc(V.slotLabel(q.slot)) + ': ' + esc(q.label) + ' (' + TL[Math.min(3, q.tier)] + ')'; }).join(' · ') : 'no gear worn') + '</div>'; }
@@ -1983,7 +2049,7 @@
       if (t >= 30 && fk) { var s = Math.min(64, 16 + (t - 30) * 6); draw(fk[k % 4], 180 - s / 2, 120 - s, false, s); }
       ctx.fillStyle = '#e8f5ec'; ctx.font = '8px "Press Start 2P", monospace';
       ctx.fillText(t < 14 ? 'BREED: #' + A.id + ' x #' + B.id : t < 30 ? '<3 <3 <3' : kid ? (kid.hybrid ? 'HYBRID! ' + (window.V2Rules && V2Rules.hybridLabel ? V2Rules.hybridLabel(kid.hybrid.key) : kid.hybrid.name).toUpperCase() : 'EGG #' + kid.id + '!') : 'REQUEST SENT', 12, 158);
-      if (t >= 40 && kid && !$('bFeedEgg')) { $('breedMsg').innerHTML = (kid.hybrid ? '🧬 <span class="chip hyb">HYBRID</span> <b>' + esc((window.V2Rules && V2Rules.hybridLabel ? V2Rules.hybridLabel(kid.hybrid.key) : kid.hybrid.name)) + '</b> (' + (kid.hybrid.roots || [kid.hybrid.a, kid.hybrid.b]).map(function (r) { return esc(V.speciesLabel(r)); }).join(' × ') + ') · ' : '') + '🥚 <b>#' + kid.id + ' ' + esc(kid.name) + '</b> · ' + TL[kid.tier] + ' ' + esc(spLabel(kid.species)) + ' · starts as an Egg · parents #' + A.id + ' × #' + B.id + '<br><span class="hatchnote">Your new egg #' + kid.id + ' is in My Pets. Feed it ' + fmt(kid.nextMeal > 0 ? kid.nextMeal : V.COSTS.feedMin) + ' XCPETS to hatch.</span> <button type="button" class="q" id="bFeedEgg" data-egg="' + kid.id + '">🍼 Feed to hatch</button>'; $('bFeedEgg').onclick = function () { feedEgg(kid.id); }; } }
+      if (t >= 40 && kid && !$('bFeedEgg')) { $('breedMsg').innerHTML = (kid.hybrid ? '🧬 <span class="chip hyb">HYBRID</span> <b>' + esc((window.V2Rules && V2Rules.hybridLabel ? V2Rules.hybridLabel(kid.hybrid.key) : kid.hybrid.name)) + '</b> (' + (kid.hybrid.roots || [kid.hybrid.a, kid.hybrid.b]).map(function (r) { return esc(V.speciesLabel(r)); }).join(' × ') + ') · ' : '') + '🥚 <b>#' + kid.id + ' ' + esc(kid.name) + '</b> · ' + TL[kid.tier] + ' ' + esc(spLabel(kid)) + ' · starts as an Egg · parents #' + A.id + ' × #' + B.id + '<br><span class="hatchnote">Your new egg #' + kid.id + ' is in My Pets. Feed it ' + fmt(kid.nextMeal > 0 ? kid.nextMeal : V.COSTS.feedMin) + ' XCPETS to hatch.</span> <button type="button" class="q" id="bFeedEgg" data-egg="' + kid.id + '">🍼 Feed to hatch</button>'; $('bFeedEgg').onclick = function () { feedEgg(kid.id); }; } }
     clearInterval(playBreed.iv); frame(); playBreed.iv = setInterval(function () { k++; frame(); if (k >= END) { clearInterval(playBreed.iv); setTimeout(function () { if (animM.el === $('breedStage')) animClose(); }, 1200); } }, 120);
     $('bSkip').onclick = function () { clearInterval(playBreed.iv); k = END; frame(); breedSkip(kid ? kid.id : null); };
     $('bSkip').disabled = false; var bn = $('bSkipNote'); if (bn) bn.remove();

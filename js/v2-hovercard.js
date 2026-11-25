@@ -14,7 +14,7 @@
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function V() { return window.V2Rules || {}; }
   function W() { try { return window.__demo && __demo.world ? __demo.world() : null; } catch (e) { return null; } }
-  function spL(id) { try { return V().speciesLabel ? V().speciesLabel(id) : id; } catch (e) { return id; } }
+  function spL(id) { try { var R = V(); if (id && typeof id === 'object') return R.petSpeciesLabel ? R.petSpeciesLabel(id) : R.speciesLabel(id.species); return R.speciesLabel ? R.speciesLabel(id) : id; } catch (e) { return id && typeof id === 'object' ? id.species : id; } } /* a pet object: its shown name (cross pets: 'Star-Lord Pigeon') */
   function lbl(pool, id) { var P = window.PetCore && PetCore[pool]; var o = P && P.filter(function (q) { return q.id === id; })[0]; return o ? o.label : id; }
   function hrs(blocks) { var h = blocks / 6; return h >= 24 ? '~' + (h / 24).toFixed(1) + ' days' : '~' + Math.max(1, Math.round(h)) + ' h'; }
   /* which pet + which flow is this element? */
@@ -29,7 +29,7 @@
   function row(k, v, cls) { return '<div class="hc-r' + (cls ? ' ' + cls : '') + '"><span>' + k + '</span><b>' + v + '</b></div>'; }
   function head(p) { var hy = V().isHybrid && V().isHybrid(p.species);
     return '<div class="hc-h"><b>#' + p.id + ' ' + esc(p.name || '') + '</b><span class="hc-t t' + p.tier + '">' + esc((p.resurrected ? 'God' : TL[p.tier]) || '') + '</span></div>' +
-      '<div class="hc-s">' + (hy ? '🧬 ' : '') + esc(spL(p.species)) + ' · ' + esc((window.V2Rules && V2Rules.stageLabelOf ? V2Rules.stageLabelOf(p) : p.stageName) || '') + (window.V2Badges && V2Badges.oldMoneyMark ? ' ' + V2Badges.oldMoneyMark(p) : '') + '</div>'; }
+      '<div class="hc-s">' + (hy ? '🧬 ' : '') + esc(spL(p)) + ' · ' + esc((window.V2Rules && V2Rules.stageLabelOf ? V2Rules.stageLabelOf(p) : p.stageName) || '') + (window.V2Badges && V2Badges.oldMoneyMark ? ' ' + V2Badges.oldMoneyMark(p) : '') + '</div>'; }
   /* Carried stat floors live on p.carried and on the full card as "Carries: Dodo traits from Name #id (GRIT 30 floor for its future children)".
    * Beside that stat here, a mate pick does not need the full card. No extra text when the pet carries nothing. Hidden-trait
    * carriers stay off this card, the same as the full card. Display only: the stored floor is shown, never recomputed. */
@@ -58,7 +58,7 @@
     if (R.breedsLeft) { var bl = R.breedsLeft(p, b); if (bl.on) h += row('🥚 Breeds left', bl.left + ' / ' + bl.cap); }
     var A = selA(w); if (A && A.id !== p.id && R.kinWhy) { var k = R.kinWhy(A, p); if (k) h += '<div class="hc-no">👪 with #' + A.id + ': ' + esc(k) + '</div>'; } if (A && A.id !== p.id && R.resPairWhy) { var rq = R.resPairWhy(A, p, (w.tip || 0) + 1); if (rq) h += '<div class="hc-no">😇 with #' + A.id + ': ' + esc(rq) + '</div>'; }
     var s = p.stats || {}, best = STATS.reduce(function (m, k) { return (s[k] || 0) > (s[m] || 0) ? k : m; }, STATS[0]);
-    h += '<div class="hc-sub">Passes down</div>' + row('Species', esc(spL(p.species)) + ' (50/50, mixed pair can hatch a hybrid)') +
+    h += '<div class="hc-sub">Passes down</div>' + row('Species', esc(spL(p)) + ' (50/50, mixed pair can hatch a hybrid)') +
       row('Tier', esc((p.resurrected ? 'God' : TL[p.tier]) || '') + ' (baby: lower, higher or +1 tier)') +
       row('Stats', statBits(w, p), 'hc-stats') +
       row('', 'baby = parents\u2019 average ±2; hybrid keeps best ' + best + ' ' + (s[best] || 0), 'hc-m');

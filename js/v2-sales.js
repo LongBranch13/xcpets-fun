@@ -430,7 +430,7 @@
   var PF = window.V2PetFilter, BINDER_F = ['sp', 'tier', 'st', 'badge', 'cur', 'min', 'max', 'pw', 'bl', 'gear', 'buy', 'sort'], PICK_F = ['sp', 'tier', 'st', 'badge', 'sort'];
   function omLine(p) { return V.oldMoney(p) ? '<p class="sh-omline">' + PF.badge(p) + ' Bred while breeding cost 690. A collector mark only; it never changes how the pet plays.</p>' : ''; }
   function tierName(p) { return p.resurrected ? 'God' : p.stage >= 5 || p.mythicCare ? 'Mythic' : TL[p.tier] || ''; }
-  function spName(p) { try { return V.speciesLabel(p.species); } catch (e) { return p.species; } }
+  function spName(p) { try { return (V.petSpeciesLabel ? V.petSpeciesLabel(p) : V.speciesLabel(p.species)); } catch (e) { return p.species; } }
   function art(p) { return PREVIEW || !window.V2Render ? '<img alt="" src="img/theme/sp-' + esc(String(p.species).replace(/[^a-z]/g, '')) + '.png">' : '<span class="sh-sp" data-shsp="' + p.id + '"></span>'; }
   /* token-press-speed-1104: profiled on live (G Money, 2,972 free pets) the first Token Press page froze ~1.0 s, all of it here: 48 sprites at
    * ~21 ms each (Mythic overlays). The empty canvases are placed at once (so a second paint() call skips them, same as before) and the sprites
