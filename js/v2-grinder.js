@@ -25,6 +25,15 @@
   function G_() { var G = V().GRIND || {}; return { COST: G.COST || 69, MAX: G.MAX || 2000, MEAT: G.MEAT || [1, 2, 5, 20], SPIN_EVERY: G.SPIN_EVERY || 250, EGG_EVERY: G.EGG_EVERY || 1000,
     GOLD_PER_PET: G.GOLD_PER_PET || 50, GOLD_MAX: G.GOLD_MAX || 100000 }; }
   var T = ['Common', 'Uncommon', 'Rare', 'Legendary'], TC = ['#c9c9c9', '#7be07b', '#5ab4ff', '#ffd166'];
+  /* MEAT GRINDER 2 (rules ACTIVATE_GRIND2_BLOCK, Jake Nov 25 2026): keep-rarity grinds, better Sausage Eggs, Golden Sausage = the special egg */
+  function g2(b) { var v = V(); return !!(v.grind2On && v.grind2On(b)); }
+  function goldOdds(n, b) { var v = V(), G = G_(); return v.grindGoldOdds ? v.grindGoldOdds(n, b) : Math.min(G.GOLD_MAX, n * G.GOLD_PER_PET); } /* per million */
+  /* the 1-in-777 slot pet right now (display only: the replay decides). Same order as the rules' special-egg chain. */
+  function specialName(w) { return w.groyperMythic ? 'Groyper' : w.rabbitMythic ? 'White Rabbit' : w.homerMythic ? 'Homer Pepe' : w.funtrumpMythic ? 'FUNTRUMP' : 'the special egg'; }
+  var SPECIAL_SP = { homer: 1, rabbit: 1, groyper: 1, funtrump: 1, kek: 1, wizard: 1 };
+  var KEEP = [[3, '🥩 Everything'], [2, '⭐ Keep Legendaries'], [1, '💎 Keep Rares + Legendaries'], [0, '🪨 Commons only']], KEEP_KEY = 'xcpets-grind-keep';
+  function keepGet() { try { var r = localStorage.getItem(KEEP_KEY), k = +r; return r != null && k >= 0 && k <= 3 ? k : 3; } catch (e) { return 3; } }
+  function keepSet(k) { try { localStorage.setItem(KEEP_KEY, String(k)); } catch (e) { } }
 
   function css() { if ($('mgrCss')) return; var s = document.createElement('style'); s.id = 'mgrCss';
     s.textContent = '.mgr-bg{position:fixed;inset:0;z-index:10050;background:rgba(5,4,12,.86);display:flex;align-items:center;justify-content:center;padding:10px}' +
@@ -74,6 +83,7 @@
       '.mgr-amt input[type=range]{width:100%;margin:6px 0;accent-color:#ff4d4d;height:28px;cursor:pointer}' +
       '.mgr-chips{display:flex;flex-wrap:wrap;gap:6px}.mgr-chips button{flex:1 1 0;min-width:56px;min-height:38px;font:700 14px "Comic Neue",sans-serif;color:#f3ecd8;background:#2a2150;border:2px solid #000;box-shadow:2px 2px 0 #000;cursor:pointer;padding:4px 6px}' +
       '.mgr-chips button[aria-pressed=true]{background:#ffd166;color:#100e14}.mgr-chips button:disabled{opacity:.4;cursor:not-allowed}' +
+      '.mgr-keep .mgr-chips{display:grid;grid-template-columns:1fr 1fr}.mgr-keep .mgr-chips button{font-size:13px;line-height:1.15;min-height:44px}' +
       '.mgr-tiers{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}.mgr-tiers span{font:700 12px "Comic Neue",sans-serif;border:2px solid #000;padding:2px 6px;background:#100e14}' +
       '.mgr-get{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin:8px 0}.mgr-get div{background:#16221a;border:2px solid #000;text-align:center;padding:6px 2px}.mgr-get b{display:block;font:400 26px Bangers,Impact,sans-serif;letter-spacing:1px;color:#ffd166;text-shadow:2px 2px 0 #000;line-height:1}' +
       '.mgr-get small{display:block;font-size:12px;line-height:1.2;margin-top:2px}.mgr-get .gd b{color:#ffe68a}' +
@@ -127,16 +137,17 @@
     bg.innerHTML = '<div class="mgr' + (wide ? ' wide' : '') + '"></div>'; document.body.appendChild(bg); bg.onclick = function (e) { if (e.target === bg) close(); }; document.addEventListener('keydown', onKey); return bg.querySelector('.mgr'); }
 
   /** sum(list, n, before): what grinding the first n pets of the list gives (same math as V2Rules.grindPreview; the GRIND button asks the rules) */
-  function sum(w, ids, n, before) { var G = G_(), meat = 0, by = [0, 0, 0, 0], i, p, t;
+  function sum(w, ids, n, before, b) { var G = G_(), meat = 0, by = [0, 0, 0, 0], i, p, t;
     for (i = 0; i < n && i < ids.length; i++) { p = w.byId[ids[i]]; if (!p) continue; t = Math.min(3, Math.max(0, p.tier | 0)); meat += G.MEAT[t]; by[t]++; }
     var after = before + meat;
     return { n: Math.min(n, ids.length), meat: meat, byTier: by, after: after, spins: Math.floor(after / G.SPIN_EVERY) - Math.floor(before / G.SPIN_EVERY),
-      eggs: Math.floor(after / G.EGG_EVERY) - Math.floor(before / G.EGG_EVERY), goldPct: Math.min(G.GOLD_MAX, n * G.GOLD_PER_PET) / 10000 }; }
+      eggs: Math.floor(after / G.EGG_EVERY) - Math.floor(before / G.EGG_EVERY), goldPct: goldOdds(Math.min(n, ids.length), b) / 10000 }; }
 
   function open() { var d = D(), v = V(); if (!d || !d.world || !v.grindPreview) return; var w = d.world(), a = me(), box = shell(true), b = tipB(w), on = open_(w), G = G_();
     var R = (w.grind && a && w.grind[a]) || { meat: 0 }, meat = R.meat || 0;
-    var pv = on && a ? v.grindPreview(w, a, b) : { ok: false, n: 0, meat: 0, byTier: [0, 0, 0, 0], ids: [], why: on ? 'Connect your wallet to use the Grinder.' : 'The Meat Grinder opens soon.' };
-    var ids = (pv.ids || []).slice(), max = ids.length, bo = a ? browserOnly(w) : 0, cost = v.grindPlan && on && a && pv.ok ? v.grindPlan(w, a, b).amount : G.COST;
+    var mx = g2(b) ? keepGet() : 3, keepArg = mx < 3 ? mx : undefined, sp = specialName(w);
+    var pv = on && a ? v.grindPreview(w, a, b, 0, keepArg) : { ok: false, n: 0, meat: 0, byTier: [0, 0, 0, 0], ids: [], why: on ? 'Connect your wallet to use the Grinder.' : 'The Meat Grinder opens soon.' };
+    var ids = (pv.ids || []).slice(), max = ids.length, bo = a ? browserOnly(w) : 0, cost = v.grindPlan && on && a && pv.ok ? v.grindPlan(w, a, b, 0, keepArg).amount : G.COST;
     var can = pv.ok && !viewOnly() && !PREVIEW, n = max;
     var nextEgg = (Math.floor(meat / G.EGG_EVERY) + 1) * G.EGG_EVERY;
     var chips = [100, 500, 1000].filter(function (k) { return k < max; });
@@ -147,6 +158,8 @@
       '<div class="mgr-bar" id="mgBar"><div style="width:' + Math.round((meat % G.EGG_EVERY) / G.EGG_EVERY * 100) + '%"></div><div class="add" style="left:0;width:0"></div><span style="left:25%"></span><span style="left:50%"></span><span style="left:75%"></span></div>' +
       (bo ? '<div class="mgr-box">🗑️ ' + fmt(bo) + ' more pet' + (bo === 1 ? ' is' : 's are') + ' only hidden in this browser. Only permanent discards go in the Grinder. <button type="button" class="q" id="mgPerm">Make them permanent</button></div>' : '') +
       '</div><div>' +
+      (g2(b) && on && a ? '<div class="mgr-amt mgr-keep"><h4>WHAT GOES IN?</h4><div class="mgr-chips">' + KEEP.map(function (k) { return '<button type="button" data-gkeep="' + k[0] + '" aria-pressed="' + (k[0] === mx) + '">' + k[1] + '</button>'; }).join('') + '</div>' +
+        '<p class="mgr-small" style="margin:6px 0 0;opacity:.85">' + (mx < 3 ? 'Kept pets stay in your discard pile (for raising zombies, or a later grind).' : 'Saving Rares or Legendaries for zombies? Pick what stays out.') + '</p></div>' : '') +
       (pv.ok ? '<div class="mgr-amt"><h4><label for="mgN">HOW MANY?</label><output id="mgOut">' + fmt(n) + '</output></h4>' +
         (max > 1 ? '<input type="range" id="mgN" min="1" max="' + max + '" step="1" value="' + n + '" aria-describedby="mgOrder">' : '') +
         '<div class="mgr-chips">' + chips.map(function (k) { return '<button type="button" data-n="' + k + '" aria-pressed="false">' + fmt(k) + '</button>'; }).join('') +
@@ -158,27 +171,28 @@
         : '<div class="mgr-box">' + esc(pv.why || 'Nothing to grind.') + '<br><span class="mgr-small">Discard pets you don’t want (🗑️ on My Pets), then come back.</span></div>') +
       '<button type="button" class="mgr-go"' + (can ? '' : ' disabled') + '>GRIND ' + fmt(n || 0) + ' PET' + (n === 1 ? '' : 'S') + '</button>' +
       '<p class="mgr-small" style="margin:8px 0 0;opacity:.85">One burn, ' + fmt(cost) + ' XCPETS. Ground pets are gone for good. Gods, Mythics, Wizards and tokenized pets never go in.' + (viewOnly() ? ' View only: nothing can be ground from here.' : '') + '</p>' +
-      '<div class="mgr-small mgr-how">Every ' + fmt(G.SPIN_EVERY) + ' meat: a free Pepe Wheel spin. Every ' + fmt(G.EGG_EVERY) + ': a Sausage Egg (never Common). Meat per pet: Common ' + G.MEAT[0] + ', Uncommon ' + G.MEAT[1] + ', Rare ' + G.MEAT[2] + ', Legendary ' + G.MEAT[3] + '.</div>' +
+      '<div class="mgr-small mgr-how">Every ' + fmt(G.SPIN_EVERY) + ' meat: a free Pepe Wheel spin. Every ' + fmt(G.EGG_EVERY) + ': a Sausage Egg (never Common' + (g2(b) ? ', and 1 in ' + ((V().GRIND2 || {}).SPECIAL_IN || 77) + ' is ' + esc(sp) : '') + '). Meat per pet: Common ' + G.MEAT[0] + ', Uncommon ' + G.MEAT[1] + ', Rare ' + G.MEAT[2] + ', Legendary ' + G.MEAT[3] + '.</div>' +
       '<button type="button" class="mgr-no">Not now</button></div></div>';
     paintSprites(box, w);
     var mach = box.querySelector('.mgr-mach'), go = box.querySelector('.mgr-go'), rng = $('mgN');
-    function paint(k) { n = Math.max(1, Math.min(max, k | 0)); var s = sum(w, ids, n, meat);
+    function paint(k) { n = Math.max(1, Math.min(max, k | 0)); var s = sum(w, ids, n, meat, b);
       $('mgOut').textContent = fmt(n); if (rng && +rng.value !== n) rng.value = n;
-      box.querySelectorAll('.mgr-chips button').forEach(function (c) { c.setAttribute('aria-pressed', +c.getAttribute('data-n') === n ? 'true' : 'false'); });
+      box.querySelectorAll('.mgr-chips button[data-n]').forEach(function (c) { c.setAttribute('aria-pressed', +c.getAttribute('data-n') === n ? 'true' : 'false'); });
       $('mgTiers').innerHTML = s.byTier.map(function (c, i) { return c ? '<span style="color:' + TC[i] + '">' + fmt(c) + ' ' + T[i] + '</span>' : ''; }).join('');
       $('mgMeat').textContent = fmt(s.meat); $('mgSpins').textContent = '+' + fmt(s.spins); $('mgEggs').textContent = '+' + fmt(s.eggs);
-      var gp = Math.round(s.goldPct * 10) / 10, gmax = G.GOLD_MAX / 10000;
-      $('mgGold').innerHTML = '🌭✨ <b style="color:#ffd166">' + gp + '% shot at a GOLDEN SAUSAGE</b> (a sure Legendary).' + (gp < gmax ? ' <span class="mgr-small">More pets in one grind = a better shot, up to ' + gmax + '% at ' + fmt(Math.ceil(G.GOLD_MAX / G.GOLD_PER_PET)) + ' pets.</span>' : ' <span class="mgr-small">Best shot there is.</span>');
+      var gp = Math.round(s.goldPct * 10) / 10, gmax = goldOdds(G.MAX, b) / 10000;
+      $('mgGold').innerHTML = '🌭✨ <b style="color:#ffd166">' + gp + '% shot at a GOLDEN SAUSAGE</b> ' + (g2(b) ? '= a sure Legendary <b style="color:#ffd166">' + esc(sp) + '</b>!' : '(a sure Legendary).') + (gp < gmax ? ' <span class="mgr-small">More pets in one grind = a better shot, up to ' + gmax + '% at ' + fmt(G.MAX) + ' pets.</span>' : ' <span class="mgr-small">Best shot there is.</span>');
       var bar = $('mgBar'), fill = (meat % G.EGG_EVERY) / G.EGG_EVERY * 100, add = Math.min(100 - fill, s.meat / G.EGG_EVERY * 100);
       if (bar) { var ad = bar.querySelector('.add'); ad.style.left = fill + '%'; ad.style.width = add + '%'; }
       $('mgNext').textContent = fmt(meat) + ' → ' + fmt(s.after);
       go.textContent = 'GRIND ' + fmt(n) + ' PET' + (n === 1 ? '' : 'S'); }
     if (pv.ok) { paint(n);
       var raf = 0; if (rng) rng.addEventListener('input', function () { if (raf) return; raf = requestAnimationFrame(function () { raf = 0; paint(+rng.value); }); });
-      box.querySelectorAll('.mgr-chips button').forEach(function (c) { c.onclick = function () { paint(+c.getAttribute('data-n')); sfx('blip'); }; }); }
+      box.querySelectorAll('.mgr-chips button[data-n]').forEach(function (c) { c.onclick = function () { paint(+c.getAttribute('data-n')); sfx('blip'); }; }); }
+    box.querySelectorAll('.mgr-chips button[data-gkeep]').forEach(function (c) { c.onclick = function () { keepSet(+c.getAttribute('data-gkeep')); sfx('blip'); open(); }; });
     box.querySelector('.mgr-no').onclick = close; box.querySelector('.mgr-x').onclick = close;
     var pm = box.querySelector('#mgPerm'); if (pm) pm.onclick = function () { close(); var m = $('hdMigrate'); if (m) m.click(); else if (U().toast) U().toast('Open the 🗑️ Discard pile at the bottom of My Pets and press "Make my browser discards permanent".'); };
-    go.onclick = function () { if (!can) return; var plan = v.grindPlan(w, a, tipB(w), n < G.MAX ? n : 0); if (!plan || !plan.ok) return;
+    go.onclick = function () { if (!can) return; var plan = v.grindPlan(w, a, tipB(w), n < G.MAX ? n : 0, keepArg); if (!plan || !plan.ok) return;
       var cp = d.confirmPlans || U().confirmPlans; if (!cp) return; go.disabled = true; mach.classList.add('go');
       /* the wind-up: the real pets of this grind fly in one by one, the crank whirs, meat sprays (about 3 s), then the normal sign sheet */
       var t0 = RM ? 0 : 3000; mach.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); parade(mach, w, plan.ids || ids, plan.n, t0 - 700);
@@ -190,7 +204,7 @@
   function result(w, last) { var box = shell(false), G = G_(), a = me(), R = w.grind[a], pets = (last.newPets || []).map(function (id) { return w.byId[id]; }).filter(Boolean);
     var before = Math.max(0, (R.meat || 0) - (last.meat || 0)), rows = [];
     if (last.spins) rows.push('<div class="mgr-rw sp hide" data-k="spin"><svg aria-hidden="true" width="52" height="52" viewBox="0 0 44 44"><circle cx="22" cy="22" r="19" fill="#ffd166" stroke="#000" stroke-width="3"/><path d="M22 3v38M3 22h38M8 8l28 28M36 8L8 36" stroke="#000" stroke-width="2"/><circle cx="22" cy="22" r="5" fill="#ff4d4d" stroke="#000" stroke-width="2"/></svg><div><b>+' + last.spins + ' PEPE WHEEL SPIN' + (last.spins === 1 ? '' : 'S') + '</b><span class="mgr-small">Saved for the Pepe Wheel in The Rare Room.</span></div></div>');
-    pets.forEach(function (p) { var t = Math.min(3, p.tier | 0); rows.push('<div class="mgr-rw ' + (p.golden ? 'gold' : 'egg') + ' hide" data-k="egg" data-t="' + t + '" style="--tc:' + TC[t] + '"><div class="mgr-egg">' + eggSvg(p.golden) + '<canvas width="32" height="32" data-mg="' + p.id + '"></canvas></div><div><b>' + (p.golden ? 'GOLDEN SAUSAGE!' : 'SAUSAGE EGG: ' + T[t].toUpperCase()) + '</b><span class="mgr-small">#' + p.id + ' hatched: ' + T[t] + ' ' + esc(p.name || p.species) + '</span></div></div>'); });
+    pets.forEach(function (p) { var t = Math.min(3, p.tier | 0); rows.push('<div class="mgr-rw ' + (p.golden ? 'gold' : 'egg') + ' hide" data-k="egg" data-t="' + (SPECIAL_SP[p.species] ? 4 : t) + '" style="--tc:' + (SPECIAL_SP[p.species] ? '#ff8ad8' : TC[t]) + '"><div class="mgr-egg">' + eggSvg(p.golden) + '<canvas width="32" height="32" data-mg="' + p.id + '"></canvas></div><div><b>' + (p.golden ? 'GOLDEN SAUSAGE!' : SPECIAL_SP[p.species] ? 'SAUSAGE EGG: SPECIAL EGG!' : 'SAUSAGE EGG: ' + T[t].toUpperCase()) + '</b><span class="mgr-small">#' + p.id + ' hatched: ' + T[t] + ' ' + esc(p.name || p.species) + '</span></div></div>'); });
     if (!last.golden) rows.push('<div class="mgr-rw miss hide" data-k="miss"><svg aria-hidden="true" width="52" height="52" viewBox="0 0 44 44"><ellipse cx="22" cy="24" rx="15" ry="18" fill="#c9a43a" stroke="#000" stroke-width="3"/><path d="M14 18l16 14M30 18L14 32" stroke="#000" stroke-width="3"/></svg><div><b>GOLDEN SAUSAGE: NOT THIS TIME</b><span class="mgr-small">Grind more at once for a better shot (up to ' + (G.GOLD_MAX / 10000) + '%).</span></div></div>');
     box.innerHTML = '<button type="button" class="mgr-skip">Skip ⏩</button><div class="mgr-big" id="mgT">SPLORCH!</div>' +
       '<div class="mgr-rope" aria-hidden="true"><i>' + new Array(12).join('<span></span>') + '</i></div>' +
@@ -218,7 +232,7 @@
     var t = last.eggs ? 3200 : 2500;
     box.querySelectorAll('.mgr-rw.hide').forEach(function (r) { var k = r.getAttribute('data-k'), tier = +r.getAttribute('data-t') || 0;
       later(function () { r.classList.remove('hide'); r.classList.add('in'); r.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); sfx(k === 'miss' ? 'sad' : k === 'spin' ? 'coin' : 'knock'); }, t);
-      if (k === 'egg') { later(function () { var e = r.querySelector('.mgr-egg'); if (e) e.classList.add('open'); sfx('crack'); sfx('reveal', r.classList.contains('gold') ? 4 : tier); }, t + 1000); t += 1700; } else t += 900; });
+      if (k === 'egg') { later(function () { var e = r.querySelector('.mgr-egg'); if (e) e.classList.add('open'); sfx('crack'); sfx('reveal', r.classList.contains('gold') ? 4 : Math.min(4, tier)); }, t + 1000); t += 1700; } else t += 900; });
     later(function () { done = true; var sk = box.querySelector('.mgr-skip'); if (sk) sk.remove(); if (last.golden) sfx('fanfare'); }, t); }
   function watch(w) { var a = me(); if (!a || !w || !w.grind || !w.grind[a] || !w.grind[a].last || viewOnly()) return; var last = w.grind[a].last, k = String(last.block) + ':' + last.n, seen = null;
     try { seen = localStorage.getItem(seenKey()); } catch (e) { }

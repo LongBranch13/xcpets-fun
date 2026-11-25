@@ -352,6 +352,24 @@
   var GRIND_COST = 69, GRIND_MAX = 2000, GRIND_MEAT = [1, 2, 5, 20], GRIND_SPIN_EVERY = 250, GRIND_EGG_EVERY = 1000, GRIND_SAUSAGE_10K = [0, 6000, 3200, 800],
     GRIND_GOLD_PER_PET = 50 /* per million: 1% per 200 pets */, GRIND_GOLD_MAX = 100000 /* per million: 10% */;
   function grindOn(b) { return ACTIVATE_GRIND_BLOCK != null && b != null && Number(b) >= ACTIVATE_GRIND_BLOCK; }
+  /* ===== MEAT GRINDER 2 (Jake Nov 25 2026: "Sausage egg should be a little better and golden sausage should be better" and "Players may want
+   * to save rares and legendary to raise zombies so we need a choice there too"). From ACTIVATE_GRIND2_BLOCK:
+   *  - SAUSAGE EGG odds GRIND2_SAUSAGE_10K: Uncommon 50%, Rare 38%, Legendary 12% (was 60 / 32 / 8). Still never Common.
+   *    Every Sausage Egg also has a 1-in-GRIND2_SPECIAL_IN (77) shot at THE SPECIAL EGG, ten times a normal egg's 1-in-777 slot.
+   *  - GOLDEN SAUSAGE chance GRIND2_GOLD_PER_PET 100 per million per pet (1% per 100 pets), up to GRIND2_GOLD_MAX 20% (was 1% per 200, up to 10%).
+   *    Jake: "no one will care about getting 1 legendary egg". The Golden Sausage now always hatches THE SPECIAL EGG: the pet in the 1-in-777
+   *    slot at that block (Homer Pepe while Homer holds the slot, then the White Rabbit, then Groyper: the same chain as baseHatchArt), at Legendary.
+   *  - KEEP: pet:grind:N:T (N 1-2000, T = C, U or R) grinds only pets up to that rarity: C = Commons only, U = Commons and Uncommons (keeps every
+   *    Rare and Legendary), R = everything but Legendaries. Skipped pets stay in the discard pile. pet:grind and pet:grind:N grind every rarity, as before.
+   * Below the gate (and while null) everything is exactly as before, and pet:grind:N:T is an unknown tag (community food), as it always was. */
+  var ACTIVATE_GRIND2_BLOCK = 977600; /* about Wed Nov 26 2026, early morning Central (tip 977,442 at Nov 25 00:30 UTC + 158) */
+  var GRIND2_SAUSAGE_10K = [0, 5000, 3800, 1200], GRIND2_GOLD_PER_PET = 100, GRIND2_GOLD_MAX = 200000, GRIND2_SPECIAL_IN = 77, GRIND_KEEP = { C: 0, U: 1, R: 2 };
+  function grind2On(b) { return ACTIVATE_GRIND2_BLOCK != null && b != null && Number(b) >= ACTIVATE_GRIND2_BLOCK; }
+  /** specialEggArt(bh, id, b): THE SPECIAL EGG, the pet the 1-in-777 slot gives at block b (same order as baseHatchArt). */
+  function specialEggArt(bh, id, b) { if (b >= GP_POOL_FROM) return gpArt(bh, id, b); if (b >= WR_POOL_FROM) return wrArt(bh, id, b); if (b >= HP_POOL_FROM) return hpArt(bh, id, b);
+    if (b >= FT_POOL_FROM) return ftArt(bh, id, b); if (b >= KEK_POOL_FROM) return kekArt(bh, id, b); return wizardArt(bh, id, b); }
+  function sausageSpecialArt(bh, id, b) { var art = specialEggArt(bh, id, b); return art.tierIndex < 1 ? setArtTier(art, 1) : art; } /* a Sausage Egg is never Common */
+  function sausageSpecial(bh, id, b) { return grind2On(b) && parseInt(sha(bh + id + 'XCPETS:v2:sausage-special').slice(0, 12), 16) % GRIND2_SPECIAL_IN === 0; }
   function grindRec(w, a) { w.grind = w.grind || {}; return w.grind[a] || (w.grind[a] = { meat: 0, ground: 0, spins: 0, eggs: 0, golden: 0, grinds: 0, last: null }); }
   /** grindWhy(w, p, src, b): why this pet can't go in the Grinder (null = it can). */
   function grindWhy(w, p, src, b) { if (!p) return 'no such pet'; if (p.community) return 'community pet'; if (p.owner !== src) return 'not your pet';
@@ -362,26 +380,28 @@
     if (inOpenFight(w, p.id, b)) return 'has an open fight'; if (p.pledge != null) { var A = w.cem && w.cem.altars && w.cem.altars[p.pledge]; if (A && A.status === 'open') return 'held for a seance'; }
     return null; }
   /** grindList(w, src, b, n): the pets one grind would take right now (lowest number first). */
-  function grindList(w, src, b, n) { var P = w.pets || [], out = [], cap = Math.min(GRIND_MAX, n || GRIND_MAX), i, p;
-    for (i = 0; i < P.length && out.length < cap; i++) { p = P[i]; if (p.owner !== src || p.hd !== src) continue; liveAt(w, p, b); if (!grindWhy(w, p, src, b)) out.push(p); }
+  function grindList(w, src, b, n, maxT) { var P = w.pets || [], out = [], cap = Math.min(GRIND_MAX, n || GRIND_MAX), i, p, top = maxT != null && grind2On(b) ? maxT : 3;
+    for (i = 0; i < P.length && out.length < cap; i++) { p = P[i]; if (p.owner !== src || p.hd !== src) continue; if ((p.tier | 0) > top) continue; liveAt(w, p, b); if (!grindWhy(w, p, src, b)) out.push(p); }
     return out.sort(function (x, y) { return x.id - y.id; }); }
   function grindMeatOf(p) { return GRIND_MEAT[Math.min(3, Math.max(0, p.tier | 0))]; }
-  function grindGoldOdds(n) { return Math.min(GRIND_GOLD_MAX, n * GRIND_GOLD_PER_PET); } /* per million */
-  function sausageTier(bh, id) { var r = parseInt(sha(bh + id + 'XCPETS:v2:sausage').slice(0, 12), 16) % 10000, T = GRIND_SAUSAGE_10K; return r < T[3] ? 3 : r < T[3] + T[2] ? 2 : 1; }
+  function grindGoldOdds(n, b) { return grind2On(b) ? Math.min(GRIND2_GOLD_MAX, n * GRIND2_GOLD_PER_PET) : Math.min(GRIND_GOLD_MAX, n * GRIND_GOLD_PER_PET); } /* per million */
+  function sausageTier(bh, id, b) { var r = parseInt(sha(bh + id + 'XCPETS:v2:sausage').slice(0, 12), 16) % 10000, T = grind2On(b) ? GRIND2_SAUSAGE_10K : GRIND_SAUSAGE_10K; return r < T[3] ? 3 : r < T[3] + T[2] ? 2 : 1; }
   function grindArt(bh, id, b, tier) { var art = PetCore.generate({ blockHash: bh, petId: id, blockHeight: b }); setArtTier(art, tier);
     art.species = pickTierSpecies(sha(bh + id + 'XCPETS:v2:tierspecies'), art.tierIndex, b); return rareApply(art, bh, id, b); }
   /** grindPreview(w, src, b, n): what one grind would do now. { ok, why, n, meat, before, after, spins, eggs, goldPct, ids, byTier } */
-  function grindPreview(w, src, b, n) { b = b != null ? b : ((w && w.tip) || 0) + 1; if (!w || !src) return { ok: false, why: 'no wallet' };
+  function grindPreview(w, src, b, n, maxT) { b = b != null ? b : ((w && w.tip) || 0) + 1; if (!w || !src) return { ok: false, why: 'no wallet' };
     if (!grindOn(b)) return { ok: false, why: 'The Meat Grinder opens at block ' + (ACTIVATE_GRIND_BLOCK == null ? '(not set yet)' : ACTIVATE_GRIND_BLOCK) };
-    var L2 = grindList(w, src, b, n), R = (w.grind && w.grind[src]) || { meat: 0 }, meat = 0, byTier = [0, 0, 0, 0];
+    if (maxT != null && !grind2On(b)) maxT = null; /* the keep choice exists from ACTIVATE_GRIND2_BLOCK */
+    var L2 = grindList(w, src, b, n, maxT), R = (w.grind && w.grind[src]) || { meat: 0 }, meat = 0, byTier = [0, 0, 0, 0];
     L2.forEach(function (p) { meat += grindMeatOf(p); byTier[Math.min(3, p.tier | 0)]++; });
     var before = R.meat || 0, after = before + meat;
-    return { ok: L2.length > 0, why: L2.length ? null : 'Nothing to grind: only pets you discarded on chain can go in (Gods, Mythics, Wizards and tokenized pets never do).',
+    return { ok: L2.length > 0, why: L2.length ? null : maxT != null && maxT < 3 ? 'Nothing to grind at that rarity: pick a higher one, or discard more pets.' : 'Nothing to grind: only pets you discarded on chain can go in (Gods, Mythics, Wizards and tokenized pets never do).', maxT: maxT != null ? maxT : 3,
       n: L2.length, meat: meat, before: before, after: after, byTier: byTier, ids: L2.map(function (p) { return p.id; }),
       spins: Math.floor(after / GRIND_SPIN_EVERY) - Math.floor(before / GRIND_SPIN_EVERY), eggs: Math.floor(after / GRIND_EGG_EVERY) - Math.floor(before / GRIND_EGG_EVERY),
-      goldPct: grindGoldOdds(L2.length) / 10000 }; }
-  function grindPlan(w, src, b, n) { var v = grindPreview(w, src, b, n); if (!v.ok) return v; var cap = n && n < GRIND_MAX ? n : 0;
-    v.tag = 'pet:grind' + (cap ? ':' + cap : ''); v.amount = costAt(w, GRIND_COST, b != null ? b : ((w.tip || 0) + 1)); v.label = 'Meat Grinder: ' + v.n + ' pet' + (v.n === 1 ? '' : 's'); return v; }
+      goldPct: grindGoldOdds(L2.length, b) / 10000 }; }
+  /** grindPlan(w, src, b, n, maxT): the burn for one grind. maxT 0-2 (from ACTIVATE_GRIND2_BLOCK) keeps every pet above that rarity: pet:grind:N:C|U|R */
+  function grindPlan(w, src, b, n, maxT) { var v = grindPreview(w, src, b, n, maxT); if (!v.ok) return v; var cap = n && n < GRIND_MAX ? n : 0, keep = v.maxT < 3 ? 'CUR'[v.maxT] : '';
+    v.tag = 'pet:grind' + (keep ? ':' + (cap || GRIND_MAX) + ':' + keep : cap ? ':' + cap : ''); v.amount = costAt(w, GRIND_COST, b != null ? b : ((w.tip || 0) + 1)); v.label = 'Meat Grinder: ' + v.n + ' pet' + (v.n === 1 ? '' : 's'); return v; }
   var FEED_LIST_BLOCK = 972132;    // set at deploy 2026-10-19: chain tip 972126 + 6 (Counterparty API 972126, Bitcoin 972126)
   var THRESHOLDS = [0, 69, 8349, 22149, 41469, 69069];             // normal pets (unchanged; Mythic day 9 at 1 meal/day)
   var MEAL_SIZES = [0, 4140, 6900, 9660, 9200];
@@ -2339,6 +2359,7 @@
         for (var j = 0; j < p[3].length; j++) { var v = parseInt(p[3][j], 32); for (var b = 0; b < 5; b++) if (v & (1 << b)) ids.push(n(2) + 5 * j + b); } return { action: 'release', ids: ids }; }
     }
     if (a === 'GRIND' && (p.length === 2 || (p.length === 3 && /^[1-9][0-9]{0,3}$/.test(p[2]) && n(2) <= 2000))) return { action: 'grind', n: p.length === 3 ? n(2) : 0 }; /* MEAT GRINDER (inert before ACTIVATE_GRIND_BLOCK) */
+    if (a === 'GRIND' && p.length === 4 && /^[1-9][0-9]{0,3}$/.test(p[2]) && n(2) <= 2000 && GRIND_KEEP.hasOwnProperty(p[3])) return { action: 'grind', n: n(2), maxT: GRIND_KEEP[p[3]] }; /* MEAT GRINDER 2 keep choice (unknown tag before ACTIVATE_GRIND2_BLOCK) */
     if (a === 'PANTRY' && p.length === 2) return { action: 'pantry' }; /* PANTRY (inert before ACTIVATE_PANTRY_BLOCK) */
     if (a === 'PX' && p.length === 2) return { action: 'pantry', op: 'clear' };
     if ((a === 'PP' || a === 'PX') && p.length === 4 && /^[0-9A-V]{2}$/.test(p[2]) && /^[0-9A-V]{2,24}$/.test(p[3]) && t.length <= MAX_TAG_BYTES) {
@@ -2814,7 +2835,7 @@
     var rdWhy = retireDeadSendWhy(w, t, b); if (rdWhy) return rdWhy; /* UI only: block a burn at a pet that has left, before anything is signed */
     if (retiredAt(t, b)) return RETIRED_ACTIONS[t.action] + ' was retired at block ' + ACTIVATE_RETIRE_TAGS_BLOCK + ': this burn would only be community food';
     if (t.action === 'dip') { var dpp = P(t.petId); if (pend.some(function (q) { return q.action === 'dip' && q.petId === t.petId; })) return '#' + t.petId + ' already has a dip waiting to confirm'; return dipWhy(w, dpp, me || (dpp && dpp.owner), amt, b); } /* POOL DIP (UI only: the replay runs dipWhy itself) */
-    if (t.action === 'grind') { if (!grindOn(b)) return 'The Meat Grinder opens at a later block'; if (amt != null && below(w, Number(amt), GRIND_COST, b)) return 'below grind cost ' + costAt(w, GRIND_COST, b); if (pend.some(function (q) { return q.action === 'grind'; })) return 'a grind is already waiting to confirm'; return me ? grindPreview(w, me, b, t.n).why : null; }
+    if (t.action === 'grind') { if (!grindOn(b)) return 'The Meat Grinder opens at a later block'; if (amt != null && below(w, Number(amt), GRIND_COST, b)) return 'below grind cost ' + costAt(w, GRIND_COST, b); if (pend.some(function (q) { return q.action === 'grind'; })) return 'a grind is already waiting to confirm'; if (t.maxT != null && !grind2On(b)) return 'the keep-rarity choice opens at block ' + ACTIVATE_GRIND2_BLOCK; return me ? grindPreview(w, me, b, t.n, t.maxT).why : null; }
     if (t.action === 'hd' || t.action === 'hu') { if (!hdOn(b)) return 'on-chain discard opens at block ' + ACTIVATE_ONCHAIN_DISCARD_BLOCK; if (amt != null && !(Number(amt) >= HD_COST)) return 'below discard cost 1 dander'; return null; }
     if (t.action === 'feedr') { if (!feedRunsOn(b)) return 'one-burn feeding opens at block ' + ACTIVATE_FEED_RUNS_BLOCK; if (plan && plan.anchor != null && b - plan.anchor > 900) return 'this feed plan is too old, press Feed again'; }
     if (t.action === 'swap' || t.action === 'swapok' || t.action === 'swapno') { if (!giveOn(b)) return 'swaps open at a later block';
@@ -4073,6 +4094,7 @@
     if ((t.action === 'hd' || t.action === 'hu') && !hdOn(b)) t = { action: 'invalid' }; /* on-chain discard OFF: same as before (unknown tag, community food) */
     if (t.action === 'chores' && !choresOn(b)) t = { action: 'invalid' }; /* daily chores OFF: same as before (unknown tag) */
     if (t.action === 'grind' && !grindOn(b)) t = { action: 'invalid' }; /* MEAT GRINDER OFF: same as before (unknown tag, community food) */
+    if (t.action === 'grind' && t.maxT != null && !grind2On(b)) t = { action: 'invalid' }; /* pet:grind:N:T before MEAT GRINDER 2: unknown tag, as before */
     if (t.action === 'pantry' && !pantryOn(b)) t = { action: 'invalid' }; /* pantry OFF: same as before (unknown tag) */
     if (t.action === 'dip' && !dipOn(b)) t = { action: 'invalid' }; /* POOL DIP OFF: same as before (unknown tag) */
     if (t.action === 'raid' && !raidOn(b)) t = { action: 'invalid' }; /* raids OFF: same as before (unknown tag) */
@@ -4166,16 +4188,16 @@
       case 'grind': { /* THE MEAT GRINDER (see ACTIVATE_GRIND_BLOCK) */
         if (below(w, amt, GRIND_COST, b)) return L(r, 'rejected', 'below grind cost ' + costAt(w, GRIND_COST, b));
         if (!bh) return L(r, 'rejected', 'block hash pending');
-        var gL = grindList(w, src, b, t.n); if (!gL.length) return L(r, 'rejected', 'grind: nothing in your discard pile can go in');
+        var gL = grindList(w, src, b, t.n, t.maxT); if (!gL.length) return L(r, 'rejected', 'grind: nothing in your discard pile can go in');
         var gR = grindRec(w, src), gB = gR.meat, gMeat = 0, gIds = [];
         gL.forEach(function (gp) { gMeat += grindMeatOf(gp); cemUse(w, gp, 'grind', b); gp.ground = b; gIds.push(gp.id); });
         gR.meat = gB + gMeat; gR.ground += gIds.length; gR.grinds++;
         var gSpins = Math.floor(gR.meat / GRIND_SPIN_EVERY) - Math.floor(gB / GRIND_SPIN_EVERY), gEggs = Math.floor(gR.meat / GRIND_EGG_EVERY) - Math.floor(gB / GRIND_EGG_EVERY), gNew = [];
         if (gSpins > 0 && spinsOn(b)) { earnSpin(w, src, b, r.tx_hash, 'grind', gSpins); gR.spins += gSpins; }
-        for (var ge = 0; ge < gEggs; ge++) { var gx = r.tx_hash + ':' + (88000 + ge), gp2 = mk(w, src, noBornShades(grindArt(bh, gx, b, sausageTier(bh, gx))), b, COSTS.hatch, gx); gp2.sausage = 1; gNew.push(gp2.id); }
+        for (var ge = 0; ge < gEggs; ge++) { var gx = r.tx_hash + ':' + (88000 + ge), gp2 = mk(w, src, noBornShades(sausageSpecial(bh, gx, b) ? sausageSpecialArt(bh, gx, b) : grindArt(bh, gx, b, sausageTier(bh, gx, b))), b, COSTS.hatch, gx); gp2.sausage = 1; gNew.push(gp2.id); }
         gR.eggs += gEggs;
-        var gGold = parseInt(sha(bh + r.tx_hash + 'XCPETS:v2:golden-sausage').slice(0, 12), 16) % 1000000 < grindGoldOdds(gIds.length);
-        if (gGold) { var gx2 = r.tx_hash + ':88999', gp3 = mk(w, src, noBornShades(grindArt(bh, gx2, b, 3)), b, COSTS.hatch, gx2); gp3.sausage = 1; gp3.golden = 1; gNew.push(gp3.id); gR.golden++; }
+        var gGold = parseInt(sha(bh + r.tx_hash + 'XCPETS:v2:golden-sausage').slice(0, 12), 16) % 1000000 < grindGoldOdds(gIds.length, b);
+        if (gGold) { var gx2 = r.tx_hash + ':88999', gArt = grind2On(b) ? setArtTier(specialEggArt(bh, gx2, b), 3) : grindArt(bh, gx2, b, 3); var gp3 = mk(w, src, noBornShades(gArt), b, COSTS.hatch, gx2); gp3.sausage = 1; gp3.golden = 1; gNew.push(gp3.id); gR.golden++; }
         gR.last = { block: b, n: gIds.length, meat: gMeat, spins: gSpins, eggs: gEggs, golden: gGold, newPets: gNew };
         var gl = L(r, 'grind', 'Meat Grinder: ground ' + gIds.length + ' pet' + (gIds.length === 1 ? '' : 's') + ' into ' + gMeat + ' meat (meter ' + gR.meat + ')' + (gSpins ? ' · +' + gSpins + ' spin' + (gSpins === 1 ? '' : 's') : '') + (gEggs ? ' · ' + gEggs + ' Sausage Egg' + (gEggs === 1 ? '' : 's') : '') + (gGold ? ' · GOLDEN SAUSAGE' : ''),
           { petIds: gIds, petId: gIds[0], meat: gMeat, spins: gSpins, newPets: gNew, golden: gGold });
@@ -5830,6 +5852,8 @@
     retireGate: function () { return ACTIVATE_RETIRE_TAGS_BLOCK; }, retireOn: retireOn, retiredAt: retiredAt, retiredUI: function (w) { return retireOn(((w && w.tip) || 0) + 1); }, RETIRED_ACTIONS: RETIRED_ACTIONS, _setRetireActivation: function (b) { ACTIVATE_RETIRE_TAGS_BLOCK = b == null ? null : Number(b); },
     retireDeadGate: function () { return ACTIVATE_RETIRE_DEAD_BLOCK; }, retireDeadOn: retireDeadOn, RETIRE_DEAD_DAYS: RETIRE_DEAD_DAYS, retireSpareWhy: retireSpareWhy, retireSpareFlags: retireSpareFlags, retireRareSpecies: retireRareSpecies, retireDeadDue: retireDeadDue, retireDeathClock: retireDeathClock, retireDeadBanner: retireDeadBanner, _retireDeadSweep: retireDeadSweep, _setRetireDeadActivation: function (b) { ACTIVATE_RETIRE_DEAD_BLOCK = b == null ? null : Number(b); RETIRE_RARE_SPECIES = null; },
     grindGate: function () { return ACTIVATE_GRIND_BLOCK; }, grindOn: grindOn, grindWhy: grindWhy, grindList: grindList, grindPreview: grindPreview, grindPlan: grindPlan, _setGrindActivation: function (b) { ACTIVATE_GRIND_BLOCK = b == null ? null : Number(b); }, _sausageTierTest: sausageTier, GRIND: { COST: GRIND_COST, MAX: GRIND_MAX, MEAT: GRIND_MEAT, SPIN_EVERY: GRIND_SPIN_EVERY, EGG_EVERY: GRIND_EGG_EVERY, SAUSAGE_10K: GRIND_SAUSAGE_10K, GOLD_PER_PET: GRIND_GOLD_PER_PET, GOLD_MAX: GRIND_GOLD_MAX },
+    grind2Gate: function () { return ACTIVATE_GRIND2_BLOCK; }, grind2On: grind2On, _setGrind2Activation: function (b) { ACTIVATE_GRIND2_BLOCK = b == null ? null : Number(b); }, grindGoldOdds: grindGoldOdds,
+    GRIND2: { SAUSAGE_10K: GRIND2_SAUSAGE_10K, GOLD_PER_PET: GRIND2_GOLD_PER_PET, GOLD_MAX: GRIND2_GOLD_MAX, SPECIAL_IN: GRIND2_SPECIAL_IN, KEEP: GRIND_KEEP }, _specialEggArt: specialEggArt, _sausageSpecialTest: sausageSpecial,
     pantryGate: function () { return ACTIVATE_PANTRY_BLOCK; }, pantryOn: pantryOn, pantryPlan: pantryPlan, pantryInfo: pantryInfo, dayStart: dayStart, PANTRY_PREFIX: PANTRY_PREFIX, _pantrySweep: pantrySweep, _setPantryActivation: function (b) { ACTIVATE_PANTRY_BLOCK = b == null ? null : Number(b); },
     dailyChoresGate: function () { return ACTIVATE_DAILY_CHORES_BLOCK; }, choresOn: choresOn, dailyChoresPlan: dailyChoresPlan, DC_PREFIX: DC_PREFIX, DC_BODY: DC_BODY, _setDailyChoresActivation: function (b) { ACTIVATE_DAILY_CHORES_BLOCK = b == null ? null : Number(b); },
     seanceRaisesGate: function () { return ACTIVATE_SEANCE_RAISES_BLOCK; }, seanceOn: seanceOn, _setSeanceRaisesActivation: function (b) { ACTIVATE_SEANCE_RAISES_BLOCK = b; }, cemHeld: cemHeld,
