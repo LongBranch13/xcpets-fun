@@ -211,14 +211,17 @@ window.V2Wallet = { tracker: { list: () => __tracker }, label: () => 'XCP Wallet
     const paid = await page.evaluate(() => __sent.map(s => s.tag));
     ok(paid.indexOf('pet:spin') >= 0, 'the Spin button still opens a paid spin while a saved spin is in flight');
 
+    /* Where g1 hangs comes from the room itself: a frame on the wall (S.hits) when the mirror pet wears it, else its "Gear that fits" card
+       (rare-room-simple, Nov 22: the six wall frames show what the mirror pet wears; a spare piece is tapped on its fit card). */
     const gear = await page.evaluate(() => {
       const c = document.querySelector('#shopScene canvas'), r = c.getBoundingClientRect();
-      return { x: r.x + r.width * (20 / 320), y: r.y + r.height * (30 / 150) };
+      const h = (V2Shop._state().hits || []).filter(q => q.it && q.it.gid === 'g1')[0];
+      return h ? { x: r.x + r.width * ((h.x + h.w / 2) / c.width), y: r.y + r.height * ((h.y + h.h / 2) / c.height) } : null;
     });
-    await page.mouse.click(gear.x, gear.y);
+    if (gear) await page.mouse.click(gear.x, gear.y); else await page.click('[data-fgid="g1"]');
     await sleep(50);
     const sel = await page.evaluate(() => { const s = V2Shop._state().sel; return s && s.gid; });
-    ok(sel === 'g1', 'a gear card on the wall still selects while the roll is in flight');
+    ok(sel === 'g1', 'a gear card in the room still selects while the roll is in flight');
 
     await page.click('[data-usespin="1"]');
     const once = await page.evaluate(() => __sent.filter(s => s.tag === 'pet:usespin').length);

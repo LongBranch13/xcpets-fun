@@ -74,8 +74,3 @@ grant-power-boost-test.js | FAIL grant-power-boost-test: 45 pass, 3 fail
 # The biggest wallet's scattered plan spends every saved spin but does not name each picked pet once (seen at boot tip 975637).
 # After two pet:rw burns the grant still counts pieces the second burn was not allowed to move (grave-locked).
 gear-target-fix-test.js | FAIL re-wear: grant note matches the stash the second burn reported
-# Nov 25 2026: real bug, fix pending as its own rules PR. feedRunsPlan (js/v2-rules.js) sums meal prices in floating point; for
-# the biggest eater (16,004 pets) the one-burn amount comes out ~0.00000012 short and the engine skips the last pet
-# ("burn too small for meal"). Remove this line when the planner sums in whole sats with a small margin.
-feed-runs-test.js | FAIL engine: the one-burn tags fed exactly the planned pets of the top eater owner
-feed-runs-test.js | 1 FAILED  (gate in the code: block 973639)

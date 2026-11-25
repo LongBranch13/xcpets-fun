@@ -104,6 +104,7 @@ function bootShop(opts) {
   win.window = win; win.self = win; win.globalThis = win;
   const ctx = vm.createContext(win);
   if (opts.preselect) vm.runInContext(rd('js/v2-preselect.js'), ctx, { filename: 'js/v2-preselect.js' });
+  vm.runInContext(rd('js/v2-own.js'), ctx, { filename: 'js/v2-own.js' }); /* the pages load it before v2-shop.js (living-pet checks ask V2Own, #260) */
   vm.runInContext(rd('js/v2-shop.js'), ctx, { filename: 'js/v2-shop.js' });
   return { win: win, store: store, box: box, ensured: ensured };
 }
