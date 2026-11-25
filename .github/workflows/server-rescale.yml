@@ -7,24 +7,36 @@
 #   mode rescale           : needs confirm RESCALE and the plan name from the look list. Refuses a plan with less RAM than min_gb.
 #                           Shuts the server down (about 5 minutes offline), changes CPU and RAM only (the disk keeps its size, so a
 #                           smaller plan stays possible later), powers it on and waits until the game answers again.
+# Stock watch (Nov 25 2026, owner: check at 8 AM and 8 PM German time): on a schedule it runs look mode and, when the cheaper
+# 8 GB plan (WATCH_PLAN, cx33) is on sale at the server's location, opens one GitHub issue labelled server-plan and sends a
+# Telegram message to TELEGRAM_ALERT_CHAT_ID when that secret is set. It never rescales by itself.
 # Needs the repository secret HCLOUD_TOKEN. Prints no IP address. Runs only by hand (Actions tab > server-rescale > Run workflow).
 name: server-rescale
 on:
+  schedule:
+    - cron: '0 6,7,18,19 * * *'   # 8 AM / 8 PM in Germany, summer (UTC+2) and winter (UTC+1); the other two runs stop at once
   workflow_dispatch:
     inputs:
       mode: { description: 'look = list plans, change nothing. rescale = change the plan (about 5 minutes offline)', type: choice, options: [look, rescale], default: look }
       plan: { description: 'rescale only: the plan name from the look list (for example cpx32)', required: false, default: '' }
       min_gb: { description: 'rescale only: refuse a plan with less RAM than this (GB)', required: false, default: '8' }
       confirm: { description: 'rescale only: type RESCALE', required: false, default: '' }
-permissions: { contents: read }
+permissions: { contents: read, issues: write }
 concurrency: { group: server-restart, cancel-in-progress: false }
 jobs:
   rescale:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    env: { HCLOUD_TOKEN: '${{ secrets.HCLOUD_TOKEN }}', MODE: '${{ github.event.inputs.mode }}', PLAN: '${{ github.event.inputs.plan }}', MIN_GB: '${{ github.event.inputs.min_gb }}', CONFIRM: '${{ github.event.inputs.confirm }}' }
+    env: { HCLOUD_TOKEN: '${{ secrets.HCLOUD_TOKEN }}', MODE: "${{ github.event.inputs.mode || 'look' }}", WATCH_PLAN: cx33, PLAN: '${{ github.event.inputs.plan }}', MIN_GB: '${{ github.event.inputs.min_gb }}', CONFIRM: '${{ github.event.inputs.confirm }}' }
     steps:
+      - name: Only at 8 AM and 8 PM German time (scheduled runs)
+        id: when
+        run: |
+          H=$(TZ=Europe/Berlin date +%H)
+          if [ "${{ github.event_name }}" = "schedule" ] && [ "$H" != "08" ] && [ "$H" != "20" ]; then echo "skip=1" >> "$GITHUB_OUTPUT"; echo "German time is $H:xx: not a check hour."; fi
       - name: Look, and rescale when asked
+        id: look
+        if: steps.when.outputs.skip != '1'
         run: |
           [ -n "$HCLOUD_TOKEN" ] || { echo "The HCLOUD_TOKEN secret is missing (Settings > Secrets and variables > Actions)."; exit 1; }
           if [ "$MODE" = "rescale" ] && [ "$CONFIRM" != "RESCALE" ]; then echo "Type RESCALE in the confirm box to change the plan."; exit 1; fi
@@ -58,6 +70,8 @@ jobs:
               const pm = t => { const p = (t.prices || []).find(x => x.location === loc); return p ? +p.price_monthly.gross : 1e9; };
               const fit = types.filter(t => t.name !== cur.name && avail(t) && t.memory >= +(process.env.MIN_GB || 8) && t.disk >= (sv.primary_disk_size || cur.disk)).sort((a, b) => pm(a) - pm(b));
               console.log(fit.length ? 'Cheapest other plan with at least ' + (process.env.MIN_GB || 8) + ' GB RAM that is free here now: ' + fit[0].name + ' (' + fit[0].cores + ' cores, ' + gb(fit[0]) + ' GB RAM, ' + price(fit[0], loc) + ')' : 'No other plan with at least ' + (process.env.MIN_GB || 8) + ' GB RAM is free here right now.');
+              const w = types.find(t => t.name === process.env.WATCH_PLAN);
+              if (w && w.name !== cur.name && avail(w) && process.env.GITHUB_OUTPUT) require('fs').appendFileSync(process.env.GITHUB_OUTPUT, 'instock=' + w.name + ' (' + w.cores + ' cores, ' + gb(w) + ' GB RAM, ' + price(w, loc) + ', now on ' + cur.name + ' at ' + price(cur, loc) + ')\n');
               if (process.env.MODE !== 'rescale') { console.log('Look only: nothing was changed.'); return; }
               const want = types.find(t => t.name === String(process.env.PLAN || '').trim().toLowerCase());
               if (!want) throw new Error('Plan \"' + process.env.PLAN + '\" is not in the list above. Nothing was changed.');
@@ -76,6 +90,21 @@ jobs:
               sv = (await get('/servers/' + sv.id)).server;
               console.log('Game server now: plan ' + sv.server_type.name + ', ' + sv.server_type.cores + ' cores, ' + gb(sv.server_type) + ' GB RAM, status ' + sv.status);
             })().catch(e => { console.error(e.message); process.exit(1); });"
+      - name: Tell the owner when the cheaper plan is on sale
+        if: github.event_name == 'schedule' && steps.look.outputs.instock != ''
+        env: { GH_TOKEN: '${{ github.token }}', TELEGRAM_BOT_TOKEN: '${{ secrets.TELEGRAM_BOT_TOKEN }}', TELEGRAM_ALERT_CHAT_ID: '${{ secrets.TELEGRAM_ALERT_CHAT_ID }}', INSTOCK: '${{ steps.look.outputs.instock }}' }
+        run: |
+          MSG="The cheaper game server plan is on sale now: $INSTOCK. Switching takes about 5 minutes offline: Actions > server-rescale > Run workflow (mode rescale, plan $WATCH_PLAN, confirm RESCALE), or ask Claude to switch."
+          echo "$MSG"
+          if [ -z "$(gh issue list -R "$GITHUB_REPOSITORY" --label server-plan --state open --json number --jq '.[0].number')" ]; then
+            gh label create server-plan -R "$GITHUB_REPOSITORY" --color 0e8a16 --description "Cheaper server plan on sale" 2>/dev/null || true
+            gh issue create -R "$GITHUB_REPOSITORY" --label server-plan --title "Cheaper server plan ($WATCH_PLAN) is on sale" --body "$MSG"
+          else echo "An open server-plan issue already says so."; fi
+          if [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$TELEGRAM_ALERT_CHAT_ID" ]; then
+            for c in $(echo "$TELEGRAM_ALERT_CHAT_ID" | tr ',' ' '); do
+              curl -s -o /dev/null -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage" --data-urlencode "chat_id=$c" --data-urlencode "text=$MSG" || true
+            done
+          fi
       - name: Wait for the game to answer again
         if: github.event.inputs.mode == 'rescale'
         run: |
