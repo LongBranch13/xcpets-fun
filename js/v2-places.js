@@ -14,6 +14,9 @@
       stations: [['🃏', 'Buy', 'shop.html#buy'], ['🏷️', 'Sell', 'shop.html#sell'], ['🔁', 'Trade', 'shop.html#trade'], ['🎁', 'Gift Wrap', 'shop.html#gift'], ['🏭', 'Token Press', 'shop.html#press']] },
     { id: 'raid', ico: '🐉', name: 'Raid Boss', url: 'raid.html', line: 'hit it together', pages: ['raid.html'] },
     { id: 'cemetery', ico: '🪦', name: 'Pet Cemetery', url: 'cemetery.html', line: 'rest in pixels', pages: ['cemetery.html'] },
+    /* grinder-place (Jake Nov 25 2026, "It needs its own spot in places"): The Meat Grinder opens on My Pets (play.html#grinder opens the
+     * Grinder screen from js/v2-grinder.js), so it has no page of its own to light up (pages: []) */
+    { id: 'grinder', ico: '🥩', name: 'The Meat Grinder', url: 'play.html#grinder', line: 'junk in, sausage out', pages: [] },
     /* pantheon-nav: The Pantheon is a place, same header menu and home card as the cemetery (display only) */
     { id: 'pantheon', ico: '🌕', name: 'The Pantheon', url: 'pantheon.html', line: '21 seats, 21 gods', pages: ['pantheon.html'] },
     /* merge-pages-1123: Proof Parade now sits under 🏆 Leaderboards (BOARD_PAGES below), not in the Places menu */
@@ -137,7 +140,7 @@
         if (linked) { var cv0 = linked.querySelector('canvas'); if (cv0 && !cv0.getAttribute('data-scene') && linked.getAttribute('data-place') !== p.id) { linked.setAttribute('data-place', p.id); sign(cv0, p); } return; }
         if (row.querySelector('[data-place="' + p.id + '"]')) return;
         var a = document.createElement('a'); a.className = 'scard'; a.href = p.url; a.setAttribute('data-place', p.id);
-        a.innerHTML = '<canvas width="320" height="180" role="img" aria-label="' + esc(p.name + ': ' + ({ raid: 'a towering boss and tiny pet raiders in an arena', tokens: 'pets marching with token banners and medals', live: 'a pet news anchor, studio camera and live ticker', pantheon: 'a moonlit temple of gold pillars and 21 empty seats' }[p.id] || 'pixel scene')) + '"></canvas><span class="sc-t">' + esc(p.name) + '</span><span class="sc-d">' + esc(p.line) + '</span>';
+        a.innerHTML = '<canvas width="320" height="180" role="img" aria-label="' + esc(p.name + ': ' + ({ raid: 'a towering boss and tiny pet raiders in an arena', tokens: 'pets marching with token banners and medals', live: 'a pet news anchor, studio camera and live ticker', grinder: 'a giant red meat grinder eating pets and spitting out sausages', pantheon: 'a moonlit temple of gold pillars and 21 empty seats' }[p.id] || 'pixel scene')) + '"></canvas><span class="sc-t">' + esc(p.name) + '</span><span class="sc-d">' + esc(p.line) + '</span>';
         row.appendChild(a); sign(a.querySelector('canvas'), p); });
       if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { row.querySelectorAll('[data-place]').forEach(function (a) { sign(a.querySelector('canvas'), PLACES.filter(function (p) { return p.id === a.getAttribute('data-place'); })[0]); }); }); }
   }
@@ -173,6 +176,22 @@
       [[46,78],[136,62],[226,78]].forEach(function(q){R(ink,q[0]-3,q[1]-3,46,78);R(gold,q[0],q[1],40,72);R('#2a2150',q[0]+6,q[1]+8,28,48);R(cream,q[0]+16,q[1]+22,8,22);});
       R(ink,28,70,264,12);R(gold,32,74,256,6);R('#7f6be0',148,118,24,30);R(cream,152,124,16,16);
       T('XXI',160,170,10);
+    }else if(id==='grinder'){
+      /* grinder-place: night butcher shop, the GRIND-O-MATIC 9000 eating pets, a sausage rope out of the chute */
+      for(i=0;i<40;i++)R(cream,(i*61)%320,(i*23)%60,1,1);
+      R('#2a1c14',0,128,320,52);R(ink,0,126,320,3);for(i=0;i<16;i++)R('#3a2a1a',i*20,136+(i%3)*12,12,2);
+      R(ink,96,10,128,16);R('#9b1035',99,13,122,10);T('MEAT GRINDER',160,22,7);
+      R(ink,104,30,112,6);R('#5b6470',107,32,106,4);
+      for(i=0;i<18;i++){var hw=Math.round(100-i*3.2);R(ink,160-hw/2-3,36+i*2,hw+6,2);R('#5b6470',160-hw/2,36+i*2,hw,2);}
+      pet(126,36,2,'#8cc63f');pet(166,32,2,gold,true);
+      R(ink,111,70,98,58);R('#8a2f2f',114,73,92,52);R('#b44a4a',114,73,92,6);R('#6a2020',114,117,92,8);
+      R(ink,128,82,64,14);R(gold,130,84,60,10);T('9000',160,93,7);
+      for(i=0;i<8;i++)R(i%2?ink:'#e8e8e8',128+i*8,102,8,6);
+      R(ink,208,84,6,6);R('#c9c9c9',214,86,26,3);R(ink,238,74,4,26);R('#c9c9c9',239,72,3,8);R(gold,236,96,8,8);
+      R(ink,148,125,24,14);R('#5b6470',151,125,18,11);
+      for(i=0;i<6;i++){var sx=146-i*24;R(ink,sx-18,138,22,12);R('#e86a7d',sx-16,140,18,8);R('#b84a5b',sx-16,145,18,3);}
+      R(ink,214,132,70,40);R('#fafaf5',217,135,64,34);x.fillStyle=ink;x.font='6px "Press Start 2P", monospace';x.textAlign='center';x.fillText('NO REFUNDS',249,148);x.fillText('NO REGRETS',249,160);
+      R(ink,258,40,44,46);R('#ffd166',261,43,38,40);x.font='22px serif';x.textAlign='center';x.textBaseline='middle';x.fillText('\ud83c\udf2d',280,64);x.textBaseline='alphabetic';
     }else if(id==='tokens'){
       R('#25365a',0,0,320,109);
       for(i=0;i<6;i++){var a=i*58-10;R('#5a3a4a',a,20+(i%2)*12,50,89);R('#9b1035',a,18+(i%2)*12,50,5);for(j=0;j<3;j++){R(cream,a+8+j*13,43,7,12);R(teal,a+8+j*13,74,7,14);}}
@@ -194,7 +213,7 @@
     x.textAlign='left';x.textBaseline='alphabetic';
   }
   /* 8-bit sign: night sky, gold-framed board, emoji + name in the pixel font */
-  function sign(c, p) { if (['raid','tokens','live','pantheon'].indexOf(p.id) >= 0) return townScene(c, p.id); var x = c.getContext('2d'), W = 320, H = 180; x.imageSmoothingEnabled = false; function R(cl, a, b, w, h) { x.fillStyle = cl; x.fillRect(a, b, w, h); }
+  function sign(c, p) { if (['raid','tokens','live','pantheon','grinder'].indexOf(p.id) >= 0) return townScene(c, p.id); var x = c.getContext('2d'), W = 320, H = 180; x.imageSmoothingEnabled = false; function R(cl, a, b, w, h) { x.fillStyle = cl; x.fillRect(a, b, w, h); }
     R('#100E14', 0, 0, W, H); for (var i = 0; i < 46; i++) R('#fff6c8', (i * 73 + p.id.length * 11) % W, (i * 37) % 70, 1, 1);
     R('#14301f', 0, 140, W, 40); R('#000', 0, 140, W, 2); R('#3a2a1a', 154, 118, 12, 24); R('#000', 40, 26, 240, 96); R('#E8B33A', 44, 30, 232, 88); R('#1d1530', 50, 36, 220, 76);
     x.textAlign = 'center'; x.textBaseline = 'middle'; x.font = '30px serif'; x.fillText(p.ico, 160, 60);
