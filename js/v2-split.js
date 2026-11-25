@@ -1050,7 +1050,7 @@
     if (!plain.length || plain.length > 100) return Promise.resolve(null);
     var ctl = typeof AbortController === 'function' ? new AbortController() : null, t = ctl ? setTimeout(function () { try { ctl.abort(); } catch (e) {} }, SERVER_MS) : null;
     serverStat.asked++;
-    return fetch(base() + '/xp/v1/check', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ plans: plain, me: pageWallet(), pending: [] }), cache: 'no-store', signal: ctl ? ctl.signal : undefined })
+    return fetch(base() + '/xp/v1/check', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ plans: plain, me: pageWallet(), pending: pendingForCheck(null) }), cache: 'no-store', signal: ctl ? ctl.signal : undefined })
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (j) {
         if (t) clearTimeout(t);
@@ -1100,6 +1100,19 @@
   function checkPlans(plans) {
     return serverCheck(plans).then(function (out) { return out || deviceCheck(plans); });
   }
+  /* wasted-burns audit (Nov 25 2026): the pre-sign check used to be asked with an empty pending list on fast pages, so it never knew about this
+   * wallet's own burns that were still on their way. Real losses: a breed accept sent twice in one run (Evan, block 977,453), a breed with
+   * a pet whose other breed was still waiting (977,509), a zombie meal for a pet whose Resurrection was still waiting (977,092), and the same
+   * feed sent twice. pendingForCheck(world tip) = my unconfirmed burns (tracker + node mempool, the same list the full pages use) plus my
+   * confirmed burns that are newer than the world the check runs on (a device check world can trail the chain tip by a few blocks). */
+  function tagText(t) { t = String(t || ''); if (/^7065743a([0-9a-f]{2})+$/i.test(t)) { var o = ''; for (var i = 0; i < t.length; i += 2) o += String.fromCharCode(parseInt(t.slice(i, i + 2), 16)); try { return decodeURIComponent(escape(o)); } catch (e) { return o; } } return t; }
+  function pendingForCheck(worldTip) {
+    var out = [], me = pageWallet(), U = window.V2UI, S = window.V2Mock && window.V2Mock.state && window.V2Mock.state();
+    function add(t) { t = tagText(t); if (t) out.push(t); }
+    try { if (U && U.myPendingTags) U.myPendingTags().forEach(add); } catch (e) { }
+    if (me && worldTip > 0) (S && S.rows || []).forEach(function (r) { if (r && r.source === me && Number(r.block_index) > worldTip) add(r.tag); });
+    return out;
+  }
   function deviceCheck(plans) {
     showProgress();
     if (!worker) startVerify();
@@ -1110,7 +1123,7 @@
         var id = ++seq;
         pending[id] = res;
         var S = window.V2Mock && V2Mock.state && V2Mock.state();
-        worker.postMessage({ cmd: 'check', id: id, plans: plans || [], tip: S && S.tip, me: pageWallet(), pending: [] });
+        worker.postMessage({ cmd: 'check', id: id, plans: plans || [], tip: S && S.tip, me: pageWallet(), pending: pendingForCheck(checkedTip) });
       });
     });
   }
