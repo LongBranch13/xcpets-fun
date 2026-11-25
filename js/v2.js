@@ -169,9 +169,13 @@
     var gr = G.length ? zList({ gear: true, items: G, empty: 'No gear you can pledge.' }, true) : '';
     var pts = TL.map(function (t, i) { return esc(t) + ' ' + zRpPts({ tier: i }); }).join(' · ');
     var ready = ri.points >= MIN, resCost = fmt(V.cemCost(w, 'resurrect', b));
-    var resHelp = 'Pledged pets and gear are <b>used up when the Resurrection is tried</b>, win or lose. Points by rarity: ' + pts + '. It needs ' + MIN + ' points to try. The pledge fee is ' + fmt(cost) + ' XCPETS <b>per burn</b>; one burn pledges as many as fit in it. Resurrect itself is ' + resCost + ' XCPETS. You have ' + ri.points + (ri.bonus ? ' plus ' + ri.bonus + ' Halloween' : '') + ' points, about ' + Math.round(ri.chance * 100) + '% chance.' + (kept ? ' ★ Starred pets are never listed (' + fmt(kept) + ').' : '') + ' Pets offered at a seance are Sacrificed. A pledge is used up only when you try the Resurrection.';
+    /* mg-odds-ceiling (Nov 25 2026): the odds stop climbing at the rules' ceiling. Without this line a player pledged
+     * 1,353 points where about 694 already bought the best odds, and dozens of pets went in for nothing. */
+    var capL = window.V2MgRoad ? V2MgRoad.capLine(w, p, b) : '', riskL = window.V2MgRoad && p.mgDead ? V2MgRoad.riskLine(p) : '';
+    var resHelp = 'Pledged pets and gear are <b>used up when the Resurrection is tried</b>, win or lose. Points by rarity: ' + pts + '. It needs ' + MIN + ' points to try. The pledge fee is ' + fmt(cost) + ' XCPETS <b>per burn</b>; one burn pledges as many as fit in it. Resurrect itself is ' + resCost + ' XCPETS. You have ' + ri.points + (ri.bonus ? ' plus ' + ri.bonus + ' Halloween' : '') + ' points, about ' + Math.round(ri.chance * 100) + '% chance.' + (capL ? ' ' + capL : '') + (riskL ? ' ' + riskL : '') + (kept ? ' ★ Starred pets are never listed (' + fmt(kept) + ').' : '') + ' Pets offered at a seance are Sacrificed. A pledge is used up only when you try the Resurrection.';
     var res = ready ? '<button type="button" class="btn ghost zb-resbtn">😇 Resurrect · ' + resCost + ' XCPETS</button> ' + zQ(resHelp) : '<p class="zb-noact">Resurrect needs ' + (MIN - ri.points) + ' more points (now ' + ri.points + (ri.bonus ? ' + ' + ri.bonus + ' Halloween' : '') + ' of ' + MIN + ', ' + Math.round(ri.chance * 100) + '% chance). ' + zQ(resHelp) + '</p>';
-    return '<div class="zb-feed zb-pk zb-rpl" data-zr="' + p.id + '" data-pk="rpl">' + (pl.length ? '<div class="small zb-pled">😇 Already pledged: ' + pl.join(', ') + '</div>' : '') +
+    var mgNote = p.mgDead && (capL || riskL) ? '<p class="small zb-mgcap">' + (capL ? '🎯 ' + capL + (riskL ? '<br>' : '') : '') + (riskL ? '⚠️ ' + riskL : '') + '</p>' : '';
+    return '<div class="zb-feed zb-pk zb-rpl" data-zr="' + p.id + '" data-pk="rpl">' + mgNote + (pl.length ? '<div class="small zb-pled">😇 Already pledged: ' + pl.join(', ') + '</div>' : '') +
       (mine.length ? '<div class="small zb-pend">⏳ Pledge waiting for a block: ' + mine.length + ' item' + (mine.length > 1 ? 's' : '') + '. It counts when that burn confirms.</div>' : '') +
       res +
       '<details class="zb-pickbox"><summary class="small">😇 Pledge pets &amp; gear <span class="muted">(' + ri.points + (ri.bonus ? ' + ' + ri.bonus + ' Halloween' : '') + ' of ' + MIN + ' points · ' + Math.round(ri.chance * 100) + '% chance)</span></summary>' +
@@ -191,7 +195,9 @@
     var sp = window.V2Zombies && V2Zombies.span ? V2Zombies.span : function (n) { return n + ' blocks'; };
     return '<p class="small zb-cta' + (h.feral ? ' feral' : '') + '">🍖 ' + (h.feral ? 'Feral: feed it within ' + sp(h.crumbleIn) : 'Hungry: feed it within ' + sp(h.left)) + '. Tap to feed.</p>'; }
   function zZoneHtml(p, w) { var blk = unleashEvalBlock(w), b = blk || ((S.tip || 0) + 1), mv = null; try { mv = V.mgView ? V.mgView(w, p, b) : null; } catch (e) { mv = null; }
-    if (mv && mv.fed) return ''; if (mv && mv.mythicZombie) return (V.mythicZfeedOn && V.mythicZfeedOn(b) ? zFeedHtml(p, w) : '') + zRplHtml(p, w); return zFeedHtml(p, w) + zRplHtml(p, w) + mgUnlHtml(p, w, mv); }
+    /* mg-road (Nov 25 2026): one panel that says which step of the road to Mythic God this pet is on and what the next burn is. */
+    var road = ''; try { if (window.V2MgRoad && ME && p.owner === ME) road = V2MgRoad.html(w, p, ME, b); } catch (e) { road = ''; }
+    if (mv && mv.fed) return road; if (mv && mv.mythicZombie) return road + (V.mythicZfeedOn && V.mythicZfeedOn(b) ? zFeedHtml(p, w) : '') + zRplHtml(p, w); return road + zFeedHtml(p, w) + zRplHtml(p, w) + mgUnlHtml(p, w, mv); }
   function unleashPlain(why) { if (!why) return '';
     if (/no Mythic it could eat/i.test(why)) return 'Unleash can\'t be used: you have no Mythic it can eat. A Mythic has to be held 30 days, and it can\'t be a 1 of 1, an edition, a community pet, listed, or tokenized.';
     if (/only a starving/i.test(why)) return 'Unleash can\'t be used until this zombie is feral.';
@@ -268,6 +274,9 @@
     var b = tips.b, mv = null;
     try { mv = V.mgView(w, p, b); } catch (e) { mv = null; }
     if (!mv || !mv.on || mv.fed || mv.mythicZombie) return '';
+    /* mg-fast-world (Nov 25 2026): a slim world without w.cem.mg cannot see a pending unleash, the 30-day wallet gap or
+     * the free Pantheon seats, so the button would offer a burn the rules reject. Wait for the table instead. */
+    if (window.V2MgRoad && !V2MgRoad.mgReady(w)) { if (opt.ask) opt.ask(); return ((opt.hunger && opt.hunger.feral) || p.feral) ? checking : ''; }
     if (mv.unleash) return '<div class="small mg-pend mg-unl" data-mgu="' + p.id + '">🩸 Unleashed: eats in ' + nf(mv.unleash.left) + ' block' + (mv.unleash.left === 1 ? '' : 's') + ' (block ' + nf(mv.unleash.mealAt) + ') · one of your ' + nf(mv.unleash.pool) + ' Mythic' + (mv.unleash.pool === 1 ? '' : 's') + ', picked by that block\'s hash</div>';
     if ((opt.pending || []).indexOf('pet:unleash:' + p.id) >= 0) return '<div class="small mg-pend mg-unl">⏳ Unleash burn waiting for a block. The meal comes 6 blocks after it confirms.</div>';
     var fed = p.zombie && p.zombie.fedAt, fix = unleashFix(V, mv.unleashWhy, tips, fed == null ? 0 : fed);
@@ -295,7 +304,9 @@
     var w = world(), b = unleashEvalBlock(w) || ((S.tip || 0) + 1), Z = w.byId[z], mv = V.mgView ? V.mgView(w, Z, b) : null; if (!Z || !mv || !mv.edible || !mv.edible.length) return toast(mv && mv.unleashWhy ? 'Can\'t unleash: ' + mv.unleashWhy : 'No Mythic of yours can be eaten.');
     var nm = Z.name || ('#' + z), old = document.getElementById('mgDlg'); if (old) old.remove(); var d = document.createElement('div'); d.id = 'mgDlg'; d.className = 'mg-dlg-wrap';
     d.innerHTML = '<div class="mg-dlg" role="dialog" aria-modal="true" aria-labelledby="mgDlgT"><h3 id="mgDlgT">🩸 Unleash ' + esc(nm) + ' #' + z + '</h3>' +
-      '<p class="mg-dlg-warn">Your zombie ' + esc(nm) + ' will EAT ONE of these Mythics, picked at random. The eaten Mythic dies. You can raise it again, but it may be lost forever.</p>' +
+      /* honest-mg-copy (Nov 25 2026): this line used to promise another raise after a failed roll. The rules give ONE
+       * Resurrection try, and a miss turns the Mythic to dust for good. Three players were told otherwise and lost theirs. */
+      '<p class="mg-dlg-warn">Your zombie ' + esc(nm) + ' will EAT ONE of these Mythics, picked at random. The eaten Mythic dies and leaves a violet grave. You raise that grave and get <b>one</b> Resurrection roll: win and it is a Mythic God, lose and it turns to dust and is gone forever.</p>' +
       '<div class="mg-dlg-list">' + mv.edible.map(function (id) { var q = w.byId[id]; return '<div class="mg-ed"><canvas width="32" height="32" data-id="' + id + '"></canvas><span>' + esc((q && q.name) || '#' + id) + '</span><span class="muted">#' + id + '</span></div>'; }).join('') + '</div>' +
       '<p class="small">The meal comes 6 blocks after the burn confirms, picked by that block\'s hash from the Mythics above that can still be eaten then. 1-of-1, edition, community, listed and tokenized Mythics, the owner\'s pets #1, #2 and #13, and Mythics held under 30 days, are never on the menu. If ' + esc(nm) + ' is hunted, leaves your wallet or crumbles first, nothing is eaten. One unleash per wallet every 30 days.</p>' +
       '<label class="small">Type <b>' + esc(nm) + '</b> to unleash it <input type="text" class="mg-name" autocomplete="off" spellcheck="false"></label>' +
@@ -334,7 +345,10 @@
       var mo = e.target.closest('.zb-more'); if (mo) { var ml = mo.closest('.zb-list[data-zk]'), MR = ml && ZPK[ml.getAttribute('data-zk')]; if (MR) { MR.shown += ZPAGE; zListDraw(el, ml, true); } return; }
       if (e.target.closest('.zb-alld,.zb-none')) { var on = !!e.target.closest('.zb-alld'), RP = zRec(el, false), RG = zRec(el, true); if (on) { if (RP) RP.items.forEach(function (a) { if (zF(RP, a, 'd')) RP.sel.add(a.id); }); } else { if (RP) RP.sel.clear(); if (RG) RG.sel.clear(); } zPickSort(el, true); upd(); return; }
       var w = world(), b = (S.tip || 0) + 1, Z = w.byId[z];
-      if (e.target.closest('.zb-resbtn')) { if (!Z || e.target.closest('.zb-resbtn').disabled) return; var ri = V.cemResInfo(w, Z, b); confirmPlans('😇 Try the Resurrection of ' + esc(Z.name || '#' + z) + ' #' + z + ' · ' + ri.points + ' points · ' + Math.round(ri.chance * 100) + '% chance · every pledged pet and gear is used up, win or lose', [{ tag: V.cemPlan(w, 'resurrect', z, null, b).tag, amount: V.cemCost(w, 'resurrect', b), petId: z, label: 'resurrect' }]); return; }
+      if (e.target.closest('.zb-resbtn')) { if (!Z || e.target.closest('.zb-resbtn').disabled) return; var ri = V.cemResInfo(w, Z, b);
+        /* honest-mg-copy: a Mythic zombie's roll is one try, and a fail destroys the Mythic. Say it on the sheet that signs it. */
+        var mgTail = Z.mgDead && window.V2MgRoad ? ' · ' + V2MgRoad.riskLine(Z, true) : '';
+        confirmPlans('😇 Try the Resurrection of ' + esc(Z.name || '#' + z) + ' #' + z + ' · ' + ri.points + ' points · ' + Math.round(ri.chance * 100) + '% chance · every pledged pet and gear is used up, win or lose' + mgTail, [{ tag: V.cemPlan(w, 'resurrect', z, null, b).tag, amount: V.cemCost(w, 'resurrect', b), petId: z, label: 'resurrect' }]); return; }
       var bt = e.target.closest('.zb-feedbtn'); if (!bt) return; var ids = picked(), gids = rp ? picked('.zb-gpick') : [];
       if (!Z || (!ids.length && !gids.length)) return toast('Tick the ' + (rp ? 'pets or gear you want to pledge to ' : 'pets you want ') + (Z ? esc(Z.name || '#' + z) : 'the zombie') + (rp ? '' : ' to eat') + ' first.');
       if (window.V2SacGuard && ids.length && !bt._sgOk) return V2SacGuard.check({ w: w, ids: ids, me: ME, verb: rp ? 'pledge them to the Resurrection of ' + (Z.name || '#' + z) : 'feed them to ' + (Z.name || 'the zombie'), onGo: function (keep) { /* sac-guard: special pets left out -> untick them, then the same button again */
@@ -342,7 +356,10 @@
       var names = ids.map(function (f) { var F = w.byId[f]; return esc((F && F.name) || '#' + f) + ' #' + f; }).concat(gids.map(function (n) { var g = w.items['g' + n]; return esc((g && g.label) || 'g' + n) + ' (gear)'; }));
       var nm = names.slice(0, 6).join(', ') + (names.length > 6 ? ' +' + (names.length - 6) + ' more' : '');
       if (!rp) return confirmPlans('🍖 Feed zombie ' + esc(Z.name || '#' + z) + ' #' + z + ' · eats ' + ids.length + ' pet' + (ids.length > 1 ? 's' : '') + ' for good: ' + nm, zFeedPlans(w, z, ids, b));
-      var c = zResInfo(w, Z, ids, gids, b); confirmPlans('😇 Pledge to the Resurrection of ' + esc(Z.name || '#' + z) + ' #' + z + ' · ' + names.length + ' (used up when it is tried): ' + nm + ' · points → ' + c.points + ' · chance → ' + Math.round(c.chance * 100) + '%', zRplPlans(w, z, 'rpl', ids, b).concat(zRplPlans(w, z, 'rplg', gids, b))); });
+      var c = zResInfo(w, Z, ids, gids, b);
+      /* mg-odds-ceiling: when the pledge cannot raise the odds any further, say so on the sheet that signs it. */
+      var a0 = V.cemResInfo(w, Z, b), capT = Z.mgDead && window.V2MgRoad && Math.round((c.chance || 0) * 10000) <= Math.round((a0.chance || 0) * 10000) ? ' · ⚠️ this does not raise the odds: ' + V2MgRoad.capLine(w, Z, b) : '';
+      confirmPlans('😇 Pledge to the Resurrection of ' + esc(Z.name || '#' + z) + ' #' + z + ' · ' + names.length + ' (used up when it is tried): ' + nm + ' · points → ' + c.points + ' · chance → ' + Math.round(c.chance * 100) + '%' + capT, zRplPlans(w, z, 'rpl', ids, b).concat(zRplPlans(w, z, 'rplg', gids, b))); });
     el.addEventListener('keydown', function (e) { e.stopPropagation(); }); upd(); }); }
   'use strict';
   /* power-tooltip-values (Oct 25 2026, display only): hovers show the pet's real numbers (js/v2-power-tip.js) */
@@ -1394,6 +1411,8 @@
     var inv = w.itemList.filter(function (g) { return g.owner === ME && g.on == null; }), legAll = V.legendaryOf(p.species), leg = legAll[0];
     var h = '<a class="btn openpet" id="dOpenPet" href="pet.html?id=' + p.id + '">Open pet page →</a>' + (window.V2Rivals ? V2Rivals.strip(w, p.id, function (fid) { return 'fight.html#replay-' + fid; }) : '') + (R.bredFrom ? '<div class="chips dbred">' + R.bredFrom(w, p, true) + '</div>' : '') + '<p>' + esc(spLabel(p)) + ' · ' + p.stageName + ' · care ' + fmt(p.care) + ' / ' + fmt(R.careTarget(w, p, S.tip).mythic) + (R.careTarget(w, p, S.tip).discount ? ' (Mythic at ' + fmt(R.careTarget(w, p, S.tip).mythic) + ' care because you raised a Mythic)' : '') + (p.species === 'nakamoto' && !V.nakaNormal(S.tip) ? ' (Nakamoto: 10× thresholds until block ' + fmt(V.ACTIVATE_NAKA_NORMAL_BLOCK) + ', then normal growth)' : '') + ' · W' + (p.wins || 0) + '/L' + (p.losses || 0) + '</p>';
     if (ZB(p)) h += (window.V2Zombies && V2Zombies.hungerBar ? V2Zombies.hungerBar(p, world()) : '') + zZoneHtml(p, world());
+    /* mg-road: a violet grave and a Mythic God are not zombies, so their step panel is added here. */
+    else if (window.V2MgRoad && (p.mgDead || p.mythicGod)) { try { h += V2MgRoad.html(w, p, ME); } catch (e) {} }
     if (!p.dead && !p.released && ME && p.owner === ME) h += '<div class="row">' + (ZB(p) ? '' : '<button class="btn ico-flame" data-a="feed"' + (p.hungry ? '' : ' disabled') + '>Feed (' + fmt(p.nextMeal) + ')</button>') + /* zombie-feed-pets: a zombie never takes a normal meal, so no Feed button on its panel */ (V.wheelOn && V.wheelOn((S.tip || 0) + 1) ? '<a class="btn ghost" href="#rare-room" title="Gear rolls are Pepe Wheel spins: the piece goes to a random pet of yours">🎡 Spin the Pepe Wheel</a>' : '<button class="btn ghost ico-flame" data-a="roll" title="Burn ' + fmt(V.COSTS.roll) + ' XCPETS for one random gear piece for this pet">🎲 Roll for gear (' + fmt(V.COSTS.roll) + ')</button>') + frBtn(w) + ofBtn(w, p) + '<button class="act ghost" id="dDiscard" title="Moves it to the Discard pile (only hidden in this browser). Free, no burn; restore any time.">🗑️ Discard pet</button></div>' +
       (p.owner === ME ? rollHelp(p) : '');
     h += R.starveHtml ? R.starveHtml(w, p, ME) : ''; /* starve-warning (2026-10-19): neglected + gear worn -> countdown, worn pieces, Feed (display only) */

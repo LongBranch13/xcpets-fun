@@ -300,12 +300,17 @@
     var acts = '', why = '';
     if (on && mine) {
       if (v.feral || (!v.mfed && v.hungerLeft <= 144)) { acts = feed(true) + halo(false) + (ready ? resB(false) : ''); why = v.feral ? '<b>Anyone can hunt it now.</b> If their pet wins, the zombie becomes theirs. Feed it to make it safe.' : 'Feed it within ' + tm(v.hungerLeft) + ' or it goes feral and can be hunted.'; }
-      else if (ready) { acts = resB(true) + halo(false) + (v.mfed ? '' : feed(false)); why = '<b>' + Math.round(res.chance * 100) + '% chance.</b> Win: it lives again as a God, for good. Miss: it turns to dust. More halo points, better odds.'; }
+      else if (ready) { acts = resB(true) + halo(false) + (v.mfed ? '' : feed(false));
+        /* honest-mg-copy + mg-odds-ceiling: on a violet (Mythic) grave the roll is one try and the odds stop at the rules' ceiling. */
+        var cl = p.mgDead && window.V2MgRoad ? V2MgRoad.capLine(w, p, b) : '';
+        why = '<b>' + Math.round(res.chance * 100) + '% chance.</b> Win: it lives again as a God, for good. Miss: it turns to dust. ' + (cl || 'More halo points, better odds.') + (p.mgDead && window.V2MgRoad ? '<br>⚠️ ' + V2MgRoad.riskLine(p) : ''); }
       else { acts = halo(true) + (v.mfed ? '' : feed(false)); why = (min - res.points) + ' more halo point' + (min - res.points === 1 ? '' : 's') + ' to try a Resurrection: a Rare gives ' + PTS[2] + ', a Legendary ' + PTS[3] + '.'; } }
     /* cem-unleash: the Mythic God path on the card. The burn itself stays on the zombie's My Pets card, which holds the live-tip safety checks. */
     if (on && mine && V.mgView && !v.mfed) { var mv = null; try { mv = V.mgView(w, p, b); } catch (e) { mv = null; }
       if (mv && mv.unleash) why += '<br>💜 <b>Unleashed:</b> it eats one of your Mythics in ' + tm(mv.unleash.left) + '.';
-      else if (mv && v.feral && !mv.unleashWhy) { acts += '<a class="btn ghost cv2-small cv2-violet" href="play.html#act-unleash-' + p.id + '" title="It eats one of your Mythics held 30 days, is cured for good, and the Mythic leaves a violet grave you can raise into a Mythic God. Once every 30 days. Opens the Unleash check on Play.">💜 Unleash on a Mythic</a>'; } }
+      /* mg-fast-world: without w.cem.mg this page cannot see a pending unleash or the 30-day wallet gap, so it must not
+       * offer the burn (the rules would reject it and the XCPETS would be spent for nothing). */
+      else if (mv && v.feral && !mv.unleashWhy && !(window.V2MgRoad && !V2MgRoad.mgReady(w))) { acts += '<a class="btn ghost cv2-small cv2-violet" href="play.html#act-unleash-' + p.id + '" title="It eats one of your Mythics held 30 days, is cured for good, and the Mythic leaves a violet grave you can raise into a Mythic God. Once every 30 days. Opens the Unleash check on Play.">💜 Unleash on a Mythic</a>'; } }
     else if (on && !mine) {
       if (ME && v.feral && !v.mfed) { acts = '<button type="button" class="btn cv2-red" data-hunt="' + p.id + '">⚔️ Hunt it <small>' + fmt(V.cemCost(w, 'hunt', b)) + '</small></button>'; why = '<b>Feral:</b> win the fight and this zombie is yours.'; }
       else why = v.mfed ? 'Cured by a Mythic meal: it can never be hunted.' : v.feral ? 'Feral: connect a wallet to hunt it.' : 'Fed, so it can’t be hunted. It goes feral in ' + tm(v.hungerLeft) + ' unless its owner feeds it.'; }
@@ -573,7 +578,9 @@
     if (!p || !V || !V.isZ || !V.isZ(p) || !V.cemView) { el.innerHTML = ''; el.hidden = true; return; }
     var b = (w.tip || 0) + 1, on = V.cemOn ? V.cemOn(b) : false, sa = ctx.shortAddr || function (a) { a = String(a || ''); return a.length > 16 ? a.slice(0, 6) + '…' + a.slice(-4) : a; };
     ctx.w = w; ctx.b = b; css(); var redo = function () { if (el.isConnected) zombieBox(el, id, ctx); }; if (!window.V2CemArt) artJs(redo); if (!window.V2CemGuide && !zombieBox.guide) { zombieBox.guide = 1; guideJs(redo); } /* plain times + badges, once */
-    el.hidden = false; el.innerHTML = '<h3 class="pc-qh">🧟 Zombie care</h3><div class="cv2-zombies cv2-one">' + zcardHtml({ w: w, b: b, V: V, R: R, ME: ME, on: on, fmt: ctx.fmt, sa: sa }, p) + '</div>';
+    /* mg-road (Nov 25 2026): the step panel above the card, so a player on the road to Mythic God always sees where they are. */
+    var road = ''; try { if (window.V2MgRoad) road = V2MgRoad.html(w, p, ME, b); } catch (e) { road = ''; }
+    el.hidden = false; el.innerHTML = '<h3 class="pc-qh">🧟 Zombie care</h3>' + road + '<div class="cv2-zombies cv2-one">' + zcardHtml({ w: w, b: b, V: V, R: R, ME: ME, on: on, fmt: ctx.fmt, sa: sa }, p) + '</div>';
     var c = el.querySelector('canvas[data-z="' + p.id + '"]'); if (c && p.art && R.lazy) R.lazy(c, function () { return R.petFrames ? R.petFrames(p, w) : R.framesWith(p.art, Math.max(5, p.stage), []); }, true);
     var own = el.querySelector('.cv2-zown'); if (own) own.remove(); /* the pet page already names the owner */
     if (!document.getElementById('cemAltar')) { var host = document.createElement('section'); host.id = 'cemAltar'; host.className = 'cem-altar'; host.hidden = true; host.setAttribute('aria-label', 'Sign the zombie burns'); el.parentNode.insertBefore(host, el.nextSibling); }

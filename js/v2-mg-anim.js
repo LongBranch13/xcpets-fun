@@ -6,7 +6,7 @@
  *   mgcancel       the unleash is called off: the zombie fades, the Mythic stays safe               (log 'mgcancel')
  *   mgraise        a violet grave: violet candles and stars, the Mythic zombie climbs out            ('raise' of a Mythic grave)
  *   mgrise-win     the Resurrection roll, then a gold pillar, halo, wings and the Pantheon seat      (log 'mgrise')
- *   mgrise-fail    the same roll, FAIL: dust (it can be raised again from its violet grave)          ('resurrect' of a Mythic zombie)
+ *   mgrise-fail    the same roll, FAIL: the Mythic turns to dust and is gone for good                ('resurrect' of a Mythic zombie)
  * Sprites carry no text; the scene shows pixel text only. */
 (function () {
   'use strict';
@@ -65,7 +65,7 @@
       mgcancel: { len: 34, key: 28, paint: cancelF, caption: cap('🛡️', function (ev, P, n) { return 'The unleash of ' + n + ' was called off. Nothing was eaten'; }) },
       mgraise: { len: 46, key: 40, paint: raiseF, caption: cap('💜', function (ev, P, n) { return n + ' rose from its violet grave as a Mythic zombie'; }) },
       'mgrise-win': { len: 90, key: 82, paint: riseWinF, caption: cap('🌕', function (ev, P, n) { return n + ' rose as a MYTHIC GOD: seat ' + (ROMAN[(ev.seat || 1) - 1] || ev.seat) + ' of 21 in the Pantheon. Rolled ' + ev.roll + ', needed under ' + ev.need; }) },
-      'mgrise-fail': { len: 72, key: 66, paint: riseFailF, caption: cap('🪦', function (ev, P, n) { return n + ': the Mythic Resurrection failed. Rolled ' + ev.roll + ', needed under ' + ev.need + '. Its violet grave can be raised again'; }) } },
+      'mgrise-fail': { len: 72, key: 66, paint: riseFailF, caption: cap('🪦', function (ev, P, n) { return n + ': the Mythic Resurrection failed. Rolled ' + ev.roll + ', needed under ' + ev.need + '. It turned to dust: that Mythic is gone forever'; }) } },
     from: function (w, l, ME, kit) { var p = w.byId[l.petId], m, z;
       if (l.kind === 'unleash') { m = /at block (\d+)/.exec(l.msg || ''); return p && p.owner === ME ? { kind: 'unleash', id: l.petId, mealAt: m ? +m[1] : null, block: l.block, tx: l.tx, key: 'unleash:' + l.tx } : null; }
       if (l.kind === 'mgmeal') { var Mp = w.byId[l.mythic]; return (p && (p.owner === ME || (p.zombie && p.zombie.prevOwner === ME))) || (Mp && ((Mp.mgDead && Mp.mgDead.owner === ME) || Mp.owner === ME)) ? { kind: 'mgmeal', id: l.petId, victims: [l.mythic], block: l.block, tx: l.tx, key: 'mgmeal:' + l.tx + ':' + l.mythic } : null; }
