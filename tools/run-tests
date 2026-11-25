@@ -51,7 +51,7 @@ function child(args, tag) { return new Promise(async res => { const port = await
   const t0 = Date.now(), p = spawn(process.execPath, args, { cwd: ROOT, env, detached: true }), me = { f: tag, peak: 0 }; running.set(p.pid, me); pend -= want(tag);
   note('start ' + tag);
   let out = ''; p.stdout.on('data', d => { out += d; }); p.stderr.on('data', d => { out += d; });
-const killMs = tag === 'seance-raises-test.js' ? 2100000 : 600000;
+const killMs = 600000; /* one limit for every test: a slow test is a bug to fix (seance-raises had 35 min until its replay shortcut was fixed, Nov 25 2026) */
   const kill = setTimeout(() => { out += '\nFAIL timeout after ' + (killMs / 1000) + ' s'; note('timeout ' + tag + ' after ' + (killMs / 1000) + ' s'); try { process.kill(-p.pid, 'SIGKILL'); } catch (e) { try { p.kill('SIGKILL'); } catch (e2) {} } }, killMs);
   p.on('close', (code, sig) => { clearTimeout(kill); running.delete(p.pid); if (me.peak) mem[tag] = me.peak; if (sig) out += '\nkilled by ' + sig + (sig === 'SIGKILL' ? ' (out of memory? see dmesg)' : ''); note('done ' + tag + ' exit ' + code + (sig ? ' ' + sig : '') + ' ' + ((Date.now() - t0) / 1000).toFixed(1) + ' s'); if (!keepTmp) fs.rmSync(tmp, { recursive: true, force: true }); res({ code, out, ms: Date.now() - t0, port, tmp }); }); }); }
 const base = opt('--replay-base'), SNAPS = ['snap-971786.json', 'snap-972883.json', 'snap-972901.json'];
