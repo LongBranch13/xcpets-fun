@@ -121,9 +121,10 @@ ok(MR && typeof MR.html === 'function', 'js/v2-mg-road.js loads with no DOM and 
   const want = pages.filter(f => read(f).indexOf('js/v2-mythic-god.js') >= 0);
   const miss = want.filter(f => read(f).indexOf('js/v2-mg-road.js') < 0);
   ok(want.length > 0 && miss.length === 0, want.length + ' pages load v2-mythic-god.js and all of them load v2-mg-road.js' + (miss.length ? ' (missing: ' + miss.join(', ') + ')' : ''));
-  const stale = ['js/v2.js', 'js/v2-split.js', 'js/v2-cemetery-scene.js', 'js/v2-pantheon.js', 'js/v2-mg-anim.js'].filter(f => {
-    const base = f.replace('js/', ''); return pages.some(p => { const t = read(p); const m = new RegExp('js/' + base.replace('.', '\\.') + '\\?v=([0-9a-z]+)').exec(t); return m && m[1] !== 'mgroad1125'; });
-  });
+  /* The tokens these scripts had before this change. Later PRs bump them again, so the check is "not the old one",
+   * never "exactly mgroad1125": an exact pin turns into a false failure the next time anyone touches the file. */
+  const OLD = { 'v2.js': 'a1125f2ee0', 'v2-split.js': 'wslow1125', 'v2-cemetery-scene.js': 'c1125b', 'v2-pantheon.js': 'spn1124', 'v2-mg-anim.js': 'e6db15afb2', 'v2-pet-card.js': 'spn1124' };
+  const stale = Object.keys(OLD).filter(base => pages.some(p => { const m = new RegExp('js/' + base.replace('.', '\\.') + '\\?v=([0-9a-z]+)').exec(read(p)); return m && m[1] === OLD[base]; }));
   ok(stale.length === 0, 'every changed script is cache-busted to the new token' + (stale.length ? ' (stale: ' + stale.join(', ') + ')' : ''));
 }
 
