@@ -1612,8 +1612,16 @@
   var FIRE_END_WARN = 6, FIRE_SALE_PART = 0.31; /* sale-guard (Nov 23 2026): 2 -> 6 blocks (about an hour): a player sent feeds 3 blocks before the end and they landed after it */
   function fireEndPlans(w, plans) { if (!V.fireInfo || !plans || !plans.length) return null; var f; try { f = V.fireInfo(w, S.tip || 0); } catch (e) { return null; }
     var sl = f && f.live; if (!sl) return null; var left = sl.end - f.nextBlock; if (left > FIRE_END_WARN) return null; var any = false;
-    var full = plans.map(function (p) { var a = Number(p && p.amount); if (!(a >= 0.001)) return p; any = true; var n = (p.petIds && p.petIds.length) || 1;
-      return Object.assign({}, p, { amount: (Math.ceil(a / FIRE_SALE_PART * 1e8 - 1e-6) + 2 * n) / 1e8 }); });
+    /* wasted-burns audit (Nov 25 2026): a plan that was already priced at full cost was divided by 0.31 again (block 977,493: a 2-pet meal of
+     * 17.25 went out as 55.65). Only a plan at the sale price is raised: priced actions take their full cost from the rules at the first block
+     * after the sale (planAmount), meals from the pets' own sale-priced next meals. A plan already at (or above) full cost is left alone. */
+    function fullOf(p, a, n) { var t = V.parseTag ? V.parseTag(p.tag) : null, ids = p.petIds || (t && t.action === 'feed' ? [t.petId] : null), sale = 0;
+      if (ids && ids.length && t && /^(feed|feedm|feedr|chores)$/.test(t.action)) { ids.forEach(function (id) { var q = w.byId && w.byId[id]; sale += q && q.nextMeal > 0 ? Number(q.nextMeal) : 0; });
+        if (sale > 0 && a + 1e-8 >= sale / FIRE_SALE_PART - 1e-6) return null; }
+      else if (V.planAmount) { var pa = V.planAmount(w, Object.assign({}, p, { amount: 1e12 }), sl.end), fa = pa && Number(pa.amount); if (fa > 0 && fa < 1e12) return a + 1e-8 >= fa ? null : fa; }
+      return (Math.ceil(a / FIRE_SALE_PART * 1e8 - 1e-6) + 2 * n) / 1e8; }
+    var full = plans.map(function (p) { var a = Number(p && p.amount); if (!(a >= 0.001)) return p; var n = (p.petIds && p.petIds.length) || 1, fa = fullOf(p, a, n); if (fa == null) return p; any = true;
+      return Object.assign({}, p, { amount: fa }); });
     return any ? { sale: plans, full: full, left: left, end: sl.end } : null; }
   function fireEndNote(fe) { return '<div class="warn fs-endwarn" id="cfFireEnd" role="alert"><p><b>🔥 Sale may end before this confirms. Pay full cost to be safe?</b></p><p class="small">' +
       (fe.left === 1 ? 'This is the last block' : 'Only ' + fe.left + ' blocks are') + ' left in the Fire Sale (it ends at block ' + fmt(fe.end) + '). A burn is judged at the block it lands in, and a burn can wait a few blocks in line (a block sometimes takes an hour). If it lands after the sale at the sale cost, only some of the pets get fed.</p>' +
