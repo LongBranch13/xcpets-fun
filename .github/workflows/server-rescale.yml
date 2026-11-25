@@ -45,7 +45,11 @@ jobs:
               if (s.length !== 1) throw new Error('Could not tell which server is the game server (' + all.length + ' servers). Nothing was changed.');
               let sv = s[0]; const cur = sv.server_type, loc = sv.datacenter && sv.datacenter.location && sv.datacenter.location.name;
               console.log('Game server now: plan ' + cur.name + ', ' + cur.cores + ' cores, ' + gb(cur) + ' GB RAM, ' + cur.disk + ' GB disk (disk in use: ' + (sv.primary_disk_size || '?') + ' GB), status ' + sv.status + ', ' + price(cur, loc));
-              const types = ((await get('/server_types?per_page=50')).server_types || []).filter(t => t.architecture === cur.architecture && !t.deprecated && !(t.deprecation && t.deprecation.unavailable_after && Date.parse(t.deprecation.unavailable_after) < Date.now()) && (t.prices || []).some(p => p.location === loc));
+              const raw = (await get('/server_types?per_page=50')).server_types || [];
+              const gone = t => { const d = t.deprecation || ((t.locations || []).find(l => l.name === loc) || {}).deprecation; return !!(d && d.unavailable_after && Date.parse(d.unavailable_after) < Date.now()); };
+              const types = raw.filter(t => (!cur.architecture || t.architecture === cur.architecture) && !gone(t) && (t.prices || []).some(p => p.location === loc));
+              if (!types.some(t => t.name === cur.name)) types.push(cur);
+              console.log('(' + raw.length + ' plans from Hetzner, ' + types.length + ' listed for location ' + loc + ', architecture ' + cur.architecture + ')');
               types.sort((a, b) => a.memory - b.memory || a.cores - b.cores);
               console.log('Plans available in this location (name: cores, RAM, disk, price):');
               types.forEach(t => console.log('  ' + t.name.padEnd(8) + ' ' + t.cores + ' cores, ' + String(gb(t)).padStart(4) + ' GB RAM, ' + t.disk + ' GB disk, ' + price(t, loc) + (t.disk < (sv.primary_disk_size || cur.disk) ? '  (disk smaller than the one in use: not possible with CPU and RAM only)' : '') + (t.name === cur.name ? '  <- current' : '')));
