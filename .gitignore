@@ -14,3 +14,6 @@
 /var/
 hatchbot/memes.json
 hatchbot/tokens.json
+
+# play-test robot output (tools/playtest/run.js)
+/previews/playtest/
