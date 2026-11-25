@@ -1,0 +1,10 @@
+# XCPETS world copy (cloud/world/worker.js). Deployed by .github/workflows/world-copy.yml, which also creates the R2 bucket
+# and sets the MIRROR_KEY secret. Free plan is enough: reads are free of bandwidth charges and a new world uploads only changed files.
+name = "xcpets-world"
+main = "worker.js"
+compatibility_date = "2025-01-01"
+workers_dev = true
+
+[[r2_buckets]]
+binding = "WORLD"
+bucket_name = "xcpets-world"
