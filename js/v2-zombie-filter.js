@@ -22,7 +22,7 @@
   /** hasMeal(w, me, b): do I own a living pet a zombie may eat at block b? (the same check the zombie meal picker uses) */
   function hasMeal(w, me, b) { var m = slot(MM, w, b + '|' + me); if (m.v.has('ok')) return m.v.get('ok'); var v = V(), ok = false;
     if (me && v.cemOfferWhy && w && w.pets) { var ps = Array.isArray(w.pets) ? w.pets : Object.keys(w.pets).map(function (k) { return w.pets[k]; });
-      for (var i = 0; i < ps.length && !ok; i++) { var a = ps[i]; if (a && a.owner === me && !a.dead && !a.released && !isZ(a) && !v.cemOfferWhy(w, a, me, b)) ok = true; } }
+      for (var i = 0; i < ps.length && !ok; i++) { var a = ps[i]; if (a && V2Own.isLiving(a, me, { zombies: false }) && !v.cemOfferWhy(w, a, me, b)) ok = true; } }
     m.v.set('ok', ok); return ok; }
   /** info(w, p, b, me): { feral, hungerLeft, crumbleIn, left, hungry, soon } for a zombie, null for any other pet. */
   function info(w, p, b, me) { var o = view(w, p, b); if (!o) return null; var v = V(), on = !!(v.cemOn && v.cemOn(b));

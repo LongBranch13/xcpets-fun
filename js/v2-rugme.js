@@ -162,7 +162,7 @@
     if (e.key === 'ArrowLeft') { e.preventDefault(); fling(-1, c); } else if (e.key === 'ArrowRight') { e.preventDefault(); fling(1, c); } });
   /* ---------- pet pop-up (#detail): 'On Rug Me' marker; owner-only 'Post on Rug Me' ---------- */
   function decorateDetail() { var u = U(), info = $('dInfo'), t = $('dTitle'); if (!u || !info || !t || info.querySelector('.rm-drow')) return; var m = /#(\d+)/.exec(t.textContent || ''); if (!m) return;
-    var w = u.world(), p = w.byId[+m[1]], b = tip() + 1; if (!p || !V.rugOn(b) || (V.retireOn && V.retireOn(b))) return; var on = V.onRug(w, p, b), mineP = p.owner === u.ME && !(u.viewOnly && u.viewOnly()) && !p.dead && !p.released && p.stage >= 3 && !V.adWhy(p, b);
+    var w = u.world(), p = w.byId[+m[1]], b = tip() + 1; if (!p || !V.rugOn(b) || (V.retireOn && V.retireOn(b))) return; var on = V.onRug(w, p, b), mineP = V2Own.isLiving(p, u.ME) && !(u.viewOnly && u.viewOnly()) && p.stage >= 3 && !V.adWhy(p, b);
     if (!on && !mineP) return; var d = document.createElement('div'); d.className = 'row rm-drow';
     d.innerHTML = on ? '<span class="rm-mark">' + MARK + '</span>' : '<button class="btn ghost" data-rmpost="' + p.id + '">📌 Post on Rug Me</button>';
     info.insertBefore(d, info.firstChild); var bt = d.querySelector('[data-rmpost]'); if (bt) bt.onclick = function () { openPost(p.id); }; }
