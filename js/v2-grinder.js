@@ -193,7 +193,13 @@
     box.querySelector('.mgr-no').onclick = close; box.querySelector('.mgr-x').onclick = close;
     var pm = box.querySelector('#mgPerm'); if (pm) pm.onclick = function () { close(); var m = $('hdMigrate'); if (m) m.click(); else if (U().toast) U().toast('Open the 🗑️ Discard pile at the bottom of My Pets and press "Make my browser discards permanent".'); };
     go.onclick = function () { if (!can) return; var plan = v.grindPlan(w, a, tipB(w), n < G.MAX ? n : 0, keepArg); if (!plan || !plan.ok) return;
-      var cp = d.confirmPlans || U().confirmPlans; if (!cp) return; go.disabled = true; mach.classList.add('go');
+      var cp = d.confirmPlans || U().confirmPlans; if (!cp) return;
+      /* Nov 24 2026 (one safety check for every pet button): special pets in this grind (Legendary, starred, recently fed...) get the same
+         sheet as zombie meals and offerings. All-or-nothing: the Grinder takes the pets in its own order, so one can't be left out here. */
+      if (window.V2SacGuard && !go._sg) { var gx = (plan.ids || ids.slice(0, plan.n)).slice(); return V2SacGuard.check({ w: w, ids: gx, me: a, verb: 'grind them', all: true,
+        allNote: g2(b) ? 'To keep them, cancel and pick "Keep Legendaries" or "Keep Rares + Legendaries" under What goes in?, or use "Add discarded pets back" in the Discard pile.' : 'To keep one, cancel and use "Add discarded pets back" in the Discard pile first.',
+        onGo: function () { go._sg = true; try { go.onclick(); } finally { go._sg = false; } } }); }
+      go.disabled = true; mach.classList.add('go');
       /* the wind-up: the real pets of this grind fly in one by one, the crank whirs, meat sprays (about 3 s), then the normal sign sheet */
       var t0 = RM ? 0 : 3000; mach.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); parade(mach, w, plan.ids || ids, plan.n, t0 - 700);
       setTimeout(function () { close(); cp('🥩 Meat Grinder: ' + fmt(plan.n) + ' pet' + (plan.n === 1 ? '' : 's') + ' → ' + fmt(plan.meat) + ' meat', [{ tag: plan.tag, amount: plan.amount, label: plan.label }], function () { if (U().toast) U().toast('🥩 Into the Grinder! Your spins and Sausage Eggs pop out when the burn confirms.', 8000); }); }, t0); }; }
