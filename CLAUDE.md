@@ -31,7 +31,11 @@ XCPETS is an on-chain pet game on Bitcoin/Counterparty. Players burn XCPETS toke
 - If rules or rsig changed: confirm `latest.json` shows the new rsig and a current tip.
 
 ## Tests
-`tools/*-test.js` (node). ~30 tests already fail on main (stale MD5 pins like living-rest-test/other-lookup-test, missing Playwright, 10-minute CI timeouts, pets.json over the 20 MB cap). Compare against main.
+`tools/*-test.js` (node), run by `node tools/run-tests` (workflow `tests`): 600 s per test file, `--jobs 4`, known failures in `tools/fixtures/known-failures.txt`. Keep it green; if a test fails, fix the cause, never the test's reach.
+- **Rule-file MD5s live in one place**: `tools/fixtures/rules-pin.json`, read through `require('./lib/rules-pin').pin('js/v2-rules.js')`. After a reviewed rules change run `node tools/rules-pin-test.js --write` (it also checks CLAUDE.md's "Current MD5" above). Never paste a hash into a test again: 26 tests used to hold their own copy and every rules PR turned them all red.
+- **Don't pin source text or `?v=` tokens.** Run the real function with stubs, or check the thing itself (sw.js's version is read from sw.js, a cache token only has to be present). Those pins broke on every later edit while the behaviour was fine.
+- **Fixtures age**: pick pets the 14-day dead-pet rule keeps (`V.retireDeadDue`), pets a burn can really name (`V.spinList`), and step cooldowns with `V.spanAt` (the downtime pause).
+- **Slow tests**: `tools/lib/fork-replay.js` replays `api/boot.json` once and branches each scenario off that checkpoint (~5 s instead of ~60 s). Its patch anchors must match `js/v2-rules.js` exactly once or it throws: a moved line once made every "forked" replay a full one and four tests crept to the limit. `resume-equiv` is split in two files for the same reason.
 
 ## The fast-load layer (where most bugs live)
 Pages paint from a slim "fast world" (js/v2-split.js assemble, js/v2-art.js, the verify/catch-up workers) instead of a full replay. It is missing parts of the full world (listings, swaps, quests, most of w.cem, rules' in-memory switches). Bugs found Nov 22, 2026 were all here: missing w.cem.altars (seance button), v2-art.js not exporting self.XcpArt in workers (every pre-sign owner check failed), gear/hatch "new" detection running on a half-loaded list, rules pool switches never set (FUNTRUMP breeding). Never fix these by editing the rules.
