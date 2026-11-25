@@ -54,6 +54,11 @@
       '.mgr-mach.go .mgr-pets canvas{animation:mgFall .7s cubic-bezier(.5,0,.9,.4) forwards}.mgr-mach.go .mgr-pets canvas:nth-child(2){animation-delay:.12s}.mgr-mach.go .mgr-pets canvas:nth-child(3){animation-delay:.24s}.mgr-mach.go .mgr-pets canvas:nth-child(4){animation-delay:.36s}.mgr-mach.go .mgr-pets canvas:nth-child(5){animation-delay:.48s}.mgr-mach.go .mgr-pets canvas:nth-child(6){animation-delay:.6s}' +
       '@keyframes mgFall{0%{transform:translateY(0) rotate(0)}100%{transform:translateY(80px) rotate(200deg) scale(.15);opacity:0}}' +
       '.mgr-mach.go .mgr-saus{animation-duration:.5s}' +
+      /* the parade (Jake Nov 25 2026: "it would be cool to see the pets go into the grinder when you press grind"): the real pets being ground fly in one by one */
+      '.mgr-drop{position:absolute;left:50%;top:0;width:46px;height:46px;margin-left:-23px;image-rendering:pixelated;border:2px solid #000;background:#0f0d1e;z-index:2;opacity:0;animation:mgDrop .75s cubic-bezier(.45,0,.85,.5) forwards}' +
+      '@keyframes mgDrop{0%{transform:translate(var(--x),-60px) rotate(0);opacity:1}55%{transform:translate(calc(var(--x) * .25),40px) rotate(var(--r)) scale(1);opacity:1}100%{transform:translate(0,96px) rotate(calc(var(--r) * 2)) scale(.1);opacity:0}}' +
+      '.mgr-ctr{position:absolute;right:8px;top:8px;z-index:7;font:10px "Press Start 2P",monospace;color:#ffd166;background:#100e14;border:2px solid #000;padding:6px 7px;box-shadow:2px 2px 0 #000}' +
+      '.mgr-mach.go .mgr-sign{display:none}' +
       '.mgr-chunk{position:absolute;left:50%;top:204px;width:10px;height:8px;background:#e86a7d;border:2px solid #000;border-radius:3px;z-index:6;animation:mgChunk .8s cubic-bezier(.2,.6,.4,1) forwards}' +
       '@keyframes mgChunk{0%{transform:translate(0,0) rotate(0)}60%{opacity:1}100%{transform:translate(var(--dx),var(--dy)) rotate(var(--r));opacity:0}}' +
       '.mgr-pow{position:absolute;z-index:7;font-family:Bangers,Impact,sans-serif;font-size:40px;color:#ffd166;-webkit-text-stroke:2px #000;text-shadow:3px 3px 0 #000;letter-spacing:1px;pointer-events:none;animation:mgPow .7s cubic-bezier(.2,1.8,.4,1) forwards}' +
@@ -105,6 +110,12 @@
       c.style.setProperty('--dx', Math.round(Math.cos(a) * d) + 'px'); c.style.setProperty('--dy', Math.round(-Math.sin(a) * d * 0.7 + 30) + 'px'); c.style.setProperty('--r', Math.round(Math.random() * 720) + 'deg');
       c.style.background = Math.random() < .3 ? '#ffd166' : '#e86a7d'; mach.appendChild(c); setTimeout(c.remove.bind(c), 900); }
     if (word) { var p = document.createElement('b'); p.className = 'mgr-pow'; p.textContent = word; p.style.left = (10 + Math.random() * 45) + '%'; p.style.top = (15 + Math.random() * 35) + '%'; p.style.setProperty('--r', (r || (Math.random() * 24 - 12)) + 'deg'); mach.appendChild(p); setTimeout(p.remove.bind(p), 750); } }
+  /** parade(mach, w, ids, n, ms): the real pets of this grind fly into the hopper one by one (up to 24, spread across the whole pick), a counter counts them in */
+  function parade(mach, w, ids, n, ms) { if (!mach || RM) return; var k = Math.min(24, n), step = ms / (k + 3), i, ctr = document.createElement('div'); ctr.className = 'mgr-ctr'; ctr.textContent = '0 / ' + fmt(n) + ' IN'; mach.appendChild(ctr);
+    var hop = mach.querySelector('.mgr-pets'); if (hop) hop.style.visibility = 'hidden';
+    for (i = 0; i < k; i++) (function (i) { var p = w.byId[ids[Math.floor(i * n / k)]]; if (!p) return; setTimeout(function () { if (!mach.isConnected) return;
+      var c = document.createElement('canvas'); c.width = 32; c.height = 32; c.className = 'mgr-drop'; c.style.setProperty('--x', Math.round((Math.random() - 0.5) * 220) + 'px'); c.style.setProperty('--r', Math.round((Math.random() - 0.5) * 360) + 'deg');
+      mach.appendChild(c); sprite(c, p, w); setTimeout(function () { c.remove(); burst(mach, i % 6 === 5 ? ['CHONK', 'BLORP', 'SPLORCH', 'GRRRIND'][(i / 6 | 0) % 4] : null); if (i % 2) sfx('munch'); ctr.textContent = fmt(Math.round((i + 1) * n / k)) + ' / ' + fmt(n) + ' IN'; }, 700); }, i * step); })(i); }
   /* browser-only discards: pets hidden in this browser that are not discarded on chain yet (the Grinder only takes on-chain discards) */
   function browserOnly(w) { var hid = (U().hiddenIds && U().hiddenIds()) || [], a = me(), n = 0; hid.forEach(function (id) { var p = w.byId[id]; if (p && p.owner === a && !p.dead && !p.released && p.hd !== a) n++; }); return n; }
 
@@ -169,9 +180,8 @@
     var pm = box.querySelector('#mgPerm'); if (pm) pm.onclick = function () { close(); var m = $('hdMigrate'); if (m) m.click(); else if (U().toast) U().toast('Open the 🗑️ Discard pile at the bottom of My Pets and press "Make my browser discards permanent".'); };
     go.onclick = function () { if (!can) return; var plan = v.grindPlan(w, a, tipB(w), n < G.MAX ? n : 0); if (!plan || !plan.ok) return;
       var cp = d.confirmPlans || U().confirmPlans; if (!cp) return; go.disabled = true; mach.classList.add('go');
-      /* the wind-up: pets drop in, the crank whirs, meat sprays (about 1.3 s), then the normal sign sheet */
-      var words = ['GRRRIND', 'SPLORCH', 'CHONK', 'BLORP'], t0 = RM ? 0 : 1300;
-      if (!RM) for (var k = 0; k < 4; k++) setTimeout(function (k) { burst(mach, words[k]); sfx('munch'); }.bind(null, k), 150 + k * 280);
+      /* the wind-up: the real pets of this grind fly in one by one, the crank whirs, meat sprays (about 3 s), then the normal sign sheet */
+      var t0 = RM ? 0 : 3000; mach.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); parade(mach, w, plan.ids || ids, plan.n, t0 - 700);
       setTimeout(function () { close(); cp('🥩 Meat Grinder: ' + fmt(plan.n) + ' pet' + (plan.n === 1 ? '' : 's') + ' → ' + fmt(plan.meat) + ' meat', [{ tag: plan.tag, amount: plan.amount, label: plan.label }], function () { if (U().toast) U().toast('🥩 Into the Grinder! Your spins and Sausage Eggs pop out when the burn confirms.', 8000); }); }, t0); }; }
 
   /* the SPLORCH show, once per confirmed grind of this wallet */
@@ -234,6 +244,6 @@
     /* check every second until it opens (the 4 s repaint is too slow for a link tap) */
     clearInterval(tick); var k = 0; tick = setInterval(function () { if (!wantHash || ++k > 120) { clearInterval(tick); return; } place(); }, 1000); }
   function init() { if (!$('bulkAnchor') && !$('petsPanel')) return; place(); setInterval(place, 4000); window.addEventListener('hashchange', onHash); onHash(); }
-  window.V2Grinder = { open: open, place: place, result: result };
+  window.V2Grinder = { open: open, place: place, result: result, parade: parade };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();
