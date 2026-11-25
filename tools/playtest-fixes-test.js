@@ -50,6 +50,7 @@ ok(/if \(keepBusy\)/.test(rd('js/v2-split.js')) && /var e = keepQ\[nm\]; if \(!e
 ['js/v2-rabbit-arrival.js', 'js/v2-groyper-arrival.js', 'js/v2-kek-arrival.js'].forEach(f => ok(/function playFree\(/.test(rd(f)) && /playFree\(w, getW\); return true;/.test(rd(f)), f + ': the arrival waits while another sheet or scene is open'));
 ok(/function otherUp\(\) \{[^}]*picking\(\)/.test(rd('js/v2.js')), 'the hatch reveal waits while the player is selecting pets (it swallowed Discard selected)');
 ok(/function otherUp\(\) \{ return \[\]\.some\.call\(document\.querySelectorAll\('\.reveal\.on:not\(#packBox\)'\), shown\)/.test(rd('js/v2.js')), 'only a visible sheet holds the hatch reveal (a hidden breed request blocked new eggs forever)');
+ok(/var A = w\.byId\[f\.a\] \|\| \{ name: '', owner: null \}, B = w\.byId\[f\.b\] \|\| \{ name: '', owner: null \}/.test(rd('js/v2.js')), 'the fight list survives a fighter missing from a fast world (reading name on fight.html)');
 ok(/\.dw-cemfx \{[^}]*overflow: hidden/.test(rd('css/doom-week.css')), 'the cemetery fog is clipped to its scene (tablet scrolled sideways)');
 
 console.log(`playtest-fixes: ${n - fails} passed, ${fails} failed`); process.exit(fails ? 1 : 0);

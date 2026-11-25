@@ -1937,7 +1937,9 @@
     $('fMine').innerHTML = fighters(w, ME).map(opt).join('') || '<option value="">no eligible pet</option>'; $('fTheirs').innerHTML = fighters(w, ME, true).map(opt).join('');
     if (a) $('fMine').value = a; if (b) $('fTheirs').value = b;
     if (window.V2Lookup) V2Lookup.mount($('battlePanel'), { id: 'fightLook', mode: 'fight', onReady: function () { render(); } });
-    $('fights').innerHTML = (w.fights || []).slice().reverse().map(function (f) { var A = w.byId[f.a], B = w.byId[f.b];
+    /* playtest Nov 25 2026: a fast world carries every fight (summary.state) but only this wallet's pets, so another wallet's fighter
+     * can be missing from byId ("reading 'name'" on fight.html). Show its number and name what we have. */
+    $('fights').innerHTML = (w.fights || []).slice().reverse().map(function (f) { var A = w.byId[f.a] || { name: '', owner: null }, B = w.byId[f.b] || { name: '', owner: null };
       return '<div class="txrow">⚔️ fight ' + f.id + ': #' + f.a + ' ' + esc(A.name) + ' vs #' + f.b + ' ' + esc(B.name) + ' · ' + f.status + (f.status === 'open' ? ' (accept by block ' + f.expires + ')' : '') +
         (f.status === 'done' ? ' · winner #' + f.winner + (f.spoils ? ' took ' + esc(f.spoils.label) : '') + ' <button class="q" data-view="' + f.id + '">▶ Replay</button>' : '') +
         (f.status === 'open' && B.owner !== ME ? (M.prod ? ' <span class="muted small">waiting for the owner of #' + f.b + ' to accept</span>' : ' <button class="q" data-npc="' + f.id + '">Rival accepts</button>') : '') + (f.status === 'open' && B.owner === ME ? (function (y) { return y ? ' ' + '<span class="small mr-no">🚫 Can\'t accept: ' + esc(y) + '</span>' : ' <button class="btn ico-flame" data-acc="' + f.id + '">Accept (' + fmt(accNow(w, f.id)) + ')</button>'; })(V.sendBlock && V.sendBlock(w, { tag: 'pet:accept:' + f.id }, S.tip, { me: ME })) : '') + '</div>'; }).join('') || '<p class="muted small">No fights yet.</p>';
