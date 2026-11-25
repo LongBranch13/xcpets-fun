@@ -53,10 +53,8 @@ jobs:
               types.sort((a, b) => a.memory - b.memory || a.cores - b.cores);
               console.log('Plans available in this location (name: cores, RAM, disk, price):');
               types.forEach(t => console.log('  ' + t.name.padEnd(8) + ' ' + t.cores + ' cores, ' + String(gb(t)).padStart(4) + ' GB RAM, ' + t.disk + ' GB disk, ' + price(t, loc) + (t.disk < (sv.primary_disk_size || cur.disk) ? '  (disk smaller than the one in use: not possible with CPU and RAM only)' : '') + (t.name === cur.name ? '  <- current' : '')));
-              try { const dcName = sv.datacenter && sv.datacenter.name; const dcs = (await get('/datacenters?per_page=50')).datacenters || [];
-                dcs.filter(d => d.location && d.location.name === loc).forEach(d => { const st = d.server_types || {}, nm = ids => types.filter(t => (ids || []).includes(t.id)).map(t => t.name).join(' ') || '-';
-                  console.log('Datacenter ' + d.name + (d.name === dcName ? ' (this server)' : '') + ': can order now: ' + nm(st.available) + ' | can move to: ' + nm(st.available_for_migration)); });
-              } catch (e) { console.log('(could not read datacenter availability: ' + e.message + ')'); }
+              const here = t => (t.locations || []).find(l => l.name === loc);
+              const ex = types.find(t => t.name === 'cx33') || types[0]; console.log('(Hetzner location record for ' + ex.name + ': ' + JSON.stringify(here(ex) || null) + ')');
               const pm = t => { const p = (t.prices || []).find(x => x.location === loc); return p ? +p.price_monthly.gross : 1e9; };
               const fit = types.filter(t => t.memory >= +(process.env.MIN_GB || 8) && t.disk >= (sv.primary_disk_size || cur.disk)).sort((a, b) => pm(a) - pm(b));
               console.log(fit.length ? 'Cheapest plan with at least ' + (process.env.MIN_GB || 8) + ' GB RAM: ' + fit[0].name + ' (' + fit[0].cores + ' cores, ' + gb(fit[0]) + ' GB RAM, ' + price(fit[0], loc) + ')' : 'No plan with at least ' + (process.env.MIN_GB || 8) + ' GB RAM fits here.');
