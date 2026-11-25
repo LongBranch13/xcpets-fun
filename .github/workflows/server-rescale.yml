@@ -1,0 +1,80 @@
+# Server rescale (Nov 25 2026). On Nov 24 the game server was rescaled by hand in the Hetzner console to the plan we believed was
+# 8 GB, but the repair log showed 1,936 MB of RAM afterwards (plan names don't say the memory). With only ~2 GB the sync service
+# and the feed job were killed by the kernel 133 times and the site froze during a world build. This workflow does the rescale
+# through the Hetzner Cloud API instead, and checks the plan by its real memory figure.
+#   mode look    (default): changes nothing. Prints the game server's current plan (cores, RAM, disk) and every plan it can move to
+#                           in its location, with RAM and monthly price.
+#   mode rescale           : needs confirm RESCALE and the plan name from the look list. Refuses a plan with less RAM than min_gb.
+#                           Shuts the server down (about 5 minutes offline), changes CPU and RAM only (the disk keeps its size, so a
+#                           smaller plan stays possible later), powers it on and waits until the game answers again.
+# Needs the repository secret HCLOUD_TOKEN. Prints no IP address. Runs only by hand (Actions tab > server-rescale > Run workflow).
+name: server-rescale
+on:
+  workflow_dispatch:
+    inputs:
+      mode: { description: 'look = list plans, change nothing. rescale = change the plan (about 5 minutes offline)', type: choice, options: [look, rescale], default: look }
+      plan: { description: 'rescale only: the plan name from the look list (for example cpx32)', required: false, default: '' }
+      min_gb: { description: 'rescale only: refuse a plan with less RAM than this (GB)', required: false, default: '8' }
+      confirm: { description: 'rescale only: type RESCALE', required: false, default: '' }
+permissions: { contents: read }
+concurrency: { group: server-restart, cancel-in-progress: false }
+jobs:
+  rescale:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env: { HCLOUD_TOKEN: '${{ secrets.HCLOUD_TOKEN }}', MODE: '${{ github.event.inputs.mode }}', PLAN: '${{ github.event.inputs.plan }}', MIN_GB: '${{ github.event.inputs.min_gb }}', CONFIRM: '${{ github.event.inputs.confirm }}' }
+    steps:
+      - name: Look, and rescale when asked
+        run: |
+          [ -n "$HCLOUD_TOKEN" ] || { echo "The HCLOUD_TOKEN secret is missing (Settings > Secrets and variables > Actions)."; exit 1; }
+          if [ "$MODE" = "rescale" ] && [ "$CONFIRM" != "RESCALE" ]; then echo "Type RESCALE in the confirm box to change the plan."; exit 1; fi
+          node -e "
+            const H = { Authorization: 'Bearer ' + process.env.HCLOUD_TOKEN, 'Content-Type': 'application/json' }, api = 'https://api.hetzner.cloud/v1';
+            const get = async p => { const r = await fetch(api + p, { headers: H }); if (!r.ok) throw new Error('Hetzner API answered ' + r.status + ' for ' + p.split('?')[0]); return r.json(); };
+            const post = async (p, b) => { const r = await fetch(api + p, { method: 'POST', headers: H, body: JSON.stringify(b || {}) }); const j = await r.json().catch(() => ({}));
+              if (!r.ok) throw new Error('Hetzner API refused ' + p.split('/').pop() + ' (' + r.status + '): ' + ((j.error && j.error.message) || '')); return j.action; };
+            const sleep = ms => new Promise(r => setTimeout(r, ms));
+            async function done(a, what, maxMs) { const t0 = Date.now(); while (a && a.status === 'running') { if (Date.now() - t0 > maxMs) throw new Error(what + ' did not finish in time'); await sleep(5000); a = (await get('/actions/' + a.id)).action; }
+              if (a && a.status === 'error') throw new Error(what + ' failed: ' + ((a.error && a.error.message) || '')); console.log(what + ': done'); }
+            const gb = t => Math.round(t.memory * 10) / 10;
+            const price = (t, loc) => { const p = (t.prices || []).find(x => x.location === loc) || (t.prices || [])[0]; return p ? Number(p.price_monthly.gross).toFixed(2) + ' ' + 'per month (incl. VAT)' : '?'; };
+            (async () => {
+              const all = (await get('/servers?per_page=50')).servers || [];
+              const dns = require('dns').promises; let ips = []; try { ips = await dns.resolve4('node.xcpets.fun'); } catch (e) {}
+              let s = all.filter(x => x.public_net && x.public_net.ipv4 && ips.includes(x.public_net.ipv4.ip)); if (!s.length && all.length === 1) s = all;
+              if (s.length !== 1) throw new Error('Could not tell which server is the game server (' + all.length + ' servers). Nothing was changed.');
+              let sv = s[0]; const cur = sv.server_type, loc = sv.datacenter && sv.datacenter.location && sv.datacenter.location.name;
+              console.log('Game server now: plan ' + cur.name + ', ' + cur.cores + ' cores, ' + gb(cur) + ' GB RAM, ' + cur.disk + ' GB disk (disk in use: ' + (sv.primary_disk_size || '?') + ' GB), status ' + sv.status + ', ' + price(cur, loc));
+              const types = ((await get('/server_types?per_page=50')).server_types || []).filter(t => t.architecture === cur.architecture && !t.deprecated && !(t.deprecation && t.deprecation.unavailable_after && Date.parse(t.deprecation.unavailable_after) < Date.now()) && (t.prices || []).some(p => p.location === loc));
+              types.sort((a, b) => a.memory - b.memory || a.cores - b.cores);
+              console.log('Plans available in this location (name: cores, RAM, disk, price):');
+              types.forEach(t => console.log('  ' + t.name.padEnd(8) + ' ' + t.cores + ' cores, ' + String(gb(t)).padStart(4) + ' GB RAM, ' + t.disk + ' GB disk, ' + price(t, loc) + (t.disk < (sv.primary_disk_size || cur.disk) ? '  (disk smaller than the one in use: not possible with CPU and RAM only)' : '') + (t.name === cur.name ? '  <- current' : '')));
+              const pm = t => { const p = (t.prices || []).find(x => x.location === loc); return p ? +p.price_monthly.gross : 1e9; };
+              const fit = types.filter(t => t.memory >= +(process.env.MIN_GB || 8) && t.disk >= (sv.primary_disk_size || cur.disk)).sort((a, b) => pm(a) - pm(b));
+              console.log(fit.length ? 'Cheapest plan with at least ' + (process.env.MIN_GB || 8) + ' GB RAM: ' + fit[0].name + ' (' + fit[0].cores + ' cores, ' + gb(fit[0]) + ' GB RAM, ' + price(fit[0], loc) + ')' : 'No plan with at least ' + (process.env.MIN_GB || 8) + ' GB RAM fits here.');
+              if (process.env.MODE !== 'rescale') { console.log('Look only: nothing was changed.'); return; }
+              const want = types.find(t => t.name === String(process.env.PLAN || '').trim().toLowerCase());
+              if (!want) throw new Error('Plan \"' + process.env.PLAN + '\" is not in the list above. Nothing was changed.');
+              const min = +(process.env.MIN_GB || 8);
+              if (want.memory < min) throw new Error('Plan ' + want.name + ' has ' + gb(want) + ' GB RAM, less than ' + min + ' GB. Nothing was changed.');
+              if (want.name === cur.name) { console.log('The server is already on ' + want.name + '. Nothing to do.'); return; }
+              console.log('Rescaling to ' + want.name + ' (' + want.cores + ' cores, ' + gb(want) + ' GB RAM, ' + price(want, loc) + '), CPU and RAM only.');
+              if (sv.status !== 'off') {
+                await done(await post('/servers/' + sv.id + '/actions/shutdown'), 'shutdown request', 60000);
+                const t0 = Date.now(); while ((sv = (await get('/servers/' + sv.id)).server).status !== 'off' && Date.now() - t0 < 180000) await sleep(5000);
+                if (sv.status !== 'off') { console.log('Not off after 3 minutes: hard power off.'); await done(await post('/servers/' + sv.id + '/actions/poweroff'), 'power off', 120000); }
+              }
+              try { await done(await post('/servers/' + sv.id + '/actions/change_type', { server_type: want.name, upgrade_disk: false }), 'change plan', 15 * 60000); }
+              finally { await done(await post('/servers/' + sv.id + '/actions/poweron'), 'power on', 180000); }
+              sv = (await get('/servers/' + sv.id)).server;
+              console.log('Game server now: plan ' + sv.server_type.name + ', ' + sv.server_type.cores + ' cores, ' + gb(sv.server_type) + ' GB RAM, status ' + sv.status);
+            })().catch(e => { console.error(e.message); process.exit(1); });"
+      - name: Wait for the game to answer again
+        if: github.event.inputs.mode == 'rescale'
+        run: |
+          node -e "
+            const t0 = Date.now(); (async function loop() {
+              try { const h = await (await fetch('https://node.xcpets.fun/xp/v1/health?cb=' + Date.now())).json(); delete h.upstream;
+                if (h.tip) { console.log('game answering after ' + Math.round((Date.now() - t0) / 1000) + ' s: tip ' + h.tip + ', heap limit ' + (h.loop && h.loop.heapLimitMB) + ' MB'); return; } } catch (e) {}
+              if (Date.now() - t0 > 12 * 60000) { console.log('The game did not answer within 12 minutes after power on.'); process.exit(1); }
+              setTimeout(loop, 15000); })();"
