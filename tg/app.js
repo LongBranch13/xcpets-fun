@@ -248,6 +248,8 @@
   function isHybrid(p) { return !!(p.hybrid || /^hyb/.test(String(p.species || ''))); }
   function baseSpecies(p) { var s = String(p.species || ''); if (/^hyb/.test(s)) s = s.split(':')[1] || ''; return s; }
   function iconFor(p) { var s = baseSpecies(p); return SP_ICON[s] ? siteUrl('img/theme/sp-' + s + '.png') : siteUrl('img/theme/egg.png'); }
+  /* a pet's shown species: cross pets (1 of 1 mixes like Star-Lord Pigeon) carry their name in the summary (made by the rules' petSpeciesLabel) */
+  function petSp(p) { var c = p && S.sum && S.sum.crossNames; return (c && c[p.id]) || spLabel(p && p.species); }
   function spLabel(s) { s = String(s || ''); if (/^hyb/.test(s)) return s.split(':').slice(1).map(spLabel).join(' × ') + ' hybrid'; return s === 'kevin' ? 'KEVIN' : s === 'funtrump' ? 'FUNTRUMP' : s.charAt(0).toUpperCase() + s.slice(1); }
   function fillArt(root, list, hashes) {
     art().then(function (ok) {
@@ -360,7 +362,7 @@
     var bars = ['vigor', 'spark', 'grit', 'zoom', 'luck'].map(function (k) { var v = s[k] || 0; return '<div class="sbar"><span>' + k.charAt(0).toUpperCase() + k.slice(1) + '</span><div class="bar"><i style="width:' + Math.min(100, v) + '%"></i></div><b>' + v + '</b></div>'; }).join('');
     var food = p.zombie ? '🧟 Zombie' : p.hungry ? '😋 Hungry: feed today' : p.fedToday ? '✅ Fed today' : st === 5 ? '🌕 Mythic' : '🍖 Fed ' + (p.fedDays || 0) + ' days';
     $('sheetBody').innerHTML = '<div class="hero"><img class="ph" data-art="' + p.id + '" src="' + esc(iconFor(p)) + '" alt=""><div><div class="nm" id="sheetName">' + esc(p.name || 'Pet') + '</div><div class="id">#' + p.id + '</div>' +
-      '<div class="pills"><span class="pill c' + t + '">' + TIER[t] + '</span><span class="pill">' + esc(STAGE[st] || '') + '</span><span class="pill">' + esc(spLabel(p.species)) + '</span></div></div></div>' +
+      '<div class="pills"><span class="pill c' + t + '">' + TIER[t] + '</span><span class="pill">' + esc(STAGE[st] || '') + '</span><span class="pill">' + esc(petSp(p)) + '</span></div></div></div>' +
       '<div class="pills" style="margin-top:12px"><span class="pill">' + food + '</span><span class="pill">🍖 ' + amt(p.care || 0) + ' fed</span><span class="pill">⚔️ ' + (p.wins || 0) + '-' + (p.losses || 0) + '</span><span class="pill">💪 power ' + pow + '</span>' + ((p.worn || []).length ? '<span class="pill">🎒 ' + p.worn.length + ' gear</span>' : '') + '</div>' +
       '<div class="sbars">' + bars + '</div>' +
       '<div class="acts"><button class="pri" data-open="play.html?cc=1">' + (p.hungry ? '🍖 Feed it' : '🎮 Play') + '</button><button data-open="pet.html?id=' + p.id + '">🔍 Full pet page</button>' +
@@ -382,7 +384,7 @@
     });
   }
   function share(id) {
-    var p = findPet(id), txt = p ? 'Check out my ' + TIER[p.tier | 0] + ' ' + spLabel(p.species) + ' ' + (p.name || '') + ' (#' + id + ') on XCPETS 🐸' : 'XCPETS #' + id;
+    var p = findPet(id), txt = p ? 'Check out my ' + TIER[p.tier | 0] + ' ' + petSp(p) + ' ' + (p.name || '') + ' (#' + id + ') on XCPETS 🐸' : 'XCPETS #' + id;
     cardLink(id).then(function (u) {
       var link = 'https://t.me/share/url?url=' + encodeURIComponent(u) + '&text=' + encodeURIComponent(txt);
       try { if (TG && TG.openTelegramLink) { TG.openTelegramLink(link); return; } } catch (e) {}

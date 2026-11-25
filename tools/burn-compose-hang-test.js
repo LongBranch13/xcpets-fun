@@ -41,5 +41,16 @@ function settle(p, ms) { return Promise.race([p.then(v => ({ s: 'ok', v }), e =>
   chk('safety-check mismatch -> error says the safety check stopped it, no wallet window', x.s === 'err' && /Safety check stopped/.test(x.e.message) && !r.calls.includes('xcp_signTransaction'), x.s + ' ' + (x.e && x.e.message));
   r = rig({ compose: () => new Promise(res => setTimeout(() => res({ status: 200, json: never }), 1)), deps: { composeMs: 100000, composeTotalMs: 300 } }); x = await settle(r.run(), 5000);
   chk('overall build deadline -> clear "nothing was signed" error', x.s === 'err' && /Nothing was signed or sent/.test(x.e.message), x.s + ' ' + (x.e && x.e.message));
+  /* raid-wallet-slow (Nov 25 2026): on the published view the pre-sign pet check (V2Split.checkPlans) ran with no word on the sheet and no end */
+  const view = (check, note) => { global.window.V2Mock = { state: () => ({ prod: true, view: true, verified: false }) }; global.window.V2Split = global.V2Split = { checkPlans: check, checkNote: () => note || 'Getting burns ready… 60%' }; global.V2Mock = global.window.V2Mock; };
+  r = rig({ compose: good, deps: { checkMs: 300 } }); view(() => never()); x = await settle(r.run(), 5000);
+  chk('pre-sign check that never answers -> clear Retry error, no wallet window', x.s === 'err' && x.e.checkTimeout && x.e.retry && /Nothing was signed or sent/.test(x.e.message) && !r.calls.includes('xcp_signTransaction'), x.s + ' ' + (x.e && x.e.message));
+  chk('the sheet says the pet check is running (with its progress)', r.phases.includes('precheck'), r.phases.join(','));
+  r = rig({ compose: good, deps: { checkMs: 5000 } }); view(() => new Promise(res => setTimeout(() => res({ ok: true, plans: [], skip: [] }), 1200))); x = await settle(r.run(), 5000);
+  chk('slow pre-sign check that passes -> goes on to XCP Wallet', x.s === 'err' && x.e.code === 4001 && r.calls.includes('xcp_signTransaction'), x.s + ' ' + (x.e && x.e.message));
+  chk('the wait note repeats while the check runs, then the wallet step shows', r.phases.filter(p => p === 'precheck').length >= 2 && r.phases.includes('wallet') && r.phases.indexOf('wallet') > r.phases.lastIndexOf('precheck'), r.phases.join(','));
+  r = rig({ compose: good }); view(() => new Promise(() => {})); const pr = r.run(); setTimeout(() => r.W.cancel(), 100); x = await settle(pr, 3000);
+  chk('Cancel during the pre-sign check stops it, no wallet window', x.s === 'err' && x.e.cancelled && !r.calls.includes('xcp_signTransaction'), x.s + ' ' + (x.e && x.e.message));
+  delete global.window.V2Mock; delete global.window.V2Split; delete global.V2Split; delete global.V2Mock;
   console.log('\n' + pass + ' passed, ' + fail + ' FAILED'); process.exit(fail ? 1 : 0);
 })();
