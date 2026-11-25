@@ -92,7 +92,7 @@
     var el = $('myCooldowns'); if (!el) { el = document.createElement('div'); el.id = 'myCooldowns'; el.className = 'qc-cool'; var at = $('motelBook') || $('motelDesk'); if (at && at.parentNode) at.parentNode.insertBefore(el, at.nextSibling); else host.appendChild(el); }
     var h = '<h3 class="qc-h">⏱️ My cooldowns</h3>';
     if (!a) { el.innerHTML = h + '<p class="small muted">Connect a wallet to see when each of your pets can breed or quest again.</p>'; return; }
-    var pets = w.pets.filter(function (p) { return p.owner === a && !p.dead && !p.released && !p.community; }).map(function (p) { return { p: p, t: timers(w, p, b) }; });
+    var pets = w.pets.filter(function (p) { return V2Own.isLiving(p, a); }).map(function (p) { return { p: p, t: timers(w, p, b) }; });
     if (!pets.length) { el.innerHTML = h + '<p class="small muted">No living pets in this wallet.</p>'; return; }
     pets.sort(function (x, y) { if (st.sort === 'id') return x.p.id - y.p.id; return key(x.t, st.sort) - key(y.t, st.sort) || x.p.id - y.p.id; });
     var nB = pets.filter(function (r) { return r.t.breed === 0; }).length, nQ = pets.filter(function (r) { return r.t.quest === 0; }).length, live = pets.filter(function (r) { return key(r.t, 'either') < Infinity; }), nNo = pets.length - live.length, list = st.all ? pets : live, show = st.all ? pets : live.slice(0, 25);

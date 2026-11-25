@@ -52,7 +52,7 @@
   function tip(w) { var u = U(); return (w && w.tip) || (u && u.S && u.S().tip) || 0; }
   function pend() { var u = U(); return u && u.pendingBreedIds ? u.pendingBreedIds() : null; }
   function mine(w) { var u = U(); if (!u || !w) return []; try { return (u.mine ? u.mine(w) : []).filter(function (p) { return !p.dead && !p.released; }); } catch (e) { return []; } } /* motel-1103: every living pet you own (was V2UI.petList = My Pets' own filters + sort, then hungry-first and the first 40) */
-  function owns(p) { var u = U(); return !!(u && u.ME && p && p.owner === u.ME && !p.dead && !p.released); }
+  function owns(p) { var u = U(); return !!(u && u.ME && p && V2Own.isLiving(p, u.ME)); }
   function vo() { var u = U(); return !!(u && u.viewOnly && u.viewOnly()); }
   /* why pet p can't check in at the motel right now (null = it can). One breedPicker call per state (was one per pet). */
   var WC = { k: '', m: null, pa: null };

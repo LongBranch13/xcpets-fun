@@ -180,7 +180,7 @@
   function bk() { var c = A.ctx; return c && c.b != null ? c.b : ((c && c.w.tip) || 0) + 1; }
   function wornTiers(w, p) { var V = A.ctx.V, L = []; try { L = (A.ctx.R.worn ? A.ctx.R.worn(w, p.id) : V.wornOf(w, p.id)) || []; } catch (e) { L = []; } return L.map(gTier); }
   function gTier(g) { if (!g) return 0; if (g.legendary) return 3; if (typeof g.tier === 'number') return Math.max(0, Math.min(3, g.tier)); var it = A.ctx.V.itemOf ? A.ctx.V.itemOf(g.item) : null; return it && typeof it.tier === 'number' ? Math.max(0, Math.min(3, it.tier)) : 0; }
-  function living(w, who) { return w.pets.filter(function (p) { return p.owner === who && !p.dead && !p.released && !p.community && !(A.ctx.V.isZ && A.ctx.V.isZ(p)); }); }
+  function living(w, who) { return w.pets.filter(function (p) { return V2Own.isLiving(p, who, { zombies: false }); }); }
   /* offer-discards-only-1105: Discard pile = browser localStorage (same key as My Pets). Not on chain; UI enforces "only Discarded" when the gate is on. */
   function discSet() { var h = {}, me = A.ctx && A.ctx.ME, net = (window.LiveEngine && LiveEngine.CFG && LiveEngine.CFG.network) || 'mainnet';
     try { JSON.parse(localStorage.getItem('xcpets-hidden-' + net + '-' + (me || '')) || '[]').forEach(function (id) { h[+id] = 1; }); } catch (e) {}

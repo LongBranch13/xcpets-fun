@@ -122,7 +122,7 @@
     var m = me(), c = $('todayCard');
     if (!w || !w.pets || !m) { if (c) c.hidden = true; d.body.classList.remove('has-today'); return; }
     var dcb = $('dcBtn'), LT = window.V2Loot ? V2Loot.state() : null, key = m + '|' + w.tip + '|' + w.pets.length + '|' + (w._full ? 1 : 0) + '|' + (dcb && !dcb.disabled ? 1 : 0) + '|' + (LT ? JSON.stringify(LT.t) + LT.opened : ''); if (key === last && c && !c.hidden) return; last = key;
-    var day = Math.floor((w.tip || 0) / BPD), L = w.pets.filter(function (p) { return p.owner === m && !p.dead && !p.released && !p.community; });
+    var day = Math.floor((w.tip || 0) / BPD), L = w.pets.filter(function (p) { return V2Own.isLiving(p, m); });
     if (!L.length) { if (c) c.hidden = true; d.body.classList.remove('has-today'); return; }
     c = card(); if (!c) return; c.hidden = false; d.body.classList.add('has-today');
     var hungry = L.filter(function (p) { return p.hungry && p.nextMeal; }).length;

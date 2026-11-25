@@ -321,7 +321,7 @@
     return id >= 1 ? id : 0;
   }
   function rrClear(id) { try { if (window.V2Preselect && V2Preselect.clear) V2Preselect.clear(id); } catch (e) { } try { if (!window.__XCPETS_RR_PET || window.__XCPETS_RR_PET === id) window.__XCPETS_RR_PET = 0; } catch (e2) { } }
-  function rrOwned(w, id, me) { var p = w && w.byId && w.byId[id]; return p && me && p.owner === me && !p.dead && !p.released ? p : null; }
+  function rrOwned(w, id, me) { var p = w && w.byId && w.byId[id]; return p && me && V2Own.isLiving(p, me) ? p : null; }
   /* This visit's URL pet wins over the saved key and over the top of the strip. While it is still loading, do not set S.dpInit or lock S.pet. */
   function rrTake(w, U) {
     var id = rrPendId();
@@ -585,7 +585,7 @@
     if (hold === 'wait') { applyMode(); el.innerHTML = '<p class="small" id="rrHold">Opening #' + rrPendId() + ' in the Rare Room…</p>'; return; }
     var opened = false;
     if (hold && hold !== 'later') { P = hold; opened = true; }
-    else if (hold !== 'later' && !P && !S.dpInit) { S.dpInit = 1; var lp = +(lsGet(DPKEY) || 0); if (lp && w.byId[lp] && w.byId[lp].owner === U.ME && !w.byId[lp].dead && !w.byId[lp].released) P = w.byId[lp]; } /* saved key only when no URL pet is still pending */
+    else if (hold !== 'later' && !P && !S.dpInit) { S.dpInit = 1; var lp = +(lsGet(DPKEY) || 0); if (lp && w.byId[lp] && V2Own.isLiving(w.byId[lp], U.ME)) P = w.byId[lp]; } /* saved key only when no URL pet is still pending */
     if (hold !== 'later') { if (!P || P.dead || P.released || P.owner !== U.ME) P = live[0]; if (P) S.pet = P.id; if (opened && P) { S.dpInit = 1; try { localStorage.setItem(DPKEY, String(P.id)); } catch (e) { } } }
     var g = S.sel ? (w.items[S.sel.gid] || S.sel) : null; if (g && P && !fitsP(P, g)) g = null; S.sel = g;
     var oS = document.querySelector('#shopScene .sc-sign'); if (oS) oS.remove();
