@@ -15,7 +15,8 @@
   var TIER = ['Common', 'Uncommon', 'Rare', 'Legendary'], STAGE = ['Egg', 'Hatchling', 'Juvenile', 'Adult', 'Elder', 'Mythic'];
   var CM_T = [0, 69000, 834900, 2214900, 4146900, 6906900]; /* community pet thresholds (V2Rules.COMMUNITY_THRESHOLDS) */
   var BOSS = { burnschild: 'Baron Von Burnschild', moloch: 'Moloch', nightking: 'Night King', kekdragon: 'Dragonkek', harvester: 'Grim Reaper', frogfather: 'Infernal Frogfather', mash: 'The Tower of Terrors', titan: 'Titan', colossus: 'The Grinning Colossus', bailiff: 'The Night Shift Grinner', pyramid: 'The All-Seeing Kek', necrofrog: 'Necrofrog the Undying', vader: 'Dark Pepe the Endless Coil', blockschild: 'Lord Blockschild' };
-  var COMM = { groyper: ['Groyper', '🐸'], rabbit: ['White Rabbit', '🐇'], homer: ['Homer Pepe', '🍩'], funtrump: ['FUNTRUMP', '🇺🇸'], kek: ['Lord Kek', '🐸'], wizard: ['Bitcoin Wizard', '🧙'], nakamoto: ['Nakamoto', '₿'] };
+  var COMM = {}; /* species-registry (Nov 25 2026): every community pet's name + emoji from js/species-registry.js */
+  if (window.XcpSpecies) XcpSpecies.community().forEach(function (s) { COMM[s.id] = [XcpSpecies.shortName(s.id), s.emoji]; });
   var SP_ICON = { pepe: 1, wojak: 1, chud: 1, bobo: 1, mumu: 1, snibby: 1, dodo: 1, kevin: 1, peepo: 1, sarutobi: 1, doge: 1, lenny: 1, kek: 1, wizard: 1 };
   var KEY = 'xcpets-tg-addr';
 
