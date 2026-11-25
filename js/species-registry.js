@@ -95,9 +95,9 @@
     { id: 'starlordkek', name: 'Star-Lord Kek', kind: 'contest', emoji: '🌌', sig: 'cosmic', sprite: CONTEST,
       skip: { clownHair: 'no Honk hair fitting yet', hybridName: 'special pair hybrids are not in the rules yet' } },
     { id: 'gooby', name: 'Gooby', kind: 'contest', emoji: '🟢', sig: 'goo', sprite: CONTEST,
-      skip: { clownHair: 'no Honk hair fitting yet', crossLook: 'no 1 of 1 cross look yet', hybridName: 'special pair hybrids are not in the rules yet', rulesLabel: 'v2-rules.js speciesLabel shows "gooby": fix in the next rules PR' } },
+      skip: { clownHair: 'no Honk hair fitting yet', crossLook: 'no 1 of 1 cross look yet', hybridName: 'special pair hybrids are not in the rules yet' } },
     { id: 'lukespam', name: 'Luke Spam Junior', kind: 'contest', emoji: '🥫', sig: 'spam', sprite: CONTEST,
-      skip: { clownHair: 'no Honk hair fitting yet', crossLook: 'no 1 of 1 cross look yet', hybridName: 'special pair hybrids are not in the rules yet', rulesLabel: 'v2-rules.js speciesLabel shows "lukespam": fix in the next rules PR' } }
+      skip: { clownHair: 'no Honk hair fitting yet', crossLook: 'no 1 of 1 cross look yet', hybridName: 'special pair hybrids are not in the rules yet' } }
   ];
 
   var BY = {}; LIST.forEach(function (s) { BY[s.id] = s; });

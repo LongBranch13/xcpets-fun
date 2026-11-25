@@ -30,14 +30,14 @@
     (h.feral ? ' FERAL now: anyone can hunt it. Crumbles in ' + h.crumbleIn + ' blocks (~' + span(h.crumbleIn) + ').' : ' Feral in ' + h.left + ' blocks (~' + span(h.left) + ').'); }
   /* one plain sentence for the top of the card. Mythic-fed zombies are handled by the hunger bar override. */
   function statusLine(p, w) { var h = hunger(p, w); if (!h || (p && p.zombie && p.zombie.mfed)) return '';
-    if (h.feral) return 'Feral zombie. Feed it in ' + span(h.crumbleIn) + ' or it turns to dust. Anyone can hunt it.';
+    if (h.feral) return 'Feral zombie. Feed it in ' + span(h.crumbleIn) + ' or it turns to dust, gone forever. Anyone can hunt it.';
     if (h.pct <= 33) return 'Hungry zombie. Feed it in ' + span(h.left) + ' or it goes feral. Then anyone can hunt it.';
     return 'Fed zombie. It goes feral in ' + span(h.left) + ' without a meal.'; }
   function hungerChip(p, w) { var h = hunger(p, w); if (!h) return ''; var low = h.feral || h.pct <= 33;
     return '<span class="chip zb-hun' + (low ? ' warn' : '') + '" title="' + hungerTitle(h) + '">' + (h.feral ? '👁️ Feral' : '🧟 Hunger') + ' <i class="zb-hb' + (low ? ' low' : '') + '"><b style="width:' + h.pct + '%"></b></i> ' + (h.feral ? 'dust in ' + span(h.crumbleIn) : h.pct + '%') + '</span>'; }
   function hungerBar(p, w) { var h = hunger(p, w); if (!h) return ''; var low = h.feral || h.pct <= 33, cls = h.feral ? 'feral' : (h.pct <= 33 ? 'hungry' : 'ok');
     var more = 'Zombies never take normal meals. They eat Discarded pets, or they win hunts. Feral after 432 blocks without a zombie meal, then dust 432 blocks later. Hunger is ' + h.pct + '%. ' +
-      (h.feral ? 'Anyone can hunt it now. It turns to dust in ' + h.crumbleIn + ' blocks (about ' + span(h.crumbleIn) + ').' : 'It goes feral in ' + h.left + ' blocks (about ' + span(h.left) + ').');
+      (h.feral ? 'Anyone can hunt it now. Unfed, it turns to dust (gone forever) in ' + h.crumbleIn + ' blocks (about ' + span(h.crumbleIn) + ').' : 'It goes feral in ' + h.left + ' blocks (about ' + span(h.left) + ').');
     return '<p class="zb-status ' + cls + '">' + statusLine(p, w) + '</p>' +
       '<div class="bar zb-hbar' + (low ? ' low' : '') + '" title="' + hungerTitle(h) + '"><i style="width:' + Math.max(h.pct, 2) + '%"></i></div>' +
       '<div class="small zb-hl">Hunger ' + h.pct + '% <button type="button" class="ip-q zb-qbtn" aria-expanded="false" aria-label="What is this?">?</button></div>' +
