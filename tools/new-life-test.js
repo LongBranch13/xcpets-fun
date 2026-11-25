@@ -22,11 +22,15 @@ const rows = boot.rows.slice().sort((a, b) => a.block_index - b.block_index || a
 function run(gate) { const ctx = load(), V = ctx.V2Rules, E = ctx.LiveEngine; if (gate !== undefined) V._setNewLifeActivation(gate);
   const hashes = Object.assign({}, ctx.XCPETS_BLOCK_HASHES || {}, boot.hashes || {});
   return { V, w: V.replay(rows, hashes, [], { tip, live: E && E.RealCore, dex: boot.dex }) }; }
-const real = run(), V = real.V;
-ok(V.ACTIVATE_NEW_LIFE_BLOCK === 977500 && V.ACTIVATE_NEW_LIFE_BLOCK > tip, 'gate ' + V.ACTIVATE_NEW_LIFE_BLOCK + ' is ahead of the feed tip ' + tip);
+const V = load().V2Rules; /* read the gate without a replay */
+/* The gate was ahead of the feed when this was written; the feed passed it at 977,504 (Nov 25 2026). Once mined, "the real gate
+ * changes nothing" no longer holds by design, so the same check runs with the gate just past the feed tip (no history after it). */
+const GATE = V.ACTIVATE_NEW_LIFE_BLOCK, mined = GATE <= tip, real = mined ? run(tip + 1) : run();
+ok(GATE === 977500, 'gate is 977500 (' + (mined ? 'mined before' : 'ahead of') + ' the feed tip ' + tip + ')');
 const off = run(null).w;
 const strip = p => { const o = Object.assign({}, p); delete o.hd; delete o.skipBy; return JSON.stringify(o); };
-ok(JSON.stringify(real.w.pets) === JSON.stringify(off.pets) && JSON.stringify(real.w.log) === JSON.stringify(off.log), 'gate at its real block: replay identical to the gate switched off');
+{ const at = real.w;
+  ok(JSON.stringify(at.pets) === JSON.stringify(off.pets) && JSON.stringify(at.log) === JSON.stringify(off.log), 'gate ' + (mined ? 'just past the feed tip' : 'at its real block') + ': replay identical to the gate switched off'); }
 const EARLY = 973772; /* the cemetery opened here: every raise and Resurrection in history comes after it */
 const on = run(EARLY).w;
 const rose = p => (p.zombie && p.zombie.raisedAt >= EARLY) || (p.zPast || []).some(z => z.raisedAt >= EARLY) || (p.resurrected && p.resurrected.block >= EARLY);
