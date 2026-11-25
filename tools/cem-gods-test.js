@@ -14,7 +14,7 @@ const world = { pets };
 const g = S.godsOf(world);
 ok(JSON.stringify(g.map(x => x.id)) === '[2,1]', 'godsOf: living Gods only, newest first (' + g.map(x => x.id) + ')');
 ok(g[0].owner === 'b' && g[0].block === 30 && g[0].name === 'B', 'godsOf keeps id, name, owner, block');
-ok(/const gods = godsOf\(world\);\n  return spill\(\)/.test(rd('tools/sync-server/split.js')) && /\n    gods: gods\n/.test(rd('tools/sync-server/split.js')), 'the summary takes gods before spill() frees world.pets');
+ok(/const gods = godsOf\(world\);[^]{0,1500}?\n  return spill\(\)/.test(rd('tools/sync-server/split.js')) && /\n    gods: gods,?\n/.test(rd('tools/sync-server/split.js')), 'the summary takes gods before spill() frees world.pets');
 ok(/_gods: summary\.gods \|\| null/.test(rd('js/v2-split.js')), 'the fast world keeps them as w._gods');
 /* the cemetery's gods(): run the real function text on a fast world that loaded only one God */
 const src = rd('js/v2-cemetery-scene.js'), a = src.indexOf('    function gods() {'), b = src.indexOf('return out.sort', a);
