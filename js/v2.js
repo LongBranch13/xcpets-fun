@@ -42,7 +42,7 @@
     var L = zFeedPlans(w, z, ids, b), n = L.length, pp = !!(V.cemRunsOn && V.cemRunsOn(b)), one = ids.length === 1 ? '1 discarded pet' : fmt(ids.length) + ' pets';
     var mult = pp && ids.length > 1 ? fmt(ids.length) + ' times ' + fmt(cost) + ' = ' + fmt(zSum(L)) : fmt(zSum(L));
     return '🍖 Feed ' + one + ' · ' + n + ' burn' + (n > 1 ? 's' : '') + ' · ' + mult + ' XCPETS'; }
-  function zDiscarded(w) { var h = {}; hiddenIds().forEach(function (id) { h[+id] = 1; }); if (!(V.retiredUI && V.retiredUI(w))) (w.pets || []).forEach(function (a) { if (ME && a.skipBy === ME) h[a.id] = 1; }); /* skip lists stop mattering once pet:sk / su are retired */ return h; }
+  function zDiscarded(w) { var h = {}; hiddenIds().forEach(function (id) { h[+id] = 1; }); /* Nov 25 2026: on-chain discards are in the pile too (the rules feed zombies ONLY those) */ (w.pets || []).forEach(function (a) { if (ME && a.owner === ME && a.hd === ME && !ZB(a)) h[a.id] = 1; }); if (!(V.retiredUI && V.retiredUI(w))) (w.pets || []).forEach(function (a) { if (ME && a.skipBy === ME) h[a.id] = 1; }); /* skip lists stop mattering once pet:sk / su are retired */ return h; }
   function zQ(html) { return '<button type="button" class="ip-q zb-qbtn" aria-expanded="false" aria-label="What is this?">?</button><div class="zb-help" hidden>' + html + '</div>'; }
   /* least rare Discarded pet, not ripe, lowest id. One meal refills hunger, so the default is a single cheap Discarded pet, named on the button. */
   function zDefaultMeal(L, H) { var best = null, bk = Infinity, any = false; L.forEach(function (a) { if (H[a.id]) any = true; }); if (!any) return null;
