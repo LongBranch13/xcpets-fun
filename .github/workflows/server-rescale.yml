@@ -43,7 +43,7 @@ jobs:
               const dns = require('dns').promises; let ips = []; try { ips = await dns.resolve4('node.xcpets.fun'); } catch (e) {}
               let s = all.filter(x => x.public_net && x.public_net.ipv4 && ips.includes(x.public_net.ipv4.ip)); if (!s.length && all.length === 1) s = all;
               if (s.length !== 1) throw new Error('Could not tell which server is the game server (' + all.length + ' servers). Nothing was changed.');
-              let sv = s[0]; const cur = sv.server_type, loc = sv.datacenter && sv.datacenter.location && sv.datacenter.location.name;
+              let sv = s[0]; const cur = sv.server_type, loc = (sv.location && sv.location.name) || (sv.datacenter && sv.datacenter.location && sv.datacenter.location.name);
               console.log('Game server now: plan ' + cur.name + ', ' + cur.cores + ' cores, ' + gb(cur) + ' GB RAM, ' + cur.disk + ' GB disk (disk in use: ' + (sv.primary_disk_size || '?') + ' GB), status ' + sv.status + ', ' + price(cur, loc));
               const raw = (await get('/server_types?per_page=50')).server_types || [];
               const gone = t => { const d = t.deprecation || ((t.locations || []).find(l => l.name === loc) || {}).deprecation; return !!(d && d.unavailable_after && Date.parse(d.unavailable_after) < Date.now()); };
