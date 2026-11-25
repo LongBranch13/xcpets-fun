@@ -2898,15 +2898,19 @@
     if (one) ids = [t.petId]; else if (t.action === 'feedm') { if (b < ACTIVATE_FEEDM_BLOCK) return null; ids = t.ids || []; }
     else { if (!feedRunsOn(b) || !t.runs) return null; ids = feedRunsIds(w, me, { action: 'feedr', a: t.a, runs: t.runs }, b); if (!ids.length) return 'no pets at those places in your pet list any more (press Feed again for a fresh list)'; }
     var pf = {}; (pend || []).forEach(function (q) { pendFeedIds(w, me, q, b).forEach(function (id) { pf[id] = 1; }); });
-    var left = amt != null ? Number(amt) : Infinity, bad = [], D = day(b);
+    var left = amt != null ? Number(amt) : Infinity, bad = [], D = day(b), eat = 0;
     ids.forEach(function (id) { var z = w.byId[id]; if (z && z.feedDays) liveAt(w, z, b); var m = z ? mealFor(z.care, z.species, b, petThresholds(w, z, b)) : 0, c = z && m ? mealCost(w, z, m, b) : 0;
       var fed = z && (z.feedDays ? !!z.feedDays[D] : !!z.fedToday);
       var no = !z ? 'no such pet' : z.released ? 'released' : z.owner !== me ? 'not yours' : z.dead ? 'dead (Pet Cemetery)' : hdHidden(z, me, b) ? 'discarded' : !one && isZ(z) ? 'a zombie (it eats pets)'
         : fr && (z.ascended || z.mythicCare || z.stage === 5) ? 'Mythic (does not eat)' : fr && questOn(b) && questAway(z, b) ? 'away on a quest' : fed ? 'already fed this chain day'
         : pf[id] ? 'a feed for it is still waiting to confirm' : m === 0 ? 'fully fed' : null;
+      if (fr && no) return; /* a run's place that does not eat (already fed, away, Mythic, a feed still waiting...) costs nothing: the planner bridges gaps with them (during a sale a full-price meal earns a spin, so extra money is not waste then) */
       if (!no && one && amt != null && (eraAt(w, b) || saleAt(w, b) ? Number(amt) + 5e-9 < c : Number(amt) < c)) no = 'the burn is below its meal ' + c;
       else if (!no && !one && left + 1e-9 < c) no = 'the burn is too small for its meal ' + c;
-      if (no) bad.push('#' + id + ' ' + no); else left -= c; });
+      if (no) bad.push('#' + id + ' ' + no); else { left -= c; eat++; } });
+    if (fr && !bad.length) { /* runs: the money is wasted only if no pet eats or the burn pays for more meals than the pets that eat */
+      if (!eat) return 'this feed would waste XCPETS: none of the pets at those places eats now (press Feed again for a fresh list)';
+      if (amt != null && !saleAt(w, b) && left > (t.action === 'chores' ? COSTS.wagmi : 0) + 1e-6) return 'this feed would waste XCPETS: the burn is ' + r8(left) + ' more than the meals of the pets that eat (press Feed again for a fresh list)'; }
     if (!bad.length) return null;
     return 'this feed would waste XCPETS: ' + bad.slice(0, 4).join(', ') + (bad.length > 4 ? ' and ' + (bad.length - 4) + ' more' : '') + ' (press Feed again for a fresh list)'; }
   function sendBlock(w, plan, tip, o) { o = o || {}; var tag = typeof plan === 'string' ? plan : plan && plan.tag, t = parseTag(tag); if (!t || !w || !w.byId) return null;

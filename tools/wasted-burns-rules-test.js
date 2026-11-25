@@ -28,6 +28,26 @@ const { load, row, run, fakeHash } = require('./lib/load-rules');
   w.byId[ids[1]].hd = 'A'; ok(/discarded/.test(S(w, B0 + 2, 'pet:feed:' + ids[1], 1e4) || ''), 'a discarded pet is blocked');
   ok(V.sendBlock(w, { tag: 'pet:hatch', amount: 690 }, B0 + 2, { me: 'A' }) === null, 'other burns are untouched'); }
 
+/* 1b. Feed runs (pet:fr, the feed part of pet:dc): the planner bridges gaps between hungry pets with places that don't eat (already fed today,
+ *     away on a quest, dead) because those cost nothing. Play-test robot, Nov 25 2026: the check above flagged those free places as waste, so
+ *     "Do it all in one burn" never opened Sign (Evan: "#205410 already fed this chain day"). Runs are judged by money instead: blocked only when
+ *     no pet eats, a pet that eats can't be paid, or the burn pays more than the meals of the pets that eat. */
+{ const c = load(), V = c.V2Rules, B0 = (() => { let b = 977000; while (V.day(b) !== V.day(b + 45) || V.day(b) !== V.day(b - 3)) b++; return b; })(), /* not near a chain-day turn: the planner bridges only then */ H2 = {}; for (let b = B0 - 5; b < B0 + 300; b++) H2[b] = fakeHash(b);
+  const r1 = [row(B0, 'A', 690, 'pet:hatch'), row(B0, 'A', 690, 'pet:hatch'), row(B0, 'A', 690, 'pet:hatch')];
+  let w = run(c, { rows: [], hashes: {} }, r1, B0 + 1, H2); const ids = w.pets.filter(p => p.owner === 'A').map(p => p.id).sort((x, y) => x - y);
+  const meal = (w, id, b) => { const q = w.byId[id]; return V.mealCost(w, q, V.mealFor(q.care, q.species, b, V.petThresholds(w, q, b)), b); };
+  w = run(c, { rows: [], hashes: {} }, r1.concat([row(B0 + 2, 'A', meal(w, ids[1], B0 + 2), 'pet:feed:' + ids[1])]), B0 + 2, H2);
+  const plans = V.feedRunsPlan(w, 'A', [w.byId[ids[0]], w.byId[ids[2]]], B0 + 3) || [];
+  const S = (tag, amt, pend) => V.sendBlock(w, { tag, amount: amt }, B0 + 2, { me: 'A', pending: pend || [] });
+  ok(plans.length === 1, 'one run plan for the 2 hungry pets');
+  const pl = plans[0] || {}, at = V.feedRunsIds(w, 'A', V.parseTag(pl.tag || ''), B0 + 3);
+  ok(at.indexOf(ids[1]) >= 0, 'the run bridges over the pet fed today (a free place): ' + at.join());
+  ok(S(pl.tag, pl.amount) === null, 'a run with a free already-fed place passes (was: "already fed this chain day")');
+  ok(/more than the meals/.test(S(pl.tag, pl.amount + 50) || ''), 'a run that pays more than its eaters is blocked (the extra would stay burned)');
+  ok(/too small/.test(S(pl.tag, pl.amount - meal(w, ids[2], B0 + 3) / 2) || ''), 'a run that cannot pay a hungry pet is blocked');
+  ok(/more than the meals/.test(S(pl.tag, pl.amount, ['pet:feed:' + ids[2]]) || ''), "a run naming a pet whose feed is still waiting is blocked (its meal would be wasted)");
+}
+
 /* 2. Fire Sale grace (Jake Nov 25 2026: "Yes, 6-block grace"). Evan, block 977,493: 19 Electric Egg cases at the sale price landed
  *    2 blocks after the sale ended and were rejected (73,625 XCPETS). From ACTIVATE_FIRE_GRACE_BLOCK a sale-priced burn that lands in the
  *    6 blocks after the end still counts. Pages keep pricing at full cost from the end block, and a grace burn earns no Fire Sale spin. */
