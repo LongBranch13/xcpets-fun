@@ -306,6 +306,11 @@
     if (g.legendary) o.L = 1;
     if (g.sig) o.s = g.sig;
     if (g.slot) o.slot = g.slot;
+    /* Nov 25 2026 (fast-world audit): where the piece came from (pet score credits gear to the pet that rolled or won it) */
+    if (g.src) o.sr = g.src;
+    if (g.rolledOn != null) o.r = g.rolledOn;
+    if (g.wonBy != null) o.w = g.wonBy;
+    if (g.wheel) o.wh = 1;
     return o;
   }
   function openGear(g, owner, on, opt) {
@@ -320,6 +325,10 @@
     var cat = opt && opt.itemOf ? opt.itemOf(g.i) : null;
     var out = { gid: g.g, item: g.i, tier: g.t | 0, legendary: g.L ? 1 : 0, sig: g.s || undefined, owner: owner || '', on: on == null ? null : on, label: (cat && cat.label) || g.i || '', slot: g.slot || (cat && cat.slot) || '' };
     if (g.bag != null) out.bag = g.bag;
+    if (g.sr) out.src = g.sr;
+    if (g.r != null) out.rolledOn = g.r;
+    if (g.w != null) out.wonBy = g.w;
+    if (g.wh) out.wheel = true;
     return out;
   }
   exp.seedParts = seedParts;

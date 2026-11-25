@@ -56,7 +56,11 @@ function copy(v) {
 }
 function itemRec(g) {
   if (!g) return null;
-  return { gid: g.gid, item: g.item, label: g.label, slot: g.slot, tier: g.tier, legendary: g.legendary ? 1 : 0, owner: g.owner || '', on: g.on == null ? null : g.on, sig: g.sig || undefined };
+  const o = { gid: g.gid, item: g.item, label: g.label, slot: g.slot, tier: g.tier, legendary: g.legendary ? 1 : 0, owner: g.owner || '', on: g.on == null ? null : g.on, sig: g.sig || undefined };
+  /* Nov 25 2026 (fast-world audit): where the piece came from. Pet score credits gear to the pet that rolled or won it, the token-drop
+   * list reads src; without these every fast page scored gear 0 */
+  if (g.src) o.src = g.src; if (g.rolledOn != null) o.rolledOn = g.rolledOn; if (g.wonBy != null) o.wonBy = g.wonBy; if (g.wheel) o.wheel = g.wheel;
+  return o;
 }
 function petRec(p, worn) {
   const rec = copy(p) || { id: p.id };
@@ -64,6 +68,73 @@ function petRec(p, worn) {
   rec.owner = p.owner || '';
   rec.worn = worn || [];
   return rec;
+}
+/* FAST WORLD STATE (Nov 25 2026, root fix). Jake: "when i asked to go through the game for bugs i was hoping to find stuff like this".
+ * Pages paint from this slim view, not a replay, and every rules table the view left out was a bug on fast pages: the Fire Sale
+ * (w.fire: no banner, full price), the Pantheon (w.cem.mg: 0 of 21 seats), and in the audit after them saved spins (w.spins:
+ * Evan saw 100 instead of 4,346), player numbers for gifts (w.players), the gift inbox (w.giftLog), flame looks and Proof of Burn
+ * ash (w.burnedBy), the Mythic discount (w.mythicGot: two wallets were handed a discount they don't have), hunt grudges, re-wear
+ * grants, Rug Me ads, open listings, swaps, the WAGMI first five and more. They were added one at a time, each after a player hit it.
+ * Now the rule is the other way round: EVERY top-level world table rides in summary.state unless it is listed below (carried by its
+ * own file, slimmed, or skipped with the reason), so a new rules table reaches fast pages by default. tools/fast-world-state-test.js
+ * fails when the rules start a table that is in none of these lists, or when a page reads a skipped one. */
+const STATE_OWN = { /* carried by their own files or summary fields */
+  pets: 'owner pages + pet shards', byId: 'rebuilt from the pets', items: 'worn gear on the pets, stash on owner page 0', itemList: 'rebuilt from items',
+  log: 'too big; fast pages read the burn rows (V2ViewLog)', fights: 'the burn check sends the open fights', tip: 'summary.tip', community: 'summary.community',
+  deeds: 'owner page 0 (the wallet\'s deeds)', breedReqs: 'summary.breedReqs (open requests only)', wagmi: 'summary.wagmi', raids: 'summary.raids',
+  seasons: 'summary.seasons', pantry: 'summary.pantry', pantryDay: 'summary.pantryDay', fire: 'summary.fire', grind: 'summary.grind'
+};
+COLD_KEYS.forEach(k => { STATE_OWN[k + 'Mythic'] = 'summary.cold'; });
+const STATE_SKIP = { /* never read by a page: history the replay appends to, replay-only bookkeeping, or far too big */
+  questFeed: 'finished-quest history (75 KB); only the replay appends to it',
+  lookOwners: 'who held each pet when its looks were last swept (13 MB); only lookSweep reads it',
+  founderSeen: 'founder-grant dedupe by tx; only the replay reads it',
+  shopSkips: 'log of dex orders the replay ignored; only the replay writes it',
+  fireSpinLog: 'log of Fire Sale spins; the count is w.fireSpins, which is carried',
+  moveAt: 'last token move block per pet; only the replay (handle) reads it',
+  _cg: 'chain-gear recording for the Spam City pack; replay option, not state',
+  _preTies: 'token ties waiting for their pet; only the replay reads it'
+};
+/* slim forms: same answers for every page reader, a fraction of the bytes */
+const STATE_SLIM = {
+  /* spinsLeft reads earned/used only; the per-wallet log of every spin is 5.8 MB */
+  spins: function (v) { const o = {}; Object.keys(v || {}).forEach(a => { const s = Object.assign({}, v[a]); delete s.log; o[a] = s; }); return o; },
+  /* look copies (240 KB): owner page 0 carries the copies its wallet holds (the Looks picker); this keeps the ones worn by another
+   * pet, so shownLooks is right for every pet a page draws */
+  lookCopies: function (v) { const o = {}; Object.keys(v || {}).forEach(k => { const c = v[k]; if (c && c.at != null && c.at !== c.src) o[k] = c; }); return o; },
+  /* the cemetery's tables (seats, unleash clocks, grudges, daily hunt marks, raisers...): all of them, but only open altars and the
+   * last week of hunts (the closed altars are 126 KB of history) */
+  cem: function (v, world, tip) { const o = {}; Object.keys(v || {}).forEach(k => { if (k !== 'altars' && k !== 'altarList' && k !== 'hunts') o[k] = v[k]; });
+    o.altars = {}; Object.keys(v.altars || {}).forEach(k => { const a = v.altars[k]; if (a && a.status === 'open') o.altars[k] = a; });
+    o.altarList = Object.keys(o.altars).map(k => o.altars[k]);
+    o.hunts = (v.hunts || []).filter(h => h && tip - (h.block | 0) <= 1008); return o; }
+};
+const STATE_KEY_MAX = 128 * 1024;
+function stateKind(k) {
+  if (Object.prototype.hasOwnProperty.call(STATE_OWN, k)) return 'own';
+  if (Object.prototype.hasOwnProperty.call(STATE_SKIP, k)) return 'skip';
+  if (Object.prototype.hasOwnProperty.call(STATE_SLIM, k)) return 'slim';
+  return 'carry';
+}
+/* -> { state, sizes, big }. A carried table over STATE_KEY_MAX is still carried (a missing table is a wrong page) but listed in big. */
+function stateOf(world, tip) {
+  const state = {}, sizes = {}, big = [];
+  Object.keys(world || {}).forEach(k => {
+    const kind = stateKind(k), v = world[k];
+    if (kind === 'own' || kind === 'skip' || v === undefined || typeof v === 'function') return;
+    const out = kind === 'slim' ? STATE_SLIM[k](v, world, tip) : copy(v);
+    if (out === undefined) return;
+    const n = JSON.stringify(out).length;
+    sizes[k] = n; if (n > STATE_KEY_MAX) big.push(k);
+    state[k] = out;
+  });
+  return { state: state, sizes: sizes, big: big };
+}
+/* every look copy a wallet holds, for its owner page 0 */
+function looksByHolder(world) {
+  const by = new Map(), C = (world && world.lookCopies) || {};
+  Object.keys(C).forEach(k => { const c = C[k]; if (!c || !c.holder) return; let m = by.get(c.holder); if (!m) by.set(c.holder, m = {}); m[k] = c; });
+  return by;
 }
 function isHybRec(p) {
   return !!(p && (p.hybrid || (p.art && p.art.hybrid) || (typeof p.species === 'string' && (p.species.indexOf('hyb:') === 0 || p.species.indexOf('hyb3:') === 0))));
@@ -77,7 +148,7 @@ function deedRec(D) {
   if (D.prev) o.prev = D.prev;
   return o;
 }
-function ownerSide(rows, world) {
+function ownerSide(rows, world, looksBy) {
   const owner = rows[0] && rows[0].o || '';
   const deeds = {};
   const species = {}, deadSpecies = {};
@@ -110,7 +181,9 @@ function ownerSide(rows, world) {
   return {
     deeds: deeds, mythicAt: mythicAt,
     roster: { alive: alive, dead: dead, species: species, hybrid: hybrid, deadSpecies: deadSpecies, deadHybrid: deadHybrid, tokenized: tokenized, away: away, zombies: zombies, feral: feral },
-    rise: rise
+    rise: rise,
+    /* the look copies this wallet holds (Looks picker + its own pets' looks; see STATE_SLIM.lookCopies) */
+    looks: (looksBy && looksBy.get(owner)) || null
   };
 }
 /* Rankings boards that are not about pets (Nov 24 2026, Jake: "Top burners not showing in rankings"). Root cause: the Top burners
@@ -470,6 +543,12 @@ function write(dir, world, meta) {
   /* before spill(): it frees world.pets as it goes (memory), so anything read from the pets must be taken first */
   const crossNames = crossNamesOf(world, meta && meta.ctx && meta.ctx.V2Rules);
   const gods = godsOf(world);
+  /* the quest odds cache (w._qavg: the Mythic stat average) is only as fresh as the last quest burn, and a fast page holds only some
+   * Mythics, so it would average those. Refresh it at the next block with the rules' own code, then it rides with the state. */
+  try { const QV = meta && meta.ctx && meta.ctx.V2Rules, QM = QV && QV.QUESTS && (all.find(p => p && !p.community && !p.released && !p.dead && QV.isMythic && QV.isMythic(p)));
+    if (QM) QV.questOdds(world, QM, Object.keys(QV.QUESTS)[0], tip + 1); } catch (e) {}
+  const st = stateOf(world, tip);
+  const looksBy = looksByHolder(world);
   return spill().then(() => {
   const summary = {
     v: 3, tip: tip, rsig: rsig, n: n, alive: alive, dead: dead, released: released,
@@ -504,7 +583,10 @@ function write(dir, world, meta) {
     crossNames: crossNames,
     /* Nov 24 2026 (fastcheck): the cemetery's Gods door counted only the Gods a fast page happened to load (0, 2 or 6 instead of 19).
      * Every living Resurrected pet rides here (id, name, owner, block): a few dozen tiny records. */
-    gods: gods
+    gods: gods,
+    /* FAST WORLD STATE (see STATE_OWN / STATE_SKIP / STATE_SLIM): every other rules table, so a page reads what a replay reads */
+    state: st.state,
+    stateBig: st.big.length ? st.big : undefined
   };
   /* the biggest burners by XCPETS burned (the Top burners board), not the community pet's feeders list this used to read */
   const leadBurners = Object.keys(summary.burnBy || {}).map(a => ({ address: a, amount: summary.burnBy[a][0] })).sort((a, b) => b.amount - a.amount || (a.address < b.address ? -1 : 1));
@@ -532,7 +614,7 @@ function write(dir, world, meta) {
         rows.sort((a, b) => ((a.rec.dead || a.rec.released) ? 1 : 0) - ((b.rec.dead || b.rec.released) ? 1 : 0) || (a.rec.id - b.rec.id));
         const living = rows.filter(r => !(r.rec.dead || r.rec.released));
         const graves = rows.filter(r => r.rec.dead || r.rec.released);
-        const side = ownerSide(rows, world);
+        const side = ownerSide(rows, world, looksBy);
         function writeSet(list, nameOf, extraFor) {
           const pages = Math.ceil(list.length / PAGE) || (list === living ? 1 : 0);
           for (let pg = 0; pg < pages; pg++) {
@@ -572,7 +654,7 @@ function write(dir, world, meta) {
             if (nb > largestPage.bytes) largestPage = { bytes: nb, file: rel };
           }
         }
-        writeSet(living, pg => pg === 0 ? key + '.json' : key + '.' + pg + '.json', pg => pg === 0 ? { deeds: side.deeds, mythicAt: side.mythicAt, roster: side.roster, rise: side.rise } : null);
+        writeSet(living, pg => pg === 0 ? key + '.json' : key + '.' + pg + '.json', pg => pg === 0 ? { deeds: side.deeds, mythicAt: side.mythicAt, roster: side.roster, rise: side.rise, looks: side.looks || undefined } : null);
         writeSet(graves, pg => pg === 0 ? key + '.d.json' : key + '.d.' + pg + '.json', { graves: 1 });
       });
     }
@@ -669,4 +751,4 @@ function writeShop(dir, world, meta) {
    * need a server repair; the p/ shard name works today, like the lead file (p/99900.json). Pet shards hold 2,000 ids each. */
   return { file: 'view/p/' + SHOP_SHARD + '.json', bytes: writeJson(path.join(dir, 'p', SHOP_SHARD + '.json'), pack), listings: pack.listings.length, open: pack.open };
 }
-module.exports = { burnTotals, weekWins, crossNamesOf, shopPack, writeShop, SHOP_SHARD, liveBreedReqs, godsOf, LEAD_SHARD, leadFile, PET_SHARD, PAGE, COLD_KEYS, ownerKey, ownerShard, petShard, fromWorld, write, itemRec, petRec, fieldsOf, isHybRec, deedRec, ownerSide };
+module.exports = { stateOf, stateKind, STATE_OWN, STATE_SKIP, STATE_SLIM, STATE_KEY_MAX, looksByHolder, burnTotals, weekWins, crossNamesOf, shopPack, writeShop, SHOP_SHARD, liveBreedReqs, godsOf, LEAD_SHARD, leadFile, PET_SHARD, PAGE, COLD_KEYS, ownerKey, ownerShard, petShard, fromWorld, write, itemRec, petRec, fieldsOf, isHybRec, deedRec, ownerSide };

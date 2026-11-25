@@ -1,5 +1,5 @@
 {
- "lastBlock": 977462,
+ "lastBlock": 977481,
  "count": 477,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
@@ -5245,7 +5245,7 @@
    "species": "hyb:nakamoto:viking",
    "speciesLabel": "Naking (hybrid)",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 205410,
@@ -5257,7 +5257,7 @@
    "species": "peepo",
    "speciesLabel": "Peepo",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 67059,
@@ -5269,7 +5269,7 @@
    "species": "funtrump",
    "speciesLabel": "FUNTRUMP",
    "rarity": "Rare",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 8440,
@@ -5317,7 +5317,7 @@
    "species": "pepe",
    "speciesLabel": "Pepe",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 205429,
@@ -5329,7 +5329,7 @@
    "species": "dodo",
    "speciesLabel": "Dodo",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 205426,
@@ -5341,7 +5341,7 @@
    "species": "nakamoto",
    "speciesLabel": "Nakamoto",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 205427,
@@ -5353,7 +5353,7 @@
    "species": "nakamoto",
    "speciesLabel": "Nakamoto",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 209433,
@@ -5365,7 +5365,7 @@
    "species": "hyb:kek:nakamoto",
    "speciesLabel": "Kekmoto (hybrid)",
    "rarity": "Legendary",
-   "stage": "Juvenile"
+   "stage": "Adult"
   },
   {
    "id": 210434,
@@ -5377,7 +5377,7 @@
    "species": "kek",
    "speciesLabel": "Lord Kek",
    "rarity": "Legendary",
-   "stage": "Juvenile"
+   "stage": "Adult"
   },
   {
    "id": 210436,
@@ -5389,7 +5389,7 @@
    "species": "hyb:dodo:wizard",
    "speciesLabel": "Dowiz (hybrid)",
    "rarity": "Legendary",
-   "stage": "Juvenile"
+   "stage": "Adult"
   },
   {
    "id": 210437,
@@ -5401,7 +5401,7 @@
    "species": "bobo",
    "speciesLabel": "Bobo",
    "rarity": "Legendary",
-   "stage": "Juvenile"
+   "stage": "Adult"
   },
   {
    "id": 147174,
@@ -5425,7 +5425,7 @@
    "species": "hyb:bobo:dodo",
    "speciesLabel": "Bodo (hybrid)",
    "rarity": "Legendary",
-   "stage": "Hatchling"
+   "stage": "Juvenile"
   },
   {
    "id": 210443,
@@ -5437,7 +5437,7 @@
    "species": "mumu",
    "speciesLabel": "Mumu",
    "rarity": "Legendary",
-   "stage": "Hatchling"
+   "stage": "Juvenile"
   },
   {
    "id": 93700,
@@ -5461,7 +5461,7 @@
    "species": "wojak",
    "speciesLabel": "Wojak",
    "rarity": "Legendary",
-   "stage": "Hatchling"
+   "stage": "Juvenile"
   },
   {
    "id": 210444,
@@ -5473,7 +5473,7 @@
    "species": "wojak",
    "speciesLabel": "Wojak",
    "rarity": "Legendary",
-   "stage": "Hatchling"
+   "stage": "Juvenile"
   },
   {
    "id": 210445,
@@ -5485,7 +5485,7 @@
    "species": "hyb:dodo:snibby",
    "speciesLabel": "Dosnib (hybrid)",
    "rarity": "Legendary",
-   "stage": "Hatchling"
+   "stage": "Juvenile"
   },
   {
    "id": 216449,
