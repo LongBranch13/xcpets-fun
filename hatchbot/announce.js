@@ -18,7 +18,7 @@ const ROOT = path.resolve(__dirname, '..');
 const A = process.argv.slice(2), opt = k => { const i = A.indexOf(k); return i >= 0 ? A[i + 1] : null; }, has = k => A.includes(k);
 const DRY = has('--dry'), STATE = opt('--state');
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN || '', CHAT = process.env.TELEGRAM_CHAT_ID || '';
-const MAX_POSTS = 8; /* per run; anything beyond goes into one roundup post */
+const MAX_POSTS = 6; /* per run; anything beyond goes into one roundup post */
 const n = x => Number(x).toLocaleString('en-US');
 const TL = ['Common', 'Uncommon', 'Rare', 'Legendary'];
 
@@ -146,7 +146,7 @@ function collect(V, w, tip, from) {
     else if (x.kind === 'hunt' && /won|defeated|beat/i.test(m)) add(k, x.block, '⚔️ ZOMBIE HUNT! ' + clean(m).slice(0, 200) + ' 🎯', 2, { kind: 'banner', top: 'ZOMBIE HUNT!', bottom: 'THE HUNTER WINS', color: 'green' });
     else if (x.kind === 'breed') { const egg = (m.match(/Egg #(\d+)/) || [])[1]; const ids = (m.match(/#(\d+)/g) || []).map(s => +s.slice(1));
       const big = ids.slice(0, 2).some(i => w.byId[i] && ((w.byId[i].tier | 0) >= 3 || isMythic(w.byId[i])));
-      if (big) add(k, x.block, "💘 IT'S A MATCH! " + petName(w, ids[0], V) + ' and ' + petName(w, ids[1], V) + " checked into Gooby's Motel and made an egg" + (egg ? ' (#' + egg + ')' : '') + '! 🥚 Big genes incoming.' + (egg ? '\n' + link(egg) : ''), 2, { kind: 'breed', ids: ids.slice(0, 2), egg: egg ? +egg : null }); }
+      if (big) { add(k, x.block, '', 2); out[out.length - 1].motel = { ids: ids.slice(0, 2), egg: egg ? +egg : null }; } } /* held for the Motel roundup (motelRoundup) */
     else if (COLD_POST[x.kind]) { const P = COLD_POST[x.kind], tot0 = (m.match(/\((\d+) burned\)/) || [])[1], tot = tot0 && Number(tot0).toLocaleString('en-US'), cur = w.community && w.community.current, nx = cur && cur !== P.id && COLD_POST_NEXT[cur]; /* community pet -> Cold Storage (Nov 24 2026: the hand-off used to post nothing) */
       add(k, x.block, '🧊 MYTHIC! ' + P.name + ' just hit Mythic' + (tot ? ' with ' + tot + ' XCPETS burned by the community' : '') + ' and went into COLD STORAGE. ' + P.emoji + '\n🥚 ' + P.eggs + ' eggs now hatch (1 in 777) and can breed.\n✂️ Burn costs halve 6 blocks from now.' + (nx ? '\n' + nx : '') + '\nxcpets.fun', 5, { kind: 'banner', top: 'COLD STORAGE!', bottom: P.banner, color: 'cyan' }); }
     else if (x.kind === 'grant' && /^XCPETS:raisers:/.test(x.tx || '')) add(k, x.block, '🎁 RAISER PRIZES! ' + clean(m) + '. Check your gear! 🎉\nxcpets.fun', 4, { kind: 'banner', top: 'RAISER PRIZES!', bottom: 'THANKS FOR FEEDING HIM', color: 'gold' });
@@ -154,10 +154,8 @@ function collect(V, w, tip, from) {
       add(k, x.block, '💨 GONE FOREVER. Zombie ' + (x.name || 'Pet') + ' #' + x.petId + (sp ? ' the ' + sp : '') + petEmoji(x.species) + ' went unfed and crumbled to dust. No grave. No seance. No coming back. Feed your zombies! Press F. 🪦', 3); }
     else if (x.kind === 'mzfull') add(k, x.block, '💀 FULL POWER! ' + petName(w, +id, V) + ' just maxed out its zombie power. Nobody is safe. 🧟\n' + link(id), 3, { kind: 'rage', id: +id, color: 'green' });
   });
-  /* 2) Legendary hatches (one post per pet, or one roundup when a big egg case drops several) */
-  const leg = w.pets.filter(p => p && p.hatchBlock > from && p.hatchBlock <= tip && (p.tier | 0) >= 3 && !p.community);
-  if (leg.length > 3) add('hatch-leg-' + leg.map(p => p.id).join('.').slice(0, 120), leg[0].hatchBlock, '🌟🌟🌟 LEGENDARY HAUL! ' + leg.length + ' Legendary pets just hatched: ' + leg.slice(0, 10).map(p => petName(w, p.id, V)).join(', ') + (leg.length > 10 ? ' and more' : '') + '. Somebody is on a HEATER! 🔥', 3, { kind: 'lineup', ids: leg.slice(0, 6).map(p => p.id) });
-  else leg.forEach(p => add('hatch-leg-' + p.id, p.hatchBlock, '🌟 LEGENDARY HATCH!! ' + petName(w, p.id, V) + ' just cracked out of its egg! Odds: tiny. Vibes: immaculate. 🐣✨\n' + link(p.id), 3, { kind: 'hatch', id: p.id }));
+  /* 2) Legendary hatches: no posts since Nov 25 2026 (Jake: "Legendary haul can go"). Legendaries are common now (4,566 of the
+     57,185 pets born on Nov 24 2026), so they were a third of HatchBot's ~90 posts a day. Season legends below still post. */
   /* 2b) raids: boss appears, HP milestones (50%, 25%, 10%), defeated or escaped */
   (w.raids || []).forEach(R => { const B = V.raidBossById ? V.raidBossById(R.boss) : null, nm = B ? B.name : 'The boss', url = '\nxcpets.fun/raid.html', f = n => Number(n).toLocaleString('en-US'), art = B && B.art, ra = o => Object.assign({ kind: 'raid', art, bottom: nm }, o);
     if (R.open > from && R.open <= tip) add('raid-open-' + R.n, R.open, '👹 RAID BOSS INCOMING! ' + nm + ' has appeared with ' + f(R.hp) + ' HP! You have 3 days to take it down.' + (R.v2 ? ' Every feed, breed and hatch hits it too.' : '') + ' ALL HANDS! ⚔️' + url, 4, ra({ phase: 'open', bottom: nm + ': ' + f(R.hp) + ' HP' }));
@@ -211,6 +209,45 @@ function drawPics(w, ctx, tip, dir) {
   fs.writeFileSync(path.join(dir, 'index.json'), JSON.stringify({ tip, at: new Date().toISOString(), ids: Array.from(want.keys()) }));
   console.log('pics: drew ' + n + ' pet pictures (' + bad + ' skipped) in ' + ((Date.now() - t0) / 1000).toFixed(0) + ' s');
 }
+/* ---------------------------------------------------------------- quieter HatchBot (Nov 25 2026, Jake: "HatchBot is posting too many things")
+ * On Nov 24 2026 HatchBot posted about 90 times: ~30 Legendary hatches, ~30 "IT'S A MATCH!" (nearly every breed has a Mythic
+ * parent, so every breed was "big"), plus the Worker's own posts. Now:
+ *  - breeding: one Motel roundup at most every MOTEL_BLOCKS blocks (~6 h), with the breed GIF and the new hybrids' names;
+ *  - small news (prio below BIG): at most CAP_DAY a day and CAP_HOUR an hour; the rest is skipped (never posted later);
+ *  - big moments (prio BIG and up: Mythics, Cold Storage, halvings, Fire Sales, raid boss in/killed, season legends, Pantheon,
+ *    miracles, unleashed zombies, Mythics devoured) always post right away. */
+const MOTEL_BLOCKS = 36, CAP_DAY = 8, CAP_HOUR = 3, BIG = 4;
+const isHybrid = p => !!p && /^hyb/.test(String(p.species || ''));
+function motelRoundup(ev, S, w, V, tip, seen) {
+  const mo = ev.filter(e => e.motel), rest = ev.filter(e => !e.motel);
+  S.motel = S.motel || [];
+  mo.forEach(e => { seen.add(e.key); if (!S.motel.some(x => x.key === e.key)) S.motel.push({ key: e.key, at: e.at, ids: e.motel.ids, egg: e.motel.egg }); });
+  if (S.motel.length > 400) S.motel = S.motel.slice(-400);
+  if (S.motelAt == null) S.motelAt = tip;
+  if (!S.motel.length || tip - S.motelAt < MOTEL_BLOCKS) return rest;
+  const q = S.motel, hy = q.filter(x => x.egg && isHybrid(w.byId[x.egg])), star = hy[0] || q[q.length - 1];
+  S.motel = []; S.motelAt = tip;
+  const art = { kind: 'breed', ids: star.ids, egg: star.egg };
+  let text;
+  if (q.length === 1) text = "💘 IT'S A MATCH! " + petName(w, star.ids[0], V) + ' and ' + petName(w, star.ids[1], V) + " checked into Gooby's Motel and made an egg" + (star.egg ? ' (#' + star.egg + ')' : '') + '! 🥚 Big genes incoming.' + (star.egg ? '\n' + link(star.egg) : '');
+  else text = "💘 MOTEL ROUNDUP! " + q.length + " couples checked into Gooby's No-Tail Motel and made eggs. 🥚\n🔥 Hottest match: " + petName(w, star.ids[0], V) + ' + ' + petName(w, star.ids[1], V) +
+    (hy.length ? '\n🧬 New hybrid' + (hy.length > 1 ? 's' : '') + ': ' + hy.slice(0, 5).map(x => petName(w, x.egg, V)).join(', ') + (hy.length > 5 ? ' and ' + (hy.length - 5) + ' more' : '') : '') +
+    '\nBig genes incoming. xcpets.fun';
+  rest.push({ key: 'motel-' + tip, at: tip, prio: 2, text, art, capFree: true });
+  return rest;
+}
+function capSmall(ev, S, seen, nowMs) {
+  S.cap = (S.cap || []).filter(t => nowMs - t < 864e5);
+  const out = [], skipped = [];
+  for (const e of ev) {
+    if (e.prio >= BIG) { out.push(e); continue; }
+    const hour = S.cap.filter(t => nowMs - t < 36e5).length;
+    if (e.capFree || (S.cap.length < CAP_DAY && hour < CAP_HOUR)) { out.push(e); S.cap.push(nowMs); }
+    else { seen.add(e.key); skipped.push(e.key); }
+  }
+  if (skipped.length) console.log('quiet limits: skipped ' + skipped.length + ' small posts (' + skipped.slice(0, 5).join(', ') + ')');
+  return out;
+}
 /* ---------------------------------------------------------------- main */
 async function main() {
   await loadEmoji();
@@ -235,6 +272,7 @@ async function main() {
     console.log('first run: baseline recorded, nothing posted');
   }
   ev.sort((a, b) => a.at - b.at || b.prio - a.prio);
+  if (!first) ev = capSmall(motelRoundup(ev, S, w, V, tip, seen), S, seen, Date.now());
   let posts = ev;
   if (ev.length > MAX_POSTS) { const keep = ev.slice().sort((a, b) => b.prio - a.prio).slice(0, MAX_POSTS - 1), rest = ev.filter(e => keep.indexOf(e) < 0);
     posts = keep.sort((a, b) => a.at - b.at).concat([{ key: 'roundup-' + tip, at: tip, text: '📜 Also in the last few blocks: ' + rest.length + ' more cool moments. See them all at xcpets.fun/live.html', keys: rest.map(e => e.key) }]); }
@@ -257,4 +295,5 @@ async function main() {
   pics();
   console.log('posted ' + posts.length + ' (block ' + from + ' -> ' + tip + ')');
 }
-main().catch(e => { console.error(e); process.exit(1); });
+if (require.main === module) main().catch(e => { console.error(e); process.exit(1); });
+else module.exports = { collect, replay, motelRoundup, capSmall }; /* for tools/hatchbot-quiet-test.js */
