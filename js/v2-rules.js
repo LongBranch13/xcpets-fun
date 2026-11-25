@@ -375,7 +375,7 @@
    * She is a full species: drawn by AspieSprite (js/aspie-sprite.js), wears every gear slot, breeds. The Grinder is the ONLY way to get a pure
    * Aspie: every baby with an Aspie-line parent keeps the aspie root as a HYBRID (aspieChild, like the Viking line), never a second pure one.
    * Gate null = OFF: replay unchanged (no pet has species 'aspie' and the grinder keeps the slot pet). */
-  var ACTIVATE_ASPIE_BLOCK = 977462; /* about 10:30 PM Central Tue Nov 24 2026 (tip 977,450 at Nov 25 ~02:30 UTC + 12) */
+  var ACTIVATE_ASPIE_BLOCK = 977468; /* about 11 PM Central Tue Nov 24 2026 (tip 977,455 at Nov 25 ~02:40 UTC + 13; moved from 977,462 while the server was down) */
   function aspieOn(b) { return ACTIVATE_ASPIE_BLOCK != null && b != null && Number(b) >= ACTIVATE_ASPIE_BLOCK; }
   function asArt(bh, id, b) { var art = PetCore.generate({ blockHash: bh, petId: id, blockHeight: b }); art.species = 'aspie'; art.defaultName = 'Aspie';
     setArtTier(art, parseInt(sha(String(id) + ':' + b + 'XCPETS:v2:astier').slice(0, 12), 16) % (SPECIAL_RARE_W + SPECIAL_LEG_W) < SPECIAL_LEG_W ? 3 : 2); /* Rare or Legendary */ return noBornShades(art); }

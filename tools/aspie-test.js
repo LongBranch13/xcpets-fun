@@ -15,7 +15,7 @@ function play(list, tip) { const hashes = {}; list.forEach(r => { hashes[r.block
 const mine = w => w.pets.filter(p => p.owner === ME);
 const K = 990000, GA = V.aspieGate(), G1 = V.grindGate(), G2 = V.grind2Gate();
 ok(!!ctx.AspieSprite, 'AspieSprite loads');
-ok(GA === 977462, 'Aspie switches on at block 977,462');
+ok(GA === 977468, 'Aspie switches on at block 977,468');
 ok(V.speciesLabel('aspie') === 'Aspie', 'species label: Aspie');
 
 /* grinder rows: 2,000 discarded pets so every grind can roll the Golden Sausage at 20% */
