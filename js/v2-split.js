@@ -165,6 +165,7 @@
       raids: summary.raids || [], /* raids ride in the summary (Nov 22 2026); older summaries have none */
       seasons: summary.seasons || {}, /* season eggs sold, points and tiers ride in the summary too; older summaries have none */
       pantry: summary.pantry || undefined, pantryDay: summary.pantryDay != null ? summary.pantryDay : undefined, /* Pantry (gated): balances and lists */
+      fire: summary.fire || undefined, /* Fire Sales (Nov 25 2026): armed sales, so the banner and every burn price follow a live sale; older summaries have none */
       grind: summary.grind || undefined, /* Meat Grinder (gated): meat meters; older summaries have none */
       _gods: summary.gods || null, /* every living God (Nov 24 2026): the cemetery's Gods door; older summaries have none */
       _burnBy: summary.burnBy || null, _winsWk: summary.winsWk || null, /* Rankings (Nov 24 2026): XCPETS burned per wallet [all, week] and this week's wins per pet; a view has no burn or fight list. Older summaries have none */
