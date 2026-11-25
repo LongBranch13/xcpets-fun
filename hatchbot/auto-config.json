@@ -1,10 +1,11 @@
 {
   "_note": "HatchBot automatic posts (Cloudflare Worker cron). Every switch is OFF. Nothing posts unless announce is true AND that post type is true. Change a switch here in the repo (never only in Cloudflare): the next deploy picks it up. Owner approval needed before any switch goes true.",
   "announce": true,
-  "limits": { "max_per_day": 30, "max_per_hour": 6, "min_gap_s": 30, "expire_hours": 6, "stale_blocks": 36, "watch_every_min": 10, "legendary_digest_hours": 3, "burn_step": 1000000, "pet_count_step": 10000 },
+  "_quiet": "Nov 25 2026 (Jake: HatchBot posts too much, about 90 a day). This Worker now posts at most 8 a day, 3 an hour, 10 min apart; tokenized pets go out as one roundup every 6 h. Breeding news moved into the announcer's 6-hourly Motel roundup (hatchbot/announce.js), so hybrids and motel_alert are off here.",
+  "limits": { "max_per_day": 8, "max_per_hour": 3, "min_gap_s": 600, "expire_hours": 6, "stale_blocks": 36, "watch_every_min": 10, "legendary_digest_hours": 3, "burn_step": 1000000, "pet_count_step": 10000, "ties_digest_hours": 6 },
   "chain": {
     "hatch_highlights": false,
-    "hybrids": true,
+    "hybrids": false,
     "mythic": false,
     "burn_milestone": true,
     "pet_count_milestone": true,
@@ -17,7 +18,7 @@
   "routines": {
     "pet_of_day": true,
     "fight_night": true,
-    "motel_alert": true,
+    "motel_alert": false,
     "leaderboard": true
   },
   "recap": true,

@@ -241,17 +241,32 @@ export function tieText(t) {
   return (`\u{1F517} PET TOKENIZED: ${t.name} #${t.id} is now tied to its own token!\n` + `${desc ? "A " + desc + (t.stage ? " (" + t.stage + ")" : "") + ". " : ""}Token: ${t.asset}\n` +
     `Whoever holds the token owns the pet in the game.\nPet page: https://xcpets.fun/pet.html?id=${t.id}\nProof of Pet: https://xcpets.fun/t/${t.id}.png`).slice(0, 1000);
 }
-export function tiePosts(ties, st, all) {
+export function tiePosts(ties, st, all, nowMs, hours) {
   const keys = (ties.ties || []).map((t) => ({ t, k: "tie:" + t.id + ":" + t.asset }));
   if (!st.ties) { st.ties = keys.map((x) => x.k); return { baseline: keys.length, posts: [] }; }
   const seen = new Set(st.ties), posts = [];
   for (const { t, k } of keys) {
     if (seen.has(k)) continue;
     if (keys.some((o) => o.t.id === t.id && o.k !== k && seen.has(o.k))) { st.ties.push(k); continue; } /* a re-tie of a pet already announced: skip */
-    st.ties.push(k); posts.push({ type: "tie", prio: 1, keys: [k], block: +t.tiedBlock, text: tieText(t), photo: SITE + "/t/" + t.id + ".png" });
+    st.ties.push(k); posts.push({ type: "tie", prio: 1, keys: [k], block: +t.tiedBlock, text: tieText(t), photo: SITE + "/t/" + t.id + ".png", t });
   }
   if (st.ties.length > 6000) st.ties = st.ties.slice(-6000);
-  return { posts: all ? posts : posts.slice(0, 3) };
+  if (all) return { posts };
+  return { posts: tieDigest(posts, st, nowMs == null ? Date.now() : nowMs, hours) };
+}
+/* Tokenized pets (Nov 25 2026, Jake: "HatchBot is posting too many things"): 27 pets were tokenized in one day, one post each.
+   They now wait and go out as ONE roundup at most every `hours` hours (limits.ties_digest_hours, default 6). */
+export function tieDigest(posts, st, nowMs, hours) {
+  st.tieQ = st.tieQ || [];
+  for (const p of posts) if (!st.tieQ.find((x) => x.k === p.keys[0])) st.tieQ.push({ k: p.keys[0], id: p.t.id, name: p.t.name, asset: p.t.asset, text: p.text, block: p.block });
+  if (st.tieQ.length > 60) st.tieQ = st.tieQ.slice(-60);
+  const due = st.lastTie == null || nowMs - st.lastTie >= (hours || 6) * 3600e3;
+  if (!st.tieQ.length || !due) return [];
+  const q = st.tieQ; st.tieQ = []; st.lastTie = nowMs;
+  if (q.length === 1) return [{ type: "tie", prio: 1, keys: [q[0].k], block: q[0].block, text: q[0].text, photo: SITE + "/t/" + q[0].id + ".png" }];
+  const text = ("\u{1F517} " + q.length + " PETS TOKENIZED! " + list(q.map((x) => x.name + " #" + x.id), 8) + " just got tied to their own tokens.\n" +
+    "Whoever holds a pet's token owns the pet in the game.\nProof of Pet: https://xcpets.fun/t/" + q[0].id + ".png").slice(0, 1000);
+  return [{ type: "ties", prio: 1, keys: q.map((x) => x.k), block: Math.max(...q.map((x) => x.block || 0)), text, photo: SITE + "/t/" + q[0].id + ".png" }];
 }
 
 /* ---------------------------------------------------------------- Spam City (token listings, sales, gifts) */
@@ -556,7 +571,7 @@ export async function watch(st, C, nowMs, opt) {
   }
   if (C.ties === true || C.spamcity === true || C.__all) {
     const ties = await loadTies();
-    if (C.ties === true || C.__all) { const r = tiePosts(ties, st, opt.all); out.posts.push(...r.posts); if (r.baseline != null) out.tiesBaseline = r.baseline; }
+    if (C.ties === true || C.__all) { const r = tiePosts(ties, st, opt.all, nowMs, C.limits.ties_digest_hours); out.posts.push(...r.posts); if (r.baseline != null) out.tiesBaseline = r.baseline; }
     if (C.spamcity === true || C.__all) { try { const r = await spamCity(st, ties, opt.all); out.posts.push(...r.posts); if (r.baseline) out.spamcityBaseline = r.baseline; } catch (e) { out.spamcityError = e.message; } }
   }
   if ((C.warnings || {}).feed_lag === true || C.__all) out.posts.push(...lagPosts(meta, await chainTip(), st, C));
