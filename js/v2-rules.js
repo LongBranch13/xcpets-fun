@@ -322,7 +322,7 @@
    * and was already dead at A (deathBlock unknown or <= A) has no place in these two lists, as on the page. Other pets keep the hunger
    * clock at A (a pet that starved after A keeps its place, as before; its deathBlock is often not written). 3 wallets hold such a pet today
    * (G Money #1765, Evan #14196, bc1qdvlg #19801). Feed and cemetery runs (refList) already skip it. Before the block nothing changes. */
-  var ACTIVATE_DEAD_PLACES_BLOCK = 977570;
+  var ACTIVATE_DEAD_PLACES_BLOCK = 977585;
   function deadPlacesOn(b) { return ACTIVATE_DEAD_PLACES_BLOCK != null && b != null && b >= ACTIVATE_DEAD_PLACES_BLOCK; }
   function deadPlaceGone(w, p, A, b) { return deadPlacesOn(b) && !!p.dead && !(p.deathBlock != null && p.deathBlock > A) && frMythic(w, p, b); }
   function hdSet(p, v, b) { if (!p) return; var was = p.hd || null; v = v || null; if (was === v) return;
