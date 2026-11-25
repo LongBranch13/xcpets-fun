@@ -1,6 +1,6 @@
 {
- "lastBlock": 977429,
- "count": 453,
+ "lastBlock": 977431,
+ "count": 457,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -3083,7 +3083,7 @@
    "kind": "deed",
    "name": "Wavizibun",
    "species": "hyb:wizard:kek",
-   "speciesLabel": "Wikek (hybrid)",
+   "speciesLabel": "Kekamozard Don",
    "rarity": "Legendary",
    "stage": "Mythic"
   },
@@ -4019,7 +4019,7 @@
    "kind": "deed",
    "name": "Roshimen",
    "species": "hyb:nakamoto:kek",
-   "speciesLabel": "Nakek (hybrid)",
+   "speciesLabel": "Kek Pigeon",
    "rarity": "Legendary",
    "stage": "Mythic"
   },
@@ -5436,6 +5436,54 @@
    "name": "Muboteboo",
    "species": "mumu",
    "speciesLabel": "Mumu",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 93700,
+   "asset": "A9100340264994075911",
+   "tiedBlock": 977430,
+   "tiedTx": "eed6b25adce519120d746f13ad13efe47d7db117591d2cfbebe92bcf27486350",
+   "kind": "deed",
+   "name": "Yawibo",
+   "species": "sarutobi",
+   "speciesLabel": "Sarutobi",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 210441,
+   "asset": "A8898515119648163521",
+   "tiedBlock": 977430,
+   "tiedTx": "d1b27c514e8e394bc7b24b29103bfb2fbba576b061a63025af02ffa733356a43",
+   "kind": "deed",
+   "name": "Sezooli",
+   "species": "wojak",
+   "speciesLabel": "Wojak",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 210444,
+   "asset": "A3927146704198349332",
+   "tiedBlock": 977430,
+   "tiedTx": "584b785eb3f6380fe4e890aaae62f03e4650ae5f5f81ebefc3f87db2b13e8eb5",
+   "kind": "deed",
+   "name": "Boolesiru",
+   "species": "wojak",
+   "speciesLabel": "Wojak",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 210445,
+   "asset": "A6836023696516643442",
+   "tiedBlock": 977430,
+   "tiedTx": "8dc8cec7d51083ffc649fc75c3ad44baabef23782d3863ff324a691bf1e3e7f6",
+   "kind": "deed",
+   "name": "Zootip",
+   "species": "hyb:dodo:snibby",
+   "speciesLabel": "Dosnib (hybrid)",
    "rarity": "Legendary",
    "stage": "Hatchling"
   }
