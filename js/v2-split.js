@@ -722,21 +722,13 @@
   }
   /* Nov 23 2026 (Gooby's 'no such pet' on a breed request, pets that showed and then vanished): pets added from outside the owner list
    * (the asker's pet in a breed request, a pet page's parents, graves, zombies, the Rankings lead file) went in through mergePets, but the
-   * next owner-page batch republished from the owner list alone and dropped them, and they were never fetched again. Keep them here and
-   * add them back on every publish; a fresher copy from the owner list or the device check wins. Display only. */
-  var keptExtra = {}, keptN = 0;
-  function keepExtra(list) { var i, p, who = me(); for (i = 0; i < (list || []).length; i++) { p = list[i]; if (p && p.id != null && (p.owner !== who || p.dead || p.released || (p.zombie && !p.zombie.end))) { /* my living pets come from my owner pages; my risen zombies are kept too (hunt-fast Nov 24 2026: the cemetery loads them before the owner pages finish) */ if (!keptExtra[p.id]) keptN++; keptExtra[p.id] = p; } } }
-  function withKept(pets) {
-    if (!keptN) return pets;
-    var have = {}, i, out = pets.slice();
-    for (i = 0; i < pets.length; i++) if (pets[i]) have[pets[i].id] = 1;
-    Object.keys(keptExtra).forEach(function (id) { if (!have[id]) out.push(keptExtra[id]); });
-    return out;
-  }
+   * next owner-page batch republished from the owner list alone and dropped them. Nov 24 2026: this is now the one shared merge step in
+   * js/v2-merge.js (V2Merge.pin here, V2Merge.carry in V2Mock.setViewWorld), the same for every source; a fresher copy still wins. */
+  function keepExtra(list) { if (window.V2Merge) V2Merge.pin(list, me()); }
   function publishOwner(pets, pages, fights, done) {
     if (!lastSummary || !window.V2Mock || !V2Mock.setViewWorld) return;
     var who = me(), one = {};
-    one[who] = aliveFirst(withKept(pets));
+    one[who] = aliveFirst(pets); /* pets from other sources are added back by V2Merge.carry in setViewWorld */
     var v = assemble(lastSummary, { owners: one, deeds: viewHold.deeds, mythicOwners: viewHold.mythicOwners, roster: done ? null : viewHold.roster, cem: viewHold.cem, keepArt: keepArt(), stash: viewHold.stash, owner: viewHold.owner, breedReqs: viewHold.breedReqs || null });
     v._pages = pages || null;
     v._full = done ? 1 : 0;

@@ -724,7 +724,9 @@
       return readMempool(chain).then(function (mp) { S.mempool = mp || []; if (S.mempool.map(function (x) { return x.tx_hash; }).join() !== m0) { toSession(); cb(); } }); }, function () {}); }
   function refreshFull(cb) { var n = S.rows.length, t = S.tip, sig = function () { return (S.mempool || []).map(function (x) { return x.tx_hash; }).join(); }, m = sig(); return load(true).then(fromIdb).then(workerReplay).then(function () { if (S.rows.length !== n || S.tip !== t || sig() !== m) cb(); }, function () {}); }
   var viewPaint = 0;
-  function setViewWorld(w) { if (!S.view || !w) return; lastW = w; lastOps = JSON.stringify(S.ops || []); clearTimeout(viewPaint); viewPaint = setTimeout(repaint, 200); }
+  /* one merge step (js/v2-merge.js): every view world keeps the pets the page already had (a pet never leaves the real world), except the
+   * wallet's own living pets, which come only from its owner pages. Display only. */
+  function setViewWorld(w) { if (!S.view || !w) return; if (window.V2Merge && lastW && lastW !== w) { try { V2Merge.carry(lastW, w, ME); } catch (eM) {} } lastW = w; lastOps = JSON.stringify(S.ops || []); clearTimeout(viewPaint); viewPaint = setTimeout(repaint, 200); }
   watchWallet();
   window.V2Mock = { KEY: KEY, ME: ME, NPCS: [], prod: true, state: function () { return S; }, save: save, burn: burn, adv: function () {}, world: world, peek: peek, whenFresh: whenFresh, updating: updating, onFresh: onFresh, seed: function () {}, boot: boot, loadReal: loadReal, refresh: refresh, readBalance: function (opts) { return readViewBalance(opts || { force: true }); }, rulesSig: rulesSig, setViewWorld: setViewWorld, pickCopy: pickCopy, inSigOf: inSigOf, finalHashes: finalHashes, shallowDrop: shallowDrop, reorgAt: reorgAt, mergeRows: mergeRows, behind: function () { var b = (S.chainTip || 0) - (S.tip || 0); return b > 0 ? b : 0; } };
 })();

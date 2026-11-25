@@ -1,6 +1,6 @@
 {
- "lastBlock": 977428,
- "count": 451,
+ "lastBlock": 977443,
+ "count": 458,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -3083,7 +3083,7 @@
    "kind": "deed",
    "name": "Wavizibun",
    "species": "hyb:wizard:kek",
-   "speciesLabel": "Wikek (hybrid)",
+   "speciesLabel": "Kekamozard Don",
    "rarity": "Legendary",
    "stage": "Mythic"
   },
@@ -4019,7 +4019,7 @@
    "kind": "deed",
    "name": "Roshimen",
    "species": "hyb:nakamoto:kek",
-   "speciesLabel": "Nakek (hybrid)",
+   "speciesLabel": "Kek Pigeon",
    "rarity": "Legendary",
    "stage": "Mythic"
   },
@@ -5414,6 +5414,90 @@
    "speciesLabel": "Homer Pepe",
    "rarity": "Legendary",
    "stage": "Mythic"
+  },
+  {
+   "id": 210440,
+   "asset": "A2053750034821272444",
+   "tiedBlock": 977429,
+   "tiedTx": "3c0d6c5b791662cbf7ca2b633aad30cb542c9f76d25654bd3d1430a70f16d817",
+   "kind": "deed",
+   "name": "Poyooki",
+   "species": "hyb:bobo:dodo",
+   "speciesLabel": "Bodo (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 210443,
+   "asset": "A6205859790026262519",
+   "tiedBlock": 977429,
+   "tiedTx": "ad939114c8049142f87f1110de2b3dedba0945fbea5c90947b1a4d6b4e7728d5",
+   "kind": "deed",
+   "name": "Muboteboo",
+   "species": "mumu",
+   "speciesLabel": "Mumu",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 93700,
+   "asset": "A9100340264994075911",
+   "tiedBlock": 977430,
+   "tiedTx": "eed6b25adce519120d746f13ad13efe47d7db117591d2cfbebe92bcf27486350",
+   "kind": "deed",
+   "name": "Yawibo",
+   "species": "sarutobi",
+   "speciesLabel": "Sarutobi",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 210441,
+   "asset": "A8898515119648163521",
+   "tiedBlock": 977430,
+   "tiedTx": "d1b27c514e8e394bc7b24b29103bfb2fbba576b061a63025af02ffa733356a43",
+   "kind": "deed",
+   "name": "Sezooli",
+   "species": "wojak",
+   "speciesLabel": "Wojak",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 210444,
+   "asset": "A3927146704198349332",
+   "tiedBlock": 977430,
+   "tiedTx": "584b785eb3f6380fe4e890aaae62f03e4650ae5f5f81ebefc3f87db2b13e8eb5",
+   "kind": "deed",
+   "name": "Boolesiru",
+   "species": "wojak",
+   "speciesLabel": "Wojak",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 210445,
+   "asset": "A6836023696516643442",
+   "tiedBlock": 977430,
+   "tiedTx": "8dc8cec7d51083ffc649fc75c3ad44baabef23782d3863ff324a691bf1e3e7f6",
+   "kind": "deed",
+   "name": "Zootip",
+   "species": "hyb:dodo:snibby",
+   "speciesLabel": "Dosnib (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
+  },
+  {
+   "id": 216449,
+   "asset": "A336699336699336699",
+   "tiedBlock": 977432,
+   "tiedTx": "73684767819f8319f55d56cf59de223deca3b09b88a908aa0aafa4722a59c93c",
+   "kind": "deed",
+   "name": "Booyuyemi",
+   "species": "hyb3:dodo:djpepe:viking",
+   "speciesLabel": "Dodjking (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
   }
  ]
 }

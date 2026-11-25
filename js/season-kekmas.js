@@ -13,7 +13,7 @@
   function on() {
     if (d.getElementById('kmCss')) return;
     var s = d.createElement('style'); s.id = 'kmCss'; s.textContent =
-      'header.nav{position:relative}header.nav::after{content:"";position:absolute;left:0;right:0;bottom:-9px;height:10px;pointer-events:none;z-index:5;' +
+      ':root{--nav-trim:9px}header.nav::after{content:"";position:absolute;left:0;right:0;bottom:-9px;height:10px;pointer-events:none;z-index:5;' +
       'background:linear-gradient(135deg,transparent 33%,#e8f6ff 33% 50%,transparent 50%) 0 0/12px 10px,linear-gradient(225deg,transparent 33%,#e8f6ff 33% 50%,transparent 50%) 0 0/12px 10px;' +
       'filter:drop-shadow(0 2px 0 rgba(120,190,255,.6));opacity:.95}' +
       '.brand{position:relative}.brand .km-hat{position:absolute;left:-6px;top:-13px;width:24px;height:18px;pointer-events:none;image-rendering:pixelated;transform:rotate(-14deg)}' +
