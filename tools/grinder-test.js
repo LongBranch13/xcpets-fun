@@ -18,6 +18,7 @@ const alive = w => mine(w).filter(p => !p.dead && !p.released);
 const GATE = V.grindGate(), GATE2 = V.grind2Gate();
 ok(GATE2 === 977456, 'Meat Grinder 2 (better eggs, keep choice) opens at block 977,456');
 V._setGrind2Activation(null); /* sections 1-4 check the first Grinder exactly as it was */
+const GATE_AS = V.aspieGate ? V.aspieGate() : null; if (V._setAspieActivation) V._setAspieActivation(null); /* Aspie (the Grinder's own pet) has tools/aspie-test.js; here the prize stays the slot pet */
 ok(GATE === 977220, 'the Grinder opens at block 977,220');
 V._setGrindActivation(null); /* section 1 checks the switched-off behaviour */
 ok(V.parseTag('pet:grind').action === 'grind' && V.parseTag('pet:grind:2000').n === 2000 && V.parseTag('pet:grind:2001').action === 'invalid' && V.parseTag('pet:grind:0').action === 'invalid', 'pet:grind and pet:grind:N (1-2000) parse');
@@ -136,5 +137,6 @@ const sp2 = mine(gw).filter(p => p.sausage && !p.golden);
 ok(sp2.every(p => p.tier >= 1), 'Sausage Eggs are still never Common (' + sp2.map(p => p.species + ' ' + p.tier).join(', ') + ')');
 V._setGrind2Activation(GATE2);
 V._setGrindActivation(GATE);
+if (V._setAspieActivation) V._setAspieActivation(GATE_AS);
 if (fails) { console.log(fails + ' failed'); process.exit(1); }
 console.log('grinder ok');

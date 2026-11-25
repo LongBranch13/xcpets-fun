@@ -368,7 +368,19 @@
   /** specialEggArt(bh, id, b): THE SPECIAL EGG, the pet the 1-in-777 slot gives at block b (same order as baseHatchArt). */
   function specialEggArt(bh, id, b) { if (b >= GP_POOL_FROM) return gpArt(bh, id, b); if (b >= WR_POOL_FROM) return wrArt(bh, id, b); if (b >= HP_POOL_FROM) return hpArt(bh, id, b);
     if (b >= FT_POOL_FROM) return ftArt(bh, id, b); if (b >= KEK_POOL_FROM) return kekArt(bh, id, b); return wizardArt(bh, id, b); }
-  function sausageSpecialArt(bh, id, b) { var art = specialEggArt(bh, id, b); return art.tierIndex < 1 ? setArtTier(art, 1) : art; } /* a Sausage Egg is never Common */
+  function sausageSpecialArt(bh, id, b) { var art = grinderSpecialArt(bh, id, b); return art.tierIndex < 1 ? setArtTier(art, 1) : art; } /* a Sausage Egg is never Common */
+  /* ===== ASPIE (Jake Nov 25 2026: "instead of a homer from the grinder we make a pet specific to the grinder as the reward. It should be aspie" and
+   * "we make her a pet in the game like all the other pets but you have to grind to get her"). From ACTIVATE_ASPIE_BLOCK the Meat Grinder's prizes
+   * (the Golden Sausage, always Legendary, and the 1-in-77 special Sausage Egg, Rare or Legendary) hatch ASPIE instead of the 1-in-777 slot pet.
+   * She is a full species: drawn by AspieSprite (js/aspie-sprite.js), wears every gear slot, breeds. The Grinder is the ONLY way to get a pure
+   * Aspie: every baby with an Aspie-line parent keeps the aspie root as a HYBRID (aspieChild, like the Viking line), never a second pure one.
+   * Gate null = OFF: replay unchanged (no pet has species 'aspie' and the grinder keeps the slot pet). */
+  var ACTIVATE_ASPIE_BLOCK = 977468; /* about 11 PM Central Tue Nov 24 2026 (tip 977,455 at Nov 25 ~02:40 UTC + 13; moved from 977,462 while the server was down) */
+  function aspieOn(b) { return ACTIVATE_ASPIE_BLOCK != null && b != null && Number(b) >= ACTIVATE_ASPIE_BLOCK; }
+  function asArt(bh, id, b) { var art = PetCore.generate({ blockHash: bh, petId: id, blockHeight: b }); art.species = 'aspie'; art.defaultName = 'Aspie';
+    setArtTier(art, parseInt(sha(String(id) + ':' + b + 'XCPETS:v2:astier').slice(0, 12), 16) % (SPECIAL_RARE_W + SPECIAL_LEG_W) < SPECIAL_LEG_W ? 3 : 2); /* Rare or Legendary */ return noBornShades(art); }
+  /** grinderSpecialArt(bh, id, b): the Grinder's prize pet: Aspie from ACTIVATE_ASPIE_BLOCK, else the 1-in-777 slot pet (Meat Grinder 2). */
+  function grinderSpecialArt(bh, id, b) { return aspieOn(b) ? asArt(bh, id, b) : specialEggArt(bh, id, b); }
   function sausageSpecial(bh, id, b) { return grind2On(b) && parseInt(sha(bh + id + 'XCPETS:v2:sausage-special').slice(0, 12), 16) % GRIND2_SPECIAL_IN === 0; }
   function grindRec(w, a) { w.grind = w.grind || {}; return w.grind[a] || (w.grind[a] = { meat: 0, ground: 0, spins: 0, eggs: 0, golden: 0, grinds: 0, last: null }); }
   /** grindWhy(w, p, src, b): why this pet can't go in the Grinder (null = it can). */
@@ -1008,6 +1020,16 @@
     if (!pool.length) pool = ['pepe']; /* two Viking-only parents cannot happen (1 of 1); a safe default */
     if (isHybrid3(c.species)) { var i = R() % 3; r[i] = 'viking'; c.species = hybrid3Key(r[0], r[1], r[2]); }
     else { var o = pool[R() % pool.length]; c.species = R() % 2 ? hybridKey('viking', o) : hybridKey(o, 'viking'); }
+    c.hybrid = true; }
+  /* aspieChild(hex, A, B, c): ASPIE line (gated by aspieOn): a baby with an Aspie-line parent keeps the aspie root as a hybrid, never a pure Aspie
+   * (the Meat Grinder is the only way to get one). Two Aspie-only parents: the other root is a random main species. Own stream, after every other draw. */
+  function aspieChild(hex, A, B, c) { var ra = vikingRootsOf(A), rb = vikingRootsOf(B); if (ra.indexOf('aspie') < 0 && rb.indexOf('aspie') < 0) return;
+    var r = hybridRoots(c.species); if (c.hybrid && isHybrid(c.species) && r.indexOf('aspie') >= 0) return;
+    var R = stream('XCPETS:v2:aspie:' + hex), pool = [];
+    (isHybrid(c.species) ? r : [c.species]).concat(ra, rb).forEach(function (x) { if (x !== 'aspie' && pool.indexOf(x) < 0) pool.push(x); });
+    if (!pool.length) { var M = PetCore.SPECIES.map(function (x) { return x.id; }); pool = [M[R() % M.length]]; }
+    if (isHybrid3(c.species)) { var i = R() % 3; r[i] = 'aspie'; c.species = hybrid3Key(r[0], r[1], r[2]); }
+    else { var o = pool[R() % pool.length]; c.species = R() % 2 ? hybridKey('aspie', o) : hybridKey(o, 'aspie'); }
     c.hybrid = true; }
   /* dragonChild (owner decision Nov 4 2026: "babies ... should be hybrids like the Viking ... never a second pure one"): mirrors vikingChild.
    * A baby with an Orange-Dragon-line parent keeps the orangedragon root as a hybrid with a partner root (own stream). Gated by dragonOn (null = OFF). */
@@ -4197,7 +4219,7 @@
         for (var ge = 0; ge < gEggs; ge++) { var gx = r.tx_hash + ':' + (88000 + ge), gp2 = mk(w, src, noBornShades(sausageSpecial(bh, gx, b) ? sausageSpecialArt(bh, gx, b) : grindArt(bh, gx, b, sausageTier(bh, gx, b))), b, COSTS.hatch, gx); gp2.sausage = 1; gNew.push(gp2.id); }
         gR.eggs += gEggs;
         var gGold = parseInt(sha(bh + r.tx_hash + 'XCPETS:v2:golden-sausage').slice(0, 12), 16) % 1000000 < grindGoldOdds(gIds.length, b);
-        if (gGold) { var gx2 = r.tx_hash + ':88999', gArt = grind2On(b) ? setArtTier(specialEggArt(bh, gx2, b), 3) : grindArt(bh, gx2, b, 3); var gp3 = mk(w, src, noBornShades(gArt), b, COSTS.hatch, gx2); gp3.sausage = 1; gp3.golden = 1; gNew.push(gp3.id); gR.golden++; }
+        if (gGold) { var gx2 = r.tx_hash + ':88999', gArt = grind2On(b) ? setArtTier(grinderSpecialArt(bh, gx2, b), 3) : grindArt(bh, gx2, b, 3); var gp3 = mk(w, src, noBornShades(gArt), b, COSTS.hatch, gx2); gp3.sausage = 1; gp3.golden = 1; gNew.push(gp3.id); gR.golden++; }
         gR.last = { block: b, n: gIds.length, meat: gMeat, spins: gSpins, eggs: gEggs, golden: gGold, newPets: gNew };
         var gl = L(r, 'grind', 'Meat Grinder: ground ' + gIds.length + ' pet' + (gIds.length === 1 ? '' : 's') + ' into ' + gMeat + ' meat (meter ' + gR.meat + ')' + (gSpins ? ' · +' + gSpins + ' spin' + (gSpins === 1 ? '' : 's') : '') + (gEggs ? ' · ' + gEggs + ' Sausage Egg' + (gEggs === 1 ? '' : 's') : '') + (gGold ? ' · GOLDEN SAUSAGE' : ''),
           { petIds: gIds, petId: gIds[0], meat: gMeat, spins: gSpins, newPets: gNew, golden: gGold });
@@ -4551,6 +4573,11 @@
     sarutobi: 'Groytobi', doge: 'Groydoge', lenny: 'Groyny', nakamoto: 'Groymoto', kek: 'Groykek', wizard: 'Groyzard', funtrump: 'Groytrump', homer: 'Groymer', rabbit: 'Groybbit',
     viking: 'Groyking', chad: 'Groychad', jacksonpepe: 'Groyckory', orangedragon: 'Groygon' };
   Object.keys(GP_NAMES).forEach(function (sp) { HYBRID_NAMES[sp + ':groyper'] = GP_NAMES[sp]; HYBRID_NAMES['groyper:' + sp] = GP_NAMES[sp]; });
+  /* ASPIE hybrid names (gated by ACTIVATE_ASPIE_BLOCK; no aspie-root pet exists before it): Aspi + partner end, either order */
+  var AS_NAMES = { pepe: 'Aspepe', wojak: 'Aspijak', chud: 'Aspichud', bobo: 'Aspibo', mumu: 'Aspimu', snibby: 'Aspibby', dodo: 'Aspido', kevin: 'Aspivin', peepo: 'Aspeepo',
+    sarutobi: 'Aspitobi', doge: 'Aspidoge', lenny: 'Aspilenny', nakamoto: 'Aspimoto', kek: 'Aspikek', wizard: 'Aspizard', funtrump: 'Aspitrump', homer: 'Aspimer', rabbit: 'Aspibbit',
+    groyper: 'Aspoyper', viking: 'Aspiking', chad: 'Aspichad', jacksonpepe: 'Aspickory', orangedragon: 'Aspigon', djpepe: 'DJaspie' };
+  Object.keys(AS_NAMES).forEach(function (sp) { HYBRID_NAMES[sp + ':aspie'] = AS_NAMES[sp]; HYBRID_NAMES['aspie:' + sp] = AS_NAMES[sp]; });
   /* 3-way with the White Rabbit: the two other roots (in order) + -bbit after a vowel / -abbit after a consonant (Pejobbit, Kekzabbit) */
   function wr3Name(r) { var o = r.filter(function (x) { return x !== 'rabbit'; }), p1 = function (sp) { var i = H3_ORDER.indexOf(sp); return sp === 'viking' ? 'Vik' : sp === 'homer' ? 'Ho' : (H3_S1[i] || sp.charAt(0).toUpperCase() + sp.slice(1, 3)); },
     p2 = function (sp) { var i = H3_ORDER.indexOf(sp); return sp === 'viking' ? 'vi' : sp === 'homer' ? 'mer' : (H3_S2[i] || sp.slice(0, 3)); }, pre = p1(o[0]) + p2(o[1]); return pre + (/[aeiouy]$/i.test(pre) ? 'bbit' : 'abbit'); }
@@ -4611,7 +4638,7 @@
   var H3_ORDER = ['pepe', 'wojak', 'chud', 'bobo', 'mumu', 'snibby', 'dodo', 'kevin', 'peepo', 'sarutobi', 'doge', 'lenny', 'nakamoto', 'kek', 'wizard', 'funtrump', 'homer', 'rabbit', 'chad', 'djpepe', 'groyper'];
   var H3_S1 = ['Pe', 'Wo', 'Chu', 'Bo', 'Mu', 'Sni', 'Do', 'Ke', 'Pee', 'Sa', 'Dog', 'Le', 'Na', 'Kek', 'Wi', 'Fun'], H3_S2 = ['pe', 'jo', 'chu', 'bo', 'mu', 'nib', 'do', 'ke', 'pee', 'ru', 'go', 'len', 'ka', 'kek', 'zi', 'tru'],
     H3_S3 = ['pe', 'jak', 'chud', 'bo', 'mu', 'by', 'do', 'vin', 'po', 'tobi', 'ge', 'ny', 'moto', 'kek', 'zard', 'trump'];
-  function h3part(T, sp) { if(sp==='djpepe')return T===H3_S1?'DJ':T===H3_S2?'dj':'pe'; if (sp === 'chad') return T === H3_S1 ? 'Cha' : T === H3_S2 ? 'cha' : 'chad'; if (sp === 'jacksonpepe') return T === H3_S1 ? 'Hick' : T === H3_S2 ? 'hick' : 'ory'; if (sp === 'orangedragon') return T === H3_S1 ? 'Dra' : T === H3_S2 ? 'dra' : 'gon'; if (sp === 'viking') return T === H3_S1 ? 'Vik' : T === H3_S2 ? 'vi' : 'king'; if (sp === 'rabbit') return T === H3_S1 ? 'Rab' : T === H3_S2 ? 'bi' : 'bit'; /* THE WHITE RABBIT (PREVIEW) */ if (sp === 'groyper') return T === H3_S1 ? 'Groy' : T === H3_S2 ? 'oy' : 'per'; /* GROYPER (PREVIEW) */ var i = H3_ORDER.indexOf(sp); return i < 0 ? sp : T[i]; }
+  function h3part(T, sp) { if(sp==='djpepe')return T===H3_S1?'DJ':T===H3_S2?'dj':'pe'; if (sp === 'chad') return T === H3_S1 ? 'Cha' : T === H3_S2 ? 'cha' : 'chad'; if (sp === 'jacksonpepe') return T === H3_S1 ? 'Hick' : T === H3_S2 ? 'hick' : 'ory'; if (sp === 'orangedragon') return T === H3_S1 ? 'Dra' : T === H3_S2 ? 'dra' : 'gon'; if (sp === 'viking') return T === H3_S1 ? 'Vik' : T === H3_S2 ? 'vi' : 'king'; if (sp === 'rabbit') return T === H3_S1 ? 'Rab' : T === H3_S2 ? 'bi' : 'bit'; /* THE WHITE RABBIT (PREVIEW) */ if (sp === 'groyper') return T === H3_S1 ? 'Groy' : T === H3_S2 ? 'oy' : 'per'; /* GROYPER (PREVIEW) */ if (sp === 'aspie') return T === H3_S1 ? 'As' : T === H3_S2 ? 'spi' : 'pie'; /* ASPIE */ var i = H3_ORDER.indexOf(sp); return i < 0 ? sp : T[i]; }
   /* VIKING hybrid names (viking-1of1): Vik + partner end ('Vikpe', 'Vikzard'), partner start + king ('Peking', 'Wiking'); inert until a viking-root pet exists */
   H3_ORDER.forEach(function (sp, i) { if (sp === 'rabbit' || sp === 'groyper') return; /* Vikabbit (WR_NAMES), Groyking (GP_NAMES) */ HYBRID_NAMES['viking:' + sp] = 'Vik' + (H3_S3[i] || 'mer'); HYBRID_NAMES[sp + ':viking'] = (H3_S1[i] || 'Ho') + 'king'; });
   H3_ORDER.concat(['viking']).forEach(function (sp, i) { if (sp === 'rabbit' || sp === 'groyper') return; var e = sp === 'viking' ? 'king' : (H3_S3[i] || 'mer'), b0 = sp === 'viking' ? 'Viki' : (H3_S1[i] || 'Ho'); HYBRID_NAMES['jacksonpepe:' + sp] = 'Hick' + e; HYBRID_NAMES[sp + ':jacksonpepe'] = b0 + 'ckory'; }); /* OLD HICKORY hybrid names: 'Hickpe', 'Peckory' */
@@ -4628,7 +4655,7 @@
     if (r.length === 3 && r.indexOf('rabbit') < 0 && n.indexOf('undefined') >= 0) return dispSlot(H3_S1, r[0]) + dispSlot(H3_S2, r[1]) + dispSlot(H3_S3, r[2]);
     if (r.length === 2 && r[0] !== r[1] && (n.indexOf('-') >= 0 || n.indexOf('undefined') >= 0)) return dispSlot(H3_S1, r[0]) + dispSlot(H3_S3, r[1]);
     return n; }
-  function speciesLabel(sp) { if (sp === 'djpepe') return 'DJ Pepe'; if (sp === 'starlordkek') return 'Star-Lord Kek'; if (sp === 'rabbit') return 'The White Rabbit'; if (sp === 'groyper') return 'Groyper'; if (sp === 'orangedragon') return 'Orange Dragon'; if (sp === 'homer') return 'Homer Pepe'; if (sp === 'funtrump') return 'FUNTRUMP'; if (sp === 'wizard') return 'Bitcoin Wizard'; if (sp === 'kek') return 'Lord Kek'; if (sp === 'bojackson') return 'Bo Jackson'; if (sp === 'rarepigeon') return 'Rarepigeon'; if (sp === 'jacksonpepe') return JP_NAME; if (sp === 'borp') return 'Bo Pigeon'; if (sp === 'viking') return 'Viking'; if (isHybrid(sp)) return hybridLabel(sp) + ' (hybrid)'; var s = PetCore.SPECIES.filter(function (x) { return x.id === sp; })[0]; return s ? s.label : sp; }
+  function speciesLabel(sp) { if (sp === 'aspie') return 'Aspie'; if (sp === 'djpepe') return 'DJ Pepe'; if (sp === 'starlordkek') return 'Star-Lord Kek'; if (sp === 'rabbit') return 'The White Rabbit'; if (sp === 'groyper') return 'Groyper'; if (sp === 'orangedragon') return 'Orange Dragon'; if (sp === 'homer') return 'Homer Pepe'; if (sp === 'funtrump') return 'FUNTRUMP'; if (sp === 'wizard') return 'Bitcoin Wizard'; if (sp === 'kek') return 'Lord Kek'; if (sp === 'bojackson') return 'Bo Jackson'; if (sp === 'rarepigeon') return 'Rarepigeon'; if (sp === 'jacksonpepe') return JP_NAME; if (sp === 'borp') return 'Bo Pigeon'; if (sp === 'viking') return 'Viking'; if (isHybrid(sp)) return hybridLabel(sp) + ' (hybrid)'; var s = PetCore.SPECIES.filter(function (x) { return x.id === sp; })[0]; return s ? s.label : sp; }
   /** OPEN DECISION (placeholder): two hybrids of the SAME ordered pair breed true HYBRID_TRUE_10K of the time, otherwise a coin flip between the roots. */
   function samePairHybridRule(R, key) { var r = hybridRoots(key); return R() % 10000 < HYBRID_TRUE_10K ? key : r[R() % 2]; }
   /** hybridSpecies(R, A, B): the child's species under the hybrid rules (R = the breed hash stream; draws happen after the purebred draws). */
@@ -4703,7 +4730,7 @@
    * donor gives no body part (colour/shape mix only). Same rule for the LEGENDARY MIX third donor. */
   var EYE_DOME_BODIES = { pepe: 1, peepo: 1, groyper: 1 } /* groyper (PREVIEW): his eye bulges, like Pepe's domes */, ONE_EYED = {} /* one-eye rule REMOVED Oct 22 1:30 AM CT (owner): Dodo takes every eye part again, drawn as before */, PART_EXCLUDE = { 'kevin:hair': { pepe: 1, peepo: 1 } };
   /* HYBRID ART FIXES (gated, plan.fix): Homer donates his two hairs / big eyes; Mumu horns + Doge ears float on Peepo's dome; Kevin's eyes vanish on Sarutobi; the beard pastes a band on Peepo / sits on Homer's shirt */
-  var HYBRID_PARTS_FIX = { djpepe: [{id:'cap',label:'flat brim',kind:'top',keep:true},{id:'shades',label:'deal-with-it shades',kind:'eyes'}], homer: [{ id: 'hair', label: 'two hairs', kind: 'top', keep: true }, { id: 'eyes', label: 'big eyes', kind: 'eyes' }], rabbit: [{ id: 'ears', label: 'long ears', kind: 'top', keep: true }, { id: 'eyes', label: 'ruby eyes', kind: 'eyes' }], groyper: [{ id: 'lips', label: 'smug lips', kind: 'mouth' }, { id: 'eyes', label: 'smug eyes', kind: 'eyes' }] }; /* rabbit = THE WHITE RABBIT (PREVIEW); groyper = GROYPER (PREVIEW) */
+  var HYBRID_PARTS_FIX = { djpepe: [{id:'cap',label:'flat brim',kind:'top',keep:true},{id:'shades',label:'deal-with-it shades',kind:'eyes'}], homer: [{ id: 'hair', label: 'two hairs', kind: 'top', keep: true }, { id: 'eyes', label: 'big eyes', kind: 'eyes' }], rabbit: [{ id: 'ears', label: 'long ears', kind: 'top', keep: true }, { id: 'eyes', label: 'ruby eyes', kind: 'eyes' }], groyper: [{ id: 'lips', label: 'smug lips', kind: 'mouth' }, { id: 'eyes', label: 'smug eyes', kind: 'eyes' }], aspie: [{ id: 'hair', label: 'messy hair', kind: 'top', keep: true }, { id: 'eyes', label: 'sleepy eyes', kind: 'eyes' }] }; /* rabbit = THE WHITE RABBIT (PREVIEW); groyper = GROYPER (PREVIEW) */
   var PART_EXCLUDE_FIX = { 'mumu:horns': { peepo: 1 }, 'doge:ears': { peepo: 1 }, 'kevin:hair': { sarutobi: 1 } }, BEARD_PART_EXCLUDE_FIX = { peepo: 1, homer: 1 };
   function partOk(body, sp, d, fix) { if (fix) { if ((sp === 'chud' || sp === 'chad') && d.id === 'beard' && BEARD_PART_EXCLUDE_FIX[body]) return false; var ex2 = PART_EXCLUDE_FIX[sp + ':' + d.id]; if (ex2 && ex2[body]) return false; } if (ONE_EYED[body] && d.kind === 'eyes') return false; if ((sp === 'chud' || sp === 'chad') && d.id === 'beard' && (BEARD_EXCLUDE[body] || BEARD_PART_EXCLUDE[body])) return false; var ex = PART_EXCLUDE[sp + ':' + d.id]; return !(ex && ex[body]); }
   var CHUD_BEARD_PART = { id: 'beard', label: 'beard', kind: 'face' };
@@ -4785,7 +4812,7 @@
   /** eyeMaskOf(sp, art, o): every pixel that is part of the body's EYES = pixels that change when only the eye style changes (classic / beady /
    * tinted / star / laser) on the bare body. Catches eyes the colour keys miss (Pepe's Elder lids, Peepo's domes). Kek / Wizard: eye keys only. */
   var EYE_MASK_CACHE = {};
-  function eyeMaskOf(sp, art, o) { var ck0 = sp + '|' + (o.stage == null ? 3 : o.stage) + '|' + (o.frame || 0); if (EYE_MASK_CACHE[ck0]) return EYE_MASK_CACHE[ck0]; var m = EYE_MASK_CACHE[ck0] = {}; if (sp === 'kek' || sp === 'wizard' || sp === 'funtrump' || sp === 'homer' || sp === 'rabbit' || sp === 'groyper' || sp === 'viking' || sp === 'jacksonpepe' || sp === 'orangedragon' || !PetCore.EYES) return m;
+  function eyeMaskOf(sp, art, o) { var ck0 = sp + '|' + (o.stage == null ? 3 : o.stage) + '|' + (o.frame || 0); if (EYE_MASK_CACHE[ck0]) return EYE_MASK_CACHE[ck0]; var m = EYE_MASK_CACHE[ck0] = {}; if (sp === 'kek' || sp === 'wizard' || sp === 'funtrump' || sp === 'homer' || sp === 'rabbit' || sp === 'groyper' || sp === 'aspie' || sp === 'viking' || sp === 'jacksonpepe' || sp === 'orangedragon' || !PetCore.EYES) return m;
     var L = PetCore.EYES.map(function (e) { var a = Object.assign({}, art, { species: sp, hybrid: null, eyes: e.id, background: 'solid', bgColor: '#ff00ff', pattern: 'none', cheeks: false, band: 'none', armor: 'none', cape: 'none', weapon: 'none', crown: 'none' }); return PetCore.render(a, Object.assign({}, o, { gearCap: 0, gearOverride: null })).data; });
     for (var j = 0; j < 1024; j++) for (var i = 1; i < L.length; i++) if (L[i][j * 4] !== L[0][j * 4] || L[i][j * 4 + 1] !== L[0][j * 4 + 1] || L[i][j * 4 + 2] !== L[0][j * 4 + 2]) { m[j] = 1; break; }
     return m; }
@@ -4817,6 +4844,12 @@
       for (var jh = 0; jh < 1024; jh++) { var kh = hg[jh >> 5] && hg[jh >> 5][jh & 31], bgh = hr.data[jh * 4] === 255 && hr.data[jh * 4 + 1] === 0 && hr.data[jh * 4 + 2] === 255;
         hk[jh] = bgh ? undefined : kh === 'E' ? 'eye' : kh === 'P' ? 'pupil' : (kh === 'L' || kh === 'l') ? 'mouth' : (kh === 'w' || kh === 'W' || kh === 'C') ? 'belly' : 'body'; if (!bgh && yH >= 2 && (jh >> 5) < yH) htop.push(jh); } /* s5: the head fills the frame top, no strands show, so no top */
       hr.keys = hk; hr.parts = { top: htop, topSkin: true }; return hr; }
+    if (sp === 'aspie' && asSprite() && asSprite().draw) { /* ASPIE: own keys from AspieSprite: eyes = E, pupil = P, mouth = m, belly = her tee B/b; top = her hair above the eyelids */
+      var ar = renderRoot(a, o), ast = o.stage == null ? 3 : o.stage, ag = asSprite().draw(ast, o.frame || 0, {}), ak = [], atop = [], yA = 99;
+      for (var ja0 = 0; ja0 < 1024 && yA === 99; ja0++) if (ag[ja0 >> 5][ja0 & 31] === 'E' || ag[ja0 >> 5][ja0 & 31] === 'P') yA = (ja0 >> 5) - 1;
+      for (var ja = 0; ja < 1024; ja++) { var ka = ag[ja >> 5] && ag[ja >> 5][ja & 31], bga = ar.data[ja * 4] === 255 && ar.data[ja * 4 + 1] === 0 && ar.data[ja * 4 + 2] === 255;
+        ak[ja] = bga ? undefined : ka === 'E' ? 'eye' : ka === 'P' ? 'pupil' : ka === 'm' ? 'mouth' : (ka === 'B' || ka === 'b') ? 'belly' : 'body'; if (!bga && ast > 0 && ka && ka !== 'A' && (ja >> 5) < yA && (ka === 'H' || ka === 'h' || ka === 'O' || ka === 'n')) atop.push(ja); }
+      ar.keys = ak; ar.parts = { top: atop, topSkin: true }; return ar; }
     if (sp === 'rabbit' && wrSprite() && wrSprite().draw) { /* THE WHITE RABBIT (PREVIEW): own keys from RabbitSprite: eyes = R/E, pupil = P, mouth = nose/mouth, belly = cream; top = his ears (every pixel above the head) */
       var rr = renderRoot(a, o), rst = o.stage == null ? 3 : o.stage, rg = wrSprite().draw(rst, o.frame || 0, {}), rk = [], rtop = [], yR = 99, an = wrSprite().anchors(rst, o.frame === 1 ? 1 : 0);
       if (rst > 0) yR = an.fy0 + 1;
@@ -4891,6 +4924,7 @@
       for (y = a.ey; y <= (a.ey1 != null ? a.ey1 : a.ey); y++) for (x = a.ex0; x <= a.ex1; x++) { var k0 = g[y] && g[y][x]; if (k0 && k0 !== 'n' && k0 !== 't' && k0 !== 'z') L.push(y * 32 + x); } }
     else if (sp === 'viking' && vikSprite() && vikSprite().draw) { g = vikSprite().draw(st, fr, {}); for (y = 0; y < GROUND_ROW; y++) for (x = 0; x < 32; x++) { var kV = g[y] && g[y][x]; if (kV === 'E' || kV === 'P') L.push(y * 32 + x); } }
     else if (sp === 'rabbit' && wrSprite() && wrSprite().draw) { g = wrSprite().draw(st, fr, {}); for (y = 0; y < GROUND_ROW; y++) for (x = 0; x < 32; x++) { var kR = g[y] && g[y][x]; if (kR === 'R' || kR === 'P' || kR === 'E') L.push(y * 32 + x); } }
+    else if (sp === 'aspie' && asSprite() && asSprite().draw) { g = asSprite().draw(st, fr, {}); for (y = 0; y < GROUND_ROW; y++) for (x = 0; x < 32; x++) { var kA = g[y] && g[y][x]; if (kA === 'P' || kA === 'E') L.push(y * 32 + x); } }
     else if (sp === 'groyper' && gpSprite() && gpSprite().draw) { g = gpSprite().draw(st, fr, {}); for (y = 0; y < GROUND_ROW; y++) for (x = 0; x < 32; x++) { var kG = g[y] && g[y][x]; if (kG === 'P' || kG === 'E') L.push(y * 32 + x); } }
     else if (sp === 'djpepe' && djSprite() && djSprite().draw) { g = djSprite().draw(st, fr, {}); for (y = 0; y < GROUND_ROW; y++) for (x = 0; x < 32; x++) { var kD = g[y] && g[y][x]; if (kD === 'K' || kD === 'k' || kD === 'P' || kD === 'E') L.push(y * 32 + x); } }
     else if (sp === 'homer' && hpSprite() && hpSprite().draw) { g = hpSprite().draw(st, fr, {}); for (y = 0; y < GROUND_ROW; y++) for (x = 0; x < 32; x++) { var kH = g[y] && g[y][x]; if (kH === 'E' || kH === 'P') L.push(y * 32 + x); } }
@@ -5169,6 +5203,13 @@
   function gpSprite() { return typeof GroyperSprite !== 'undefined' ? GroyperSprite : (typeof window !== 'undefined' ? window.GroyperSprite : null); }
   function gpPal(C, shade) { if (!C || C.id === 'groyper') return null; var c = C.canon;
     return { G: c.body, g: shade(c.body, 0.76), h: shade(c.body, 1.25), F: shade(c.body, 1.25), D: shade(c.body, 0.6), d: shade(c.body, 0.46), L: c.accent, l: shade(c.accent, 0.72), c: c.belly, C: shade(c.belly, 0.76) }; }
+  /* ASPIE AS A HYBRID ROOT (gated by ACTIVATE_ASPIE_BLOCK): canon honey hair (body), blue tee (accent), peach skin (belly). As SHAPE: AspieSprite recoloured
+   * (hair <- body, tee <- accent; skin, eyes, shorts and sneakers keep hers). As COLOUR: her canon recolours the shape parent. As FEATURE: her messy hair (top)
+   * or sleepy eyes (HYBRID_PARTS_FIX.aspie). */
+  var AS_SP = { id: 'aspie', label: 'Aspie', canon: { body: '#c98f3a', accent: '#2463e8', belly: '#fbe6cb' } };
+  function asSprite() { return typeof AspieSprite !== 'undefined' ? AspieSprite : (typeof window !== 'undefined' ? window.AspieSprite : null); }
+  function asPal(C, shade) { if (!C || C.id === 'aspie') return null; var c = C.canon;
+    return { H: c.body, h: shade(c.body, 0.72), O: shade(c.body, 1.25), B: c.accent, b: shade(c.accent, 0.72), D: shade(c.accent, 0.45), d: shade(c.accent, 0.32) }; }
   var DJ_SP = { id: 'djpepe', label: 'DJ Pepe', canon: { body: '#4f9a34', accent: '#d82028', belly: '#6cb84a' } };
   function djSprite() { return typeof DjPepeSprite !== 'undefined' ? DjPepeSprite : (typeof window !== 'undefined' ? window.DjPepeSprite : null); }
   function djPal(C, shade) { if (!C || C.id === 'djpepe') return null; var c = C.canon;
@@ -5193,6 +5234,8 @@
       var vr0 = vikSprite().render(vst, o.frame || 0, art.background === 'solid' && art.bgColor === '#ff00ff' ? '#ff00ff' : (art.bgColor || '#1b2430'), {}, { pal: pal || null }); return { width: 32, height: 32, data: new Uint8ClampedArray(vr0.data) }; }
     if (art.species === 'rabbit' && wrSprite()) { var rst0 = o.stage == null ? 3 : o.stage; /* THE WHITE RABBIT (PREVIEW) */
       var rr0 = wrSprite().render(rst0, o.frame || 0, art.background === 'solid' && art.bgColor === '#ff00ff' ? '#ff00ff' : (art.bgColor || '#2a3a2e'), {}, { pal: pal || null }); return { width: 32, height: 32, data: new Uint8ClampedArray(rr0.data) }; }
+    if (art.species === 'aspie' && asSprite()) { var ast0 = o.stage == null ? 3 : o.stage; /* ASPIE */
+      var ar0 = asSprite().render(ast0, o.frame || 0, art.background === 'solid' && art.bgColor === '#ff00ff' ? '#ff00ff' : (art.bgColor || '#2a3a2e'), {}, { pal: pal || null }); return { width: 32, height: 32, data: new Uint8ClampedArray(ar0.data) }; }
     if (art.species === 'groyper' && gpSprite()) { var gst0 = o.stage == null ? 3 : o.stage; /* GROYPER (PREVIEW) */
       var gr0 = gpSprite().render(gst0, o.frame || 0, art.background === 'solid' && art.bgColor === '#ff00ff' ? '#ff00ff' : (art.bgColor || '#2a3a2e'), {}, { pal: pal || null }); return { width: 32, height: 32, data: new Uint8ClampedArray(gr0.data) }; }
     if (art.species === 'djpepe' && djSprite()) { var dst0 = o.stage == null ? 3 : o.stage;
@@ -5215,7 +5258,7 @@
   function csSprite() { return typeof ContestSprite !== 'undefined' ? ContestSprite : (typeof window !== 'undefined' ? window.ContestSprite : null); }
   var DR_SP = { id: 'orangedragon', label: 'Orange Dragon', canon: { body: '#f07a1e', accent: '#8a3608', belly: '#f6e2b0' } };
   function drSprite() { return typeof DragonSprite !== 'undefined' ? DragonSprite : (typeof window !== 'undefined' ? window.DragonSprite : null); }
-  function speciesObj(id) { if(id==='djpepe')return DJ_SP; if (id === 'jacksonpepe') return JP_SP; if (id === 'orangedragon') return DR_SP; if (id === 'viking') return VIK_SP; if (id === 'rabbit') return WR_SP; if (id === 'groyper') return GP_SP; if (id === 'homer') return HP_SP; if (id === 'funtrump') return FT_SP; if (id === 'kek') return KEK_SP; if (id === 'wizard') return WIZ_SP; return PetCore.SPECIES.filter(function (x) { return x.id === id; })[0]; }
+  function speciesObj(id) { if (id === 'aspie') return AS_SP; if(id==='djpepe')return DJ_SP; if (id === 'jacksonpepe') return JP_SP; if (id === 'orangedragon') return DR_SP; if (id === 'viking') return VIK_SP; if (id === 'rabbit') return WR_SP; if (id === 'groyper') return GP_SP; if (id === 'homer') return HP_SP; if (id === 'funtrump') return FT_SP; if (id === 'kek') return KEK_SP; if (id === 'wizard') return WIZ_SP; return PetCore.SPECIES.filter(function (x) { return x.id === id; })[0]; }
   /* WIZARD AS A HYBRID ROOT (wizard-hybrids branch). The player Wizard is drawn by WizardSprite (not a PetCore map), so hybridRender gets a
    * pseudo species WIZ_SP (canon = the blue player palette: robe body, gold-star accent, white-beard belly) and renderRoot() draws either kind.
    * Wizard as SHAPE: the WizardSprite body (hatless, grey hair; the Wizard Hat is never worn by hybrids) with robe/hat tones from the colour
@@ -5240,7 +5283,7 @@
     var shapeArt = Object.assign({}, art, { species: h.shape }), colArt = Object.assign({}, art, { species: h.color }), featArt = Object.assign({}, art, { species: F.id });
     var hx = function (c3) { return [parseInt(c3.slice(1, 3), 16), parseInt(c3.slice(3, 5), 16), parseInt(c3.slice(5, 7), 16)]; };
     var shade = function (c3, k) { var v = hx(c3); return '#' + v.map(function (n) { var m = Math.max(0, Math.min(255, Math.round(n * k))); return (m < 16 ? '0' : '') + m.toString(16); }).join(''); };
-    var kp = S.id === 'viking' ? vikPal(C, shade) : S.id === 'djpepe' ? djPal(C, shade) : S.id === 'rabbit' ? wrPal(C, shade) : S.id === 'groyper' ? gpPal(C, shade) : S.id === 'homer' ? hpPal(C, shade) : S.id === 'funtrump' ? ftPal(C, shade) : S.id === 'kek' ? kekPal(C, shade) : S.id === 'wizard' ? wizPal(C, shade) : null; /* Wizard body (wizard-hybrids): recolour by palette key */
+    var kp = S.id === 'aspie' ? asPal(C, shade) : S.id === 'viking' ? vikPal(C, shade) : S.id === 'djpepe' ? djPal(C, shade) : S.id === 'rabbit' ? wrPal(C, shade) : S.id === 'groyper' ? gpPal(C, shade) : S.id === 'homer' ? hpPal(C, shade) : S.id === 'funtrump' ? ftPal(C, shade) : S.id === 'kek' ? kekPal(C, shade) : S.id === 'wizard' ? wizPal(C, shade) : null; /* Wizard body (wizard-hybrids): recolour by palette key */
     function withColours(fn) { if (S.id === 'wizard') return fn(); var keep = S.canon, kc = S.colors, cc = C.canon; S.canon = cc;
       if (S.id === 'nakamoto' && kc) S.colors = Object.assign({}, kc, { '3': cc.body, '4': shade(cc.body, 0.78), '1': shade(cc.accent, 0.8), '2': shade(cc.accent, 1.15), '5': cc.accent, '8': shade(cc.accent, 0.65), '9': cc.belly });
       if (S.id === 'mumu' && kc) S.colors = Object.assign({}, kc, { '2': shade(cc.belly, 1.05), '3': cc.belly, '4': shade(cc.belly, 1.15) });
@@ -5273,7 +5316,7 @@
         return out.filter(function (j) { return keep[j]; }); };
       var noFeat = (h.parts && h.parts.length) || (Array.isArray(h.parts) && h.shape !== 'dodo') || (F.id === 'wizard' && S.id !== 'wizard'); /* Oct 22 (owner, gray leftover): a v2 plan whose donor gave NO part (e.g. KEVIN hair excluded on Pepe/Peepo) gets no old copied feature either (it pasted KEVIN's gray hair crest between Pepe's/Peepo's eye domes) */ /* breeding v2: traded parts replace the old copied feature; a Wizard feature parent gives a staff instead */
       var px = noFeat ? [] : pick(h.feature); if (!noFeat && px.length < 3) px = pick(h.feature === 'head' ? 'side' : 'head');
-      if (F.id === 'kek' || F.id === 'funtrump' || F.id === 'homer' || F.id === 'rabbit' || F.id === 'groyper' || F.id === 'viking') px = kekAccent(px, kS, sil); /* Kek feature = a small accent like other species (no stripes over the body) */
+      if (F.id === 'kek' || F.id === 'funtrump' || F.id === 'homer' || F.id === 'rabbit' || F.id === 'groyper' || F.id === 'aspie' || F.id === 'viking') px = kekAccent(px, kS, sil); /* Kek feature = a small accent like other species (no stripes over the body) */
       px.forEach(function (j) { for (var c2 = 0; c2 < 3; c2++) img.data[j * 4 + c2] = kF.data[j * 4 + c2]; });
       if (F.id === 'wizard' && S.id !== 'wizard') px = wizStaff(img, kS, sil, o, x0, x1);
       /* a worn core crown/headband (drawn inside the body render) replaces a traded Wizard hat part, otherwise the hat covered it (Oct 22 2026, display only) */
@@ -5504,7 +5547,7 @@
     if (c.species === 'nakamoto' && naka777(b)) c.tier = 3; if (c.species === 'wizard' && !c.hybrid && wizTier2On(b)) { if (c.tier < 2) setWizTier(c, 'stats', 2); } else if (c.species === 'wizard' && !c.hybrid && wizTierOn(b)) setWizTier(c, 'stats'); if (tierSpeciesOn(b) && !c.hybrid) raiseTier(c, 'stats'); if (specialTierOn(b) && !c.hybrid && isSpecialSpecies(c.species) && c.species !== 'nakamoto' && c.tier < 2) setWizTier(c, 'stats', 2); /* COMMUNITY-SPECIES TIER: pure Kek/Wizard/FUNTRUMP child floored at Rare */ if (c.species === 'funtrump' && !c.hybrid && c.tier < 2) setWizTier(c, 'stats', 2); /* FUNTRUMP child: Rare (suit) at least; inert (no FUNTRUMP parent before ACTIVATE_FT_BREED_BLOCK) */ art.species = c.species; art.tierIndex = c.tier; art.tier = PetCore.TIERS[c.tier].id; art.baseStats = c.stats; if (c.species === 'funtrump' && !c.hybrid) { art.ftLook = ftLookOfTier(c.tier); if (!specialNamesOn(b)) art.defaultName = 'FUNTRUMP'; }
     var lin = supremeLineageOn(b) && [A, B].some(isOneOfOne); /* SUPREME LINEAGE (gated; null = replay SAME); no crown mark */
     if (lin) lineageSpecies(sha(bh + tx), A, B, c);
-    if (vikingOn(b)) { vikingChild(sha(bh + tx), A, B, c); if (c.hybrid) art.species = c.species; } if (jpOn(b)) { jpChild(sha(bh + tx), A, B, c); if (c.hybrid) art.species = c.species; } /* OLD HICKORY line (gated, OFF) */ if (dragonOn(b)) { dragonChild(sha(bh + tx), A, B, c); if (c.hybrid) art.species = c.species; } /* ORANGE DRAGON line (gated, OFF) */ /* VIKING LINE (gated; null = replay SAME): the viking root always carries over */
+    if (vikingOn(b)) { vikingChild(sha(bh + tx), A, B, c); if (c.hybrid) art.species = c.species; } if (jpOn(b)) { jpChild(sha(bh + tx), A, B, c); if (c.hybrid) art.species = c.species; } /* OLD HICKORY line (gated, OFF) */ if (dragonOn(b)) { dragonChild(sha(bh + tx), A, B, c); if (c.hybrid) art.species = c.species; } /* ORANGE DRAGON line (gated, OFF) */ if (aspieOn(b)) { aspieChild(sha(bh + tx), A, B, c); if (c.hybrid) art.species = c.species; } /* ASPIE line (gated): never a second pure Aspie */ /* VIKING LINE (gated; null = replay SAME): the viking root always carries over */
     if (c.hybrid) { var plan = hybridPlan(sha(bh + tx), c.species, b); art.species = plan.shape; art.hybrid = plan; }
     if (lin) lineageLook(sha(bh + tx), A, B, art, b);
     if (rareTiersOn(b)) { var rt = rareTierOf(w, A, B, c, sha(bh + tx), b); if (rt) art.rareTier = rt; if (rt === 'dynast') art.dynast = dynastPick(w, A, B, sha(bh + tx)); } /* RARE HYBRID TIERS (gated; null = replay SAME) */
@@ -5852,7 +5895,7 @@
     retireGate: function () { return ACTIVATE_RETIRE_TAGS_BLOCK; }, retireOn: retireOn, retiredAt: retiredAt, retiredUI: function (w) { return retireOn(((w && w.tip) || 0) + 1); }, RETIRED_ACTIONS: RETIRED_ACTIONS, _setRetireActivation: function (b) { ACTIVATE_RETIRE_TAGS_BLOCK = b == null ? null : Number(b); },
     retireDeadGate: function () { return ACTIVATE_RETIRE_DEAD_BLOCK; }, retireDeadOn: retireDeadOn, RETIRE_DEAD_DAYS: RETIRE_DEAD_DAYS, retireSpareWhy: retireSpareWhy, retireSpareFlags: retireSpareFlags, retireRareSpecies: retireRareSpecies, retireDeadDue: retireDeadDue, retireDeathClock: retireDeathClock, retireDeadBanner: retireDeadBanner, _retireDeadSweep: retireDeadSweep, _setRetireDeadActivation: function (b) { ACTIVATE_RETIRE_DEAD_BLOCK = b == null ? null : Number(b); RETIRE_RARE_SPECIES = null; },
     grindGate: function () { return ACTIVATE_GRIND_BLOCK; }, grindOn: grindOn, grindWhy: grindWhy, grindList: grindList, grindPreview: grindPreview, grindPlan: grindPlan, _setGrindActivation: function (b) { ACTIVATE_GRIND_BLOCK = b == null ? null : Number(b); }, _sausageTierTest: sausageTier, GRIND: { COST: GRIND_COST, MAX: GRIND_MAX, MEAT: GRIND_MEAT, SPIN_EVERY: GRIND_SPIN_EVERY, EGG_EVERY: GRIND_EGG_EVERY, SAUSAGE_10K: GRIND_SAUSAGE_10K, GOLD_PER_PET: GRIND_GOLD_PER_PET, GOLD_MAX: GRIND_GOLD_MAX },
-    grind2Gate: function () { return ACTIVATE_GRIND2_BLOCK; }, grind2On: grind2On, _setGrind2Activation: function (b) { ACTIVATE_GRIND2_BLOCK = b == null ? null : Number(b); }, grindGoldOdds: grindGoldOdds,
+    grind2Gate: function () { return ACTIVATE_GRIND2_BLOCK; }, aspieGate: function () { return ACTIVATE_ASPIE_BLOCK; }, aspieOn: aspieOn, _setAspieActivation: function (b) { ACTIVATE_ASPIE_BLOCK = b == null ? null : Number(b); }, _asArt: asArt, _aspieChild: aspieChild, _grinderSpecialArt: grinderSpecialArt, grind2On: grind2On, _setGrind2Activation: function (b) { ACTIVATE_GRIND2_BLOCK = b == null ? null : Number(b); }, grindGoldOdds: grindGoldOdds,
     GRIND2: { SAUSAGE_10K: GRIND2_SAUSAGE_10K, GOLD_PER_PET: GRIND2_GOLD_PER_PET, GOLD_MAX: GRIND2_GOLD_MAX, SPECIAL_IN: GRIND2_SPECIAL_IN, KEEP: GRIND_KEEP }, _specialEggArt: specialEggArt, _sausageSpecialTest: sausageSpecial,
     pantryGate: function () { return ACTIVATE_PANTRY_BLOCK; }, pantryOn: pantryOn, pantryPlan: pantryPlan, pantryInfo: pantryInfo, dayStart: dayStart, PANTRY_PREFIX: PANTRY_PREFIX, _pantrySweep: pantrySweep, _setPantryActivation: function (b) { ACTIVATE_PANTRY_BLOCK = b == null ? null : Number(b); },
     dailyChoresGate: function () { return ACTIVATE_DAILY_CHORES_BLOCK; }, choresOn: choresOn, dailyChoresPlan: dailyChoresPlan, DC_PREFIX: DC_PREFIX, DC_BODY: DC_BODY, _setDailyChoresActivation: function (b) { ACTIVATE_DAILY_CHORES_BLOCK = b == null ? null : Number(b); },
