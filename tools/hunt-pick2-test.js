@@ -16,7 +16,7 @@ const L = require('./lib/load-rules');
       await page.route('http://hunt-fixture.test/', route => route.fulfill({contentType:'text/html',body:'<html><body></body></html>'})); await page.goto('http://hunt-fixture.test/');
       await page.setContent('<html><head></head><body style="margin:0;background:#101722;color:#eee;font:16px monospace"><h1>Pet Cemetery · offline UI fixture</h1><button id="launch">Hunt</button></body></html>');
       for (const file of ['css/style.css','css/game.css','css/v2.css','css/hunt-picker.css']) await page.addStyleTag({path:path.join(L.ROOT,file)});
-      for (const file of ['rjs/config.js','rjs/pet-core.js','js/pet-core.js','js/bonus-gear.js','js/v2-gear.js','js/v2-fit.js','js/v2-rules.js','js/v2-render.js','js/v2-zombie-look.js','js/v2-zombies.js','js/v2-pick.js','js/v2-hunt-picker.js']) await page.addScriptTag({path:path.join(L.ROOT,file)});
+      for (const file of ['rjs/config.js','rjs/pet-core.js','js/pet-core.js','js/bonus-gear.js','js/v2-gear.js','js/v2-fit.js','js/v2-rules.js','js/species-registry.js', 'js/v2-render.js','js/v2-zombie-look.js','js/v2-zombies.js','js/v2-pick.js','js/v2-hunt-picker.js']) await page.addScriptTag({path:path.join(L.ROOT,file)});
       await page.evaluate(base => {
         const w={tip:974900,pets:[],byId:{},items:{},wear:{}};
         for(let i=1;i<=2000;i++){const p=JSON.parse(JSON.stringify(base));p.id=i;p.name=i===2000?'Champion':i===1999?'Tiny':'Fighter '+i;p.owner='fixture';p.stats={vigor:10+i%50,spark:12,grit:14,zoom:15,luck:16};if(i===2000)p.stats.vigor=200;p.fixtureWhy=i===1999?'too young':i%17===0?'one battle per pet per 144-block day':i%19===0?'black eye':i%23===0?'pet already has an open challenge':null;w.pets.push(p);w.byId[i]=p;}

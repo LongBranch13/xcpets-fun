@@ -134,6 +134,16 @@ pages.forEach(f => { const h = rd(f), tags = [...h.matchAll(/<script[^>]*\bsrc="
 ok(/species-registry\.js/.test(rd('tg/index.html')), 'tg/index.html: load ../js/species-registry.js before app.js');
 ok(/js\/species-registry\.js/.test(rd('.github/workflows/server-repair.yml')), '.github/workflows/server-repair.yml: ship js/species-registry.js with hatchbot/art.js (share cards)');
 
+/* Node tools + tests that run the display code in a vm load the registry too (tools/lib/load-rules.js does it for everyone using it) */
+const LOADS_DISPLAY = /runInContext\(fs\.readFileSync\([^;]*(?:v2-render|v2-zombie-look|mythic-sig)\.js|['"](?:\.\.\/)?js\/(?:v2-render|v2-zombie-look|mythic-sig)\.js['"]\s*[,\]]/;
+(function walk(dir) { fs.readdirSync(path.join(ROOT, dir), { withFileTypes: true }).forEach(e => { const f = dir + '/' + e.name;
+  if (e.isDirectory()) { if (!/node_modules|snapshots|fixtures/.test(e.name)) walk(f); return; } if (!/\.js$/.test(e.name) || f === 'tools/species-registry-test.js') return;
+  const t = rd(f); if (LOADS_DISPLAY.test(t) && !/species-registry/.test(t) && (/addScriptTag/.test(t) /* a browser page has no load-rules */ || (/runInContext/.test(t) && !/lib\/load-rules|hatchbot\/art/.test(t))))
+    ok(false, f + ': runs the display code without js/species-registry.js (load it first, or use tools/lib/load-rules.js)'); }); })('tools');
+fs.existsSync(path.join(ROOT, 'design')) && (function walk(dir) { fs.readdirSync(path.join(ROOT, dir), { withFileTypes: true }).forEach(e => { const f = dir + '/' + e.name;
+  if (e.isDirectory()) return walk(f); if (!/\.js$/.test(e.name)) return; const t = rd(f);
+  if (/runInContext|addScriptTag/.test(t) && LOADS_DISPLAY.test(t) && !/species-registry/.test(t) && !/load-rules/.test(t)) ok(false, f + ': runs js/v2-render.js without js/species-registry.js'); }); })('design');
+
 /* ---------------------------------------------------------------- no hand-kept species lists creep back into the display code */
 [['js/v2-zombie-look.js', /OWN = \{ *homer/], ['js/mythic-sig.js', /K = \{ *kek/], ['js/v2-render.js', /COLD_ORDER = \[\[/], ['js/v2-render.js', /LOOK_SPR = \{ *wizard/],
   ['js/v2-render.js', /RAISE_PETS = \{ *groyper/], ['js/v2-pages.js', /COLD_GHOSTS = \{/], ['tg/app.js', /COMM = \{ *groyper/], ['hatchbot/art.js', /EXTRA = \['js\/wizard-sprite/],

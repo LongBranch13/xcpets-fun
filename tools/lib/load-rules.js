@@ -9,7 +9,7 @@ function load(extra) {
   win.document = { getElementById: () => null, querySelector: () => null, querySelectorAll: () => [], createElement: () => ({ getContext: () => null, style: {} }), addEventListener() {}, body: null, documentElement: { style: {} } };
   win.addEventListener = () => {}; win.window = win; win.self = win;
   const c = vm.createContext(win);
-  for (const f of SCRIPTS.concat(extra || [])) { if (f === '@LIVE') { vm.runInContext('window.LiveEngine={RealCore:window.RealCore}', c); continue; } const p = path.join(ROOT, f); if (fs.existsSync(p)) vm.runInContext(fs.readFileSync(p, 'utf8'), c, { filename: f }); }
+  for (const f of ['js/species-registry.js'].concat(SCRIPTS, extra || [])) { /* species-registry: display code (v2-render, zombie look, mythic sig) reads its species lists from it; the rules never do */ if (f === '@LIVE') { vm.runInContext('window.LiveEngine={RealCore:window.RealCore}', c); continue; } const p = path.join(ROOT, f); if (fs.existsSync(p)) vm.runInContext(fs.readFileSync(p, 'utf8'), c, { filename: f }); }
   return c;
 }
 const hex = s => Buffer.from(s, 'utf8').toString('hex');

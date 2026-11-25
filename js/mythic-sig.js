@@ -14,7 +14,7 @@
     if (sp === 'nakamoto' || a.species === 'nakamoto') return 'matrix';
     var K = sigs(); /* species-registry: each species' sig in js/species-registry.js */
     return (K.hasOwnProperty(sp) && K[sp]) || (K.hasOwnProperty(a.species) && K[a.species]) || null; }
-  var SIGS = null; function sigs() { return SIGS || (SIGS = root.XcpSpecies ? root.XcpSpecies.map('sig') : {}); }
+  var SIGS = null; function sigs() { return SIGS || (root.XcpSpecies ? (SIGS = root.XcpSpecies.map('sig')) : {}); }
   /* masks from two keyed renders: pet = same pixel in both */
   function masks(A, B) { var pet = new Uint8Array(N * N), d1 = new Uint8Array(N * N), d2 = new Uint8Array(N * N), bb = { x0: N, x1: -1, y0: N, y1: -1 };
     for (var p = 0; p < N * N; p++) { var i = p * 4; if (A[i] === B[i] && A[i + 1] === B[i + 1] && A[i + 2] === B[i + 2]) { pet[p] = 1; var x = p & 31, y = p >> 5; bb.x0 = Math.min(bb.x0, x); bb.x1 = Math.max(bb.x1, x); bb.y0 = Math.min(bb.y0, y); bb.y1 = Math.max(bb.y1, y); } }

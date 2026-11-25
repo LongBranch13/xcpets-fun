@@ -29,8 +29,8 @@
   function g2(b) { var v = V(); return !!(v.grind2On && v.grind2On(b)); }
   function goldOdds(n, b) { var v = V(), G = G_(); return v.grindGoldOdds ? v.grindGoldOdds(n, b) : Math.min(G.GOLD_MAX, n * G.GOLD_PER_PET); } /* per million */
   /* the 1-in-777 slot pet right now (display only: the replay decides). Same order as the rules' special-egg chain. */
-  /* species-registry (Nov 25 2026): the newest community pet (FUNTRUMP #4 onward) in Cold Storage, from js/species-registry.js */
-  function specialName(w) { var R = window.XcpSpecies, o = null; if (R) R.coldOrder().forEach(function (x) { if (x.no >= 4 && w[x.key]) o = R.shortName(x.id); }); return o || 'the special egg'; }
+  /* species-registry (Nov 25 2026): the newest community pet in Cold Storage whose eggs hatch (community.eggs: FUNTRUMP #4 onward), from js/species-registry.js */
+  function specialName(w) { var R = window.XcpSpecies, o = null; if (R) R.coldOrder().forEach(function (x) { if (R.get(x.id).community.eggs && w[x.key]) o = R.shortName(x.id); }); return o || 'the special egg'; }
   /* every pet that isn't a normal egg species glows pink in the result list (community pets, 1 of 1s, special eggs: Aspie and later ones too) */
   var SPECIAL_SP = window.XcpSpecies ? XcpSpecies.specialMap() : { homer: 1, rabbit: 1, groyper: 1, funtrump: 1, kek: 1, wizard: 1 };
   var KEEP = [[3, '🥩 Everything'], [2, '⭐ Keep Legendaries'], [1, '💎 Keep Rares + Legendaries'], [0, '🪨 Commons only']], KEEP_KEY = 'xcpets-grind-keep';

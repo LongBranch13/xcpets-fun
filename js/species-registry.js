@@ -58,7 +58,7 @@
       sprite: { g: 'WizardSprite', file: 'js/wizard-sprite.js', draw: true }, look: { k: 'RrhX', min: 4 }, tap: ['magic internet money', 'abracadabra, ser'] },
     { id: 'kek', name: 'Lord Kek', kind: 'community', community: { no: 3, mythic: 'kekMythic' }, emoji: '🐸', sig: 'kekglow',
       sprite: { g: 'KekSprite', file: 'js/kek-sprite.js', draw: true }, look: { k: 'Ggho', below: 'l', min: 3 }, tap: ['KEK', 'shadilay'] },
-    { id: 'funtrump', name: 'FUNTRUMP', kind: 'community', community: { no: 4, mythic: 'funtrumpMythic' }, emoji: '🍔', sig: 'goldshine', face: 1,
+    { id: 'funtrump', name: 'FUNTRUMP', kind: 'community', community: { no: 4, mythic: 'funtrumpMythic', eggs: true }, emoji: '🍔', sig: 'goldshine', face: 1,
       sprite: { g: 'FuntrumpSprite', file: 'js/funtrump-sprite.js', draw: true }, look: { k: 'NvwB', min: 3 }, tap: ['tremendous pat. the best.', 'many people are saying this is a great pat'] },
     { id: 'homer', name: 'Homer Pepe', kind: 'community', community: { no: 5, mythic: 'homerMythic', eggs: true }, emoji: '🍩', sig: 'donut', face: 1,
       sprite: { g: 'HomerSprite', file: 'js/homer-sprite.js', draw: true }, look: { k: 'wWC', min: 3 }, tap: ['mmm... XCPETS', 'woohoo!'] },

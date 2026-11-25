@@ -12,7 +12,7 @@ const ROOT=path.resolve(__dirname,'..'), OUT=process.env.HUNT_PREVIEW_OUT || req
   await page.route('http://hunt-rules.test/',route=>route.fulfill({contentType:'text/html',body:'<!doctype html><html><body></body></html>'}));await page.goto('http://hunt-rules.test/');
   await page.setContent('<html><head></head><body style="margin:0;background:#101722;color:#eee;font:16px monospace"><h1>Pet Cemetery</h1><p>Private rule preview · offline fixture · not live</p></body></html>');
   for(const file of ['css/style.css','css/game.css','css/v2.css','css/hunt-picker.css']) await page.addStyleTag({path:path.join(ROOT,file)});
-  for(const file of ['rjs/config.js','rjs/pet-core.js','js/pet-core.js','js/bonus-gear.js','js/v2-gear.js','js/v2-fit.js','js/v2-rules.js','js/v2-render.js','js/v2-zombie-look.js','js/v2-zombies.js','js/v2-life-anim.js','js/v2-hunt-picker.js'])await page.addScriptTag({path:path.join(ROOT,file)});
+  for(const file of ['rjs/config.js','rjs/pet-core.js','js/pet-core.js','js/bonus-gear.js','js/v2-gear.js','js/v2-fit.js','js/v2-rules.js','js/species-registry.js', 'js/v2-render.js','js/v2-zombie-look.js','js/v2-zombies.js','js/v2-life-anim.js','js/v2-hunt-picker.js'])await page.addScriptTag({path:path.join(ROOT,file)});
   const fix=JSON.parse(fs.readFileSync(path.join(OUT,result+'-fixture.json')));
   await page.evaluate(({fix,result})=>{
    const H=fix.event,w=fix.w;w.log=[];w.cem={hunts:[H],altarList:[],grudges:{}};w.fights=[];w.listings=[];
