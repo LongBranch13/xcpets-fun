@@ -13,6 +13,7 @@ html.vd {
   --vd-r: #c8242c; --vd-w: #f4f4ee; --vd-b: #2b4aa8; --vd-ink: #16181f; }
 
 /* header: red-white-blue bunting under the bar + a small ballot box by the logo */
+html.vd { --nav-trim: 15px; } /* room under the bar for the bunting (css/style.css .nav) */
 html.vd header.nav::after { content: ''; position: absolute; left: 0; right: 0; bottom: -15px; height: 14px; pointer-events: none; image-rendering: pixelated;
   background: var(--vd-bunt) 0 0 / 45px 9px repeat-x, linear-gradient(90deg, var(--vd-r) 0 33.3%, var(--vd-w) 33.3% 66.6%, var(--vd-b) 66.6%) 0 12px / 100% 2px no-repeat; }
 html.vd header.nav .brand::after { content: ''; display: inline-block; width: 21px; height: 20px; flex: 0 0 21px; margin-left: 3px;
