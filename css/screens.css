@@ -44,3 +44,7 @@ html body .reveal:not(#packBox) .box > .row:last-child{position:sticky;bottom:-2
   html body header.nav nav.px-nav,html.hd3 body header.nav nav.px-nav{flex:1 1 auto;min-width:0;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
   html.hd3 body header.nav nav.px-nav::-webkit-scrollbar,html body header.nav nav.px-nav::-webkit-scrollbar{display:none}
 }
+
+/* 6 · Button groups wrap instead of running off the screen: the community feed amounts (69 / 690 / 6,900 at full price) become
+ *     "267.375"-style numbers during halvings and Fire Sales, and on a 390px phone the last button hung past the right edge. */
+html body .camtseg{flex-wrap:wrap;max-width:100%}
