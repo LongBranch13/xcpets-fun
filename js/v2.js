@@ -732,7 +732,13 @@
   var wspinOn = false; /* wheel-spin-anim: the 8-bit Pepe Wheel reveal (js/v2-wheel-anim.js) plays once before a gear batch that came from a wheel spin. Display only. */
   /* box-reveal-1124: never open on top of another pop-up (a community pet's arrival, a pixel scene, a burn confirm); try again when it closes */
   var otherT = 0;
-  function otherUp() { return !!document.querySelector('.reveal.on:not(#packBox)') || !!(window.V2LifeAnim && V2LifeAnim.busy && V2LifeAnim.busy()); }
+  /* playtest Nov 25 2026: the 'while you were away' box reveal opened a few seconds after load, often in the middle of Select all ->
+   * Discard selected, and covered the bar (the discard never asked). It also waits while the player is picking pets. */
+  function picking() { var b = document.body; return !!(b && (b.classList.contains('selmode') || b.classList.contains('mpc-sel'))); }
+  /* playtest Nov 25 2026: only a sheet the player can SEE holds the reveal. In the Rare Room calm mode (js/v2-lair-calm.js) an incoming
+   * request (#inReqBox) stays .on but hidden (it waits in the away chip), and the new eggs never opened: no reveal, no pill. */
+  function shown(e) { return !!(e.offsetWidth || e.offsetHeight); }
+  function otherUp() { return [].some.call(document.querySelectorAll('.reveal.on:not(#packBox)'), shown) || picking() || !!(window.V2LifeAnim && V2LifeAnim.busy && V2LifeAnim.busy()); }
   /* playtest-1125: an egg with no art (a fast page that picked the hatch up after the published world) made the box reveal throw on
    * x.art.tierIndex inside the egg-crack callback, so the reveal never opened. Ask for the art once; eggs still without it skip the review. */
   function revNeedsArt() { var q = revealQ[0], w = world(); if (!q || q.kind !== 'eggs' || !w || !w.byId) return false;

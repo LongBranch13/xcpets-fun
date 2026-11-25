@@ -20,7 +20,15 @@ jobs:
     timeout-minutes: 45
     strategy:
       fail-fast: false
-      matrix: { size: [phone, desktop] }
+      matrix:
+        size: [phone, desktop]
+        wallet: [keen]
+        include:
+          # Evan's 40,000-pet wallet: reports how the biggest wallet plays, never blocks a merge
+          - { size: phone, wallet: evan, big: true }
+          - { size: desktop, wallet: evan, big: true }
+    continue-on-error: ${{ matrix.big == true }}
+    name: 'play (${{ matrix.size }}, ${{ matrix.wallet }})'
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 1 }
@@ -32,9 +40,9 @@ jobs:
           node --max-old-space-size=6000 tools/playtest/rig.js > rig.log 2>&1 &
           for i in $(seq 1 120); do grep -q '^ready' rig.log && break; sleep 5; done; cat rig.log; grep -q '^ready' rig.log
       - name: Play every flow
-        run: CHROME=$(which google-chrome || which chromium) node tools/playtest/run.js --sizes ${{ matrix.size }} --shots --out playtest-${{ matrix.size }}
+        run: CHROME=$(which google-chrome || which chromium) node tools/playtest/run.js --why-freeze --sizes ${{ matrix.size }} --wallet ${{ matrix.wallet }} --shots --out playtest-${{ matrix.size }}-${{ matrix.wallet }}
       - if: always()
         run: tail -50 rig.log || true
       - if: always()
         uses: actions/upload-artifact@v4
-        with: { name: 'playtest-${{ matrix.size }}', path: 'playtest-${{ matrix.size }}', retention-days: 14 }
+        with: { name: 'playtest-${{ matrix.size }}-${{ matrix.wallet }}', path: 'playtest-${{ matrix.size }}-${{ matrix.wallet }}', retention-days: 14 }

@@ -80,8 +80,12 @@
     return open; }
   function esc(s) { return String(s).replace(/[&<>"]/g, function (ch) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]; }); }
   /** watch(el, w): first time el (his card / panel) is on screen while Lord Kek is the community pet, play once per player. */
+  /* playtest Nov 25 2026: the arrival played the moment its card scrolled into view, even under an open sheet (Gift several pets,
+   * Sign & burn), and covered its buttons. It now waits until no other pop-up is open. */
+  function sheetUp() { return [].some.call(document.querySelectorAll('.reveal.on, .la-ov'), function (e) { return !e.classList.contains('returnov') && !!(e.offsetWidth || e.offsetHeight); }); /* a hidden sheet (calm mode) does not count */ }
+  function playFree(w, getW) { if (sheetUp()) { setTimeout(function () { playFree(typeof getW === 'function' ? getW() : w, getW); }, 1500); return; } play(w); }
   function watch(el, getW) { if (!el || el.__kekArr) return; el.__kekArr = 1;
-    var go = function () { var w = getW(); if (!(root.V2Render && V2Render.kekOn && V2Render.kekOn(w))) return false; if (seen() && !previewRequested()) return true; play(w); return true; };
+    var go = function () { var w = getW(); if (!(root.V2Render && V2Render.kekOn && V2Render.kekOn(w))) return false; if (seen() && !previewRequested()) return true; playFree(w, getW); return true; };
     if (previewRequested()) { setTimeout(go, 300); return; }
     if (!('IntersectionObserver' in root)) { go(); return; }
     var io = new IntersectionObserver(function (es) { es.forEach(function (e) { if (e.isIntersecting && go()) io.disconnect(); }); }, { threshold: 0.4 }); io.observe(el); }
