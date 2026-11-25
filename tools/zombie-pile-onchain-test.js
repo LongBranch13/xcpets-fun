@@ -61,4 +61,11 @@ ok(/function discSet\(\) \{ var me = A\.ctx && A\.ctx\.ME; if \(window\.V2Own &&
 
 /* 5. no picker reads ONLY the browser pile for zombie / altar offers any more */
 ['js/v2-cem-sacrifice.js', 'js/v2-cemetery-altar.js', 'js/v2.js'].forEach(f => { const s = rd(f); ok(/\.hd === me|\.hd === ME|V2Own\.discardSet/.test(s), f + ' looks at on-chain discards'); });
+/* 6. feeds signed while a discard burn is still waiting (G Money, 977,469): the feed guard leaves those pets out */
+const H2 = require(path.join(REPO, 'js/v2-habits.js'));
+const pet = { id: 50, owner: ME, hungry: true, nextMeal: 1 };
+ok(/being discarded/.test(H2.feedWhy({}, pet, ME, { hd: { 50: 1 } }, 977600, null) || ''), 'feed guard: a pet named by a pending discard burn is not fed');
+ok(H2.feedWhy({}, pet, ME, { hd: {} }, 977600, null) === null, 'feed guard: other hungry pets still eat');
+const v2 = rd('js/v2.js'); ok(/t\.action === 'hd'\) return hdAdd\(t\)/.test(v2) && /pendingFeedIds: pendingFeedIds/.test(v2), 'pendingFeedIds reads pending pet:hd burns (and V2UI shares it)');
+ok(/u\.pendingFeedIds\(\)\.hd/.test(rd('js/v2-chores.js')), 'Daily chores leaves out pets in a pending discard');
 console.log(pass + ' passed, ' + fail + ' failed'); process.exit(fail ? 1 : 0);
