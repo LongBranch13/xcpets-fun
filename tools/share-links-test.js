@@ -7,7 +7,7 @@ const ROOT = path.resolve(__dirname, '..');
 const S = require(path.join(ROOT, 'js/v2-share.js'));
 const P = require(path.join(__dirname, 'share-page.js'));
 const md5 = crypto.createHash('md5').update(fs.readFileSync(path.join(ROOT, 'js/v2-rules.js'))).digest('hex');
-assert.strictEqual(md5, '11b5c6c1959c56a7fd51c09a8b2a2309', 'v2-rules.js md5 moved');
+assert.strictEqual(md5, require('./lib/rules-md5').MAIN, 'v2-rules.js md5 moved');
 assert.strictEqual(S.url(15004), 'https://xcpets.fun/pet/15004?ref=');
 assert.strictEqual(S.url(15004, ''), 'https://xcpets.fun/pet/15004?ref=');
 assert.strictEqual(S.url(15004, 'abc'), 'https://xcpets.fun/pet/15004?ref=abc');

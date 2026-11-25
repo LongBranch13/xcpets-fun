@@ -32,7 +32,8 @@ XCPETS is an on-chain pet game on Bitcoin/Counterparty. Players burn XCPETS toke
 - If rules or rsig changed: confirm `latest.json` shows the new rsig and a current tip.
 
 ## Tests
-`tools/*-test.js` (node). ~30 tests already fail on main (stale MD5 pins like living-rest-test/other-lookup-test, missing Playwright, 10-minute CI timeouts, pets.json over the 20 MB cap). Compare against main.
+`tools/*-test.js` (node). Some tests fail here for outside reasons (network, missing Playwright, 10-minute CI timeouts, pets.json over the 20 MB cap). Compare against main.
+- Never pin a rule file's MD5 or one exact `?v=` token as a literal: it goes stale on the next rules PR and leaves CI red forever. Use `require('./lib/rules-md5')` (`MAIN`, `main(rel)`, `RSIG_FILES`) and match tokens loosely (`\?v=[\w.-]+`). `tools/stale-pin-guard-test.js` enforces it.
 
 ## The fast-load layer (where most bugs live)
 Pages paint from a slim "fast world" (js/v2-split.js assemble, js/v2-art.js, the verify/catch-up workers) instead of a full replay. It is missing parts of the full world (listings, swaps, quests, most of w.cem, rules' in-memory switches). Bugs found Nov 22, 2026 were all here: missing w.cem.altars (seance button), v2-art.js not exporting self.XcpArt in workers (every pre-sign owner check failed), gear/hatch "new" detection running on a half-loaded list, rules pool switches never set (FUNTRUMP breeding). Never fix these by editing the rules.

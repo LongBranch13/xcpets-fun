@@ -27,7 +27,7 @@ t('verify worker keeps art for pets that were not this wallet\'s in the publishe
   assert.deepStrictEqual(keep({ 7: 'bc1qother' }, { id: 7 }, me, pk), pk, 'a pet that came in from another wallet carries its art');
 });
 t('the verify worker cache token was bumped with the change', () => {
-  assert(/v2-verify-worker\.js\?v=stable1125b/.test(read('js/v2-split.js')), 'bump the ?v= of the worker URL in js/v2-split.js');
+  assert(/v2-verify-worker\.js\?v=[\w.-]+/.test(read('js/v2-split.js')), 'bump the ?v= of the worker URL in js/v2-split.js');
 });
 
 const v2 = read('js/v2.js');

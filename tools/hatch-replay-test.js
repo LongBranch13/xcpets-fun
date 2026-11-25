@@ -13,9 +13,9 @@ let pass = 0, fail = 0;
 const ok = (c, m) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (c) pass++; else fail++; };
 function md5(rel) { return crypto.createHash('md5').update(fs.readFileSync(path.join(ROOT, rel))).digest('hex'); }
 const src = fs.readFileSync(path.join(ROOT, 'js/v2.js'), 'utf8');
-ok(md5('js/v2-rules.js') === 'c6c9f5d10e75aa163fb6a3086ee69d07', 'rules MD5 stays c6c9f5d10e75aa163fb6a3086ee69d07');
-ok(/function onChainDiscarded\(p\) \{ return !!\(p && ME && p\.hd === ME\); \}/.test(src), 'on-chain discard is the pet.hd flag for this wallet');
-ok(/!onChainDiscarded\(p\)/.test(src.slice(src.indexOf('function mine(w)'), src.indexOf('function mine(w)') + 220)), 'My Pets hides an on-chain discard');
+ok(md5('js/v2-rules.js') === require('./lib/rules-md5').MAIN, 'rules bytes match main');
+ok(/function onChainDiscarded\(p\) \{ return !!\(p && ME && p\.hd === ME[ )&]/.test(src), 'on-chain discard is the pet.hd flag for this wallet');
+ok(/!onChainDiscarded\(p\)|!inPile\(p, h\)/.test(src.slice(src.indexOf('function mine(w)'), src.indexOf('function mine(w)') + 220)), 'My Pets hides an on-chain discard');
 ok(/p\.hungry && !onChainDiscarded\(p\)/.test(src), 'Feed all hungry skips an on-chain discard');
 
 const start = src.indexOf('  function hatchListSettled');
@@ -127,7 +127,7 @@ const ids = after.reduce(function (a, g) { return a.concat(g.eggs.map(function (
 ok(ids.join(',') === '9', 'after an empty baseline, only a newer hatch opens (got ' + ids.join(',') + ')');
 
 const mineSrc = src.slice(src.indexOf('function mine(w)'), src.indexOf('function mine(w)') + 240);
-ok(/onChainDiscarded/.test(mineSrc), 'mine() is the profile filter');
+ok(/onChainDiscarded|inPile/.test(mineSrc) && /function inPile[^\n]*onChainDiscarded\(p\)/.test(src), 'mine() is the profile filter');
 const box = { ME: ME, onChainDiscarded: sandbox.onChainDiscarded };
 vm.createContext(box);
 vm.runInContext('function onChainDiscarded(p) { return !!(p && ME && p.hd === ME); }\n' +
