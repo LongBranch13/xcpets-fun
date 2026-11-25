@@ -226,9 +226,11 @@
    * The Rabbit's last line hands off to Groyper only once V2Rules.ACTIVATE_GROYPER_BLOCK is set (else no footer: the gap card says what is next). */
   function rabbitNextLine(w) { var g = V.ACTIVATE_GROYPER_BLOCK, cur = w && w.community && w.community.current; if (cur === 'groyper') return 'Groyper is the new community pet';
     return g != null ? 'Next: Groyper · community pet #7' : null; }
-  var COLD_GHOSTS = { rabbit: ['homer', 'funtrump', 'kek', 'wizard'], groyper: ['rabbit', 'homer', 'funtrump', 'kek'] };
+  /* species-registry (Nov 25 2026): a farewell's ghosts are the four community pets before it (#2 onward), newest first */
+  function coldGhosts(id) { var R = window.XcpSpecies, L = R ? R.coldOrder() : [], me = L.filter(function (x) { return x.id === id; })[0]; if (!me) return [];
+    return L.filter(function (x) { return x.no < me.no && x.no >= me.no - 4; }).reverse().map(function (x) { return x.id; }); }
   function coldFarewellSprites(w, id) { var e = entryOf(id), x = w && w[id + 'Mythic'], T = V.COMMUNITY_THRESHOLDS || [];
-    return { frames: coldEntryFrames(e), ghosts: (COLD_GHOSTS[id] || []).map(function (g) { var ge = entryOf(g); return ge ? coldEntryFrames(ge) : null; }).filter(Boolean),
+    return { frames: coldEntryFrames(e), ghosts: coldGhosts(id).map(function (g) { var ge = entryOf(g); return ge ? coldEntryFrames(ge) : null; }).filter(Boolean),
       total: x ? x.total : (T[5] || 6906900), next: id === 'rabbit' ? rabbitNextLine(w) : null }; }
   function coldInfo(w, id, name) { var x = w && w[id + 'Mythic']; return x ? name + ' · Mythic at block ' + fmt(x.block) + ' · now in Cold Storage' : name + ' farewell (preview)'; }
   function withColdFarewell(cb) { if (window.V2ColdFarewell) return cb(); var t = document.createElement('script'); t.src = 'js/v2-cold-farewell.js?v=gp7a1124'; t.onload = cb; document.body.appendChild(t); }

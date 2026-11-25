@@ -8,7 +8,7 @@ const el = () => ({ style: {}, appendChild() {}, setAttribute() {}, addEventList
 const doc = { createElement: el, getElementById: () => null, querySelector: () => null, querySelectorAll: () => [], addEventListener() {}, head: null, documentElement: el(), body: el() };
 const win = { console: { log() {}, warn() {}, error() {}, info() {} }, localStorage: ls, sessionStorage: ls, document: doc, location: { search: '', hostname: 'xcpets.fun', href: 'https://xcpets.fun/' }, navigator: { userAgent: 'node' }, setTimeout: () => 0, clearTimeout() {}, setInterval: () => 0, clearInterval() {}, requestAnimationFrame: () => 0, MutationObserver: function () { this.observe = () => {}; }, URLSearchParams, URL, TextEncoder, TextDecoder };
 win.window = win; win.self = win; win.globalThis = win; const ctx = vm.createContext(win);
-for (const f of ['rjs/config.js', 'rjs/pet-core.js', 'rjs/game-core.js', 'rjs/bonus-gear.js', 'js/pet-core.js', 'js/bonus-gear.js', 'js/v2-gear.js', 'js/v2-fit.js', 'js/v2-rules.js', 'js/v2-render.js', 'js/pet-score.js']) vm.runInContext(rd(f), ctx, { filename: f });
+for (const f of ['rjs/config.js', 'rjs/pet-core.js', 'rjs/game-core.js', 'rjs/bonus-gear.js', 'js/pet-core.js', 'js/bonus-gear.js', 'js/v2-gear.js', 'js/v2-fit.js', 'js/v2-rules.js', 'js/species-registry.js', 'js/v2-render.js', 'js/pet-score.js']) vm.runInContext(rd(f), ctx, { filename: f });
 const V = ctx.V2Rules, R = ctx.V2Render, S = ctx.PetScore;
 let pass = 0, fail = 0; const t = (n, f) => { try { f(); pass++; console.log('ok   ' + n); } catch (e) { fail++; console.log('FAIL ' + n + ': ' + (e && e.message)); } };
 const mk = (id, o) => Object.assign({ id, name: 'P' + id, species: 'pepe', parents: null, children: [], breeds: 0, breedsV2: 0, lastBreed: null }, o || {});

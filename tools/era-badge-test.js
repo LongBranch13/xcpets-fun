@@ -21,7 +21,7 @@ c.V2Rules.ACTIVATE_DJPEPE_BLOCK=975150;check(C.eraOf(future,p(975149)).id==='gro
 C.PETS.splice(-2);
 // Render module with the same VM shims as api-feed; no browser/Telegram/wallet.
 c.document.readyState='loading';c.setInterval=()=>0;c.setTimeout=()=>0;
-vm.runInContext(fs.readFileSync(path.join(root,'js/v2-render.js'),'utf8'),c,{filename:'v2-render.js'});
+vm.runInContext(fs.readFileSync(path.join(root,'js/species-registry.js'),'utf8'),c,{filename:'species-registry.js'});vm.runInContext(fs.readFileSync(path.join(root,'js/v2-render.js'),'utf8'),c,{filename:'v2-render.js'});
 const html=c.V2Render.eraChip(w,p(974841));check(html.includes('data-era="rabbit"')&&html.includes('aria-label="White Rabbit era"')&&html.includes('role="img"'),'shared renderer keeps the era name as aria-label');check(/title="White Rabbit era\. Born in block 974,841\./.test(html)&&html.includes('Looks only'),'title tooltip keeps the label and the birth note');check(!/<span>[^<]* era<\/span>/.test(html),'no visible era words');check(html.includes('<svg')&&!/position:/.test(html),'8-bit icon, no sprite overlay');check(c.V2Render.eraChip(w,p(null))==='','missing birth never guesses');
 for(const f of ['js/v2.js','js/v2-pages.js','js/v2-sales.js','js/v2-cemetery-scene.js','js/v2-rugme.js','js/v2-token-gallery.js','js/v2-trait-rank.js'])check(fs.readFileSync(path.join(root,f),'utf8').includes('.eraChip('),'card integration '+f);
 for(const f of ['play.html','pet.html','shop.html','templates/game.html']){const t=fs.readFileSync(path.join(root,f),'utf8');check(t.indexOf('js/v2-community.js')<t.indexOf('js/v2-chain.js'),'catalogue before boot '+f)}
