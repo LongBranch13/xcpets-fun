@@ -15,7 +15,9 @@ function play(list, tip) { const hashes = {}; list.forEach(r => { hashes[r.block
 const mine = w => w.pets.filter(p => p.owner === ME);
 const alive = w => mine(w).filter(p => !p.dead && !p.released);
 
-const GATE = V.grindGate();
+const GATE = V.grindGate(), GATE2 = V.grind2Gate();
+ok(GATE2 === 977456, 'Meat Grinder 2 (better eggs, keep choice) opens at block 977,456');
+V._setGrind2Activation(null); /* sections 1-4 check the first Grinder exactly as it was */
 ok(GATE === 977220, 'the Grinder opens at block 977,220');
 V._setGrindActivation(null); /* section 1 checks the switched-off behaviour */
 ok(V.parseTag('pet:grind').action === 'grind' && V.parseTag('pet:grind:2000').n === 2000 && V.parseTag('pet:grind:2001').action === 'invalid' && V.parseTag('pet:grind:0').action === 'invalid', 'pet:grind and pet:grind:N (1-2000) parse');
@@ -87,6 +89,52 @@ ok(Math.abs(pv3.goldPct - Math.min(10, pv3.n / 200)) < 1e-9 && V.grindPreview(Ob
 const cnt = [0, 0, 0, 0];
 for (let i = 0; i < 20000; i++) cnt[V._sausageTierTest(fakeHash(i), 'x' + i)]++;
 if (V._sausageTierTest) ok(cnt[0] === 0 && Math.abs(cnt[1] / 20000 - 0.6) < 0.02 && Math.abs(cnt[2] / 20000 - 0.32) < 0.02 && Math.abs(cnt[3] / 20000 - 0.08) < 0.01, 'Sausage ladder over 20,000 rolls: ' + cnt.join(' / '));
+/* 5 · MEAT GRINDER 2: better Sausage Eggs, a bigger Golden Sausage shot (always weird), and keep-rarity grinds */
+ok(V.parseTag('pet:grind:2000:u').maxT === 1 && V.parseTag('pet:grind:5:C').maxT === 0 && V.parseTag('pet:grind:5:r').maxT === 2 && V.parseTag('pet:grind:5:L').action === 'invalid' && V.parseTag('pet:grind:0:u').action === 'invalid' && V.parseTag('pet:grind:2001:u').action === 'invalid', 'pet:grind:N:C|U|R parse (L and bad N do not)');
+const K = G + 300;
+let r3 = [row(K - 50, ME, 0.00000001, 'pet:hi'), row(K - 40, ME, 100000, 'pet:hatchzap'), row(K - 30, ME, 0.00000001, 'pet:hd:ALL'), row(K - 20, ME, 69, 'pet:grind:2000:u')];
+w = play(r3, K - 20);
+ok(!w.grind || !w.grind[ME] || !w.grind[ME].ground, 'gate off: pet:grind:N:U grinds nothing (unknown tag, as before)');
+ok(w.log.some(e => e.block === K - 20 && /community food/.test(e.msg)), 'gate off: pet:grind:N:U is community food');
+ok(/opens at block/.test(V.sendBlock(w, { tag: 'pet:grind:2000:u', amount: 69 }, K - 19, { me: ME }) || ''), 'gate off: the send check says the keep choice is not open yet');
+const pvOld = V.grindPreview(w, ME, K - 19, 0, 1);
+ok(pvOld.maxT === 3, 'gate off: the preview ignores the keep choice');
+V._setGrind2Activation(K - 10);
+r3 = r3.filter(r => r.block_index !== K - 20);
+w = play(r3, K - 15);
+const pile = alive(w).filter(p => p.hd === ME && !V.grindWhy(w, p, ME, K - 9));
+const pvU = V.grindPreview(w, ME, K - 9, 0, 1), plU = V.grindPlan(w, ME, K - 9, 0, 1), pl5 = V.grindPlan(w, ME, K - 9, 5, 0), plAll = V.grindPlan(w, ME, K - 9);
+ok(pvU.ok && pvU.n === pile.filter(p => p.tier <= 1).length && pvU.byTier[2] === 0 && pvU.byTier[3] === 0, 'keep U: the preview takes only Commons and Uncommons (' + pvU.n + ' of ' + pile.length + ')');
+ok(plU.tag === 'pet:grind:2000:U' && pl5.tag === 'pet:grind:5:C' && plAll.tag === 'pet:grind', 'plans: pet:grind:2000:U, pet:grind:5:C, plain pet:grind');
+ok(V.sendBlock(w, { tag: plU.tag, amount: 69 }, K - 9, { me: ME }) === null, 'the send check passes a keep grind');
+const rareIds = pile.filter(p => p.tier >= 2).map(p => p.id);
+r3.push(row(K - 9, ME, 69, plU.tag));
+w = play(r3, K - 9);
+ok(w.grind[ME].ground === pvU.n && w.grind[ME].meat === pvU.meat && w.grind[ME].last.eggs === pvU.eggs, 'the keep grind matches its preview (' + pvU.n + ' pets, ' + pvU.meat + ' meat)');
+ok(rareIds.length > 0 && rareIds.every(id => !w.byId[id].ground && !w.byId[id].released && w.byId[id].hd === ME), 'every Rare and Legendary stays in the discard pile (' + rareIds.length + ')');
+const pvR = V.grindPreview(w, ME, K - 8, 0, 0);
+ok(!pvR.ok && /that rarity/.test(pvR.why), 'keep C with no Commons left: nothing to grind, and it says why');
+r3.push(row(K - 8, ME, 69, 'pet:grind:2000:R'));
+w = play(r3, K - 8);
+ok(rareIds.filter(id => w.byId[id].tier === 2).every(id => w.byId[id].ground) && rareIds.filter(id => w.byId[id].tier === 3).every(id => !w.byId[id].ground), 'keep R: Rares go in, Legendaries stay');
+ok(Math.abs(V.grindPreview(w, ME, K - 7).goldPct - Math.min(20, V.grindPreview(w, ME, K - 7).n / 100)) < 1e-9 && V.grindGoldOdds(2000, K) === 200000 && V.grindGoldOdds(2000, K - 11) === 100000 && V.grindGoldOdds(500, K) === 50000, 'golden odds: 1% per 100 pets up to 20% from the gate (1% per 200 up to 10% before)');
+const c2 = [0, 0, 0, 0];
+for (let i = 0; i < 20000; i++) c2[V._sausageTierTest(fakeHash(i), 'x' + i, K)]++;
+ok(c2[0] === 0 && Math.abs(c2[1] / 20000 - 0.5) < 0.02 && Math.abs(c2[2] / 20000 - 0.38) < 0.02 && Math.abs(c2[3] / 20000 - 0.12) < 0.01, 'new Sausage ladder over 20,000 rolls: ' + c2.join(' / ') + ' (about 50 / 38 / 12)');
+const c1 = [0, 0, 0, 0];
+for (let i = 0; i < 20000; i++) c1[V._sausageTierTest(fakeHash(i), 'x' + i, K - 11)]++;
+ok(c1.join() === cnt.join(), 'below the gate the ladder is exactly the old one');
+/* golden: find a grind tx that wins, replay it, and check the Golden Sausage is the special egg */
+let gw = null;
+for (let i = 0; i < 400 && !gw; i++) { const rr = r3.slice(0, 3).concat([row(K - 9, ME, 69, 'pet:grind')]); const ww = play(rr, K - 9); if (ww.grind[ME].golden) gw = ww; }
+const gold = gw && mine(gw).filter(p => p.golden)[0];
+const SPECIAL = ['homer', 'rabbit', 'groyper', 'funtrump', 'kek', 'wizard'];
+ok(!!gold && gold.tier === 3 && SPECIAL.indexOf(gold.species) >= 0 && gold.species === V._specialEggArt(fakeHash(K - 9), 'f'.repeat(64), K - 9).species, 'a Golden Sausage is THE SPECIAL EGG (the 1-in-777 slot pet), at Legendary (' + (gold ? gold.species + ' tier ' + gold.tier : 'none found') + ')');
+let sh = 0; for (let i = 0; i < 77000; i++) if (V._sausageSpecialTest(fakeHash(i), 'y' + i, K)) sh++;
+ok(Math.abs(sh - 1000) < 120 && !V._sausageSpecialTest(fakeHash(1), 'y1', K - 11) && [...Array(5000).keys()].every(i => !V._sausageSpecialTest(fakeHash(i), 'y' + i, K - 11)), 'Sausage Eggs hit the special egg about 1 in 77 from the gate (' + sh + ' of 77,000), never before');
+const sp2 = mine(gw).filter(p => p.sausage && !p.golden);
+ok(sp2.every(p => p.tier >= 1), 'Sausage Eggs are still never Common (' + sp2.map(p => p.species + ' ' + p.tier).join(', ') + ')');
+V._setGrind2Activation(GATE2);
 V._setGrindActivation(GATE);
 if (fails) { console.log(fails + ' failed'); process.exit(1); }
 console.log('grinder ok');
