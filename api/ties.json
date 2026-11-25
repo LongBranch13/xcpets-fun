@@ -1,6 +1,6 @@
 {
- "lastBlock": 977578,
- "count": 479,
+ "lastBlock": 977580,
+ "count": 495,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -5750,6 +5750,198 @@
    "speciesLabel": "Star-Lord Kek",
    "rarity": "Legendary",
    "stage": "Juvenile"
+  },
+  {
+   "id": 170217,
+   "asset": "A1956702354341899811",
+   "tiedBlock": 977580,
+   "tiedTx": "ae718de8f861809c2069752ce4ffd24120e15162d671a248c197d7f1f49e597c",
+   "kind": "deed",
+   "name": "Vichiwooli",
+   "species": "hyb:nakamoto:lenny",
+   "speciesLabel": "Nalen (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 170218,
+   "asset": "A468761673460919244",
+   "tiedBlock": 977580,
+   "tiedTx": "af5d3620711a6aabe81a1aa88c7a3d3c8f86d64900bbe21f1ad56a278e447af5",
+   "kind": "deed",
+   "name": "Hesoob",
+   "species": "hyb:wizard:snibby",
+   "speciesLabel": "Wizsnib (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 171219,
+   "asset": "A11552794170647517037",
+   "tiedBlock": 977580,
+   "tiedTx": "f2c4819af0e7019b4738d457d2e6ce35a206f720df1aca760209bcc1d728db13",
+   "kind": "deed",
+   "name": "Reroru",
+   "species": "funtrump",
+   "speciesLabel": "FUNTRUMP",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 176224,
+   "asset": "A13928507453444956966",
+   "tiedBlock": 977580,
+   "tiedTx": "bab60f905f2d2b2b16602042c143fc6114a44fc3c3e0cb559f7129c9d2a82f62",
+   "kind": "deed",
+   "name": "Shechugokin",
+   "species": "hyb3:kek:homer:dodo",
+   "speciesLabel": "Kekmodo (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 176225,
+   "asset": "A7578629166748610929",
+   "tiedBlock": 977580,
+   "tiedTx": "34366e4f4bf8b18470f745da487afea84eb5340b267c7c699dad23bc400bf663",
+   "kind": "deed",
+   "name": "Bagili",
+   "species": "hyb:kek:mumu",
+   "speciesLabel": "Kekmu (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 176226,
+   "asset": "A12146995159930932526",
+   "tiedBlock": 977580,
+   "tiedTx": "afcfa31daaacef91dcec5d46f50414747867afd2174ade509f4e74ab2e23e5a9",
+   "kind": "deed",
+   "name": "Pemoolopop",
+   "species": "hyb:djpepe:wizard",
+   "speciesLabel": "DJizard (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 182383,
+   "asset": "A4364553939911761260",
+   "tiedBlock": 977580,
+   "tiedTx": "d11801535c5b76f9dc6467960fa6f790fa99d08aa8f874392f06583f286df830",
+   "kind": "deed",
+   "name": "Hijatot",
+   "species": "hyb:kek:djpepe",
+   "speciesLabel": "DJek (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 182384,
+   "asset": "A3671400952335261139",
+   "tiedBlock": 977580,
+   "tiedTx": "414f39210f4a6b79929ddb79965bf0268099536bc5760ef07422fc42462333b3",
+   "kind": "deed",
+   "name": "Piyison",
+   "species": "djpepe",
+   "speciesLabel": "DJ Pepe",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 183388,
+   "asset": "A14250839980123887711",
+   "tiedBlock": 977580,
+   "tiedTx": "bd80214398e1471d7815a96ee575bbf0e3db0d1ac2e8f721219922a44eba14c0",
+   "kind": "deed",
+   "name": "Layupop",
+   "species": "hyb:wojak:kek",
+   "speciesLabel": "Wokek (hybrid)",
+   "rarity": "Rare",
+   "stage": "Mythic"
+  },
+  {
+   "id": 205413,
+   "asset": "A15864771359256534482",
+   "tiedBlock": 977580,
+   "tiedTx": "a0011fd5ab49dbde5429dabddd03cba43b1d36721d3b220ac2a74b0fb5bf2371",
+   "kind": "deed",
+   "name": "Tetubo",
+   "species": "hyb3:wizard:djpepe:nakamoto",
+   "speciesLabel": "Widjmoto (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Elder"
+  },
+  {
+   "id": 205414,
+   "asset": "A11752317552138652479",
+   "tiedBlock": 977580,
+   "tiedTx": "66f32f1a16e19d75b72ff3313606065c0d309f96bde2275cf7580ce622ddc6e3",
+   "kind": "deed",
+   "name": "Nedeweb",
+   "species": "snibby",
+   "speciesLabel": "Star-Lord Pigeon",
+   "rarity": "Legendary",
+   "stage": "Elder"
+  },
+  {
+   "id": 205415,
+   "asset": "A12921752286633991715",
+   "tiedBlock": 977580,
+   "tiedTx": "fd7599ca22fff903cbe33308bd4c613e5d81815b05fd2dd5f7532ddf2a207507",
+   "kind": "deed",
+   "name": "Janefe",
+   "species": "hyb3:snibby:doge:djpepe",
+   "speciesLabel": "Snigope (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Elder"
+  },
+  {
+   "id": 205416,
+   "asset": "A12260655303394253227",
+   "tiedBlock": 977580,
+   "tiedTx": "ad4047730cd69a33bde8896a3d71485f4872ec837ee18586856ca50625b8d27d",
+   "kind": "deed",
+   "name": "Hikuwulu",
+   "species": "hyb3:kek:lenny:nakamoto",
+   "speciesLabel": "Keklenmoto (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Elder"
+  },
+  {
+   "id": 205417,
+   "asset": "A5619907861846978925",
+   "tiedBlock": 977580,
+   "tiedTx": "ea8523069f709775b7e08b5fe16a82c96be827334b0cf079745fc154352bc359",
+   "kind": "deed",
+   "name": "Doolomooli",
+   "species": "hyb3:wizard:snibby:kek",
+   "speciesLabel": "Winibkek (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Elder"
+  },
+  {
+   "id": 212446,
+   "asset": "A13806306923255088223",
+   "tiedBlock": 977580,
+   "tiedTx": "750518c607584cf9c0504670567fa5bbed05ca3f1c192d1e6b46a63ea580dd06",
+   "kind": "deed",
+   "name": "Kowifoobit",
+   "species": "hyb:nakamoto:kek",
+   "speciesLabel": "Nakek (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Juvenile"
+  },
+  {
+   "id": 223100,
+   "asset": "A5579249727452586475",
+   "tiedBlock": 977580,
+   "tiedTx": "6be2fbffd703329635a51b55770faed97dd84df675aac67f1699a26b7f690c03",
+   "kind": "deed",
+   "name": "Zedosazy",
+   "species": "homer",
+   "speciesLabel": "Homer Pepe",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
   }
  ]
 }
