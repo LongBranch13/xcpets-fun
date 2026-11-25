@@ -2588,6 +2588,7 @@
     for (i = 0; i < ids.length; i++) {
       id = ids[i]; if (id === MZ_FULL_ID) continue;
       p = w.byId[id];
+      if (!p && w.crumbledGone && w.crumbledGone[id] != null) return 'Pet #' + id + ' crumbled to dust at block ' + w.crumbledGone[id] + ' and is gone forever. This burn would only feed the community pet.';
       if (!p) return 'No such pet #' + id + '. Pets that have been dead for ' + RETIRE_DEAD_DAYS + ' game days have left the game, and this burn would only feed the community pet.';
       if (retireDeadDue(w, p, b)) return 'Pet #' + id + ' has left the game after ' + RETIRE_DEAD_DAYS + ' days dead. This burn would only feed the community pet.';
     }
@@ -2642,6 +2643,15 @@
       gone[id] = 1; n++;
     }
     if (!n) return 0;
+    dropPets(w, gone, b);
+    w.retiredDead = (w.retiredDead || 0) + n;
+    return n;
+  }
+  /* dropPets(w, gone, b): take the pets in gone ({ id: 1 }) out of the world for good. Their gear goes back to its owner's bag,
+   * an open altar on one closes as missed, and they leave the zombie list. Used by the 14-day sweep and by a crumble from
+   * ACTIVATE_CRUMBLE_GONE_BLOCK (the same steps the sweep always ran, moved here unchanged). */
+  function dropPets(w, gone, b) {
+    var C;
     Object.keys(w.items || {}).forEach(function (k) { var g = w.items[k]; if (!g) return;
       if (g.on != null && gone[g.on]) g.on = null; if (g.grave != null && gone[g.grave]) g.grave = null; if (g.bag != null && gone[g.bag]) g.bag = null; });
     if (w.bags) Object.keys(gone).forEach(function (id) { delete w.bags[id]; });
@@ -2651,8 +2661,6 @@
     if (w.everMythic) Object.keys(gone).forEach(function (id) { delete w.everMythic[id]; });
     Object.keys(gone).forEach(function (id) { delete w.byId[id]; });
     w.pets = w.pets.filter(function (q) { return !gone[q.id]; });
-    w.retiredDead = (w.retiredDead || 0) + n;
-    return n;
   }
 
   // ---------------------------------------------------------------- replay
@@ -3763,9 +3771,28 @@
   function cemEnd(w, p, kind, b, extra) { var z = p.zombie; if (huntRulesOn(b) && (kind === 'hunted' || (z.captured && kind === 'crumble'))) p.zRest = { owner: p.owner, at: b, until: b + HUNT_GRUDGE_BLOCKS };  z.end = Object.assign({ kind: kind, block: b }, extra || {}); wornOf(w, p.id).forEach(function (g) { g.on = null; }); /* worn gear back to its owner */
     delete p.feral; Object.assign(p.stats, p.zDeath); if (kind === 'crumble') p.zCrumbles = (p.zCrumbles || 0) + 1; if (kind === 'hunted') p.graveState = 'hunted'; if (kind === 'dust') p.graveState = 'dust';
     (p.zPast = p.zPast || []).push(z); p.zombie = null; liveAt(w, p, b); }
+  /* CRUMBLE = GONE FOREVER (owner Nov 25 2026, "If it crumbles its gone forever"). From ACTIVATE_CRUMBLE_GONE_BLOCK a zombie that
+   * runs out of food (feral 432 blocks, then 432 more unfed) crumbles to dust and leaves the world at once: no grave, no seance, no raise.
+   * Before this a crumbled zombie went back to a grave "that can be raised again", but the 14-day dead-pet sweep then removed ordinary
+   * pets at once (their last real meal was long ago) and kept Legendaries and other spared pets raisable: two outcomes for one event.
+   * Kept as a grave (crumbleKeeps): Mythics (a Mythic never leaves the game, and the Mythic owner head start reads a crumble of a Mythic
+   * zombie), Sabo #1765 and community pets. Only the hunger crumble in cemSweep changes: releasing your own zombie (pet:release) is not
+   * a crumble from hunger and keeps its old rule. Pets that crumbled before the block are not touched. The removed pet's id, block, owner,
+   * name, species and tier stay in the crumble log line (gone: true) and w.crumbledGone[id] = block, so pages and HatchBot can name it.
+   * Gear it wore goes back to its owner's bag (cemEnd), as with the 14-day sweep (dropPets). Before the block nothing changes.
+   * Height: feed tip 977,462 (Nov 25 2026 04:01 UTC) + 24 = 977,486, after Aspie (977,468). The next hunger crumble on chain is
+   * #68298 at 977,938, so a merge after 977,486 still changes no pet. */
+  var ACTIVATE_CRUMBLE_GONE_BLOCK = 977486;
+  function crumbleGoneOn(b) { return ACTIVATE_CRUMBLE_GONE_BLOCK != null && b != null && Number(b) >= Number(ACTIVATE_CRUMBLE_GONE_BLOCK); }
+  function crumbleKeeps(w, p) { return !!p && (p.id === MZ_FULL_ID || !!p.community || !!p.mgDead || p.stage === 5 || !!p.mythicCare || !!p.ascended || !!p.mythicGod || !!(w && w.everMythic && w.everMythic[p.id] != null)); }
   /** cemSweep(w, b): crumble zombies whose clock ran out and auto-close pools 144 blocks after the first pledge (before any burn at block b). */
   function cemSweep(w, b, L) { if (!cemOn(b) || !w.cem) return; var C = w.cem;
-    C.zombies.forEach(function (id) { var p = w.byId[id]; if (!isZ(p) || p.zombie.mfed) return; var ca = cemDue(p.zombie.fedAt, CEM_FERAL_BLOCKS + CEM_CRUMBLE_BLOCKS, b); if (span(b, p.zombie.fedAt) >= CEM_FERAL_BLOCKS + CEM_CRUMBLE_BLOCKS) { cemEnd(w, p, 'crumble', ca); w.log.push({ block: ca, tx: null, kind: 'crumble', petId: p.id, msg: '#' + p.id + ' crumbled back into its grave (unfed): it can be raised again' }); } });
+    var dust = null;
+    C.zombies.forEach(function (id) { var p = w.byId[id]; if (!isZ(p) || p.zombie.mfed) return; var ca = cemDue(p.zombie.fedAt, CEM_FERAL_BLOCKS + CEM_CRUMBLE_BLOCKS, b); if (span(b, p.zombie.fedAt) >= CEM_FERAL_BLOCKS + CEM_CRUMBLE_BLOCKS) {
+      if (crumbleGoneOn(ca) && !crumbleKeeps(w, p)) { var ow = p.owner, nm = p.name, sp = p.species, tr = p.tier | 0; cemEnd(w, p, 'crumble', ca); (dust = dust || {})[p.id] = 1; (w.crumbledGone = w.crumbledGone || {})[p.id] = ca;
+        w.log.push({ block: ca, tx: null, kind: 'crumble', petId: p.id, gone: true, owner: ow, name: nm, species: sp, tier: tr, msg: '#' + p.id + ' went unfed and crumbled to dust: gone forever (no grave, it can never be raised)' }); return; }
+      cemEnd(w, p, 'crumble', ca); w.log.push({ block: ca, tx: null, kind: 'crumble', petId: p.id, msg: crumbleGoneOn(ca) ? '#' + p.id + ' crumbled back into its Mythic grave (unfed): a Mythic can be raised again' : '#' + p.id + ' crumbled back into its grave (unfed): it can be raised again' }); } });
+    if (dust) dropPets(w, dust, b);
     C.altarList.forEach(function (A) { if (A.status !== 'open' || b < A.closesAt) return;
       if (seanceOn(A.opened)) { cemDissolve(w, A, A.closesAt, 'missed'); w.log.push({ block: A.closesAt, tx: null, kind: 'altarClosed', petId: A.grave, msg: 'seance pieces on #' + A.grave + ' were held ' + CEM_POOL_BLOCKS + ' blocks with no seance: everything handed back' }); return; } /* SEANCE ALWAYS RAISES: no auto-raise */
       var G = w.byId[A.grave], top = cemCheck(w, A, A.closesAt).top, gw = cemGraveWhy(w, G, top, A.closesAt), rz = gw ? { why: gw } : cemRaise(w, A, A.closesAt, null);
@@ -4655,7 +4682,7 @@
     if (r.length === 3 && r.indexOf('rabbit') < 0 && n.indexOf('undefined') >= 0) return dispSlot(H3_S1, r[0]) + dispSlot(H3_S2, r[1]) + dispSlot(H3_S3, r[2]);
     if (r.length === 2 && r[0] !== r[1] && (n.indexOf('-') >= 0 || n.indexOf('undefined') >= 0)) return dispSlot(H3_S1, r[0]) + dispSlot(H3_S3, r[1]);
     return n; }
-  function speciesLabel(sp) { if (sp === 'aspie') return 'Aspie'; if (sp === 'djpepe') return 'DJ Pepe'; if (sp === 'starlordkek') return 'Star-Lord Kek'; if (sp === 'rabbit') return 'The White Rabbit'; if (sp === 'groyper') return 'Groyper'; if (sp === 'orangedragon') return 'Orange Dragon'; if (sp === 'homer') return 'Homer Pepe'; if (sp === 'funtrump') return 'FUNTRUMP'; if (sp === 'wizard') return 'Bitcoin Wizard'; if (sp === 'kek') return 'Lord Kek'; if (sp === 'bojackson') return 'Bo Jackson'; if (sp === 'rarepigeon') return 'Rarepigeon'; if (sp === 'jacksonpepe') return JP_NAME; if (sp === 'borp') return 'Bo Pigeon'; if (sp === 'viking') return 'Viking'; if (isHybrid(sp)) return hybridLabel(sp) + ' (hybrid)'; var s = PetCore.SPECIES.filter(function (x) { return x.id === sp; })[0]; return s ? s.label : sp; }
+  function speciesLabel(sp) { if (sp === 'aspie') return 'Aspie'; if (sp === 'djpepe') return 'DJ Pepe'; if (sp === 'starlordkek') return 'Star-Lord Kek'; if (sp === 'rabbit') return 'The White Rabbit'; if (sp === 'groyper') return 'Groyper'; if (sp === 'orangedragon') return 'Orange Dragon'; if (sp === 'homer') return 'Homer Pepe'; if (sp === 'funtrump') return 'FUNTRUMP'; if (sp === 'wizard') return 'Bitcoin Wizard'; if (sp === 'kek') return 'Lord Kek'; if (sp === 'bojackson') return 'Bo Jackson'; if (sp === 'rarepigeon') return 'Rarepigeon'; if (sp === 'jacksonpepe') return JP_NAME; if (sp === 'borp') return 'Bo Pigeon'; if (sp === 'gooby') return 'Gooby'; if (sp === 'lukespam') return 'Luke Spam Junior'; if (sp === 'viking') return 'Viking'; if (isHybrid(sp)) return hybridLabel(sp) + ' (hybrid)'; var s = PetCore.SPECIES.filter(function (x) { return x.id === sp; })[0]; return s ? s.label : sp; }
   /** OPEN DECISION (placeholder): two hybrids of the SAME ordered pair breed true HYBRID_TRUE_10K of the time, otherwise a coin flip between the roots. */
   function samePairHybridRule(R, key) { var r = hybridRoots(key); return R() % 10000 < HYBRID_TRUE_10K ? key : r[R() % 2]; }
   /** hybridSpecies(R, A, B): the child's species under the hybrid rules (R = the breed hash stream; draws happen after the purebred draws). */
@@ -5893,7 +5920,7 @@
     ACTIVATE_TWIN_ALIKE_BLOCK: ACTIVATE_TWIN_ALIKE_BLOCK, twinAlikeGate: function () { return ACTIVATE_TWIN_ALIKE_BLOCK; }, twinAlikeOn: twinAlikeOn, twinAlike: twinAlike, _setTwinAlike: function (b) { ACTIVATE_TWIN_ALIKE_BLOCK = b == null ? null : Number(b); },
     ACTIVATE_ONEOFONE_CROSS_BLOCK: ACTIVATE_ONEOFONE_CROSS_BLOCK, crossGate: function () { return ACTIVATE_ONEOFONE_CROSS_BLOCK; }, crossOn: crossOn, crossOf: crossOf, crossLabel: crossLabel, petSpeciesLabel: petSpeciesLabel, ACTIVATE_SPECIAL_PAIR_BLOCK: ACTIVATE_SPECIAL_PAIR_BLOCK, specialPairOn: specialPairOn, specialPairOf: specialPairOf, _setSpecialPair: function (b) { ACTIVATE_SPECIAL_PAIR_BLOCK = b; }, ACTIVATE_SPECIAL_PAIR_RETRO_BLOCK: ACTIVATE_SPECIAL_PAIR_RETRO_BLOCK, ACTIVATE_WAGMI_DAYS_FIX_BLOCK: ACTIVATE_WAGMI_DAYS_FIX_BLOCK, wagmiFixOn: wagmiFixOn, SP_PAIR_RETRO: SP_PAIR_RETRO, spPairRetro: spPairRetro, ACTIVATE_RAGNAR_GIFT_BLOCK: ACTIVATE_RAGNAR_GIFT_BLOCK, RAGNAR_GIFT: RAGNAR_GIFT, ragnarGift: ragnarGift, _setRagnarGift: function (b) { ACTIVATE_RAGNAR_GIFT_BLOCK = b; }, _setSpecialPairRetro: function (b) { ACTIVATE_SPECIAL_PAIR_RETRO_BLOCK = b; }, CROSS_PLANS: CROSS_PLANS, _jackpotEgg: jackpotEgg, _setOneOfOneCross: function (b) { ACTIVATE_ONEOFONE_CROSS_BLOCK = b == null ? null : Number(b); },
     retireGate: function () { return ACTIVATE_RETIRE_TAGS_BLOCK; }, retireOn: retireOn, retiredAt: retiredAt, retiredUI: function (w) { return retireOn(((w && w.tip) || 0) + 1); }, RETIRED_ACTIONS: RETIRED_ACTIONS, _setRetireActivation: function (b) { ACTIVATE_RETIRE_TAGS_BLOCK = b == null ? null : Number(b); },
-    retireDeadGate: function () { return ACTIVATE_RETIRE_DEAD_BLOCK; }, retireDeadOn: retireDeadOn, RETIRE_DEAD_DAYS: RETIRE_DEAD_DAYS, retireSpareWhy: retireSpareWhy, retireSpareFlags: retireSpareFlags, retireRareSpecies: retireRareSpecies, retireDeadDue: retireDeadDue, retireDeathClock: retireDeathClock, retireDeadBanner: retireDeadBanner, _retireDeadSweep: retireDeadSweep, _setRetireDeadActivation: function (b) { ACTIVATE_RETIRE_DEAD_BLOCK = b == null ? null : Number(b); RETIRE_RARE_SPECIES = null; },
+    crumbleGoneGate: function () { return ACTIVATE_CRUMBLE_GONE_BLOCK; }, crumbleGoneOn: crumbleGoneOn, crumbleKeeps: crumbleKeeps, _setCrumbleGoneActivation: function (b) { ACTIVATE_CRUMBLE_GONE_BLOCK = b == null ? null : Number(b); }, retireDeadGate: function () { return ACTIVATE_RETIRE_DEAD_BLOCK; }, retireDeadOn: retireDeadOn, RETIRE_DEAD_DAYS: RETIRE_DEAD_DAYS, retireSpareWhy: retireSpareWhy, retireSpareFlags: retireSpareFlags, retireRareSpecies: retireRareSpecies, retireDeadDue: retireDeadDue, retireDeathClock: retireDeathClock, retireDeadBanner: retireDeadBanner, _retireDeadSweep: retireDeadSweep, _setRetireDeadActivation: function (b) { ACTIVATE_RETIRE_DEAD_BLOCK = b == null ? null : Number(b); RETIRE_RARE_SPECIES = null; },
     grindGate: function () { return ACTIVATE_GRIND_BLOCK; }, grindOn: grindOn, grindWhy: grindWhy, grindList: grindList, grindPreview: grindPreview, grindPlan: grindPlan, _setGrindActivation: function (b) { ACTIVATE_GRIND_BLOCK = b == null ? null : Number(b); }, _sausageTierTest: sausageTier, GRIND: { COST: GRIND_COST, MAX: GRIND_MAX, MEAT: GRIND_MEAT, SPIN_EVERY: GRIND_SPIN_EVERY, EGG_EVERY: GRIND_EGG_EVERY, SAUSAGE_10K: GRIND_SAUSAGE_10K, GOLD_PER_PET: GRIND_GOLD_PER_PET, GOLD_MAX: GRIND_GOLD_MAX },
     grind2Gate: function () { return ACTIVATE_GRIND2_BLOCK; }, aspieGate: function () { return ACTIVATE_ASPIE_BLOCK; }, aspieOn: aspieOn, _setAspieActivation: function (b) { ACTIVATE_ASPIE_BLOCK = b == null ? null : Number(b); }, _asArt: asArt, _aspieChild: aspieChild, _grinderSpecialArt: grinderSpecialArt, grind2On: grind2On, _setGrind2Activation: function (b) { ACTIVATE_GRIND2_BLOCK = b == null ? null : Number(b); }, grindGoldOdds: grindGoldOdds,
     GRIND2: { SAUSAGE_10K: GRIND2_SAUSAGE_10K, GOLD_PER_PET: GRIND2_GOLD_PER_PET, GOLD_MAX: GRIND2_GOLD_MAX, SPECIAL_IN: GRIND2_SPECIAL_IN, KEEP: GRIND_KEEP }, _specialEggArt: specialEggArt, _sausageSpecialTest: sausageSpecial,

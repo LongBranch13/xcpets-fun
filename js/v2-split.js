@@ -165,6 +165,7 @@
       raids: summary.raids || [], /* raids ride in the summary (Nov 22 2026); older summaries have none */
       seasons: summary.seasons || {}, /* season eggs sold, points and tiers ride in the summary too; older summaries have none */
       pantry: summary.pantry || undefined, pantryDay: summary.pantryDay != null ? summary.pantryDay : undefined, /* Pantry (gated): balances and lists */
+      fire: summary.fire || undefined, /* Fire Sales (Nov 25 2026): armed sales, so the banner and every burn price follow a live sale; older summaries have none */
       grind: summary.grind || undefined, /* Meat Grinder (gated): meat meters; older summaries have none */
       _gods: summary.gods || null, /* every living God (Nov 24 2026): the cemetery's Gods door; older summaries have none */
       _burnBy: summary.burnBy || null, _winsWk: summary.winsWk || null, /* Rankings (Nov 24 2026): XCPETS burned per wallet [all, week] and this week's wins per pet; a view has no burn or fight list. Older summaries have none */
@@ -1413,11 +1414,15 @@
   /* The slim world only carries part of w.cem. Give it the same shape the rules engine builds (cemW in v2-rules.js),
    * so cemView and the altar do not crash on a missing altars table (seance button stayed off, Nov 22 2026). Display only. */
   function cemFill(c) { c = c || {}; if (!c.altars) c.altars = {}; if (!c.altarList) c.altarList = []; if (!c.zombies) c.zombies = []; if (!c.hunts) c.hunts = [];
-    if (!c.huntDay) c.huntDay = {}; if (!c.raisedBy) c.raisedBy = {}; if (!c.huntedBy) c.huntedBy = {}; if (!c.log) c.log = []; return c; }
+    if (!c.huntDay) c.huntDay = {}; if (!c.raisedBy) c.raisedBy = {}; if (!c.huntedBy) c.huntedBy = {}; if (!c.log) c.log = []; c._slim = 1; return c; }
+  /* Mythic God table (Nov 25 2026): zombies.json now carries w.cem.mg (Pantheon seats, meals, the unleash list and the
+   * per-wallet clocks). Keep it exactly as published; a world without it must stay without it, so V2MgRoad.mgReady can
+   * tell "no seats yet" from "not loaded on this page" and no page offers an unleash the rules would then reject. */
+  function cemMg(c, mg) { if (mg && mg.unleash) { c.mg = { seats: mg.seats || [], meals: mg.meals || [], unleash: mg.unleash || [], byWallet: mg.byWallet || {}, godBy: mg.godBy || {} }; delete c._slim; } return c; }
   var zombieP = null;
   function applyZombies(z) {
     if (!z || !z.pets) return 0;
-    viewHold.cem = cemFill({ huntedBy: z.huntedBy || {}, altars: z.altars || {} });
+    viewHold.cem = cemMg(cemFill({ huntedBy: z.huntedBy || {}, altars: z.altars || {} }), z.mg);
     if (z.pets.length) mergePets(openList(z.pets, null, ''));
     else if (window.V2Mock && V2Mock.world && V2Mock.setViewWorld) {
       var cur = V2Mock.world();

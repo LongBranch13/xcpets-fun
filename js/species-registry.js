@@ -88,12 +88,16 @@
       skip: { sig: 'no Mythic signature yet', clownHair: 'no Honk hair fitting yet', crossLook: 'no 1 of 1 cross look yet' } },
 
     /* ---- contest / special egg pets (drawn by ContestSprite) ---- */
+    /* Aspie (Nov 25 2026, Jake): the Meat Grinder's own pet and host. Pure Aspies only come out of the Grinder (rules ACTIVATE_ASPIE_BLOCK); her babies are Aspie hybrids. */
+    { id: 'aspie', name: 'Aspie', kind: 'contest', emoji: '🥩', sprite: { g: 'AspieSprite', file: 'js/aspie-sprite.js', draw: true }, look: { k: 'BbDd', min: 3 },
+      tap: ['...hi.', 'no refunds.', 'ok fine. one pat.'],
+      skip: { sig: 'no Mythic signature yet', clownHair: 'no Honk hair fitting yet', crossLook: 'no 1 of 1 cross look yet', stickers: 'not in the Telegram packs yet' } },
     { id: 'starlordkek', name: 'Star-Lord Kek', kind: 'contest', emoji: '🌌', sig: 'cosmic', sprite: CONTEST,
       skip: { clownHair: 'no Honk hair fitting yet', hybridName: 'special pair hybrids are not in the rules yet' } },
     { id: 'gooby', name: 'Gooby', kind: 'contest', emoji: '🟢', sig: 'goo', sprite: CONTEST,
-      skip: { clownHair: 'no Honk hair fitting yet', crossLook: 'no 1 of 1 cross look yet', hybridName: 'special pair hybrids are not in the rules yet', rulesLabel: 'v2-rules.js speciesLabel shows "gooby": fix in the next rules PR' } },
+      skip: { clownHair: 'no Honk hair fitting yet', crossLook: 'no 1 of 1 cross look yet', hybridName: 'special pair hybrids are not in the rules yet' } },
     { id: 'lukespam', name: 'Luke Spam Junior', kind: 'contest', emoji: '🥫', sig: 'spam', sprite: CONTEST,
-      skip: { clownHair: 'no Honk hair fitting yet', crossLook: 'no 1 of 1 cross look yet', hybridName: 'special pair hybrids are not in the rules yet', rulesLabel: 'v2-rules.js speciesLabel shows "lukespam": fix in the next rules PR' } }
+      skip: { clownHair: 'no Honk hair fitting yet', crossLook: 'no 1 of 1 cross look yet', hybridName: 'special pair hybrids are not in the rules yet' } }
   ];
 
   var BY = {}; LIST.forEach(function (s) { BY[s.id] = s; });

@@ -222,6 +222,7 @@
       return mine(p, z, ME) || ids.some(function (id) { var v = w.byId[id]; return v && v.owner === ME; }) ? { kind: 'zmeal', id: l.petId, victims: ids, block: l.block, tx: l.tx, key: 'zfeed:' + l.tx } : null; }
     if (l.kind === 'resurrect') { z = zrec(p); m = /roll (\d+), needed under (\d+)/.exec(l.msg || ''); if (!m) return null; var ok = /ALIVE again/.test(l.msg);
       return mine(p, z, ME) ? { kind: ok ? 'resurrect-win' : 'resurrect-fail', id: l.petId, roll: +m[1], need: +m[2], block: l.block, tx: l.tx, key: 'res:' + l.tx } : null; }
+    if (l.kind === 'crumble' && l.gone) return null; /* crumbled to dust, gone forever: the pet left the world, so there is no sprite to animate (the live feed says it) */
     if (l.kind === 'crumble') { z = zrec(p); return mine(p, z, ME) ? { kind: 'crumble', id: l.petId, block: l.block, key: 'crumble:' + l.petId + ':' + l.block } : null; }
     if (l.kind === 'hunt' && (m = /hunted #(\d+): laid to rest/.exec(l.msg || ''))) { var zp = w.byId[+m[1]]; z = zrec(zp); return mine(zp, z, ME) && !(w.byId[l.petId] && w.byId[l.petId].owner === ME) ? { kind: 'hunted', id: +m[1], block: l.block, tx: l.tx, key: 'hunted:' + l.tx } : null; }
     if (l.kind === 'rpl') return rplEvent(w, l, ME);

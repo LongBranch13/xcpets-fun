@@ -39,7 +39,7 @@
     el.dataset.live = live ? '1' : ''; var lf = document.getElementById('fsLeft'); if (lf) lf.textContent = left + ' block' + (left === 1 ? '' : 's') + (live ? ' left' : ' to go');
     var L = lines(live ? 'core' : 'warn'); if (!L.length) L = lines('core'); var y = document.getElementById('fsYell'); if (y && L.length) y.textContent = L[yi++ % L.length].text; danDraw(!rm && yi % 2);
     if (live) drawPets(f.w); siren(live && sirenOn()); }
-  function tick() { if (document.getElementById('v2boot') || !(M.state().rows || []).length) return; try { render(info()); } catch (e) { } }
+  function tick() { if (!(M.ready ? M.ready() : !document.getElementById('v2boot') && (M.state().rows || []).length)) return; try { render(info()); } catch (e) { } }
   function start() { tick(); setInterval(tick, 3000); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 })();

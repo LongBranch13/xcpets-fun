@@ -1,0 +1,78 @@
+# World copy (Nov 25 2026, owner: "is there a better or cheaper way to serve the game" -> "Yes, build both").
+# Builds the pet world on GitHub with main's code and rules (tools/world-copy.js: the sync server's own follower from api/boot.json,
+# then its own builder) and copies it to the Cloudflare world copy (cloud/world/worker.js + R2 bucket xcpets-world). sw.js serves
+# that copy's latest.json to pages when the game server is down, errors, or its world is 6+ blocks behind, so pages still load fast.
+# Runs after each feed push to main (about every 20-25 min), every 30 min as a backup, and by hand. Builds only when the copy is 6+
+# blocks behind the chain or has no world for main's rules (a build takes a few minutes; GitHub's runners are free for this public repo).
+# Needs the existing secrets CLOUDFLARE_API_TOKEN (with "Workers R2 Storage: Edit") and CLOUDFLARE_ACCOUNT_ID, and R2 switched on in
+# the Cloudflare account. The write key is derived from the API token, so there is no extra secret. Until set up it does nothing.
+# On a branch push that changes the copy's files it only follows and builds (no upload), to test the build on GitHub.
+name: world-copy
+on:
+  push:
+    paths: ['api/boot.json', 'js/v2-rules.js', 'rjs/**', 'cloud/world/**', 'tools/world-copy.js', 'tools/sync-server/**', '.github/workflows/world-copy.yml']
+  schedule:
+    - cron: '11,41 * * * *'
+  workflow_dispatch:
+    inputs:
+      force: { description: 'Build and copy a new world even if the copy is current', type: boolean, default: false }
+      deploy: { description: 'Deploy the copy Worker again', type: boolean, default: false }
+permissions: { contents: read }
+concurrency: { group: 'world-copy-${{ github.ref }}', cancel-in-progress: false }
+jobs:
+  copy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      ON_MAIN: ${{ github.ref == 'refs/heads/main' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - name: Test build on a branch (no upload)
+        if: env.ON_MAIN != 'true'
+        run: |
+          node tools/world-copy-test.js
+          node tools/world-copy.js build --out "$RUNNER_TEMP/world"
+          du -sh "$RUNNER_TEMP/world"/r*/* 2>/dev/null || true
+      - name: Check setup
+        id: ready
+        if: env.ON_MAIN == 'true'
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then echo "::notice::World copy is not set up (Cloudflare secrets)."; exit 0; fi
+          KEY=$(node -e "process.stdout.write(require('crypto').createHash('sha256').update('xcpets-world:'+process.env.CLOUDFLARE_API_TOKEN).digest('hex').slice(0,40))")
+          echo "::add-mask::$KEY"; echo "MIRROR_KEY=$KEY" >> "$GITHUB_ENV"
+          API="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID"
+          SUB=$(curl -sS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$API/workers/subdomain" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{console.log(JSON.parse(s).result.subdomain||'')}catch(e){console.log('')}})")
+          if [ -z "$SUB" ]; then echo "::error::Could not read the account's workers.dev name. Is CLOUDFLARE_API_TOKEN still valid?"; exit 1; fi
+          echo "::add-mask::$SUB"
+          echo "WORLD_COPY_URL=https://xcpets-world.$SUB.workers.dev" >> "$GITHUB_ENV"
+          # the bucket (creating it is safe to repeat; R2 must be switched on in the dashboard first)
+          B=$(curl -sS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$API/r2/buckets/xcpets-world")
+          if ! echo "$B" | grep -q '"success":true'; then
+            C=$(curl -sS -X POST -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'content-type: application/json' -d '{"name":"xcpets-world"}' "$API/r2/buckets")
+            if ! echo "$C" | grep -q '"success":true'; then
+              echo "::error::Could not create the R2 bucket. Switch on R2 in Cloudflare (R2 Object Storage) and give the API token 'Workers R2 Storage: Edit'. Cloudflare said: $(echo "$C" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{console.log((JSON.parse(s).errors||[]).map(e=>e.code+' '+e.message).join('; '))}catch(e){console.log('?')}})")"
+              exit 1
+            fi
+            echo "Created the R2 bucket xcpets-world."; echo "DEPLOY=1" >> "$GITHUB_ENV"
+          fi
+          echo "go=1" >> "$GITHUB_OUTPUT"
+      - name: Deploy the copy Worker (when it changed, is missing, or by hand)
+        if: steps.ready.outputs.go
+        working-directory: cloud/world
+        env: { WANT: '${{ github.event.inputs.deploy }}' }
+        run: |
+          CODE=$(cat worker.js wrangler.toml | sha256sum | cut -c1-12)
+          LIVE=$(curl -s "$WORLD_COPY_URL/status" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{console.log(JSON.parse(s).code||'')}catch(e){console.log('')}})" || true)
+          if [ "$LIVE" = "$CODE" ] && [ -z "$DEPLOY" ] && [ "$WANT" != "true" ]; then echo "Worker is up and current ($CODE)."; exit 0; fi
+          npx --yes wrangler@3 deploy --var "CODE:$CODE" > deploy.log 2>&1 || { sed -E 's#https://[a-z0-9.-]+\.workers\.dev#<copy>#g' deploy.log; exit 1; }
+          printf '%s' "$MIRROR_KEY" | npx --yes wrangler@3 secret put MIRROR_KEY > /dev/null
+          echo "Deployed the world copy Worker."
+          for i in 1 2 3 4 5 6 7 8 9; do curl -s "$WORLD_COPY_URL/status" | grep -q "\"code\":\"$CODE\"" && { echo "Worker answers with code $CODE."; break; }; sleep 10; done
+      - name: Build and copy the world (only when the copy is behind)
+        if: steps.ready.outputs.go
+        env: { WORLD_COPY_FORCE: "${{ github.event.inputs.force == 'true' && '1' || '' }}" }
+        run: node tools/world-copy.js auto --out "$RUNNER_TEMP/world"

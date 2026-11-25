@@ -497,6 +497,9 @@ function write(dir, world, meta) {
      * so the Motel desk, the 'Asking you' shelf and the pending box were empty on every fast load. Only the open ones (not used,
      * inside the 144-block window plus the page's 48-block staleness margin) ride here; a few small records. */
     breedReqs: liveBreedReqs(world, tip),
+    /* Nov 25 2026 (Jake: 'fire sale ... i dont see it'): the slim world had no Fire Sale record, so fast pages showed no banner and priced
+     * every burn at full price during a live sale. The armed sales (a few tiny records) ride here; the page's rules read them like a replay. */
+    fire: copy(world.fire) || null,
     /* shown species name of each cross pet (see crossNamesOf) */
     crossNames: crossNames,
     /* Nov 24 2026 (fastcheck): the cemetery's Gods door counted only the Gods a fast page happened to load (0, 2 or 6 instead of 19).
@@ -606,7 +609,13 @@ function write(dir, world, meta) {
     const huntedBy = (world.cem && world.cem.huntedBy) || {};
     /* open altars (pledges held for a seance), so the slim cemetery shows pieces a player already gave */
     const altars = {}; Object.keys((world.cem && world.cem.altars) || {}).forEach(k => { const a = world.cem.altars[k]; if (a && a.status === 'open') altars[k] = a; });
-    bytes += writeJson(path.join(dir, 'zombies.json'), { v: 2, tip: tip, rsig: rsig, n: zpets.length, huntedBy: huntedBy, altars: altars, pets: zpets });
+    /* Mythic God table (Nov 25 2026): the Pantheon seats, the meals, the unleash list and the per-wallet clocks.
+     * Without it a page on the fast world read 0 of 21 seats, lost a pending unleash from the zombie's card and
+     * could not check the 30-day unleash / God gaps before a burn. 21 seats + a few dozen unleashes: tiny. */
+    const mgSrc = (world.cem && world.cem.mg) || null;
+    const mg = mgSrc ? { seats: mgSrc.seats || [], meals: mgSrc.meals || [], unleash: mgSrc.unleash || [], byWallet: mgSrc.byWallet || {}, godBy: mgSrc.godBy || {} }
+      : { seats: [], meals: [], unleash: [], byWallet: {}, godBy: {} };
+    bytes += writeJson(path.join(dir, 'zombies.json'), { v: 2, tip: tip, rsig: rsig, n: zpets.length, huntedBy: huntedBy, altars: altars, mg: mg, pets: zpets });
     files++;
     bytes += writeJson(path.join(dir, 'owners.json'), owners); files++;
     const rankPets = [];

@@ -33,7 +33,7 @@
     [].forEach.call(bs, function (b, i) { if (!b.dataset.cbase) b.dataset.cbase = b.dataset.camt; var j = [69, 690, 6900].indexOf(+b.dataset.cbase); if (j < 0 || q[j] == null) return; var v = String(q[j]); if (b.dataset.camt !== v) { b.dataset.camt = v; b.textContent = fmt(q[j]); } if (b.classList.contains('on')) on = v; });
     if (ca && on != null && ca.value !== on) ca.value = on; var cf = document.getElementById('cfeedBtn'); if (cf && ca && /\(/.test(cf.textContent)) set('cfeedBtn', 'Feed community (' + fmt(ca.value) + ')');
     var cr = document.getElementById('crollBtn'); if (cr && /\(/.test(cr.textContent)) set('crollBtn', 'Community gear roll (' + fmt(C.croll) + ')'); }
-  function tick() { if (document.getElementById('v2boot') || !(M.state().rows || []).length) return; /* wait for the page's own boot; never trigger a replay */ try { var h = info(); ribbon(h); labels(); } catch (e) { } }
+  function tick() { if (!(M.ready ? M.ready() : !document.getElementById('v2boot') && (M.state().rows || []).length)) return; /* wait for the page's own boot; never trigger a replay */ try { var h = info(); ribbon(h); labels(); } catch (e) { } }
   function start() { tick(); setInterval(tick, 3000); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 })();
