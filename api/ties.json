@@ -1,6 +1,6 @@
 {
- "lastBlock": 977555,
- "count": 477,
+ "lastBlock": 977578,
+ "count": 479,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -5726,6 +5726,30 @@
    "speciesLabel": "Dogchad (hybrid)",
    "rarity": "Legendary",
    "stage": "Mythic"
+  },
+  {
+   "id": 232671,
+   "asset": "A8905452760165152410",
+   "tiedBlock": 977575,
+   "tiedTx": "48b72e931c3360c740a7097edfb39dd3d46567263ddd384e2d4a2d88356100d1",
+   "kind": "deed",
+   "name": "Chacha",
+   "species": "starlordkek",
+   "speciesLabel": "Star-Lord Kek",
+   "rarity": "Legendary",
+   "stage": "Juvenile"
+  },
+  {
+   "id": 265268,
+   "asset": "A9028532305155813222",
+   "tiedBlock": 977575,
+   "tiedTx": "99221391d809f91d7b0725a35e350d114d7e8053bdcb1a926e0f584b75abe36b",
+   "kind": "deed",
+   "name": "Tootolab",
+   "species": "starlordkek",
+   "speciesLabel": "Star-Lord Kek",
+   "rarity": "Legendary",
+   "stage": "Juvenile"
   }
  ]
 }
