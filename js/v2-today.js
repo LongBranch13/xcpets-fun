@@ -125,7 +125,7 @@
     var day = Math.floor((w.tip || 0) / BPD), L = w.pets.filter(function (p) { return V2Own.isLiving(p, m); });
     if (!L.length) { if (c) c.hidden = true; d.body.classList.remove('has-today'); return; }
     c = card(); if (!c) return; c.hidden = false; d.body.classList.add('has-today');
-    var hungry = L.filter(function (p) { return p.hungry && p.nextMeal; }).length;
+    var hungry = L.filter(function (p) { return p.nextMeal && V2Own.canEat(p, m); }).length; /* Nov 25 2026: discarded pets and zombies can't be fed, so they aren't "hungry" here */
     var danger = L.filter(function (p) { return p.neglected && !p.mythicCare && p.deathBlock != null && p.deathBlock > w.tip; });
     var soon = danger.length ? Math.min.apply(null, danger.map(function (p) { return p.deathBlock - w.tip; })) : 0;
     var fight = L.filter(function (p) { return p.stage >= 2 && !p.neglected && !(p.fightDays && p.fightDays[day]); }).length;

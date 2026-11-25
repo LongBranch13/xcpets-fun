@@ -45,6 +45,8 @@
       'body.selmode #petsPanel #bulkRow,body.mpc-sel #petsPanel #bulkRow{display:flex!important;position:fixed;left:50%;transform:translateX(-50%);bottom:10px;z-index:900;width:min(980px,calc(100% - 16px));box-sizing:border-box;' +
         'flex-wrap:wrap;align-items:center;gap:8px;margin:0!important;padding:8px 10px;background:#101a12;border:3px solid #3ddc84;border-radius:10px;box-shadow:4px 4px 0 #000,0 0 0 2px #000}' +
       'body.selmode #petsPanel,body.mpc-sel #petsPanel{padding-bottom:96px}' +
+      /* playtest (Nov 25 2026): the wallet pill (bottom-left, z-index 9000) sat on top of this bar and covered Discard selected; it steps aside while you select */
+      'body.selmode #xwPill,body.mpc-sel #xwPill{display:none!important}' +
       '#petsPanel #bulkRow .ip-why,#petsPanel #bulkRow #keepHint,#petsPanel #bulkRow .grow,#petsPanel #bulkRow #bDiscUnfed{display:none!important}' +
       '#petsPanel #bulkRow .mpc-count{font-weight:bold;white-space:nowrap;order:-2}#petsPanel #bulkRow .mpc-count small{display:block;font-weight:normal;color:#9be08a;font-size:11px}' +
       '#petsPanel #bulkRow #bulkOld{display:inline-flex;flex-wrap:wrap;gap:6px;align-items:center;order:-1}#petsPanel #bulkRow #selCount,#petsPanel #bulkRow #selMode{display:none}' +

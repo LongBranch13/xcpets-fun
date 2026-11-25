@@ -48,7 +48,9 @@
   function hiddenSet() { var u = U(); try { return new Set(((u && u.hiddenIds && u.hiddenIds()) || []).map(Number)); } catch (e) { return new Set(); } }
   function plan() { var u = U(), v = V(), w = u && u.world && u.world(), tip = u && u.S ? u.S().tip : 0; if (!w || !u.ME || !v.dailyChoresPlan) return null;
     var nb = (tip || w.tip) + 1, h = hiddenSet(), eats = v.frEats || function (p) { return p && p.hungry; }, ids = [], gone = 0;
-    w.pets.forEach(function (p) { if (p.owner !== u.ME || !p.hungry) return; if (h.has(p.id)) { if (!p.dead && !p.released && eats(p, nb)) gone++; return; } ids.push(p.id); });
+    /* Nov 25 2026 (play-test robot): pets discarded ON CHAIN (pet:hd) were still in this list. The rules refuse their meals, so a big wallet's
+     * chores burn was charged for every discarded hungry pet (294,249 XCPETS for 146 real meals). Both kinds of discard are left out now. */
+    w.pets.forEach(function (p) { if (p.owner !== u.ME || !p.hungry) return; if (h.has(p.id) || p.hd === u.ME) { if (!p.dead && !p.released && eats(p, nb)) gone++; return; } if (p.zombie && !p.zombie.end) return; ids.push(p.id); });
     var set = new Set(ids); ids.indexOf = function (x) { return set.has(x) ? 0 : -1; }; /* the planner asks ids.indexOf(id) >= 0 per pet; a Set keeps big wallets fast */
     var P = v.dailyChoresPlan(w, u.ME, nb, { ids: ids }); if (!P) return null;
     P.feedTotal = P.plans.reduce(function (a, q) { return a + (q && q.petIds ? q.petIds.length : q && q.petId != null ? 1 : 0); }, 0); P.discardedSkipped = gone; return P; }
