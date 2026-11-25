@@ -447,8 +447,12 @@
    * the fed pets (keepFed + once-per-pet autoStarBackfill), and starred pets are never discarded (discardIds / dropKept skip them with a note,
    * card 🗑️ / detail / Discard selected / Discard unfed / hatch review). Nothing on chain. */
   function keepKey() { return 'xcpets-keep-' + NET + '-' + (ME || ''); }
-  function keptIds() { try { var l = JSON.parse(localStorage.getItem(keepKey()) || '[]'); return Array.isArray(l) ? l.map(Number) : []; } catch (e) { return []; } }
-  function isKept(id) { return keptIds().indexOf(Number(id)) >= 0; }
+  /* Nov 25 2026 (big wallets): the star list is parsed again only when the stored text changed; isKept is a Set lookup.
+     Before, every isKept() parsed the whole list, so a check over 2,000 pets with thousands of stars froze the page. */
+  var KC = { raw: null, l: [], s: null };
+  function keptRead() { var raw = localStorage.getItem(keepKey()) || '[]'; if (raw !== KC.raw) { var l = JSON.parse(raw); KC = { raw: raw, l: Array.isArray(l) ? l.map(Number) : [], s: null }; } return KC; }
+  function keptIds() { try { return keptRead().l.slice(); } catch (e) { return []; } }
+  function isKept(id) { try { var k = keptRead(); if (!k.s) k.s = new Set(k.l); return k.s.has(Number(id)); } catch (e) { return false; } }
   function toggleKeep(id) { id = Number(id); var l = keptIds(), i = l.indexOf(id); if (i >= 0) l.splice(i, 1); else l.push(id); try { localStorage.setItem(keepKey(), JSON.stringify(l)); } catch (e) { }
     var on = i < 0; document.querySelectorAll('.keepbtn[data-keep="' + id + '"]').forEach(function (b) { b.textContent = on ? '★' : '☆'; b.setAttribute('aria-pressed', String(on)); b.title = on ? 'Favorite: never discarded. Click to unstar.' : 'Star this pet as a favorite (never discarded)'; });
     toast(on ? '★ #' + id + ' starred: a favorite, never discarded.' : '☆ #' + id + ' unstarred: it can be discarded again.'); try { document.dispatchEvent(new CustomEvent('xcpets-stars')); } catch (e) { }

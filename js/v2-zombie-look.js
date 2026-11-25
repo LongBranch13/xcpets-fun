@@ -201,8 +201,9 @@
         return { x0: a, x1: a + ww - 1, y0: c, y1: c + hh - 1 }; }); } catch (e) { return null; } }
   /* community pets (Homer Pepe, Kek, FUNTRUMP, the Viking...) draw from their own sprite files, which mark eye whites 'E' and pupils 'P' on the same
    * 32x32 grid as the frame. Their eyes are kept as they are (dingy whites, glowing pupils) instead of guessed sockets. Two biggest eye clusters at most. */
-  var OWN = { homer: 'HomerSprite', kek: 'KekSprite', funtrump: 'FuntrumpSprite', djpepe: 'DjPepeSprite', viking: 'VikingSprite', orangedragon: 'DragonSprite', rabbit: 'RabbitSprite', wizard: 'WizardSprite' };
-  function spriteEyes(art, stage, fi) { try { var g = art && !art.hybrid && OWN[art.species] && window[OWN[art.species]]; if (!g || typeof g.draw !== 'function') return null;
+  /* species-registry (Nov 25 2026): every species whose own sprite draws a key grid (js/species-registry.js sprite.draw). The hand list here had missed Groyper. */
+  var OWN = null; function own() { return OWN || (window.XcpSpecies ? (OWN = XcpSpecies.drawSprites()) : {}); }
+  function spriteEyes(art, stage, fi) { try { var g = art && !art.hybrid && own()[art.species] && window[own()[art.species]]; if (!g || typeof g.draw !== 'function') return null;
       var st = Math.max(0, Math.min(5, stage | 0)), f = (fi | 0) % 4, m = g.draw(st, f, {}); if (!m || !m.length) return null; var cl = eyeClusters(m); if (cl) return cl;
       /* zombie-frames 1124: a blink frame (Homer, FUNTRUMP and the White Rabbit shut their eyes on frame 2) has no eye cells. It used to fall back to guessed
        * sockets plus a drawn-on mouth for that one frame, so the zombie flickered into another face once a loop. Now the eyes come from an open frame,
