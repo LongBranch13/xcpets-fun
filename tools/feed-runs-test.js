@@ -24,6 +24,12 @@ ok(rt, 'frVar / frDecode round trip (2,000 random lists)');
 ok(V.frDecode('G') === null, 'an unfinished number does not decode');
 ok(V.parseTag('pet:fr:00:01').action === 'feedr' && V.parseTag('pet:fr:00:0').action === 'invalid' && V.parseTag('pet:fr:00:00').action === 'invalid', 'parseTag: pet:fr needs 2+ values, each take run above 0');
 ok(V.parseTag('pet:fr:00:' + '1'.repeat(26)).action === 'invalid', 'parseTag: tags over 34 bytes are rejected');
+/* 1b. amount never short (Nov 25 2026: the replay takes each meal off a float balance, so an exact 8-dp total left the 16,004th pet 12 sats short) */
+{ const eng = (amt, ps) => { let left = Math.round(amt * 1e8) / 1e8, n = 0; for (const p of ps) { if (left + 1e-9 < p.nextMeal) continue; left -= p.nextMeal; n++; } return n; };
+  let short = 0, over = 0; for (const set of [[160.425], [160.425, 0.1, 3.3, 1234.56789012], [12.34567891], [0.00000001, 99999.99999999]]) for (const N of [2, 1000, 5000, 16004, 40000]) {
+    const ps = Array.from({ length: N }, (_, i) => ({ nextMeal: set[i % set.length] })), a = V._mealBurn(ps), sats = ps.reduce((x, p) => x + Math.round(p.nextMeal * 1e8), 0);
+    if (eng(a, ps) !== N) short++; over = Math.max(over, Math.round(a * 1e8) - sats); }
+  ok(!short, 'mealBurn: every synthetic list (up to 40,000 pets) is fully paid by the replay loop'); ok(over <= 1000, 'mealBurn: at most ' + over + ' sats over the exact total'); }
 /* live world */
 const boot = JSON.parse(fs.readFileSync(path.resolve(opt('--boot') || path.join(ROOT, 'api', 'boot.json')), 'utf8'));
 const rows = boot.rows.slice().sort((a, b) => a.block_index - b.block_index || a.tx_index - b.tx_index), tip = boot.tip || rows[rows.length - 1].block_index;
