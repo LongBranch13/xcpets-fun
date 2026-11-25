@@ -292,7 +292,7 @@
   function zcardHtml(o, p) { var w = o.w, b = o.b, V = o.V, R = o.R, ME = o.ME, on = o.on, fmt = o.fmt, sa = o.sa, CE = V.CEM || {};
     var v = V.cemView(w, p, b), mine = ME && p.owner === ME, res = v.res || { points: 0, chance: 0 }, PTS = CE.POINTS || [1, 3, 10, 33], st0 = zstate(v), min = res.min || CE.RES_MIN || 25, per = V.cemRunsOn && V.cemRunsOn(b) ? 'pet' : 'burn';
     var FER = CE.FERAL || 432, CRU = CE.CRUMBLE || 432, food = v.mfed ? 100 : v.feral ? Math.round(100 * Math.max(0, v.crumbleIn) / CRU) : Math.round(100 * Math.max(0, v.hungerLeft) / FER);
-    var foodTxt = v.mfed ? 'Never hungry' : v.feral ? 'Starving · grave in ' + tm(v.crumbleIn) : 'Feral in ' + tm(v.hungerLeft);
+    var foodTxt = v.mfed ? 'Never hungry' : v.feral ? 'Starving · dust (gone forever) in ' + tm(v.crumbleIn) : 'Feral in ' + tm(v.hungerLeft);
     var pts = res.points + (res.bonus || 0), ready = res.points >= min, haloPct = Math.min(100, Math.round(100 * res.points / min));
     var feed = function (main) { return '<button type="button" class="btn' + (main ? '' : ' ghost cv2-small') + '" data-zsac="zfeed" data-z="' + p.id + '" title="Sacrifice pets from your Discard pile to it, gone for good">🍖 Feed it' + (main ? ' <small>' + fmt(V.cemCost(w, 'zmeal', b)) + '</small>' : '') + '</button>'; };
     var halo = function (main) { return '<button type="button" class="btn' + (main ? '' : ' ghost cv2-small') + '" data-zsac="rpl" data-z="' + p.id + '" title="Sacrifice pets: Common ' + PTS[0] + ', Uncommon ' + PTS[1] + ', Rare ' + PTS[2] + ', Legendary ' + PTS[3] + ' halo points (gear: on its card in My Pets)">' + art('halo', 12) + ' Add halo points' + (main ? ' <small>' + fmt(V.cemCost(w, 'rpl', b)) + '</small>' : '') + '</button>'; };

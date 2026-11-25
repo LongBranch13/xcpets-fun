@@ -73,6 +73,7 @@
         if (k === 'zfeed') { if (!p) continue; m = /\((#[\d, #]+)\)/.exec(l.msg || ''); ids = m ? nums(m[1]) : [];
           add({ block: b, tx: l.tx, cat: 'death', icon: '🧟', pet: p.id, t: ['Zombie ', { pet: p.id }, ' ate ' + (ids.length === 1 ? '' : ids.length + ' pets: ')].concat(ids.slice(0, 3).reduce(function (a, id, j) { return a.concat(j ? [', '] : [], [{ pet: id }]); }, [])).concat(ids.length > 3 ? [' and ' + (ids.length - 3) + ' more'] : []),
             anim: { lib: 'cem', ev: { kind: 'zmeal', id: p.id, victims: ids, block: b } } }); continue; }
+        if (k === 'crumble' && l.gone) { add({ block: b, tx: l.tx, cat: 'death', icon: '💨', t: ['Zombie #' + l.petId + (l.name ? ' ' + l.name : '') + ' went unfed and crumbled to dust: gone forever'] }); continue; } /* crumble = gone forever (rules ACTIVATE_CRUMBLE_GONE_BLOCK): the pet has left the world, so no pet link or animation */
         if (k === 'crumble') { if (!p) continue; add({ block: b, tx: l.tx, cat: 'death', icon: '🪦', pet: p.id, t: ['Zombie ', { pet: p.id }, ' went unfed and crumbled back into its grave'], anim: { lib: 'cem', ev: { kind: 'crumble', id: p.id, block: b } } }); continue; }
         if (k === 'hunt') { ids = nums(l.msg); var won = /laid to rest/.test(l.msg || ''); if (ids.length < 2) continue;
           add({ block: b, tx: l.tx, cat: 'death', icon: won ? '🏹' : '🤕', pet: ids[1], t: won ? [{ pet: ids[0] }, ' hunted zombie ', { pet: ids[1] }, ' and laid it to rest'] : [{ pet: ids[0] }, ' lost a hunt on zombie ', { pet: ids[1] }, ' (a black eye, nothing else)'],
