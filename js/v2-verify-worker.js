@@ -96,7 +96,7 @@ function start(m) {
           world = self.V2Rules.replay(rows, sync.hashes || {}, [], { tip: tip, live: self.LiveEngine.RealCore, dex: sync.dex && sync.dex.body || undefined,
             _resume: { w: w, seen: seen, dexPos: meta.dexPos || 0, grand: meta.grand ? 1 : 0, tip: meta.tip } });
           mark('replay'); T.from = meta.tip; T.to = world.tip;
-          var alive = 0, i2, pets = world.pets || [], meAddr = m.me || '', mine = [], fights = [], wornBy = {}, ids = {}, ownerDeeds = {}, mythicOwners = {};
+          var alive = 0, i2, pets = world.pets || [], meAddr = m.me || '', mine = [], fights = [], wornBy = {}, ids = {}, arts = {}, ownerDeeds = {}, mythicOwners = {};
           for (i2 = 0; i2 < pets.length; i2++) if (pets[i2] && !pets[i2].dead && !pets[i2].released) alive++;
           if (meAddr && world.mythicOwners && world.mythicOwners[meAddr] != null) mythicOwners[meAddr] = world.mythicOwners[meAddr];
           if (meAddr) {
@@ -109,6 +109,7 @@ function start(m) {
               var needArt = pubOwner[p.id] !== meAddr;
               for (pi = 0; pi < pk.length; pi++) if (pk[pi] !== 'art' || needArt) c[pk[pi]] = p[pk[pi]];
               c.worn = wornBy[p.id] || [];
+              if (p.art) arts[p.id] = p.art;
               if (p.deed && world.deeds && world.deeds[p.deed]) ownerDeeds[p.deed] = world.deeds[p.deed];
               if (!p.dead && !p.released) mine.push(c);
               ids[p.id] = c;
@@ -120,7 +121,7 @@ function start(m) {
            * after the published block showed nowhere until the next world build. Small (inside the 144-block window). */
           var reqs = [], rq = world.breedReqs || [], ri; for (ri = 0; ri < rq.length; ri++) { var r0 = rq[ri]; if (r0 && !r0.used && world.tip - (r0.block | 0) <= 192) reqs.push({ a: r0.a, b: r0.b, block: r0.block, tx: r0.tx || null, owner: r0.owner || null }); }
           self._reqs = reqs;
-          self._mine = mine; self._owned = ids; self._fights = fights; self._deeds = ownerDeeds; self._mythic = mythicOwners; self._tip = world.tip; self._n = pets.length; self._alive = alive;
+          self._mine = mine; self._owned = ids; self._arts = arts; self._fights = fights; self._deeds = ownerDeeds; self._mythic = mythicOwners; self._tip = world.tip; self._n = pets.length; self._alive = alive;
           mark('mine');
           self.postMessage({ cmd: 'ready', ok: true, t: T, tip: world.tip, n: pets.length, alive: alive, burned: world.community && world.community.burned || 0, mineN: mine.length });
         });
@@ -133,11 +134,14 @@ function petSig(p) {
   return [(p && p.care | 0), (p && p.owner) || '', p && p.dead ? 1 : 0, p && p.released ? 1 : 0, p && p.stage | 0, (p && p.deed) || '', (z && !z.end) ? (z.fedAt | 0) : 0, p && p.feral ? 1 : 0].join(':');
 }
 function syncMine(m) {
-  var sigs = m.sigs || {}, only = !!m.onlyChanged, mine = self._mine || [], owned = self._owned || {}, out = [], i, p, s, id;
+  var sigs = m.sigs || {}, only = !!m.onlyChanged, mine = self._mine || [], owned = self._owned || {}, out = [], i, p, s, id, newArt = 0, ART_CAP = 3000;
   for (i = 0; i < mine.length; i++) {
     p = mine[i]; s = petSig(p);
     if (only) { if (sigs[p.id] == null || sigs[p.id] === s) continue; }
     else if (sigs[p.id] === s) continue;
+    /* playtest-1125: a pet the page has never seen (hatched after the published world) is not in the view's art shards either, so it
+     * came without art: the hatch reveal threw on x.art.tierIndex and never opened. Send the art for new pets only (capped). */
+    if (sigs[p.id] == null && !p.art && newArt < ART_CAP && self._arts && self._arts[p.id]) { p = Object.assign({}, p, { art: self._arts[p.id] }); newArt++; }
     out.push(p);
   }
   var ks = Object.keys(owned);
@@ -197,10 +201,22 @@ function check0(m) {
   }
   self.postMessage({ id: m.id, cmd: 'check', ok: true, plans: kept, skip: skip });
 }
+var lastStart = null, following = false;
 self.onmessage = function (ev) {
   var m = ev.data || {};
   if (m.cmd === 'check') { check(m); return; }
   if (m.cmd === 'sync') { syncMine(m); return; }
+  /* follow (Nov 25 2026, found by the play-test robot): this check read the chain ONCE, so on fast pages a burn that confirmed while the
+   * page was open (your hatch, your breed egg, a feed) never showed until a reload. 'follow' runs the same start again from the same
+   * published checkpoint with the newest blocks, then answers 'ready' like the first time (the page then asks for the changed pets).
+   * A failed follow keeps the world it had and only says so: the burn check stays up. Display only, no rules change. */
+  if (m.cmd === 'follow') {
+    if (!lastStart || following) return;
+    following = true;
+    start(Object.assign({}, lastStart, { follow: true })).then(function () { following = false; }, function (e) { following = false; self.postMessage({ cmd: 'followed', ok: false, error: String(e && e.message || e) }); });
+    return;
+  }
   if (m.cmd !== 'start') return;
+  lastStart = m;
   start(m).catch(function (e) { self.postMessage({ cmd: 'ready', ok: false, error: String(e && e.message || e) }); });
 };

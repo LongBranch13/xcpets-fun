@@ -715,7 +715,7 @@
   function refresh(cb) {
     if (S.view && !S.viewVerify && window.V2Split && V2Split.recheck) {
       readViewBalance();
-      return V2Split.recheck().then(function (ok) { if (ok) { if (cb) cb(); return; } return loadReal(cb); });
+      return V2Split.recheck().then(function (ok) { if (ok) { if (V2Split.follow) V2Split.follow(); /* newer blocks: the check worker catches up and merges this wallet's changed pets (playtest, Nov 25 2026) */ if (cb) cb(); return; } return loadReal(cb); });
     }
     if (cb) lastCb = cb; if (!S.verified) refTip(); if (!S.verified && (S.feed || blocked())) { S.feed = true; return Promise.all([feedPoll(cb), revalidate(RETRY_MS.length)]).then(function () { if (S.verified) { S.feed = false; cb(); } }, function () {}); }
     if (!S.verified || !S.tip || Date.now() - lastFull > 600e3) { lastFull = Date.now(); return refreshFull(cb); }

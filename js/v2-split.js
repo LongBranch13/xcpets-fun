@@ -647,13 +647,20 @@
     }
     clearTimeout(keepT); keepT = setTimeout(keepFlush, 1500);
   }
+  /* layout-check Nov 25 2026 ("Cannot read properties of undefined (reading 'sig')" on play.html, about one load in five):
+   * a flush waits on IndexedDB for each shard, and a pet page downloaded meanwhile re-armed the 1.5 s timer. The second flush
+   * had the same shard name in its list, the first had already taken it out of keepQ, and keepQ[nm].sig threw. Now one flush
+   * runs at a time (a flush asked for while one is running starts again after it) and a name that is gone is skipped. */
+  var keepBusy = false;
   function keepFlush() {
     var names = Object.keys(keepQ); if (!names.length) return;
+    if (keepBusy) { clearTimeout(keepT); keepT = setTimeout(keepFlush, 300); return; }
+    keepBusy = true;
     keepOpen().then(function (db) {
-      if (!db) return;
+      if (!db) { keepBusy = false; return; }
       (function next() {
-        var nm = names.shift(); if (nm == null) return;
-        var e = keepQ[nm]; delete keepQ[nm];
+        var nm = names.shift(); if (nm == null) { keepBusy = false; return; }
+        var e = keepQ[nm]; if (!e) return next(); delete keepQ[nm];
         /* add to the saved entry of the same digest (a wallet's pets in one shard can arrive over several pages) */
         keepGet(nm, e.sig).then(function (old) {
           var k;
@@ -671,7 +678,7 @@
             tx.objectStore('s').put({ v: 1, sig: e.sig, hashes: e.hashes, pets: e.pets, at: Date.now() }, keepKey(nm));
             tx.oncomplete = tx.onerror = tx.onabort = function () { delete keepMemo[keepKey(nm) + '|' + e.sig]; setTimeout(next, 30); };
           } catch (x) { setTimeout(next, 30); }
-        });
+        }, function () { setTimeout(next, 30); });
       })();
     });
   }
@@ -976,6 +983,20 @@
     if (note) note.textContent = 'Checked at block ' + (m.tip || '') + '. ' + (m.n || 0) + ' pets. Burns are open.';
     try { window.dispatchEvent(new Event('xcpets-verified')); } catch (e) {}
   }
+  /* follow (Nov 25 2026, found by the play-test robot, tools/playtest): a fast page read the chain once, so a burn that confirmed while the
+   * page was open (a hatch, a breed egg, a feed) never showed until a reload: the page's 60 s poll only asked /health and kept the published
+   * world while it was fewer than STALE (48) blocks old. Now each poll that sees a newer block asks the check worker to catch up from the same
+   * published checkpoint (in the worker, off the main thread) and the changed pets of this wallet are merged in as before (takeMine).
+   * One follow at a time; display only, nothing is signed. */
+  var checkedTip = 0, followAt = 0;
+  function follow() {
+    if (!worker || !ready || off()) return false;
+    var S = window.V2Mock && V2Mock.state && V2Mock.state(), tip = Math.max(healthTipN || 0, (S && S.chainTip) || 0);
+    if (!(tip > checkedTip) || (followAt && Date.now() - followAt < 120000)) return false;
+    followAt = Date.now();
+    try { worker.postMessage({ cmd: 'follow' }); } catch (e) { followAt = 0; return false; }
+    return true;
+  }
   function startVerify(quiet) {
     if (window.XCPETS_MAINTENANCE) return Promise.resolve(null);
     if (quiet !== true) showProgress();
@@ -984,14 +1005,15 @@
     var scripts = scriptList();
     if (!scripts || typeof Worker === 'undefined') return Promise.resolve(null);
     readyP = new Promise(function (res) {
-      try { worker = new Worker(new URL('js/v2-verify-worker.js?v=stable1125b', location.href).href); }
+      try { worker = new Worker(new URL('js/v2-verify-worker.js?v=follow1125b', location.href).href); }
       catch (e) { res(null); return; }
       worker.onmessage = function (ev) {
         var m = ev.data || {};
         if (m.cmd === 'progress') { lastProg = m; var note = wantBar && document.getElementById('splitViewBar'); if (note) note.textContent = progressText(m); return; }
         if (m.cmd === 'check') { var fn = pending[m.id]; if (fn) { delete pending[m.id]; fn(m); } return; }
         if (m.cmd === 'mine') { takeMine(m); return; }
-        if (m.cmd === 'ready') { if (m.t) window.__xcpVerifyT = m.t; if (m.ok) { unlock(m); requestSync(); } else { window.__xcpVerifyErr = String(m.error || ''); failed(); } res(m); }
+        if (m.cmd === 'followed') { followAt = 0; return; } /* a follow that failed: keep the world we have */
+        if (m.cmd === 'ready') { if (m.t) window.__xcpVerifyT = m.t; if (m.ok) { checkedTip = m.tip | 0; followAt = 0; unlock(m); requestSync(); } else { window.__xcpVerifyErr = String(m.error || ''); failed(); } res(m); }
       };
       /* raid-wallet-slow: a worker error also answers every burn still waiting for its check (it used to wait forever) */
       worker.onerror = function (ev) { window.__xcpVerifyErr = 'worker: ' + String(ev && ev.message || ''); var w0 = pending; pending = {}; Object.keys(w0).forEach(function (k) { try { w0[k]({ ok: false, skip: ['The check stopped with an error. Nothing was burned. Press Retry.'] }); } catch (e) {} }); failed(); res({ ok: false }); };
@@ -1486,5 +1508,5 @@
     zombieP = getJson(folder + 'view/zombies.json').then(function (z) { return applyZombies(z); }, function () { return scanZombies(folder, onProg); });
     return zombieP;
   }
-  window.V2Split = { loadLead: loadLead, remergeLead: remergeLead, STALE: STALE, SCREEN_PAGES: SCREEN_PAGES, AUTO_CAP: AUTO_CAP, prepare: prepare, recheck: recheck, install: install, assemble: assemble, startVerify: startVerify, checkPlans: checkPlans, checkNote: checkNote, serverCheck: serverCheck, serverShop: serverShop, publishedShop: publishedShop, serverStat: function () { return serverStat; }, rest: rest, more: more, loadBoard: loadBoard, loadZombies: loadZombies, dress: dress, boardBytes: function () { return { bytes: boardBytes, files: boardFiles }; }, ensureDead: ensureDead, ensurePet: ensurePet, ownerShard: function (addr, cb) { sha2(addr).then(function (h) { cb(h.slice(0, 2)); }); }, petSig: petSig, healthTip: function () { return healthTipN; }, noteHealth: noteHealth, pingHealth: pingHealth, ownersReady: ownersReady, ownersKnown: ownersKnown, adoptOwners: adoptOwners, openOwnerPets: openOwnerPets, openList: openList, notePets: notePets, ownerTable: ownerTable, pageWallet: pageWallet, resolveWorld: resolveWorld, newestPages: newestPages, rowsToLog: rowsToLog, loadNewest: loadNewest, keepStat: function () { return keepStat; }, _order: { idOrder: idOrder, pageFromOrder: pageFromOrder } };
+  window.V2Split = { _keep: { put: keepPut, flush: keepFlush, start: keepStart, q: function () { return keepQ; }, busy: function () { return keepBusy; } }, follow: follow, checkedTip: function () { return checkedTip; }, loadLead: loadLead, remergeLead: remergeLead, STALE: STALE, SCREEN_PAGES: SCREEN_PAGES, AUTO_CAP: AUTO_CAP, prepare: prepare, recheck: recheck, install: install, assemble: assemble, startVerify: startVerify, checkPlans: checkPlans, checkNote: checkNote, serverCheck: serverCheck, serverShop: serverShop, publishedShop: publishedShop, serverStat: function () { return serverStat; }, rest: rest, more: more, loadBoard: loadBoard, loadZombies: loadZombies, dress: dress, boardBytes: function () { return { bytes: boardBytes, files: boardFiles }; }, ensureDead: ensureDead, ensurePet: ensurePet, ownerShard: function (addr, cb) { sha2(addr).then(function (h) { cb(h.slice(0, 2)); }); }, petSig: petSig, healthTip: function () { return healthTipN; }, noteHealth: noteHealth, pingHealth: pingHealth, ownersReady: ownersReady, ownersKnown: ownersKnown, adoptOwners: adoptOwners, openOwnerPets: openOwnerPets, openList: openList, notePets: notePets, ownerTable: ownerTable, pageWallet: pageWallet, resolveWorld: resolveWorld, newestPages: newestPages, rowsToLog: rowsToLog, loadNewest: loadNewest, keepStat: function () { return keepStat; }, _order: { idOrder: idOrder, pageFromOrder: pageFromOrder } };
 })();
