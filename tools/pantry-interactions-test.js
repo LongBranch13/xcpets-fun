@@ -57,12 +57,14 @@ ok(dDone, 'pet #' + dId + ' is discarded on chain after it went on the list');
 
 /* the next serving */
 const fb = V.dayStart((wMid.pantryDay != null ? wMid.pantryDay : 0) + 1);
-const zBefore = {}; zAll.forEach(id => { const z = wMid.byId[id]; zBefore[id] = JSON.stringify([z.zombie && z.zombie.fedAt, z.zombie && z.zombie.meals, z.feral || 0, z.care]); });
+const zBefore = {}; zAll.forEach(id => { const z = wMid.byId[id]; zBefore[id] = JSON.stringify([z.zombie && z.zombie.fedAt, z.zombie && z.zombie.meals, z.care]); }); /* not feral: that flag flips with the clock (fedAt + 432 game blocks), meal or no meal */
 const w2 = V.replay(rows.concat(fill, later), H(fb), [], opts(fb));
 const lg = (w2.pantryLog || []).filter(x => x.owner === o && x.block === fb)[0], fed = new Set(lg ? lg.petIds : []);
 ok(!!lg && fed.size > 0, 'the serving at block ' + fb + ' fed ' + fed.size + ' pets');
 ok(zAll.every(id => !fed.has(id)), 'no zombie ate from the pantry');
-ok(zAll.every(id => { const z = w2.byId[id]; return !V.isZ(z) || JSON.stringify([z.zombie.fedAt, z.zombie.meals, z.feral || 0, z.care]) === zBefore[id]; }), 'zombie clocks and care are untouched by the serving');
+{ const moved = zAll.filter(id => { const z = w2.byId[id]; return V.isZ(z) && JSON.stringify([z.zombie.fedAt, z.zombie.meals, z.care]) !== zBefore[id]; });
+  if (moved.length) console.log('  zombies that changed: ' + moved.length + ' of ' + zAll.length + ' ' + JSON.stringify(moved.slice(0, 4).map(id => { const z = w2.byId[id]; return [id, zBefore[id], [z.zombie.fedAt, z.zombie.meals, z.care], (w2.log || []).filter(e => e.petId === id && e.block > nb).map(e => e.block + ' ' + e.kind + ': ' + (e.msg || '').slice(0, 80)).slice(-3)]; })) + ' (serving block ' + fb + ', mid ' + (nb + 1) + ')');
+  ok(!moved.length, 'zombie clocks and care are untouched by the serving'); }
 ok(!fed.has(dId), 'the discarded pet did not eat');
 const Pb = wMid.pantry[o].bal, Pa = w2.pantry[o].bal;
 ok(lg && Math.abs((Pb - Pa) - lg.cost) < 1e-6, 'balance dropped by exactly the logged cost (' + (lg && lg.cost) + ')');
