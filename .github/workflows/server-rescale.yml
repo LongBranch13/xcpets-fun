@@ -43,20 +43,27 @@ jobs:
               const dns = require('dns').promises; let ips = []; try { ips = await dns.resolve4('node.xcpets.fun'); } catch (e) {}
               let s = all.filter(x => x.public_net && x.public_net.ipv4 && ips.includes(x.public_net.ipv4.ip)); if (!s.length && all.length === 1) s = all;
               if (s.length !== 1) throw new Error('Could not tell which server is the game server (' + all.length + ' servers). Nothing was changed.');
-              let sv = s[0]; const cur = sv.server_type, loc = sv.datacenter && sv.datacenter.location && sv.datacenter.location.name;
+              let sv = s[0]; const cur = sv.server_type, loc = (sv.location && sv.location.name) || (sv.datacenter && sv.datacenter.location && sv.datacenter.location.name);
               console.log('Game server now: plan ' + cur.name + ', ' + cur.cores + ' cores, ' + gb(cur) + ' GB RAM, ' + cur.disk + ' GB disk (disk in use: ' + (sv.primary_disk_size || '?') + ' GB), status ' + sv.status + ', ' + price(cur, loc));
-              const types = ((await get('/server_types?per_page=50')).server_types || []).filter(t => t.architecture === cur.architecture && !t.deprecated && !(t.deprecation && t.deprecation.unavailable_after && Date.parse(t.deprecation.unavailable_after) < Date.now()) && (t.prices || []).some(p => p.location === loc));
+              const raw = (await get('/server_types?per_page=50')).server_types || [];
+              const gone = t => { const d = t.deprecation || ((t.locations || []).find(l => l.name === loc) || {}).deprecation; return !!(d && d.unavailable_after && Date.parse(d.unavailable_after) < Date.now()); };
+              const types = raw.filter(t => (!cur.architecture || t.architecture === cur.architecture) && !gone(t) && (t.prices || []).some(p => p.location === loc));
+              if (!types.some(t => t.name === cur.name)) types.push(cur);
+              console.log('(' + raw.length + ' plans from Hetzner, ' + types.length + ' listed for location ' + loc + ', architecture ' + cur.architecture + ')');
               types.sort((a, b) => a.memory - b.memory || a.cores - b.cores);
+              const here = t => (t.locations || []).find(l => l.name === loc);
+              const avail = t => { const h = here(t); return !h || h.available !== false; };
               console.log('Plans available in this location (name: cores, RAM, disk, price):');
-              types.forEach(t => console.log('  ' + t.name.padEnd(8) + ' ' + t.cores + ' cores, ' + String(gb(t)).padStart(4) + ' GB RAM, ' + t.disk + ' GB disk, ' + price(t, loc) + (t.disk < (sv.primary_disk_size || cur.disk) ? '  (disk smaller than the one in use: not possible with CPU and RAM only)' : '') + (t.name === cur.name ? '  <- current' : '')));
+              types.forEach(t => console.log('  ' + t.name.padEnd(8) + ' ' + t.cores + ' cores, ' + String(gb(t)).padStart(4) + ' GB RAM, ' + t.disk + ' GB disk, ' + price(t, loc) + (t.disk < (sv.primary_disk_size || cur.disk) ? '  (disk smaller than the one in use: not possible with CPU and RAM only)' : '') + (t.name === cur.name ? '  <- current' : (avail(t) ? '' : '  (sold out here right now)'))));
               const pm = t => { const p = (t.prices || []).find(x => x.location === loc); return p ? +p.price_monthly.gross : 1e9; };
-              const fit = types.filter(t => t.memory >= +(process.env.MIN_GB || 8) && t.disk >= (sv.primary_disk_size || cur.disk)).sort((a, b) => pm(a) - pm(b));
-              console.log(fit.length ? 'Cheapest plan with at least ' + (process.env.MIN_GB || 8) + ' GB RAM: ' + fit[0].name + ' (' + fit[0].cores + ' cores, ' + gb(fit[0]) + ' GB RAM, ' + price(fit[0], loc) + ')' : 'No plan with at least ' + (process.env.MIN_GB || 8) + ' GB RAM fits here.');
+              const fit = types.filter(t => t.name !== cur.name && avail(t) && t.memory >= +(process.env.MIN_GB || 8) && t.disk >= (sv.primary_disk_size || cur.disk)).sort((a, b) => pm(a) - pm(b));
+              console.log(fit.length ? 'Cheapest other plan with at least ' + (process.env.MIN_GB || 8) + ' GB RAM that is free here now: ' + fit[0].name + ' (' + fit[0].cores + ' cores, ' + gb(fit[0]) + ' GB RAM, ' + price(fit[0], loc) + ')' : 'No other plan with at least ' + (process.env.MIN_GB || 8) + ' GB RAM is free here right now.');
               if (process.env.MODE !== 'rescale') { console.log('Look only: nothing was changed.'); return; }
               const want = types.find(t => t.name === String(process.env.PLAN || '').trim().toLowerCase());
               if (!want) throw new Error('Plan \"' + process.env.PLAN + '\" is not in the list above. Nothing was changed.');
               const min = +(process.env.MIN_GB || 8);
               if (want.memory < min) throw new Error('Plan ' + want.name + ' has ' + gb(want) + ' GB RAM, less than ' + min + ' GB. Nothing was changed.');
+              if (want.name !== cur.name && !avail(want)) throw new Error('Plan ' + want.name + ' is sold out in ' + loc + ' right now. Nothing was changed.');
               if (want.name === cur.name) { console.log('The server is already on ' + want.name + '. Nothing to do.'); return; }
               console.log('Rescaling to ' + want.name + ' (' + want.cores + ' cores, ' + gb(want) + ' GB RAM, ' + price(want, loc) + '), CPU and RAM only.');
               if (sv.status !== 'off') {
