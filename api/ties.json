@@ -1,6 +1,6 @@
 {
- "lastBlock": 977451,
- "count": 475,
+ "lastBlock": 977456,
+ "count": 477,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -5701,6 +5701,30 @@
    "species": "kek",
    "speciesLabel": "Lord Kek",
    "rarity": "Rare",
+   "stage": "Mythic"
+  },
+  {
+   "id": 115273,
+   "asset": "A9652892702719472070",
+   "tiedBlock": 977453,
+   "tiedTx": "4a62efb0707202c04f68c3411a0774de3c41f2a43934c671053a76fcac85c650",
+   "kind": "deed",
+   "name": "Ripidooboo",
+   "species": "peepo",
+   "speciesLabel": "Peepo",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 154191,
+   "asset": "A327292077325116504",
+   "tiedBlock": 977453,
+   "tiedTx": "a152a5cc154d1c6c0c07202e5032d62266cffde5583a2b41b3f3d11187536e42",
+   "kind": "deed",
+   "name": "Hurilipo",
+   "species": "hyb:doge:chad",
+   "speciesLabel": "Dogchad (hybrid)",
+   "rarity": "Legendary",
    "stage": "Mythic"
   }
  ]

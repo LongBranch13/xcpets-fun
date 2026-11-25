@@ -17,7 +17,9 @@ if (!process.env.FEED_NO_LIMIT && typeof globalThis.fetch === 'function' && !glo
 const fs = require('fs'), path = require('path'), vm = require('vm'), zlib = require('zlib');
 const F = require('./api-feed.js'); const PAPERS = require('../js/v2-papers.js');
 const ROOT = path.resolve(__dirname, '..'), SITE = F.SITE, SCALE = 4;
-const EXTRA = ['js/wizard-sprite.js', 'js/kek-sprite.js', 'js/funtrump-sprite.js', 'js/homer-sprite.js', 'js/rabbit-sprite.js', 'js/groyper-sprite.js', 'js/aspie-sprite.js', 'js/djpepe-sprite.js', 'js/viking-sprite.js', 'js/dragon-sprite.js', 'js/bo-sprite.js', 'js/rarepigeon-sprite.js', 'js/jackson-sprite.js', 'js/contest-sprite.js', 'js/dan-sprite.js', /* proof-parade-sprite-1108: every sprite script pet.html loads (homer/rabbit/dragon/jackson were missing) */ /* same sprite scripts as pet.html: without funtrump-sprite.js a FunTrump-body hybrid (Don Kekamoto #46073) fell back to a plain Kek face on its badge */ 'js/v2-bg.js', 'js/v2-looks.js', 'js/v2-clown-hair.js', 'js/v2-render.js'];
+/* every sprite script pet.html loads, from js/species-registry.js (species-registry Nov 25 2026: this list used to be kept by hand and missed
+ * homer/rabbit/dragon/jackson once, and funtrump once: a FunTrump-body hybrid (Don Kekamoto #46073) fell back to a plain Kek face on its badge) */
+const EXTRA = ['js/species-registry.js'].concat(require('../js/species-registry.js').scripts(), ['js/dan-sprite.js', 'js/v2-bg.js', 'js/v2-looks.js', 'js/v2-clown-hair.js', 'js/v2-render.js']);
 function crc32(b) { let c, t = crc32.t; if (!t) { t = crc32.t = new Int32Array(256); for (let n = 0; n < 256; n++) { c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c; } }
   c = -1; for (let i = 0; i < b.length; i++) c = t[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ -1) >>> 0; }
 function chunk(type, data) { const l = Buffer.alloc(4), td = Buffer.concat([Buffer.from(type), data]), cr = Buffer.alloc(4); l.writeUInt32BE(data.length); cr.writeUInt32BE(crc32(td)); return Buffer.concat([l, td, cr]); }

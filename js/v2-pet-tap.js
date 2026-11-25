@@ -9,15 +9,12 @@
   var d = root.document; if (!d) return;
   var SAY = {
     any: ['gm', 'wagmi', 'ser, this is a pet', 'stay humble, stack blocks', 'few understand', 'wen moon', 'not financial advice', 'bullish on you', 'i was here before the halving', 'touch grass? no. touch me.', 'hodl me', 'based', 'chain says i’m a good pet', 'ok one more pat'],
-    pepe: ['feels good man', 'rare pepe energy'], wojak: ['i know that feel bro', 'it’s over... jk we’re so back'], chud: ['YES.', 'built different'], chad: ['yes.', 'average chad enjoyer'],
-    doge: ['much pet. very wow.', 'such tap'], peepo: ['peepoHappy', 'hehe'], bobo: ['ok but have you considered: bear', 'ngmi (affectionate)'], mumu: ['moooon', 'green candles only'],
-    lenny: ['( ͡° ͜ʖ ͡°)', 'heh'], snibby: ['slow and steady', 'shell yeah'], kevin: ['kevin.', 'it’s kevin'], dodo: ['not extinct, just early', 'squawk'],
-    sarutobi: ['ninja mode', 'sneaky'], nakamoto: ['i am not satoshi', 'read the whitepaper'], wizard: ['magic internet money', 'abracadabra, ser'], kek: ['KEK', 'shadilay'],
-    funtrump: ['tremendous pat. the best.', 'many people are saying this is a great pat'], homer: ['mmm... XCPETS', 'woohoo!'], djpepe: ['drop the beat', 'one more track'], aspie: ['...hi.', 'no refunds.', 'ok fine. one pat.'],
     hungry: ['bro i haven’t eaten in blocks', 'pats are nice but food is nicer', 'feed me and i’ll love you forever'],
     mythic: ['i am eternal', 'mortals pet me now?', 'MYTHIC VIBES'],
     combo: ['MORE', 'again again', 'ok ok OK', 'vibes rising', 'MAXIMUM VIBES']
   };
+  /* species-registry (Nov 25 2026): each species' own lines live on its entry in js/species-registry.js (tap) */
+  if (root.XcpSpecies) root.XcpSpecies.LIST.forEach(function (s) { if (s.tap && s.tap.length && !SAY[s.id]) SAY[s.id] = s.tap; });
   var RM = root.matchMedia ? root.matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
   function pid() { var m = /[?&]id=(\d+)/.exec(location.search) || /\/pet\/(\d+)/.exec(location.pathname); return m ? +m[1] : null; }
   function pet() { try { var w = root.V2Mock && V2Mock.world && V2Mock.world(), id = pid(); return w && w.byId ? w.byId[id] : null; } catch (e) { return null; } }

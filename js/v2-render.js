@@ -3,6 +3,9 @@
 (function () {
   'use strict';
   var V = window.V2Rules;
+  /* species-registry (Nov 25 2026): the species lists below (faces, sprite looks, Cold Storage order, raise tips, sprite renderers) come from
+   * js/species-registry.js (window.XcpSpecies), the one place a new pet is added. Empty lists if a page forgot to load it (tools/species-registry-test.js checks every page). */
+  var SPX = window.XcpSpecies || { LIST: [], get: function () { return null; }, map: function () { return {}; }, coldOrder: function () { return []; }, community: function () { return []; }, shortName: String };
   /* t3176u: a kept hybrid top (FUNTRUMP windblown hair, Lord Kek nemes, Viking horns) is fitted once
    * against the frame margin. It stays still while the body bobs, and the pixels that stick out past
    * that fit miss the ink outline. Shift the layer by the body's own bounce and close the outline.
@@ -657,7 +660,7 @@
   var PG_IRI = [[0x3f, 0xb8, 0xa0], [0x2e, 0x8a, 0x5a], [0x8a, 0x5a, 0xc8], [0x5e, 0x3a, 0x96]], PG_HI = [0xb8, 0xf0, 0xe0];
   var PG_WING = ['.aaa.', 'awdba', 'adbba', 'aeeea', 'abbba', 'aeeea', '.aba.', '..a..'], PG_WING_S = ['.aa.', 'awda', 'aeea', 'abba', 'aeea', '.aa.'];
   var BO34 = { '3': ['###', '..#', '.##', '..#', '###'], '4': ['#.#', '#.#', '###', '..#', '..#'] }, BO34S = { '3': ['###', '.##', '..#', '###'], '4': ['#.#', '###', '..#', '..#'] }, BO34T = { '3': ['###', '.##', '###'], '4': ['#.#', '###', '..#'] }, BO_C = { k: [0x2c, 0x2c, 0x36], d: [0x20, 0x20, 0x28], w: [0xf4, 0xf4, 0xee], s: [0xb9, 0xc3, 0xcf], p: [0x8d, 0x96, 0xa8] };
-  var LOOK_FACE = { dodo: 1, doge: -1, nakamoto: -1, funtrump: 1, homer: 1, rabbit: 1, groyper: 1 };
+  var LOOK_FACE = SPX.map('face'); /* species-registry: dodo 1, doge -1, nakamoto -1, funtrump / homer / rabbit / groyper 1 */
   function lookLum(c) { return 0.3 * c[0] + 0.59 * c[1] + 0.11 * c[2]; }
   function lookCtx(sh, art, stage, f) { var o0 = { stage: stage, frame: f, gearOverride: {} }, kr, A; try { kr = V._keyedRender(sh, art, o0); } catch (e) { return null; } if (!kr || !kr.keys || !V._anatomy) return null;
     try { A = V._anatomy(kr.keys); } catch (e) { return null; } if (!A || !A.bb || A.bb.b < 0) return null; var k = kr.keys, j, eyes = [], mT = 29, SE = V._spriteEyes ? V._spriteEyes(sh, o0) : null;
@@ -671,7 +674,7 @@
     var top = (kr.parts && kr.parts.top) || [], tb = -1; top.forEach(function (q) { if ((q >> 5) <= faceB + 6) tb = Math.max(tb, q >> 5); });
     return { k: k, A: A, s: A.s, bb: bb, eb: eb, eyes: eyes, faceB: faceB, beardB: tb, sh: sh, spr: LOOK_SPR[sh] ? lookSprRegion(sh, stage, f) : null }; }
   /* sprite-drawn bodies (all keys 'body' in the keyed render): the clothes / torso come from the sprite's own colour keys. Rows: [first row allowed] */
-  var LOOK_SPR = { wizard: { g: 'WizardSprite', k: 'RrhX', min: 4 }, kek: { g: 'KekSprite', k: 'Ggho', below: 'l', min: 3 }, funtrump: { g: 'FuntrumpSprite', k: 'NvwB', min: 3 }, homer: { g: 'HomerSprite', k: 'wWC', min: 3 }, rabbit: { g: 'RabbitSprite', k: 'cCB', min: 3 }, groyper: { g: 'GroyperSprite', k: 'cC', min: 3 }, aspie: { g: 'AspieSprite', k: 'BbDd', min: 3 } };
+  var LOOK_SPR = {}; SPX.LIST.forEach(function (s) { if (s.look && s.sprite) LOOK_SPR[s.id] = Object.assign({ g: s.sprite.g }, s.look); }); /* species-registry: { g, k, below, min } per sprite body */
   function lookSprRegion(sh, stage, f) { var D = LOOK_SPR[sh], S = D && window[D.g]; if (!S || !S.draw) return null; var g; try { g = S.draw(stage, f, {}); } catch (e) { return null; } if (!g) return null;
     var y0 = 0, y, x, on = {}, neck = -1; if (D.below) for (y = 0; y < 29; y++) for (x = 0; x < 32; x++) if (g[y] && g[y][x] === D.below) y0 = y + 2;
     for (y = y0; y < 29; y++) { var n = 0; for (x = 0; x < 32; x++) { var kk = g[y] && g[y][x]; if (kk && D.k.indexOf(kk) >= 0) { on[y * 32 + x] = 1; n++; } } if (neck < 0 && n >= D.min) neck = y; }
@@ -971,8 +974,6 @@
     if (art && art.species === 'orangedragon' && !art.hybrid && window.DragonSprite) return DragonSprite.frames(stage || 0, (art && art.bgColor) || '#1b2430', wizGearOf(itemIds), {}); /* the ORANGE DRAGON 1 of 1 (inert: V2Rules.ACTIVATE_DRAGON_BLOCK null) */
     if (art && art.species === 'viking' && !art.hybrid && window.VikingSprite) return VikingSprite.frames(stage || 0, (art && art.bgColor) || '#1b2430', wizGearOf(itemIds), {}); /* the VIKING 1 of 1 (branch viking-1of1 PREVIEW, inert: V2Rules.ACTIVATE_VIKING_BLOCK null) */
     if (art && art.hybrid && art.hybrid.shape === 'viking' && window.VikingSprite) return vikHybFrames(art, stage, itemIds); /* VIKING-body hybrid: VikingSprite gear layer */
-    if (art && art.species === 'aspie' && !art.hybrid && window.AspieSprite) return AspieSprite.frames(stage || 0, (art && art.bgColor) || '#2a3a2e', wizGearOf(itemIds), {}); /* player ASPIE (Grinder-only species; none exist while V2Rules.ACTIVATE_ASPIE_BLOCK is null) */
-    if (art && art.hybrid && art.hybrid.shape === 'aspie' && window.AspieSprite) return asHybFrames(art, stage, itemIds); /* ASPIE-body hybrid: AspieSprite gear layer */
     if (art && art.species === 'groyper' && !art.hybrid && window.GroyperSprite) return GroyperSprite.frames(stage || 0, (art && art.bgColor) || '#2a3a2e', wizGearOf(itemIds), {}); /* player GROYPER (PREVIEW, inert: none exist while V2Rules.ACTIVATE_GROYPER_BLOCK is null) */
     if (art && art.hybrid && art.hybrid.shape === 'groyper' && window.GroyperSprite) return gpHybFrames(art, stage, itemIds); /* GROYPER-body hybrid: GroyperSprite gear layer */
     if (art && art.species === 'rabbit' && !art.hybrid && window.RabbitSprite) return RabbitSprite.frames(stage || 0, (art && art.bgColor) || '#2a3a2e', wizGearOf(itemIds), {}); /* player THE WHITE RABBIT (branch whiterabbit-community PREVIEW, inert: none exist) */
@@ -985,6 +986,9 @@
     if (art && art.hybrid && art.hybrid.shape === 'kek' && window.KekSprite) return kekHybFrames(art, stage, itemIds); /* Kek-BODY hybrid: KekSprite gear layer (PetCore has no Kek anchors) */
     if (art && art.hybrid && art.hybrid.shape === 'wizard' && window.WizardSprite) return wizardHybridFrames(art, stage, itemIds, extraOv); /* Wizard-bodied hybrid (wizard-hybrids branch) */
     if (art && art.species === 'wizard' && !art.hybrid && window.WizardSprite) return wizardPetFrames(art, stage, itemIds, extraOv); /* player Bitcoin Wizard (Cold Storage rules): blue palette, own sprite */
+    var GX = art && SPX.get(art.hybrid ? art.hybrid.shape : art.species), GS = GX && GX.sprite && GX.sprite.draw && window[GX.sprite.g]; /* species-registry: a NEW pet with its own sprite needs no code here */
+    if (GS && !art.hybrid && GS.frames) return GS.frames(stage || 0, art.bgColor || '#2a3a2e', wizGearOf(itemIds), {});
+    if (GS && art.hybrid && GX.sprite.hybGear !== false) return sprHybFrames(art, stage, itemIds, GS, sprPal(GS, GX.sprite.pal));
     var fb = framesWith0(art, stage, itemIds, extraOv, cap, baseGo), k = (extraOv || []).indexOf('v2-black-eye'), off = DOGE_SHINER[stage];
     if (k < 0 || !art || art.species !== 'doge' || !off) return fb;
     var ov2 = extraOv.slice(); ov2.splice(k, 1); var fa = framesWith0(art, stage, itemIds, ov2, cap, baseGo);
@@ -1007,7 +1011,7 @@
    * x 1, else x 0), never past x 30; if no step clears it fully, the step that hides the fewest cloth pixels. Pets whose flag already shows are unchanged. */
   function framesWith0(art, stage, itemIds, extraOv, cap, baseGo) {
     var full = framesWithCore(art, stage, itemIds, extraOv, cap, baseGo);
-    if (!art || stage < 1 || !full.length || (art.species === 'kek' || art.species === 'wizard' || art.species === 'funtrump' || art.species === 'homer' || art.species === 'rabbit' || art.species === 'groyper' || art.species === 'aspie' || art.species === 'viking' || art.species === 'orangedragon')) return full;
+    if (!art || stage < 1 || !full.length || (art.species === 'kek' || art.species === 'wizard' || art.species === 'funtrump' || art.species === 'homer' || art.species === 'rabbit' || art.species === 'groyper' || art.species === 'viking' || art.species === 'orangedragon')) return full;
     var ids = (itemIds || []).map(function (id) { return V.resolveItem ? V.resolveItem(id) : id; }), all = ids.concat(extraOv || []), ban = null;
     all.forEach(function (id) { var it = V.GEAR_BY_ID[id], d = BonusGear.DEFS[(it && it.id) || id]; if (d && d.at === 'banner' && d.map) ban = (it && it.id) || id; });
     if (!ban) return full;
@@ -1659,7 +1663,7 @@
    * and no newer community pet exists yet. The spots then show the coming-soon placeholder (see comingSoonFrames). Display only. */
   /* COLD_ORDER (Nov 24 2026): every community pet with a Cold Storage record, in order (#2..#7). The gap placeholder reads the next number and
    * names the latest pet in Cold Storage from it, so a pet that reaches Mythic before the next one's rule gate is set never shows a stale '#4' / 'Lord Kek'. */
-  var COLD_ORDER = [['wizardMythic', 2, 'The Bitcoin Wizard'], ['kekMythic', 3, 'Lord Kek'], ['funtrumpMythic', 4, 'FUNTRUMP'], ['homerMythic', 5, 'Homer Pepe'], ['rabbitMythic', 6, 'The White Rabbit'], ['groyperMythic', 7, 'Groyper']];
+  var COLD_ORDER = SPX.coldOrder().map(function (x) { return [x.key, x.no, x.name]; }); /* species-registry: [mythic key, number, name] for #2..#N */
   function lastCold(w) { var o = null; COLD_ORDER.forEach(function (x) { if (w && w[x[0]]) o = x; }); return o; }
   function lastColdName(w) { var o = lastCold(w); return o ? o[2] : 'The Bitcoin Wizard'; }
   function communityGap(w) { var o = lastCold(w); if (o && COMMUNITY_NEXT_NO < o[1] + 1) setNextNo(o[1] + 1); /* after pet #N's Cold Storage: 'Community pet #N+1 coming soon' everywhere */ return !!(w && w.wizardMythic && !(w.community && w.community.nextPet)); }
@@ -1726,11 +1730,15 @@
   function hpOn(w) { return !!(w && w.community && w.community.current === 'homer' && window.HomerSprite); }
   function hpGear(w) { var V = window.V2Rules, gate = V.ACTIVATE_HOMER_BLOCK, g = (w.community && w.community.gear) || {}, o = {};
     (V.V2_SLOTS || []).forEach(function (sl) { var x = g[sl]; if (x && gate != null && x.block >= gate) o[sl] = { label: x.label, item: x.item, cols: itemCols(x.item).slice() }; }); return o; }
-  function hpHybFrames(art, stage, ids) { var fr = V.hybridFrames(art, { stage: stage }), G = wizGearOf(ids); if (!Object.keys(G).length) return fr; var P = HomerSprite.PAL;
-    return fr.map(function (f, n) { var a = HomerSprite.draw(stage || 0, n, G), z = HomerSprite.draw(stage || 0, n, {}), d = new Uint8ClampedArray(f.data);
+  /* sprHybFrames (species-registry, Nov 25 2026): ONE gear layer for every sprite-bodied hybrid (Homer, Rabbit, Groyper, DJ Pepe, Viking and any new pet):
+   * the hybrid frames plus only the pixels the sprite's gear changes, in the sprite's palette (S.PAL + optional extra palette). Same pixels as the five copies it replaced. */
+  function sprHybFrames(art, stage, ids, S, P, noHead) { var fr = V.hybridFrames(art, { stage: stage }), G = wizGearOf(ids); if (noHead) delete G.head; if (!Object.keys(G).length) return fr; P = P || S.PAL;
+    return fr.map(function (f, n) { var a = S.draw(stage || 0, n, G), z = S.draw(stage || 0, n, {}), d = new Uint8ClampedArray(f.data);
       for (var y = 0; y < 32; y++) for (var x = 0; x < 32; x++) { var k = a[y][x]; if (!k || k === z[y][x]) continue; var c = P[k] || k; if (c[0] !== '#') continue; var i = (y * 32 + x) * 4;
         d[i] = parseInt(c.slice(1, 3), 16); d[i + 1] = parseInt(c.slice(3, 5), 16); d[i + 2] = parseInt(c.slice(5, 7), 16); d[i + 3] = 255; }
       return { width: 32, height: 32, data: d }; }); }
+  function sprPal(S, ex) { return ex && S[ex] ? Object.assign({}, S.PAL, S[ex]) : S.PAL; }
+  function hpHybFrames(art, stage, ids) { return sprHybFrames(art, stage, ids, HomerSprite); }
   /* THE WHITE RABBIT (community pet #6, PREVIEW, V2Rules.ACTIVATE_RABBIT_BLOCK null): c.current === 'rabbit' only once the gate is set AND Homer is in Cold Storage.
    * No built-in hat: every slot is drawn by RabbitSprite's gear layer (anchors on his own frames). Same shape as Homer's. */
   function wrOn(w) { return !!(w && w.community && w.community.current === 'rabbit' && window.RabbitSprite); }
@@ -1739,38 +1747,16 @@
     /* owner Nov 6 7:04 AM CT: community White Rabbit never wears shades / glasses; open ruby eyes (wr-shades stays in the player drop pool) */
     if (o.face && (o.face.item === 'wr-shades' || /shade|sunglass|glass/i.test(String(o.face.label || o.face.item || '')))) delete o.face;
     return o; }
-  function wrHybFrames(art, stage, ids) { var fr = V.hybridFrames(art, { stage: stage }), G = wizGearOf(ids); if (!Object.keys(G).length) return fr; var P = Object.assign({}, RabbitSprite.PAL, RabbitSprite.WRC || {});
-    return fr.map(function (f, n) { var a = RabbitSprite.draw(stage || 0, n, G), z = RabbitSprite.draw(stage || 0, n, {}), d = new Uint8ClampedArray(f.data);
-      for (var y = 0; y < 32; y++) for (var x = 0; x < 32; x++) { var k = a[y][x]; if (!k || k === z[y][x]) continue; var c = P[k] || k; if (c[0] !== '#') continue; var i = (y * 32 + x) * 4;
-        d[i] = parseInt(c.slice(1, 3), 16); d[i + 1] = parseInt(c.slice(3, 5), 16); d[i + 2] = parseInt(c.slice(5, 7), 16); d[i + 3] = 255; }
-      return { width: 32, height: 32, data: d }; }); }
+  function wrHybFrames(art, stage, ids) { return sprHybFrames(art, stage, ids, RabbitSprite, Object.assign({}, RabbitSprite.PAL, RabbitSprite.WRC || {})); }
   /* GROYPER (community pet #7, PREVIEW, V2Rules.ACTIVATE_GROYPER_BLOCK null): c.current === 'groyper' only once the gate is set AND the White Rabbit is in Cold Storage.
    * Drawn bare on the community panel (raise-tip rule); player Groypers and Groyper-body hybrids get GroyperSprite's gear layer. */
   function gpOn(w) { return !!(w && w.community && w.community.current === 'groyper' && window.GroyperSprite); }
-  /* ASPIE-body hybrid: the hybrid frames plus AspieSprite's gear layer (only the pixels gear changes), like Groyper's */
-  function asHybFrames(art, stage, ids) { var fr = V.hybridFrames(art, { stage: stage }), G = wizGearOf(ids); if (!Object.keys(G).length) return fr; var P = Object.assign({}, AspieSprite.PAL, AspieSprite.ASC || {});
-    return fr.map(function (f, n) { var a = AspieSprite.draw(stage || 0, n, G), z = AspieSprite.draw(stage || 0, n, {}), d = new Uint8ClampedArray(f.data);
-      for (var y = 0; y < 32; y++) for (var x = 0; x < 32; x++) { var k = a[y][x]; if (!k || k === z[y][x]) continue; var c = P[k] || k; if (c[0] !== '#') continue; var i = (y * 32 + x) * 4;
-        d[i] = parseInt(c.slice(1, 3), 16); d[i + 1] = parseInt(c.slice(3, 5), 16); d[i + 2] = parseInt(c.slice(5, 7), 16); d[i + 3] = 255; }
-      return { width: 32, height: 32, data: d }; }); }
-  function gpHybFrames(art, stage, ids) { var fr = V.hybridFrames(art, { stage: stage }), G = wizGearOf(ids); if (!Object.keys(G).length) return fr; var P = Object.assign({}, GroyperSprite.PAL, GroyperSprite.GPC || {});
-    return fr.map(function (f, n) { var a = GroyperSprite.draw(stage || 0, n, G), z = GroyperSprite.draw(stage || 0, n, {}), d = new Uint8ClampedArray(f.data);
-      for (var y = 0; y < 32; y++) for (var x = 0; x < 32; x++) { var k = a[y][x]; if (!k || k === z[y][x]) continue; var c = P[k] || k; if (c[0] !== '#') continue; var i = (y * 32 + x) * 4;
-        d[i] = parseInt(c.slice(1, 3), 16); d[i + 1] = parseInt(c.slice(3, 5), 16); d[i + 2] = parseInt(c.slice(5, 7), 16); d[i + 3] = 255; }
-      return { width: 32, height: 32, data: d }; }); }
+  function gpHybFrames(art, stage, ids) { return sprHybFrames(art, stage, ids, GroyperSprite, Object.assign({}, GroyperSprite.PAL, GroyperSprite.GPC || {})); }
   /* VIKING-body hybrid (viking-1of1 PREVIEW, inert): the hybrid frames plus VikingSprite's gear layer (only pixels gear changes), like Homer's */
-  function djHybFrames(art, stage, ids) { var fr = V.hybridFrames(art, { stage: stage }), G = wizGearOf(ids); if (!Object.keys(G).length) return fr; var P = DjPepeSprite.PAL;
-    return fr.map(function (f, n) { var a = DjPepeSprite.draw(stage || 0, n, G), z = DjPepeSprite.draw(stage || 0, n, {}), d = new Uint8ClampedArray(f.data);
-      for (var y = 0; y < 32; y++) for (var x = 0; x < 32; x++) { var k = a[y][x]; if (!k || k === z[y][x]) continue; var c = P[k] || k; if (c[0] !== '#') continue; var i = (y * 32 + x) * 4;
-        d[i] = parseInt(c.slice(1, 3), 16); d[i + 1] = parseInt(c.slice(3, 5), 16); d[i + 2] = parseInt(c.slice(5, 7), 16); d[i + 3] = 255; }
-      return { width: 32, height: 32, data: d }; }); }
+  function djHybFrames(art, stage, ids) { return sprHybFrames(art, stage, ids, DjPepeSprite); }
   /* VIKING-body hybrid (viking-1of1 PREVIEW, inert): the hybrid frames plus VikingSprite's gear layer (only pixels gear changes), like Homer's */
-  function vikHybFrames(art, stage, ids) { var fr = V.hybridFrames(art, { stage: stage }), G = wizGearOf(ids); delete G.head; if (!Object.keys(G).length) return fr; var P = VikingSprite.PAL;
-    return fr.map(function (f, n) { var a = VikingSprite.draw(stage || 0, n, G), z = VikingSprite.draw(stage || 0, n, {}), d = new Uint8ClampedArray(f.data);
-      for (var y = 0; y < 32; y++) for (var x = 0; x < 32; x++) { var k = a[y][x]; if (!k || k === z[y][x]) continue; var c = P[k] || k; if (c[0] !== '#') continue; var i = (y * 32 + x) * 4;
-        d[i] = parseInt(c.slice(1, 3), 16); d[i + 1] = parseInt(c.slice(3, 5), 16); d[i + 2] = parseInt(c.slice(5, 7), 16); d[i + 3] = 255; }
-      return { width: 32, height: 32, data: d }; }); }
-  var COLD_SPRITES = { groyper: function () { return window.GroyperSprite; }, rabbit: function () { return window.RabbitSprite; }, homer: function () { return window.HomerSprite; }, wizard: function () { return window.WizardSprite; }, kek: function () { return window.KekSprite; }, funtrump: function () { return window.FuntrumpSprite; } };
+  function vikHybFrames(art, stage, ids) { return sprHybFrames(art, stage, ids, VikingSprite, null, true); }
+  var COLD_SPRITES = {}; SPX.community().forEach(function (s) { if (s.sprite && s.sprite.draw) COLD_SPRITES[s.id] = function () { return window[s.sprite.g]; }; }); /* species-registry: every community pet with its own sprite */
   function coldFrames(sp, ids, stage) { var S = COLD_SPRITES[sp] && COLD_SPRITES[sp](); if (!S) return null; var G = wizGearOf(ids);
     if (sp === 'funtrump') G = ftGearOf(ids);
     if (sp === 'kek' && (ids || []).indexOf('kek-card') >= 0 && S.KEK_CARD) G.hand = S.KEK_CARD; /* nemes stays; a worn head piece is drawn on it */
@@ -1802,7 +1788,7 @@
    * becomes a 'raise him together' card: stage + bar to Mythic, what Mythic unlocks, YOUR share of his care (every burn feeds him) and the top raisers.
    * Shares come from the rules' own per-wallet care map (w[<pet key>].by = what each wallet burned since the last pet's Mythic); the fast world
    * reads the same map from summary.community.raisers (tools/sync-server/split.js). No map yet => the share lines are left out. */
-  var RAISE_PETS = { groyper: { emoji: '🐸', eggs: 'Groyper eggs start hatching (1 in 777)' }, rabbit: { emoji: '🐇', eggs: 'White Rabbit eggs start hatching (1 in 777)' }, homer: { emoji: '🍩', eggs: 'Homer Pepe eggs start hatching (1 in 777)' }, funtrump: { emoji: '🍔' }, kek: { emoji: '🐸' } };
+  var RAISE_PETS = {}; SPX.community().forEach(function (s) { if (s.community.no >= 3) RAISE_PETS[s.id] = s.community.eggs ? { emoji: s.emoji, eggs: SPX.shortName(s.id) + ' eggs start hatching (1 in 777)' } : { emoji: s.emoji }; }); /* species-registry: Lord Kek (#3) onward */
   function raisersOf(w) { var c = (w && w.community) || {}, k = c.current, R = w && k && w[k], out;
     if (R && R.by) out = Object.keys(R.by).map(function (a) { return { address: a, amount: R.by[a] }; });
     else if (c.raisers && c.raisers.pet === k && c.raisers.list) out = c.raisers.list.map(function (x) { return { address: x[0], amount: x[1] }; });

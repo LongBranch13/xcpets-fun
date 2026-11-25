@@ -14,8 +14,8 @@
 'use strict';
 const fs = require('fs'), path = require('path'), vm = require('vm'), zlib = require('zlib');
 const ROOT = path.resolve(__dirname, '..');
-/* the sprite scripts pet.html loads, in its order (same list as tools/token-meta.js EXTRA) */
-const EXTRA = ['js/wizard-sprite.js', 'js/kek-sprite.js', 'js/funtrump-sprite.js', 'js/homer-sprite.js', 'js/rabbit-sprite.js', 'js/groyper-sprite.js', 'js/aspie-sprite.js', 'js/djpepe-sprite.js', 'js/viking-sprite.js', 'js/dragon-sprite.js', 'js/bo-sprite.js', 'js/rarepigeon-sprite.js', 'js/jackson-sprite.js', 'js/contest-sprite.js', 'js/dan-sprite.js', 'js/v2-bg.js', 'js/v2-looks.js', 'js/v2-clown-hair.js', 'js/v2-render.js'];
+/* the species registry + every pet's sprite script (js/species-registry.js scripts(), the same files pet.html loads), then the renderer */
+const EXTRA = ['js/species-registry.js'].concat(require('../js/species-registry.js').scripts(), ['js/dan-sprite.js', 'js/v2-bg.js', 'js/v2-looks.js', 'js/v2-clown-hair.js', 'js/v2-render.js']);
 
 function load(ctx) {
   if (ctx.V2Render) return ctx;
