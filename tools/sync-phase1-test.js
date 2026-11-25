@@ -49,7 +49,7 @@ function fixtureState() {
   const C = bootSync();
   ok(PUBLIC.join(' ') === 'https://api.counterparty.io:4000/v2 https://api.unspendablelabs.com:4000/v2', 'default upstreams are the two public Core nodes');
   const tree = fs.readdirSync(path.join(ROOT, 'tools/sync-server')).filter(f => f.endsWith('.js') || f.endsWith('.md')).map(f => fs.readFileSync(path.join(ROOT, 'tools/sync-server', f), 'utf8')).concat(['js/v2-boot-sync.js', 'js/v2-seed-worker.js', 'js/v2-catchup-worker.js', 'js/v2-resume.js', 'js/v2-chain.js', 'js/v2-sales.js'].map(f => fs.readFileSync(path.join(ROOT, f), 'utf8'))).join('\n');
-  ok(!/\.onion\b|start9/i.test(tree), 'no onion or private proxy host in the new code');
+  ok(!/\b[a-z2-7]{16,56}\.onion\b|start9/i.test(tree), 'no onion or private proxy host in the new code'); /* a real onion address (16-56 base32 chars), not the log scrubber's .onion pattern */
   ok(!/method:\s*'POST'|method:\s*"POST"/.test(fs.readFileSync(path.join(ROOT, 'tools/sync-server/index.js'), 'utf8') + fs.readFileSync(path.join(ROOT, 'tools/sync-server/server.js'), 'utf8')), 'the sync service does not POST');
 
   const wallet = fs.readFileSync(path.join(ROOT, 'js/v2-wallet.js'), 'utf8');

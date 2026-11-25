@@ -28,8 +28,10 @@ const byOwner={};myth.forEach(p=>(byOwner[p.owner]=byOwner[p.owner]||[]).push(p)
 const rows=snap.rows.slice(),hashes=Object.assign({},snap.hashes);let n=0;
 const burn=(b,src,tag)=>{const tx=H('fake'+(n++));rows.push({tx_index:9e9+n,tx_hash:tx,block_index:b,source:src,asset:'XCPETS',quantity:69000000000,tag:hex(tag),status:'valid'});hashes[b]=hashes[b]||H('blk'+b);return tx};
 const P1=M[0].id,P2=M[1].id,P3=M[2]&&M[2].id;let b=GB;
-for(let k=0;k<7;k++){burn(b,own,'pet:breed:'+P1+':'+P2);b+=1009}
-burn(b-1009+1,own,'pet:breed:'+P1+':'+P2); // inside cooldown
+/* cooldowns count pause-aware blocks (span), so step with spanAt: the Nov 2026 downtime pause no longer turns breeds 4-7 into cooldown rejections */
+const step=x=>V.spanAt?V.spanAt(x,1009):x+1009;let prev=b;
+for(let k=0;k<7;k++){burn(b,own,'pet:breed:'+P1+':'+P2);prev=b;b=step(b)}
+burn(prev+1,own,'pet:breed:'+P1+':'+P2); // inside cooldown
 const last=b+5000;
 const run=()=>V.replay(rows.slice().sort((x,y)=>x.block_index-y.block_index||x.tx_index-y.tx_index),hashes,[],{tip:last,live:E&&E.RealCore});
 const w=run(),w2=run();const a=w.byId[P1],c=w.byId[P2];
@@ -68,7 +70,8 @@ if(naka.length) ok(V.breedable(Object.assign({},naka[0],{breedsV2:6,lastBreed:nu
  ok(V.partsFor('bobo','chud',TG).map(d=>d.id).join()==='glasses,beard'&&V.partDef('chud','beard').kind==='face','from the gate: Chud donates glasses + beard (kind face)');
  ok(EX.every(b=>!V.partsFor(b,'chud',TG).some(d=>d.id==='beard')),'beard part never on Doge/Mumu/Pepe/Nakamoto/Dodo/Snibby/Sarutobi/Kek/Wizard bodies');
  let got={};for(const body of bodies)for(let i=0;i<300;i++){V.hybridParts(H('bp'+body+i),{shape:body,roots:[body,'chud']},TG).forEach(q=>{if(q.part==='beard')got[body]=(got[body]||0)+1;});}
- ok(EX.every(b=>!got[b])&&bodies.filter(b=>!EX.includes(b)).every(b=>got[b]>0),'hybridParts: beard drawn on '+Object.keys(got).join('/')+'; none on excluded');
+ const offer=bodies.filter(b=>V.partsFor(b,'chud',TG).some(d=>d.id==='beard')); /* later bodies (peepo, funtrump, viking) are excluded by the rules themselves: ask partsFor, not a hand list */
+ ok(offer.length>=7&&EX.every(b=>!got[b])&&bodies.every(b=>offer.includes(b)?got[b]>0:!got[b]),'hybridParts: beard drawn on '+Object.keys(got).join('/')+' (offered on '+offer.join('/')+'); none elsewhere');
  ok(V.hybridParts(H('bpx'),{shape:'bobo',roots:['bobo','chud']},TG-1).every(q=>q.part!=='beard'),'no beard part before the gate');
  const inPool=b=>{V._setEligB(b);const r=V._pool('face','bobo',3,'bobo').some(x=>x.it.id===V.CHUD_BEARD_ITEM);V._setEligB(null);return r;};
  ok(V.ALL_GEAR.some(x=>x.id===V.CHUD_BEARD_ITEM),'v2-chud-beard kept in the item list');
