@@ -2676,7 +2676,7 @@
   // ---------------------------------------------------------------- replay
   var SALE_DEX = null;
   var CG_CACHE = null;
-  function replay() { var was = REPLAYING; REPLAYING = true; try { return replay0.apply(this, arguments); } finally { REPLAYING = was; } }
+  function replay(rows, blockHashes, ops, opts) { var was = REPLAYING; REPLAYING = true; try { return replay0(rows, blockHashes, ops, opts); } finally { REPLAYING = was; } } /* FIRE SALE GRACE: REPLAYING is true only inside the replay */
   function replay0(rows, blockHashes, ops, opts) {
     rows = rows || []; blockHashes = blockHashes || {}; ops = ops || []; opts = opts || {};
     var cgIn = null; /* ACTIVATE_FIGHT_GEAR_BLOCK: the on-chain gear record (a replay of the same rows with no local ops; cached per input) */
