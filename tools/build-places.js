@@ -5,7 +5,7 @@
 'use strict';
 const fs = require('fs'), path = require('path'), ROOT = path.join(__dirname, '..'), P = require('../js/v2-places.js');
 const SKIP = ['play.html', 'fight.html', 'rare-room.html', 'breed.html', 'raid.html', '404.html'];
-const TAG = '<script src="js/v2-places.js?v=px1123a" defer></script>';
+const TAG = '<script src="js/v2-places.js?v=px1125g" defer></script>';
 /* merge-pages-1123: the Guide search index (and h2 ids) first, so the strip carries the index token */
 const GUIDE = process.argv.includes('--check') ? require('./build-guide.js').build() : (() => { const r = require('./build-guide.js').build(), o = path.join(ROOT, 'data/guide-index.json'); if (!fs.existsSync(o) || fs.readFileSync(o, 'utf8') !== r.json) fs.writeFileSync(o, r.json); return r; })();
 function fix(s, F) { const M = '<!--places-->' + P.menu() + '<!--/places-->';
