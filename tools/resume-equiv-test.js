@@ -1,6 +1,10 @@
 #!/usr/bin/env node
 /* A resumed replay must hash the same as a full replay. Splits of every snap fixture and of the shipped live burn list.
- * The rules file is patched in memory only. js/v2-rules.js on disk is not written. */
+ * The rules file is patched in memory only. js/v2-rules.js on disk is not written.
+ *   node tools/resume-equiv-test.js               both halves (about 10 minutes)
+ *   XP_SNAP_ONLY=1 node tools/resume-equiv-test.js   the snap fixtures only (also what the suite runs for this file)
+ *   node tools/resume-equiv-live-test.js          the live burn list only: the suite's other half
+ * Each half replays the whole game several times, so together they ran into the suite's 600 s per-test limit. */
 'use strict';
 const fs = require('fs'), path = require('path'), vm = require('vm'), crypto = require('crypto');
 const { patchRules, wsDecode, canResume, checkpointMeta } = require('../js/v2-resume');
@@ -43,10 +47,10 @@ function stateHash(world) {
   return h.digest('hex');
 }
 function chainCut(rows, tip) { return rows.filter(r => r.block_index <= tip); }
-function splitsOf(rows, tip) {
+function splitsOf(rows, tip, fracs) {
   const blocks = Array.from(new Set(rows.map(r => r.block_index))).sort((a, b) => a - b);
   const out = [];
-  [0.5, 0.9].forEach(f => {
+  (fracs || [0.5, 0.9]).forEach(f => {
     const n = Math.max(1, Math.min(blocks.length - 1, Math.floor(blocks.length * f)));
     const cut = blocks[n - 1];
     if (cut < tip) out.push({ name: 'fraction ' + f, baseTip: cut, baseRows: chainCut(rows, cut) });
@@ -143,11 +147,15 @@ function predicateChecks(rows, hashes, tip) {
     const hashes2 = Object.assign({}, hashes, { [tip + 1]: hashes[tip] || 'ab'.repeat(32) });
     await resumeCase(name + ' tip-only', rows, hashes2, tip + 1, null, rows, tip, null, []);
   }
+  /* under the test suite (XCPETS_TEST) this file is the snap half and resume-equiv-live-test.js is the live half, so each fits the 600 s limit */
+  if (process.env.XP_SNAP_ONLY || (process.env.XCPETS_TEST && !process.env.XP_LIVE_ONLY)) { console.log(fail ? fail + ' failed' : 'all passed (snap fixtures; the live burn list runs in resume-equiv-live-test.js)'); process.exit(fail ? 1 : 0); }
   const boot = JSON.parse(fs.readFileSync(path.join(ROOT, 'api/boot.json'), 'utf8'));
   ok(boot.rows.length > 1000 && boot.tip > 0, 'live burn list ' + boot.tip + ' has ' + boot.rows.length + ' rows');
   const dex = boot.dex || null;
   await samePair('live list', boot.rows, boot.hashes || {}, boot.tip, dex, []);
-  for (const sp of splitsOf(boot.rows, boot.tip)) {
+  /* 0.5 and three-blocks-back: a checkpoint far back and one just behind the tip. 0.9 sits between them and costs a
+   * near-full replay of the live list, so it is covered on the snap fixtures instead. */
+  for (const sp of splitsOf(boot.rows, boot.tip, [0.5])) {
     const baseDex = dex;
     await resumeCase('live ' + sp.name, boot.rows, boot.hashes || {}, boot.tip, dex, sp.baseRows, sp.baseTip, baseDex, []);
   }
