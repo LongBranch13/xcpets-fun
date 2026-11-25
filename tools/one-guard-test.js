@@ -23,6 +23,13 @@ let went = null; G.check({ w, ids: [1, 4], me: ME, onGo: ids => { went = ids; } 
 ok(JSON.stringify(went) === '[1,4]', 'check: nothing special = goes on at once with every pet');
 ok(G.flags(w, w.byId[5], ME).some(f => f.k === 'leg') && G.flags(w, w.byId[3], ME).some(f => f.k === 'star'), 'flags: Legendary and starred are special');
 
+/* big wallets (Nov 25 2026): the star list is read once per split/check, and the sheet draws at most 40 rows */
+let kc = 0; ctx.V2UI = { isKept: id => starred.indexOf(+id) >= 0, keptIds: () => { kc++; return starred.slice(); } };
+const many = []; for (let i = 0; i < 2000; i++) many.push(i % 2 ? 1 : 3);
+const spBig = G.split('discard', w, many, ME);
+ok(kc === 1 && spBig.no.starred.length === 1000 && spBig.go.length === 1000, 'split over 2,000 pets reads the star list once (' + kc + ')');
+ctx.V2UI = { isKept: id => starred.indexOf(+id) >= 0 };
+ok(/bad\.slice\(0, SHOW\)\.map/.test(rd('js/v2-sac-guard.js')) && /var SHOW = 40;/.test(rd('js/v2-sac-guard.js')), 'the sheet draws at most 40 special pets, then a count');
 /* wiring: every pet-removing path goes through the guard */
 const v2 = rd('js/v2.js'), gr = rd('js/v2-grinder.js'), sg = rd('js/v2-sac-guard.js');
 const dI = v2.slice(v2.indexOf('function discardIds('), v2.indexOf('function hiddenSet('));

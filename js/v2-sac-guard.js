@@ -12,9 +12,15 @@
 (function () {
   'use strict';
   var FED_RECENT = 288; /* 2 chain days of 144 blocks */
+  var SHOW = 40; /* rows drawn in the sheet (Nov 25 2026: a 2,000-pet permanent discard drew 2,000 sprites and froze the page) */
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function net() { return (window.LiveEngine && LiveEngine.CFG && LiveEngine.CFG.network) || 'mainnet'; }
-  function kept(me, id) { try { if (window.V2UI && V2UI.isKept) return !!V2UI.isKept(id); var v = JSON.parse(localStorage.getItem('xcpets-keep-' + net() + '-' + me) || '[]'); return Array.isArray(v) && v.map(Number).indexOf(+id) >= 0; } catch (e) { return false; } }
+  /* Nov 25 2026 (big wallets): the star list is read ONCE per check/split (a Set), not parsed from localStorage again for every pet:
+     2,000 discards x a long star list froze the page. keptSet() is reused while a check runs (KS), then dropped. */
+  var KS = null;
+  function keptSet(me) { if (KS && KS.me === me) return KS.s; if (window.V2UI && V2UI.isKept && !V2UI.keptIds) return null; var s = new Set(); try { var l = (window.V2UI && V2UI.keptIds) ? V2UI.keptIds() : JSON.parse(localStorage.getItem('xcpets-keep-' + net() + '-' + me) || '[]'); if (Array.isArray(l)) l.forEach(function (x) { s.add(Number(x)); }); } catch (e) { } return s; }
+  function kept(me, id) { try { if (KS && KS.me === me && KS.s) return KS.s.has(Number(id)); var s = keptSet(me); return s ? s.has(Number(id)) : !!V2UI.isKept(id); } catch (e) { return false; } }
+  function withKept(me, f) { var had = KS; KS = { me: me, s: keptSet(me) }; try { return f(); } finally { KS = had; } }
   function ago(n) { return n < 6 ? 'just now' : n < 144 ? 'about ' + Math.max(1, Math.round(n / 6)) + ' hour' + (Math.round(n / 6) > 1 ? 's' : '') + ' ago' : 'yesterday'; }
   function flags(w, p, me) { var f = []; if (!p) return f; var tip = (w && w.tip) || 0;
     if ((p.tier | 0) >= 3) f.push({ k: 'leg', t: '👑 LEGENDARY' }); /* Gods and Mythics can never be offered (rules: cemOfferWhy), so they never reach this sheet */
@@ -28,7 +34,8 @@
   };
   function never(action, w, p, me) { var f = NEVER[action]; return f ? f(w, p, me) : null; }
   /* split(action, w, ids, me): { go: [ids], no: { reason: [ids] } } */
-  function split(action, w, ids, me) { var go = [], no = {}; (ids || []).forEach(function (id) { var p = w && w.byId ? w.byId[id] : null, why = never(action, w, p || { id: id }, me); if (why) (no[why] = no[why] || []).push(id); else go.push(id); }); return { go: go, no: no }; }
+  function split(action, w, ids, me) { return withKept(me, function () { return split0(action, w, ids, me); }); }
+  function split0(action, w, ids, me) { var go = [], no = {}; (ids || []).forEach(function (id) { var p = w && w.byId ? w.byId[id] : null, why = never(action, w, p || { id: id }, me); if (why) (no[why] = no[why] || []).push(id); else go.push(id); }); return { go: go, no: no }; }
   function css() { if (document.getElementById('sgCss')) return; var s = document.createElement('style'); s.id = 'sgCss';
     s.textContent = '.sg-bg{position:fixed;inset:0;z-index:10100;background:rgba(5,4,12,.82);display:flex;align-items:center;justify-content:center;padding:12px}' +
       '.sg{width:100%;max-width:520px;max-height:90vh;overflow:auto;background:#1c1830;color:#f3ecd8;border:3px solid #000;box-shadow:0 0 0 3px #ff4d4d,6px 6px 0 #000;padding:14px;font-family:"Comic Neue","Comic Sans MS",sans-serif}' +
@@ -44,13 +51,13 @@
     document.head.appendChild(s); }
   function sprite(c, p, w) { try { if (window.V2Render && V2Render.lazy && V2Render.petFrames) V2Render.lazy(c, function () { return V2Render.petFrames(p, w); }, true); } catch (e) { } }
   function check(o) { var w = o.w, me = o.me, ids = (o.ids || []).map(Number), bad = [], ok = [];
-    ids.forEach(function (id) { var p = w && w.byId ? w.byId[id] : null, f = flags(w, p, me); if (f.length) bad.push({ p: p, f: f }); else ok.push(id); });
+    withKept(me, function () { ids.forEach(function (id) { var p = w && w.byId ? w.byId[id] : null, f = flags(w, p, me); if (f.length) bad.push({ p: p, f: f }); else ok.push(id); }); });
     if (!bad.length) return o.onGo(ids);
     css(); var bg = document.createElement('div'); bg.className = 'sg-bg'; bg.setAttribute('role', 'dialog'); bg.setAttribute('aria-modal', 'true'); bg.setAttribute('aria-labelledby', 'sgT');
     var n = bad.length, verb = o.verb || 'sacrifice';
     bg.innerHTML = '<div class="sg"><h3 id="sgT">⚠ Wait! ' + (n === 1 ? 'A special pet is' : n + ' special pets are') + ' in this pick</h3>' +
       '<p>' + (o.lead ? esc(o.lead) + ' ' : 'You\'re about to ' + esc(verb) + '. Once the burn confirms, every pet in it is <b>gone for good</b>. ') + 'Check ' + (n === 1 ? 'this one' : 'these') + ':</p>' +
-      '<ul class="sg-l">' + bad.map(function (x) { var p = x.p; return '<li><canvas width="32" height="32" data-sgp="' + p.id + '" aria-hidden="true"></canvas><div><div class="sg-n">' + esc(p.name || '#' + p.id) + ' <span class="muted">#' + p.id + '</span></div>' + x.f.map(function (f) { return '<i class="' + f.k + '">' + esc(f.t) + '</i>'; }).join('') + '</div></li>'; }).join('') + '</ul>' +
+      '<ul class="sg-l">' + bad.slice(0, SHOW).map(function (x) { var p = x.p; return '<li><canvas width="32" height="32" data-sgp="' + p.id + '" aria-hidden="true"></canvas><div><div class="sg-n">' + esc(p.name || '#' + p.id) + ' <span class="muted">#' + p.id + '</span></div>' + x.f.map(function (f) { return '<i class="' + f.k + '">' + esc(f.t) + '</i>'; }).join('') + '</div></li>'; }).join('') + '</ul>' + (n > SHOW ? '<p><b>…and ' + (n - SHOW).toLocaleString() + ' more special pets</b> (the first ' + SHOW + ' are shown).</p>' : '') +
       (o.all && o.allNote ? '<p>' + esc(o.allNote) + '</p>' : '') +
       '<div class="sg-b">' + (ok.length && !o.all ? '<button type="button" class="sg-ok" data-sg="ok">✅ Leave ' + (n === 1 ? 'it' : 'them') + ' out · go on with ' + ok.length + ' pet' + (ok.length === 1 ? '' : 's') + '</button>' : '') +
       '<button type="button" class="sg-no" data-sg="no">' + (ok.length && !o.all ? 'Cancel' : '✅ Cancel, keep ' + (n === 1 ? 'it' : 'them')) + '</button>' +
