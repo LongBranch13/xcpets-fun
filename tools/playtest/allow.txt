@@ -1,0 +1,6 @@
+# Known findings the robot may report without failing the run. One per line; a line matches when it is part of
+# "flow | size | kind | detail". Each line says who owns the fix. Remove the line once it is fixed.
+
+# Select all on a big wallet (350+ pets) holds the page for about 1 s. Owned by the "Show reveal for every Shock Box" thread.
+select | phone | freeze
+select | desktop | freeze

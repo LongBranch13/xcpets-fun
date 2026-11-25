@@ -1396,7 +1396,17 @@
   /* BURN LORD / 1 OF 1 / CONTEST FIRE AURA REMOVED Oct 27, 2026 (owner: 'Just take it off'). Edition pets (p.burnLord, p.supreme, p.contest) now draw the
    * plain sprite like any pet; their chips/badges/info lines stay. burnLordFx is kept as a no-op so old callers still work. Do not add the aura, crown or frame back. */
   function burnLordFx(fr) { return fr; }
-  function petFrames(p, w, extra) { var fr = petFrames0(p, w, extra);
+  /* playtest (Nov 25 2026): fast pages carry other players' pets without their art until V2Split.dress() fetches it (and a pet the page
+   * never loaded at all comes in as undefined). Drawing such a pet threw "Cannot read properties of undefined (reading 'hybrid')" deep in
+   * framesWithCore and killed whatever was drawing (the robot hit it on the fight-result replay of a pet's last battle). The one chokepoint:
+   * no art = a plain egg placeholder, and the art is asked for once so the next paint shows the real pet. Display only. */
+  var artAsked = {}, EGG_FR = null;
+  function eggFrames() { if (EGG_FR) return EGG_FR; var d = new Uint8ClampedArray(4096), x, y, i;
+    for (y = 0; y < 32; y++) for (x = 0; x < 32; x++) { i = (y * 32 + x) * 4; var dx = (x - 15.5) / 8.5, dy = (y - 17) / (y < 17 ? 11 : 9), r = dx * dx + dy * dy;
+      var c = r <= 0.78 ? [232, 220, 192] : r <= 1 ? [20, 20, 20] : [29, 42, 34]; d[i] = c[0]; d[i + 1] = c[1]; d[i + 2] = c[2]; d[i + 3] = 255; }
+    EGG_FR = [{ data: d }, { data: d }]; return EGG_FR; }
+  function artless(p) { if (p && p.id != null && !artAsked[p.id] && window.V2Split && V2Split.dress) { artAsked[p.id] = 1; try { V2Split.dress([p.id]); } catch (e) { } } return eggFrames(); }
+  function petFrames(p, w, extra) { if (!p || !p.art) return artless(p); var fr = petFrames0(p, w, extra);
     if (p && (p.mutation || p.shows) && V.lookFx) try { var mk2 = petFrames0(Object.assign({}, p, { art: Object.assign({}, p.art, { background: 'solid', bgColor: '#ff00fe', pattern: 'none' }) }), w, extra); fr = V.lookFx(fr, mk2, p); } catch (e) { if (window.console) console.warn('breed look failed #' + p.id, e); } /* breeding v2: mutation + throwback looks */
     var bare = fr, cut = V.CUTOFF_BLOCK || 971500, hd = extra && extra.noHunger ? 0 : hungerDays(p, w);
     try { if (hd) fr = hungerLook(fr, p, w, extra, hd);

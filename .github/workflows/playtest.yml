@@ -1,0 +1,40 @@
+# Play-test robot (Nov 25 2026, Jake: "I've tried and tried to find all the bugs but there are just too many"). On every pull request
+# that touches the game's pages, styles or scripts (and by hand), plays the game like a player on a phone and a desktop screen:
+# open the game and check every price against a full replay of the rules, hatch one egg and a pack, let the block land and wait for
+# the eggs to show up, Select all + Discard + Cancel, feed, the Grinder, a pet page, gifts, and the other places. Fails on freezes over
+# 1 s, script errors, prices that differ from the rules, pop-ups that never open, buttons that do nothing, results that never show.
+# Local and pretend only: a pretend wallet records the burns (nothing is ever signed or sent), a pretend chain on the runner moves one
+# block, nothing reaches xcpets.fun or the game server. Screenshots + report.json are attached as the run's artifact.
+# Known, accepted findings go in tools/playtest/allow.txt.
+name: playtest
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths: ['**.html', 'css/**', 'js/**', 'templates/**', 'tools/playtest/**', 'tools/sync-server/**', '.github/workflows/playtest.yml']
+  workflow_dispatch:
+permissions: { contents: read }
+concurrency: { group: 'playtest-${{ github.ref }}', cancel-in-progress: true }
+jobs:
+  play:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix: { size: [phone, desktop] }
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 1 }
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: npm install --no-save --no-package-lock playwright-core@1
+      - name: Build the world and the pretend chain
+        run: |
+          node --max-old-space-size=6000 tools/playtest/rig.js > rig.log 2>&1 &
+          for i in $(seq 1 120); do grep -q '^ready' rig.log && break; sleep 5; done; cat rig.log; grep -q '^ready' rig.log
+      - name: Play every flow
+        run: CHROME=$(which google-chrome || which chromium) node tools/playtest/run.js --sizes ${{ matrix.size }} --shots --out playtest-${{ matrix.size }}
+      - if: always()
+        run: tail -50 rig.log || true
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with: { name: 'playtest-${{ matrix.size }}', path: 'playtest-${{ matrix.size }}', retention-days: 14 }
