@@ -16,7 +16,7 @@ const mine = w => w.pets.filter(p => p.owner === ME);
 const alive = w => mine(w).filter(p => !p.dead && !p.released);
 
 const GATE = V.grindGate(), GATE2 = V.grind2Gate();
-ok(GATE2 === 977462, 'Meat Grinder 2 (better eggs, keep choice) opens at block 977,462');
+ok(GATE2 === 977456, 'Meat Grinder 2 (better eggs, keep choice) opens at block 977,456');
 V._setGrind2Activation(null); /* sections 1-4 check the first Grinder exactly as it was */
 ok(GATE === 977220, 'the Grinder opens at block 977,220');
 V._setGrindActivation(null); /* section 1 checks the switched-off behaviour */

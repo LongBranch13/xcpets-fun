@@ -362,7 +362,7 @@
    *  - KEEP: pet:grind:N:T (N 1-2000, T = C, U or R) grinds only pets up to that rarity: C = Commons only, U = Commons and Uncommons (keeps every
    *    Rare and Legendary), R = everything but Legendaries. Skipped pets stay in the discard pile. pet:grind and pet:grind:N grind every rarity, as before.
    * Below the gate (and while null) everything is exactly as before, and pet:grind:N:T is an unknown tag (community food), as it always was. */
-  var ACTIVATE_GRIND2_BLOCK = 977462; /* about 9:45 PM Central Tue Nov 24 2026 (tip 977,445 at Nov 25 00:54 UTC + 17; Jake: "why a whole day") */
+  var ACTIVATE_GRIND2_BLOCK = 977456; /* about 8:40 PM Central Tue Nov 24 2026 (tip ~977,446 at Nov 25 01:08 UTC + 10; Jake: "why a whole day", "lets just go for it") */
   var GRIND2_SAUSAGE_10K = [0, 5000, 3800, 1200], GRIND2_GOLD_PER_PET = 100, GRIND2_GOLD_MAX = 200000, GRIND2_SPECIAL_IN = 77, GRIND_KEEP = { C: 0, U: 1, R: 2 };
   function grind2On(b) { return ACTIVATE_GRIND2_BLOCK != null && b != null && Number(b) >= ACTIVATE_GRIND2_BLOCK; }
   /** specialEggArt(bh, id, b): THE SPECIAL EGG, the pet the 1-in-777 slot gives at block b (same order as baseHatchArt). */
