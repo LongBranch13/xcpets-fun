@@ -25,7 +25,8 @@ jobs:
       - run: npm install --no-save --no-package-lock playwright-core@1
       - name: Compare fast and full
         env: { WALLETS: '${{ github.event.inputs.wallets }}' }
-        run: node --max-old-space-size=6000 tools/fastcheck/run.js --out out --max-wait 300 ${WALLETS:+--wallets "$WALLETS"}
+        # on a branch: this branch's pages and scripts against the live feed and the full game (checks a loader change before it merges)
+        run: node --max-old-space-size=6000 tools/fastcheck/run.js --out out --max-wait 300 ${WALLETS:+--wallets "$WALLETS"} ${{ github.ref != 'refs/heads/main' && '--branch' || '' }}
       - uses: actions/upload-artifact@v4
         if: always()
         with: { name: fastcheck-report, path: out/, if-no-files-found: ignore }

@@ -59,8 +59,21 @@ function fullAt(tip) { if (worlds[tip]) return worlds[tip];
   return (worlds[tip] = { w, V: ctx.V2Rules }); }
 
 /* ---------------------------------------------------------------- the fast world, from the live page */
+/* --branch (Nov 24 2026): serve this checkout's pages and scripts in place of xcpets.fun's (the live feed api/ and the game server stay
+ * live), so a loader change can be checked against the full game before it merges. The workflow passes it on any branch but main. */
+const BRANCH_TYPES = { html: 'text/html', js: 'application/javascript', css: 'text/css', json: 'application/json', png: 'image/png', gif: 'image/gif', svg: 'image/svg+xml', webp: 'image/webp', woff2: 'font/woff2', ico: 'image/x-icon' };
+async function ctxOf(browser, o) {
+  const cx = await browser.newContext(o);
+  if (!process.argv.includes('--branch')) return cx;
+  const ROOTB = path.resolve(__dirname, '../..');
+  await cx.route(u => { try { const x = new URL(u); return (x.hostname === 'xcpets.fun' || x.hostname === 'www.xcpets.fun') && !x.pathname.startsWith('/api/'); } catch (e) { return false; } }, r => {
+    let f = decodeURIComponent(new URL(r.request().url()).pathname); if (f.endsWith('/')) f += 'index.html';
+    const fp = path.join(ROOTB, path.normalize(f)); if (!fp.startsWith(ROOTB) || !fs.existsSync(fp) || fs.statSync(fp).isDirectory()) return r.continue();
+    return r.fulfill({ status: 200, contentType: BRANCH_TYPES[fp.split('.').pop()] || 'application/octet-stream', body: fs.readFileSync(fp) }); });
+  return cx;
+}
 async function fastDump(browser, addr) {
-  const cx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const cx = await ctxOf(browser, { viewport: { width: 1280, height: 900 } });
   await cx.addInitScript(a => { try { localStorage.setItem('xcpets-v2-me', a); } catch (e) {} }, addr);
   const pg = await cx.newPage(), errors = [];
   pg.on('pageerror', e => errors.push(String(e.message || e).slice(0, 200)));
@@ -93,7 +106,7 @@ async function fastDump(browser, addr) {
  *  - Top burners whose first wallets or totals differ from the full replay's own count. */
 const RANK_BOARDS = [['wagmi'], ['pets'], ['pets', 1], ['power'], ['rare'], ['rare', 1], ['burn'], ['burn', 1], ['wins'], ['wins', 1], ['leg'], ['leg', 1], ['old']];
 async function rankCheck(browser) {
-  const cx = await browser.newContext({ viewport: { width: 1280, height: 900 } }), pg = await cx.newPage(), out = { boards: {}, burnTop: null, errors: [] };
+  const cx = await ctxOf(browser, { viewport: { width: 1280, height: 900 } }), pg = await cx.newPage(), out = { boards: {}, burnTop: null, errors: [] };
   pg.on('pageerror', e => out.errors.push(String(e.message || e).slice(0, 200)));
   const t0 = Date.now(), state = () => pg.evaluate(() => { const w = window.V2Mock && V2Mock.world && V2Mock.world();
     return { tip: w && w.tip, rows: document.querySelectorAll('#board table.board td.rk').length, empty: ((document.querySelector('#board > p.muted:not(.rknote)') || {}).textContent || '').slice(0, 160),
@@ -154,7 +167,7 @@ function rankDiffs(rk) {
  *  - the numbers on the doors (graves, my zombies, Gods), so a page that shows 0 while the data is there is caught too.
  * Then compare with the full replay: graves = the server's own builder (tools/sync-server/graves.js fromWorld) run on the full world. */
 async function cemCheck(browser, addr) {
-  const cx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const cx = await ctxOf(browser, { viewport: { width: 1280, height: 900 } });
   await cx.addInitScript(a => { try { localStorage.setItem('xcpets-v2-me', a); } catch (e) {} }, addr);
   const pg = await cx.newPage(), errors = [], t0 = Date.now();
   pg.on('pageerror', e => errors.push(String(e.message || e).slice(0, 200)));
@@ -245,7 +258,7 @@ function compare(fast, full, partial) {
   log('rankings: tip ' + rk.tip + ', ' + Object.keys(rk.boards).length + ' boards, ' + rk.diffs.length + ' problems in ' + rk.secs + ' s' + (rk.error ? ' (' + rk.error + ')' : ''));
   await browser.close();
   /* report */
-  let md = '# Fast vs full check\n\nSite ' + SITE + ' · feed tip ' + boot.tip + ' · ' + new Date().toISOString() + '\n\n', bad = 0;
+  let md = '# Fast vs full check\n\nSite ' + SITE + (process.argv.includes('--branch') ? ' (with this branch\'s pages and scripts)' : '') + ' · feed tip ' + boot.tip + ' · ' + new Date().toISOString() + '\n\n', bad = 0;
   md += '## Rankings boards' + (rk.diffs.length ? ' ❌ ' + rk.diffs.length + ' problems' : ' ✅ every board has rows, Top burners matches') + '\n\n' +
     Object.keys(rk.boards).map(k => k + ' ' + (rk.boards[k].rows || 0)).join(' · ') + '\n\n' + rk.diffs.map(d => '- **' + d.kind + '** ' + d.key + ': page=' + J(d.fast) + ' full=' + J(d.full)).join('\n') + (rk.diffs.length ? '\n\n' : '');
   if (rk.diffs.length) bad++;
