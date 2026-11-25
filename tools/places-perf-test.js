@@ -103,13 +103,15 @@ async function renderMeasure(page, label) {
     return {
       label: label, renderMs: renderMs, delayMax: Math.max(0, ...delays), longN: neu.length, longMax: neu.reduce((a, b) => Math.max(a, b), 0),
       gridB: document.querySelectorAll('#bGridB .pet.card, #bGridB button').length,
-      ez: document.querySelectorAll('#ezBreed .ez-c').length,
+      ez: document.querySelectorAll('#ezBreed .ez-c, #ezBreed .pk2-c').length, /* .pk2-c: the pet picker's cards (Nov 22 2026 pet-picker) */
       place: !!(window.V2Motel && V2Motel.placeOn && V2Motel.placeOn()),
       checks: checks,
       ezGo: vis(document.getElementById('ezBGo')),
       bell: vis(document.getElementById('bGo')),
       extras: Array.from(document.querySelectorAll('button')).filter(b => /check in/i.test(b.textContent || '') && vis(b) && b.id !== 'ezBGo' && !(b.className || '').includes('qw-hint')).map(b => (b.id || '(no id)') + ' ' + (b.className || '') + ' ' + (b.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 40)),
       gap: sc && btn ? Math.round(btn.getBoundingClientRect().top - sc.getBoundingClientRect().bottom) : null,
+      /* pet-picker order (js/v2-easy-flows.js placeCheck): motel scene -> picker (#ezBreed) -> check-in bar (#ezCheck) */
+      pickGap: (() => { const ez = document.getElementById('ezBreed'), bar = document.getElementById('ezCheck'); return sc && ez && bar ? [Math.round(ez.getBoundingClientRect().top - sc.getBoundingClientRect().bottom), Math.round(bar.getBoundingClientRect().top - ez.getBoundingClientRect().bottom)] : null; })(),
       btnAboveCols: !!(btn && document.querySelector('.ez-cols') && btn.getBoundingClientRect().top < document.querySelector('.ez-cols').getBoundingClientRect().top),
       solo: (() => { const t = document.querySelector('#rmTabs'); if (!t) return 'absent'; const s = getComputedStyle(t); return t.classList.contains('rm-solo') ? 'solo-' + s.display : 'tabs-' + s.display; })(),
       overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
@@ -172,7 +174,7 @@ async function renderMeasure(page, label) {
     ok(info.gridB === 0, 'breed page does not build a card per partner');
     ok(info.ezGo && !info.bell && !info.extras.length, 'one check-in, beside the motel (' + JSON.stringify(info.extras) + ')');
     ok(info.solo === 'absent' || info.solo === 'solo-none', 'retired top Check in is not shown (' + info.solo + ')');
-    ok(info.gap != null && info.gap < 240 && info.btnAboveCols, 'check-in sits by the motel animation (gap ' + info.gap + 'px)');
+    ok(info.pickGap && info.pickGap[0] >= 0 && info.pickGap[0] < 240 && info.pickGap[1] >= 0 && info.pickGap[1] < 40, 'the pet picker sits under the motel and the check-in right after it (gaps ' + JSON.stringify(info.pickGap) + 'px)');
     ok(info.overflow <= 8, 'no horizontal overflow at 1280 (' + info.overflow + ')');
     console.log('MEASURE real breed', JSON.stringify(info));
     const warm = await boot(desk, origin, 'breed.html');
@@ -192,39 +194,41 @@ async function renderMeasure(page, label) {
     console.log('MEASURE breed stress warm', JSON.stringify(stressW));
     ok(stressM.ez > 0 && stressM.ez <= 96, 'easy flow shows a page of mates, not the world (' + stressM.ez + ')');
     console.log('MEASURE breed stress', JSON.stringify(stressM));
+    /* the pet picker (js/v2-pick.js, Nov 22 2026) replaced the easy-flow strips: one search box per side, cards .pk2-c,
+     * a pet that cannot go is .no with its reason in the title (a tap toasts it) */
     const searchMs = await desk.evaluate(async () => {
       const t0 = performance.now();
-      const q = document.getElementById('ezBqB'); q.value = 'giant'; q.dispatchEvent(new Event('input', { bubbles: true }));
+      const q = document.querySelector('#ezBreed [data-pk2q]'); q.value = 'giant'; q.dispatchEvent(new Event('input', { bubbles: true }));
       await new Promise(r => setTimeout(r, 80));
-      return { ms: Math.round(performance.now() - t0), n: document.querySelectorAll('#ezBreed .ez-c').length };
+      return { ms: Math.round(performance.now() - t0), n: document.querySelectorAll('#ezBreed .pk2-c').length };
     });
     results.pages.mateSearch = searchMs;
     ok(searchMs.ms < 800, 'mate search does not rescore the world (' + searchMs.ms + 'ms)');
     console.log('MEASURE mate search', JSON.stringify(searchMs));
-    const why = await desk.evaluate(() => {
-      const b = document.getElementById('ezFall'); if (b && b.getAttribute('aria-pressed') !== 'true') b.click();
+    const why = await desk.evaluate(async () => {
       const p = V2Mock.world().pets.find(x => x.owner === V2UI.ME && x.stage === 1 && !x.dead);
-      const q = document.getElementById('ezBqA'); if (q && p) { q.value = String(p.id); q.dispatchEvent(new Event('input', { bubbles: true })); }
-      const w = document.querySelector('#ezBreed .ez-why');
-      return (w && w.textContent) || '';
+      const q = document.querySelector('#ezBreed [data-pk2q]'); if (q && p) { q.value = String(p.id); q.dispatchEvent(new Event('input', { bubbles: true })); }
+      await new Promise(r => setTimeout(r, 120));
+      const c = p && document.querySelector('#ezBreed .pk2-c.no[data-pk2id="' + p.id + '"]');
+      return c ? c.getAttribute('title') || '' : '(no disabled card for #' + (p && p.id) + ')';
     });
     ok(/young|adult|breed|stage|cooldown|neglected/i.test(why), 'a pet that cannot breed shows the reason (' + why.slice(0, 80) + ')');
-    await desk.evaluate(() => {
-      const q = document.getElementById('ezBqA'); if (q && q.value) { q.value = ''; q.dispatchEvent(new Event('input', { bubbles: true })); }
-      const b = document.getElementById('ezFall'); if (b && b.getAttribute('aria-pressed') === 'true') b.click();
+    await desk.evaluate(async () => {
+      const q = document.querySelector('#ezBreed [data-pk2q]'); if (q && q.value) { q.value = ''; q.dispatchEvent(new Event('input', { bubbles: true })); }
+      await new Promise(r => setTimeout(r, 80));
     });
     await desk.evaluate(() => {
       window.__sends = 0;
       if (window.V2Wallet) ['send', 'sendDex'].forEach(k => { if (V2Wallet[k]) V2Wallet[k] = function () { window.__sends++; return Promise.reject(new Error('test blocked send')); }; });
-      const a = document.querySelectorAll('#ezBreed .ez-strip')[0].querySelector('[data-ez]');
-      a.click();
+      const a = document.querySelector('#ezBreed .pk2-pick[data-pk2side="A"] .pk2-c:not(.no)') || document.querySelector('#ezBreed .pk2-c:not(.no)'); if (a) a.click();
     });
-    await desk.waitForTimeout(50);
-    await desk.evaluate(() => { const strips = document.querySelectorAll('#ezBreed .ez-strip'); const b = strips[1] && strips[1].querySelector('[data-ez]:not([aria-disabled="true"])'); if (b) b.click(); });
-    await desk.waitForTimeout(50);
+    await desk.waitForTimeout(80);
+    await desk.evaluate(() => { const b = document.querySelector('#ezBreed .pk2-pick[data-pk2side="B"] .pk2-c:not(.no):not(.on)'); if (b) b.click(); }); /* the date comes from the B side's list */
+    await desk.waitForTimeout(80);
     const go = await desk.evaluate(() => { const b = document.getElementById('ezBGo'); const on = b && !b.disabled; if (on) b.click(); return { on: on, text: b ? b.textContent : '' }; });
     await desk.waitForTimeout(80);
     const cf = await desk.evaluate(() => ({ on: document.getElementById('confirmBox').classList.contains('on'), log: (document.getElementById('cfLog') || {}).textContent || '', sends: window.__sends || 0, title: (document.getElementById('cfTitle') || {}).textContent || '' }));
+    if (!(go.on && cf.on && /pet:breed:/.test(cf.log))) console.log('  confirm detail', JSON.stringify({ go, cf: Object.assign({}, cf, { log: cf.log.slice(0, 300) }), ab: await desk.evaluate(() => [document.getElementById('bA').value, document.getElementById('bB').value, (document.getElementById('cfBody') || {}).textContent ? document.getElementById('cfBody').textContent.slice(0, 300) : null]) }));
     ok(go.on && cf.on && /pet:breed:/.test(cf.log), 'check-in opens the normal breed confirm (' + cf.title + ')');
     ok(cf.sends === 0, 'opening confirm does not send');
     await desk.evaluate(() => document.getElementById('cfNo').click());
