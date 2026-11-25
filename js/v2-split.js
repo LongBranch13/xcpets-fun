@@ -647,13 +647,20 @@
     }
     clearTimeout(keepT); keepT = setTimeout(keepFlush, 1500);
   }
+  /* layout-check Nov 25 2026 ("Cannot read properties of undefined (reading 'sig')" on play.html, about one load in five):
+   * a flush waits on IndexedDB for each shard, and a pet page downloaded meanwhile re-armed the 1.5 s timer. The second flush
+   * had the same shard name in its list, the first had already taken it out of keepQ, and keepQ[nm].sig threw. Now one flush
+   * runs at a time (a flush asked for while one is running starts again after it) and a name that is gone is skipped. */
+  var keepBusy = false;
   function keepFlush() {
     var names = Object.keys(keepQ); if (!names.length) return;
+    if (keepBusy) { clearTimeout(keepT); keepT = setTimeout(keepFlush, 300); return; }
+    keepBusy = true;
     keepOpen().then(function (db) {
-      if (!db) return;
+      if (!db) { keepBusy = false; return; }
       (function next() {
-        var nm = names.shift(); if (nm == null) return;
-        var e = keepQ[nm]; delete keepQ[nm];
+        var nm = names.shift(); if (nm == null) { keepBusy = false; return; }
+        var e = keepQ[nm]; if (!e) return next(); delete keepQ[nm];
         /* add to the saved entry of the same digest (a wallet's pets in one shard can arrive over several pages) */
         keepGet(nm, e.sig).then(function (old) {
           var k;
@@ -671,7 +678,7 @@
             tx.objectStore('s').put({ v: 1, sig: e.sig, hashes: e.hashes, pets: e.pets, at: Date.now() }, keepKey(nm));
             tx.oncomplete = tx.onerror = tx.onabort = function () { delete keepMemo[keepKey(nm) + '|' + e.sig]; setTimeout(next, 30); };
           } catch (x) { setTimeout(next, 30); }
-        });
+        }, function () { setTimeout(next, 30); });
       })();
     });
   }
@@ -1501,5 +1508,5 @@
     zombieP = getJson(folder + 'view/zombies.json').then(function (z) { return applyZombies(z); }, function () { return scanZombies(folder, onProg); });
     return zombieP;
   }
-  window.V2Split = { follow: follow, checkedTip: function () { return checkedTip; }, loadLead: loadLead, remergeLead: remergeLead, STALE: STALE, SCREEN_PAGES: SCREEN_PAGES, AUTO_CAP: AUTO_CAP, prepare: prepare, recheck: recheck, install: install, assemble: assemble, startVerify: startVerify, checkPlans: checkPlans, checkNote: checkNote, serverCheck: serverCheck, serverShop: serverShop, publishedShop: publishedShop, serverStat: function () { return serverStat; }, rest: rest, more: more, loadBoard: loadBoard, loadZombies: loadZombies, dress: dress, boardBytes: function () { return { bytes: boardBytes, files: boardFiles }; }, ensureDead: ensureDead, ensurePet: ensurePet, ownerShard: function (addr, cb) { sha2(addr).then(function (h) { cb(h.slice(0, 2)); }); }, petSig: petSig, healthTip: function () { return healthTipN; }, noteHealth: noteHealth, pingHealth: pingHealth, ownersReady: ownersReady, ownersKnown: ownersKnown, adoptOwners: adoptOwners, openOwnerPets: openOwnerPets, openList: openList, notePets: notePets, ownerTable: ownerTable, pageWallet: pageWallet, resolveWorld: resolveWorld, newestPages: newestPages, rowsToLog: rowsToLog, loadNewest: loadNewest, keepStat: function () { return keepStat; }, _order: { idOrder: idOrder, pageFromOrder: pageFromOrder } };
+  window.V2Split = { _keep: { put: keepPut, flush: keepFlush, start: keepStart, q: function () { return keepQ; }, busy: function () { return keepBusy; } }, follow: follow, checkedTip: function () { return checkedTip; }, loadLead: loadLead, remergeLead: remergeLead, STALE: STALE, SCREEN_PAGES: SCREEN_PAGES, AUTO_CAP: AUTO_CAP, prepare: prepare, recheck: recheck, install: install, assemble: assemble, startVerify: startVerify, checkPlans: checkPlans, checkNote: checkNote, serverCheck: serverCheck, serverShop: serverShop, publishedShop: publishedShop, serverStat: function () { return serverStat; }, rest: rest, more: more, loadBoard: loadBoard, loadZombies: loadZombies, dress: dress, boardBytes: function () { return { bytes: boardBytes, files: boardFiles }; }, ensureDead: ensureDead, ensurePet: ensurePet, ownerShard: function (addr, cb) { sha2(addr).then(function (h) { cb(h.slice(0, 2)); }); }, petSig: petSig, healthTip: function () { return healthTipN; }, noteHealth: noteHealth, pingHealth: pingHealth, ownersReady: ownersReady, ownersKnown: ownersKnown, adoptOwners: adoptOwners, openOwnerPets: openOwnerPets, openList: openList, notePets: notePets, ownerTable: ownerTable, pageWallet: pageWallet, resolveWorld: resolveWorld, newestPages: newestPages, rowsToLog: rowsToLog, loadNewest: loadNewest, keepStat: function () { return keepStat; }, _order: { idOrder: idOrder, pageFromOrder: pageFromOrder } };
 })();

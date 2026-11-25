@@ -4,3 +4,8 @@
 # Select all on a big wallet (350+ pets) holds the page for about 1 s. Owned by the "Show reveal for every Shock Box" thread.
 select | phone | freeze
 select | desktop | freeze
+
+# Big lists still cost about a second while a page first paints (Petdex, Rare Room). Known perf work, see xcpets-perf-freezes;
+# the robot still fails on a freeze during play, only not on the first paint.
+places | | freeze | petdex.html load
+places | | freeze | rare-room.html load

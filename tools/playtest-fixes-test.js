@@ -44,4 +44,6 @@ ok(/function revNeedsArt\(\)/.test(rd('js/v2.js')) && /if \(revNeedsArt\(\)\) re
 ok(/sheetOpen\(\)\) return setTimeout\(nextAnim/.test(rd('js/v2.js')), 'a queued replay waits while a sheet (Sign & burn...) is open');
 ok(/body\.mpc-sel #xwPill\{display:none!important\}/.test(rd('js/v2-mypets-calm.js')), 'the wallet pill hides while the selection bar is pinned (it covered Discard selected)');
 
+ok(/if \(keepBusy\)/.test(rd('js/v2-split.js')) && /var e = keepQ\[nm\]; if \(!e\) return next\(\)/.test(rd('js/v2-split.js')), 'only one saved-shard flush runs at a time (see tools/split-keep-test.js)');
+
 console.log(`playtest-fixes: ${n - fails} passed, ${fails} failed`); process.exit(fails ? 1 : 0);
