@@ -513,19 +513,22 @@ body[data-split="fight"] main>section:not(#topBar):not(#gate):not(.split-keep):n
 #packBox .pktiers{font-size:14px;margin:0 0 8px}#packBox .pkkeep{margin:0 0 8px;text-align:center}#packBox .pkkeep .btn{margin:0 auto 4px}
 body:has(#packBox.on) .tut-tip{display:none} /* pet-flow-smoother: a coach tip that is already up hides while the hatch review is open */
 /* hatch-review-big 2026-10-28 (owner: 'scroll box is way too small'): the egg hatch review (#packBox, not the gear popup) is a big popup.
- * Desktop/tablet: near full viewport, the pet card grid takes all the spare height and scrolls on its own; the two button rows share one line.
- * Phone: full screen, ONE scroll for the whole review (no tiny inner scroller); the Keep / Later / Dust / Hatch more / Close rows stay pinned at the bottom. */
+ * hatch-review-scroll 2026-11-25 (owner: 'cant scroll down to see pets', 1,000-egg Shock Box): the desktop layout used to give the pet grid only
+ * the height LEFT OVER under the summary (luck line, best finds, quick choices, Show chips, Species/Sort/pager). That summary keeps growing, so on
+ * a laptop the grid shrank to a thin strip behind the buttons. Now every size works like the phone: ONE scroll for the whole review (no inner
+ * scroller that can collapse), and the button bar (Discard selected / Done | Share | Hatch more) stays pinned at the bottom on one line.
+ * Phone (<=600px) keeps its own stacked pinned rows below. */
 #packBox.reveal:not(.gearmode){padding:10px}
-#packBox:not(.gearmode) .box{width:100%;max-width:1240px;height:calc(100vh - 20px);height:calc(100dvh - 20px);max-height:none;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:auto auto minmax(0,1fr) auto auto;column-gap:8px;align-content:stretch;padding:14px 16px 10px}
+#packBox:not(.gearmode) .box{width:100%;max-width:1240px;height:calc(100vh - 20px);height:calc(100dvh - 20px);max-height:none;display:grid;grid-template-columns:1fr auto 1fr;grid-template-rows:none;grid-auto-rows:max-content;column-gap:0;align-content:start;padding:14px 16px 0;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain}
 #packBox:not(.gearmode) .box>h2,#packBox:not(.gearmode) .box>#packSummary,#packBox:not(.gearmode) .box>#packGrid,#packBox:not(.gearmode) .box>#packNote{grid-column:1/-1;min-width:0}
 #packBox:not(.gearmode) .box>h2{margin:0 0 6px}
 #packBox:not(.gearmode) #packSummary{margin:0 0 6px}#packBox:not(.gearmode) .pkkeep{margin:0 0 6px}#packBox:not(.gearmode) .dudbar{margin:0 0 6px}
-#packBox:not(.gearmode) .box>.row{margin-top:8px!important;align-self:start}
+#packBox:not(.gearmode) .box>.row,#packBox:not(.gearmode) .box>#shPack{position:sticky;bottom:0;z-index:3;margin:0!important;padding:8px 4px;box-sizing:border-box;background:var(--panel,#18221b);border-top:2px solid #3ddc84;align-items:center;align-self:stretch;flex-wrap:nowrap;white-space:nowrap;gap:6px}
 #packBox:not(.gearmode) .box>.row:not(.pack-after){grid-column:1;justify-content:flex-end!important}
-#packBox:not(.gearmode) .box>.pack-after{grid-column:2;justify-content:flex-start!important}
-#packBox:not(.gearmode) .box>#packNote{margin:6px 0 0;font-size:11px}
-#packBox:not(.gearmode) .box>#packGrid.packgrid{height:auto;max-height:none;min-height:0;overflow-y:auto;overscroll-behavior:contain;align-content:start;border:1px solid var(--line);border-radius:6px;padding:6px}
-@media (max-width:900px){#packBox:not(.gearmode) .box{grid-template-columns:1fr}#packBox:not(.gearmode) .box>.row:not(.pack-after),#packBox:not(.gearmode) .box>.pack-after{grid-column:1;justify-content:center!important}}
+#packBox:not(.gearmode) .box>#shPack{grid-column:2;display:flex;justify-content:center}#packBox:not(.gearmode) .box>#shPack .sh-row{margin:0;width:auto}
+#packBox:not(.gearmode) .box>.pack-after{grid-column:3;justify-content:flex-start!important}
+#packBox:not(.gearmode) .box>#packNote{margin:0;padding:6px 0 10px;font-size:11px}
+#packBox:not(.gearmode) .box>#packGrid.packgrid{height:auto;max-height:none;min-height:0;overflow:visible;align-content:start;border:1px solid var(--line);border-radius:6px;padding:6px;margin-bottom:8px}
 @media (max-width:600px){
 #packBox.reveal:not(.gearmode){padding:0}
 #packBox:not(.gearmode) .box{display:block;height:100vh;height:100dvh;max-width:none;border-radius:0;border-width:2px;padding:10px 8px 0;overflow-y:auto;overscroll-behavior:contain}
@@ -534,10 +537,12 @@ body:has(#packBox.on) .tut-tip{display:none} /* pet-flow-smoother: a coach tip t
 #packBox:not(.gearmode) .box>.pack-after{position:sticky;bottom:0;z-index:3;margin:0!important;padding:4px 0 8px;height:52px;box-sizing:border-box;background:var(--panel,#18221b);gap:6px}
 #packBox:not(.gearmode) .box>.row .btn,#packBox:not(.gearmode) .box>.row .q{font-size:12px;padding:8px 8px;min-height:40px;white-space:nowrap}
 #packBox:not(.gearmode) .box>#packNote{padding:8px 4px 12px}
+#packBox:not(.gearmode) .box>.row:not(.pack-after),#packBox:not(.gearmode) .box>.pack-after{justify-content:center!important}#packBox:not(.gearmode) .box>.pack-after{border-top:0}
+#packBox:not(.gearmode) .box>#shPack{position:static;border-top:0;padding:4px 0}#packBox:not(.gearmode) .box>#packGrid.packgrid{margin-bottom:0}
 }
 /* hatch-review-simple 2026-10-28: plain review: two equal Keep choices, Show chips, tap a card to select (✓), Hide selected (N) + Done, ✕ in the corner */
 #packBox:not(.gearmode) .box{position:relative}
-#packBox:not(.gearmode) #packX{position:absolute;top:8px;right:8px;z-index:4;min-width:40px;min-height:40px;padding:0 10px;font-size:16px}
+#packBox:not(.gearmode) #packX{position:fixed;top:18px;right:max(18px,calc((100vw - 1240px) / 2 + 18px));z-index:4;min-width:40px;min-height:40px;padding:0 10px;font-size:16px}
 #packBox:not(.gearmode) .box>h2{padding:0 44px}
 #packBox .pkkeep{display:flex;flex-wrap:wrap;gap:8px 12px;justify-content:center;align-items:stretch}
 #packBox .pkkeep .btn.pkq{margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-width:220px;line-height:1.2}
