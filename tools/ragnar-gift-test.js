@@ -10,9 +10,11 @@ const boot = JSON.parse(fs.readFileSync(bootF, 'utf8'));
 function knownHashes() { const x = { window: {} }; x.window.window = x.window; x.self = x.window; vm.createContext(x); vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/block-hashes.js'), 'utf8'), x); return x.window.XCPETS_BLOCK_HASHES || x.XCPETS_BLOCK_HASHES || {}; }
 let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++; };
 const H = Object.assign({}, knownHashes(), boot.hashes);
-const ctx = S.workerFns(), w = S.replayWorld(ctx, boot.rows, H, boot.tip, boot.dex || null), V = ctx.V2Rules, G0 = V.ACTIVATE_RAGNAR_GIFT_BLOCK;
+/* Fixtures age: the gate (977,520) was mined on Nov 25 2026. The mechanics are checked on the world one block
+ * before the gate (a replay stopped there), and once the boot tip is past the gate, the live replay must carry the gift. */
+const ctx = S.workerFns(), w0tip = Math.min(boot.tip, 977519), w = S.replayWorld(ctx, boot.rows.filter(r => r.block_index <= w0tip), H, w0tip, boot.dex || null), V = ctx.V2Rules, G0 = V.ACTIVATE_RAGNAR_GIFT_BLOCK, mined = boot.tip >= G0;
 ok(G0 === 977520 && V.RAGNAR_GIFT.pet === 73324 && V.RAGNAR_GIFT.value === 33, 'gate 977,520, Ragnar #73324, Vigor 33');
-ok(boot.tip < G0 && !w.ragnarGift, 'boot tip ' + boot.tip + ' is before the gate: the gift has not fired, the live world is unchanged until then');
+ok(w0tip < G0 && !w.ragnarGift, 'replayed to ' + w0tip + ', before the gate: the gift has not fired');
 const sig = p => JSON.stringify({ stats: p.stats, carried: p.carried || [], owner: p.owner, species: p.species, dead: !!p.dead, stage: p.stage, tier: p.tier });
 const before = {}; w.pets.forEach(p => { before[p.id] = sig(p); }); const nV = w.byId[205411].stats.vigor, nOther = Object.assign({}, w.byId[205411].stats), logN = w.log.length;
 V.ragnarGift(w, G0 - 1); ok(!w.ragnarGift, 'one block before the gate: nothing happens');
@@ -27,4 +29,9 @@ ok(R && (R.carried || []).some(c => c.stat === 'vigor' && c.value === 33 && c.fr
 ok(N && N.stats.vigor === 33 && nV === 25, 'Naking Vigor 25 -> 33');
 ['spark', 'grit', 'zoom', 'luck'].forEach(k => ok(N.stats[k] === byOff[205411].stats[k], 'Naking ' + k + ' unchanged (' + N.stats[k] + ')'));
 ok(w.log.length === logN, 'adds no log entries');
+if (mined) {
+  const live = S.replayWorld(S.workerFns(), boot.rows, H, boot.tip, boot.dex || null), LR = live.byId[73324], LN = live.byId[205411];
+  ok(live.ragnarGift === G0, 'boot tip ' + boot.tip + ' is past the gate: the live replay fired the gift');
+  ok(LR && (LR.carried || []).some(c => c.stat === 'vigor' && c.value === 33 && c.gift) && LN && LN.stats.vigor === 33, 'live world: Ragnar carries Vigor 33 and Naking has Vigor 33');
+} else console.log('     boot tip ' + boot.tip + ' is before the gate: live check skipped');
 console.log(fails ? fails + ' FAILED' : 'all passed'); process.exit(fails ? 1 : 0);

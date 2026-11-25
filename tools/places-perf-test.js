@@ -315,9 +315,13 @@ async function renderMeasure(page, label) {
       document.getElementById('fReset').click();
       await new Promise(r => setTimeout(r, 50));
       const many = []; for (let i = 0; i < 5000; i++) many.push(String(800000 + i)); many[0] = String(want[0]);
+      /* Time until the list shows the result, not a fixed 500 ms sleep plus whatever the other test jobs cost the timer
+       * (CI, Nov 25 2026: the sleep was inside the 1,500 ms budget and a loaded runner went over with the page fine). */
+      const note0 = (document.getElementById('fShowing') || {}).textContent || '';
       const t0 = performance.now(); el.value = many.join(' '); el.dispatchEvent(new Event('input', { bubbles: true }));
-      await new Promise(r => setTimeout(r, 500));
-      const bigMs = Math.round(performance.now() - t0), bigN = document.querySelectorAll('#pets .pet.card').length, bigNote = (document.getElementById('fShowing') || {}).textContent || '';
+      let bigMs = 0; for (let i = 0; i < 250; i++) { await new Promise(r => setTimeout(r, 20)); const t = (document.getElementById('fShowing') || {}).textContent || ''; if (t !== note0 && /5,000/.test(t)) { bigMs = Math.round(performance.now() - t0); break; } }
+      if (!bigMs) bigMs = Math.round(performance.now() - t0);
+      const bigN = document.querySelectorAll('#pets .pet.card').length, bigNote = (document.getElementById('fShowing') || {}).textContent || '';
       document.getElementById('fReset').click();
       const pileQ = [weird[3], weird[4], legend ? legend.id : weird[5], 424242425]; /* weird[3] and weird[4] are already in the pile */
       window.__demo.discardIds(pileQ.filter(id => w.byId[id] && w.byId[id].owner === ME));
