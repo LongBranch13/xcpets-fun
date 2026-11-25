@@ -119,7 +119,7 @@ async function browser() {
   page.on('console', m => { const line = m.type() + ' ' + m.text(); if (m.type() === 'error' || /orderbook/.test(line)) logs.push(line); });
   try {
     await page.goto('http://127.0.0.1:' + PORT + '/shop.html?sync=' + encodeURIComponent('https://node.xcpets.fun'), { waitUntil: 'domcontentloaded', timeout: 60000 });
-    await page.waitForFunction(() => { const s = document.getElementById('shop'); const t = s ? s.innerText : ''; return t && !/Reading the order book/.test(t); }, null, { timeout: 240000 });
+    await page.waitForFunction(() => { const s = document.getElementById('shop'); const t = s ? s.innerText : ''; return t.trim() && !/Reading the order book/.test(t); }, null, { timeout: 240000 }); /* trim: a blank #shop between renders passed the old wait and read as an empty book */
     const book = await page.locator('#shop').innerText();
     ok(!/Could not read the order book/.test(book), 'order book has no read error');
     ok(/binder|Buy|No pets match|empty/i.test(book) && !/Could not read/.test(book), 'order book rendered: ' + book.replace(/\s+/g, ' ').slice(0, 220));
@@ -127,6 +127,7 @@ async function browser() {
     await page.locator('#shop').scrollIntoViewIfNeeded();
     await page.screenshot({ path: path.join(shotDir, 'orderbook-blocked-4000.png'), fullPage: false });
     const verify = page.locator('#splitVerify');
+    await page.waitForSelector('#splitVerify', { state: 'attached', timeout: 120000 }).catch(() => {}); /* the fast-load bar adds it once the world is in */
     ok(await verify.count() === 1, 'Verify is on the page');
     await verify.click();
     await page.waitForFunction(() => { const b = document.getElementById('splitViewBar'); const t = b ? b.innerText : ''; return /Checked at block/.test(t) || /did not finish/.test(t); }, null, { timeout: 180000 });
