@@ -182,7 +182,8 @@
   function gTier(g) { if (!g) return 0; if (g.legendary) return 3; if (typeof g.tier === 'number') return Math.max(0, Math.min(3, g.tier)); var it = A.ctx.V.itemOf ? A.ctx.V.itemOf(g.item) : null; return it && typeof it.tier === 'number' ? Math.max(0, Math.min(3, it.tier)) : 0; }
   function living(w, who) { return w.pets.filter(function (p) { return V2Own.isLiving(p, who, { zombies: false }); }); }
   /* offer-discards-only-1105: Discard pile = browser localStorage (same key as My Pets). Not on chain; UI enforces "only Discarded" when the gate is on. */
-  function discSet() { var h = {}, me = A.ctx && A.ctx.ME, net = (window.LiveEngine && LiveEngine.CFG && LiveEngine.CFG.network) || 'mainnet';
+  /* Nov 25 2026 (G Money): the pile is the browser list AND on-chain discards (V2Own.discardSet); the rules accept only the on-chain ones. */
+  function discSet() { var me = A.ctx && A.ctx.ME; if (window.V2Own && V2Own.discardSet) return V2Own.discardSet(A.ctx && A.ctx.w, me); var h = {}, net = (window.LiveEngine && LiveEngine.CFG && LiveEngine.CFG.network) || 'mainnet';
     try { JSON.parse(localStorage.getItem('xcpets-hidden-' + net + '-' + (me || '')) || '[]').forEach(function (id) { h[+id] = 1; }); } catch (e) {}
     return h; }
   function buildMine() { var w = A.ctx.w, V = A.ctx.V, b = bk(), me = A.ctx.ME, discOnly = !!(V.cemTokenOfferOn && V.cemTokenOfferOn(b)), H = discOnly ? discSet() : null; A.who = me || ''; A.sample = false;
