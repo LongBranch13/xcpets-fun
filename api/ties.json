@@ -1,6 +1,6 @@
 {
- "lastBlock": 977449,
- "count": 466,
+ "lastBlock": 977450,
+ "count": 475,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -5593,6 +5593,114 @@
    "species": "hyb:funtrump:wojak",
    "speciesLabel": "Funjak (hybrid)",
    "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 86379,
+   "asset": "A4404403673022108184",
+   "tiedBlock": 977450,
+   "tiedTx": "04642a396a058a22bcf3f2dd70a27865986fcda12af2fa83b38dda7e37873afd",
+   "kind": "deed",
+   "name": "Gulonob",
+   "species": "hyb:mumu:kek",
+   "speciesLabel": "Mukek (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 89552,
+   "asset": "A15341793169872040539",
+   "tiedBlock": 977450,
+   "tiedTx": "0087fb19c9fb232c89a58c6507b2174429c68c16a4447b4f307e7b9ed5f62353",
+   "kind": "deed",
+   "name": "Chafokak",
+   "species": "hyb3:kek:dodo:wizard",
+   "speciesLabel": "Kekdozard (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 114876,
+   "asset": "A2135644034127497358",
+   "tiedBlock": 977450,
+   "tiedTx": "ee4afe3ab39e752dea7ad48d2997301a67b0f99fda80b70caffe8803b3bea27b",
+   "kind": "deed",
+   "name": "Tebimi",
+   "species": "hyb:sarutobi:snibby",
+   "speciesLabel": "Sabby (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 114877,
+   "asset": "A2262415197586384714",
+   "tiedBlock": 977450,
+   "tiedTx": "185324556372fa94c38f8232bf3a71b28dd2dd82ec13cdebe48d912c28e76c9c",
+   "kind": "deed",
+   "name": "Limodobun",
+   "species": "chud",
+   "speciesLabel": "Chud",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 114898,
+   "asset": "A16185054884275503178",
+   "tiedBlock": 977450,
+   "tiedTx": "de4d95f887cd7ee51ae1ab5f8dcb6b021629112b32f8cd05eceb283e631d3a16",
+   "kind": "deed",
+   "name": "Wonoobit",
+   "species": "wojak",
+   "speciesLabel": "Wojak",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 115103,
+   "asset": "A2470095764736592443",
+   "tiedBlock": 977450,
+   "tiedTx": "5c0a06c1904347cdd1adfaec0fe037a9da322ae04b83b1a67ad397a88940b9fd",
+   "kind": "deed",
+   "name": "Dijipop",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 115133,
+   "asset": "A9720454701979381481",
+   "tiedBlock": 977450,
+   "tiedTx": "2c00023538d8a2a6cf3d0b4924bf8a27fcea2b10caec79e055256c317507dddc",
+   "kind": "deed",
+   "name": "Kesikuk",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 115193,
+   "asset": "A4274498969780934482",
+   "tiedBlock": 977450,
+   "tiedTx": "31c952f2878efc09155779ce17675d91e46289d9b5295779b4865694c4105035",
+   "kind": "deed",
+   "name": "Noovepo",
+   "species": "mumu",
+   "speciesLabel": "Mumu",
+   "rarity": "Uncommon",
+   "stage": "Mythic"
+  },
+  {
+   "id": 115534,
+   "asset": "A1763592149621189072",
+   "tiedBlock": 977450,
+   "tiedTx": "516852531e402eefc6ca2c4a814faa9182b0f6ef7edf391bcaf08ada513b0b5c",
+   "kind": "deed",
+   "name": "Wubapip",
+   "species": "kek",
+   "speciesLabel": "Lord Kek",
+   "rarity": "Rare",
    "stage": "Mythic"
   }
  ]
