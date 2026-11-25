@@ -27,13 +27,17 @@ const ME = 'bc1qjacob';
 const store = {};
 const sandbox = {
   ME: ME,
+  KEY: 'xcpets-v2-prod',
+  hiddenSet: function () { return new Set(); },
+  inPile: function () { return false; },
   HKEY: 'xcpets-v2-hatched-xcpets-v2-prod-' + ME,
   hMem: null,
   hatchTip: null,
   revealQ: [],
   localStorage: {
     getItem: function (k) { return Object.prototype.hasOwnProperty.call(store, k) ? store[k] : null; },
-    setItem: function (k, v) { store[k] = String(v); }
+    setItem: function (k, v) { store[k] = String(v); },
+    removeItem: function (k) { delete store[k]; }
   },
   V: { newHatches: function (w, owner, seen) { return rules.V2Rules.newHatches(w, owner, seen); } },
   dataSeen: function () {},

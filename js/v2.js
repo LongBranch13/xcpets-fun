@@ -674,6 +674,7 @@
      * 'Later' on the reveal puts them in the pill. Eggs that hatch while you watch still get the egg-crack moment first. Display only. */
     var away = [], live = [];
     groups.forEach(function (g) { g.eggs.forEach(function (p) { ((hSessTip == null || (p.hatchBlock || 0) <= hSessTip) ? away : live).push(p.id); }); });
+    uAdd(away.concat(live)); /* unopened-1125: kept until the review is closed, so a reveal that never opens is never lost */
     if (away.length) { var qa = null; for (var ia = 0; ia < revealQ.length; ia++) if (revealQ[ia].kind === 'eggs' && revealQ[ia].away) { qa = revealQ[ia]; break; }
       if (rev && rev.kind === 'eggs' && rev.away && $('packBox').classList.contains('on')) { away = away.filter(function (id) { return rev.eggs.indexOf(id) < 0; }); if (away.length) { rev.eggs = rev.eggs.concat(away); rev.n0 = (rev.n0 || 0) + away.length; rev.luck = null; rev.best = null; drawReveal(); } }
       else if (qa) away.forEach(function (id) { if (qa.eggs.indexOf(id) < 0) qa.eggs.push(id); });
@@ -682,6 +683,7 @@
     if (live.length) { var q = null; for (var i = revealQ.length - 1; i >= 0; i--) if (revealQ[i].kind === 'eggs' && !revealQ[i].tray) { q = revealQ[i]; break; }
       if (rev && rev.kind === 'eggs' && !rev.tray && $('packBox').classList.contains('on')) { rev.eggs = rev.eggs.concat(live); rev.n0 = (rev.n0 || 0) + live.length; rev.luck = null; rev.best = null; drawReveal(); }
       else if (q) q.eggs = q.eggs.concat(live); else revealQ.push({ kind: 'eggs', eggs: live }); }
+    if (counted) uRestore(w);
     return groups;
   }
   /* box-reveal-1124: 25 s (was 90 s). A big wallet (GMONEY, ~31k pets) took about a minute to settle, so the reveal came late. Pages load newest
@@ -689,21 +691,44 @@
   var hDefer0 = 0, hSessTip = null, tray = null, HDEFER_MS = 25000;
   /* hatch-tray-1124: the calm 'new pets' pill. One per page, merges every away batch, shows the best finds so you know if it's worth a look. */
   function hatchFinds(w, ids) { var out = { n: 0, leg: 0, weird: 0, special: 0 };
-    ids.forEach(function (id) { var x = w.byId[id]; if (!x) return; out.n++; if (x.art && x.art.tierIndex >= 3) out.leg++; var k = revStar(x);
+    ids.forEach(function (id) { var x = w.byId[id]; if (!x) return; out.n++; if (!x.art) return; if (x.art.tierIndex >= 3) out.leg++; var k = null; try { k = revStar(x); } catch (e) { }
       if (k === 'weird') out.weird++; else if (k) out.special++; });
     return out; }
-  function trayAdd(ids) { if (!tray) tray = { eggs: [] }; ids.forEach(function (id) { if (tray.eggs.indexOf(id) < 0) tray.eggs.push(id); }); trayDraw(); }
+  /* unopened-1125 (Jake, Nov 25 2026: 3 Shock Boxes in one block, no pop-up, 'what if a player misses the popup', 'I've never seen the pill').
+   * Hatches used to be remembered as seen the moment they were found, before anyone saw them, so a reveal that never opened (a crash, a
+   * closed tab, a reload during the egg animation) lost them for good. Now every new egg also goes in an 'unopened' list in this browser
+   * until its review is closed with Done / Keep all / Discard, or the pill's ✕. Later keeps it. On every load the unopened eggs come back
+   * as the pill, so a missed pop-up is never lost. Display only: nothing is signed, discarded or changed in the game. */
+  var UKEY = 'xcpets-v2-unopened-' + KEY + '-' + ME, U_MAX = 60000;
+  function uRead() { try { var o = JSON.parse(localStorage.getItem(UKEY) || 'null'); if (!o || !o.r) return []; var out = [];
+      String(o.r).split(',').forEach(function (r) { if (!r) return; var m = r.split('-'), lo = Number(m[0]), hi = m.length > 1 ? Number(m[1]) : lo; if (!(lo > 0) || !(hi >= lo) || hi - lo > U_MAX) return; for (var n = lo; n <= hi; n++) out.push(n); });
+      return out; } catch (e) { return []; } }
+  function uWrite(ids) { try { if (!ids.length) { localStorage.removeItem(UKEY); return; } var a = ids.map(Number).filter(function (n) { return n > 0; }).sort(function (x, y) { return x - y; }), out = [], lo = a[0], hi = a[0];
+      if (a.length > U_MAX) a = a.slice(a.length - U_MAX);
+      for (var j = 1; j <= a.length; j++) { if (j < a.length && a[j] <= hi + 1) { hi = Math.max(hi, a[j]); continue; } out.push(lo === hi ? String(lo) : lo + '-' + hi); if (j < a.length) lo = hi = a[j]; }
+      localStorage.setItem(UKEY, JSON.stringify({ v: 1, r: out.join(','), at: Date.now() })); } catch (e) { } }
+  function uAdd(ids) { if (!ME || !ids || !ids.length) return; var cur = uRead(), s = new Set(cur), n0 = cur.length; ids.forEach(function (id) { id = Number(id); if (!s.has(id)) { s.add(id); cur.push(id); } }); if (cur.length !== n0) uWrite(cur); }
+  function uDel(ids) { if (!ME || !ids || !ids.length) return; var cur = uRead(); if (!cur.length) return; var d = new Set(ids.map(Number)), left = cur.filter(function (id) { return !d.has(id); }); if (left.length !== cur.length) uWrite(left); }
+  /* On a settled list: unopened eggs that are still yours, alive and not discarded, and not already queued or open, go to the pill. */
+  /* Runs on every settled look (cheap: a short range string). A pet this page has not loaded yet (a published world from before the hatch)
+   * stays in the list and comes back once it arrives; a pet that is gone, moved or discarded leaves the list. */
+  function uRestore(w) { if (!ME || !w || !w.byId) return; var cur = uRead(); if (!cur.length) return;
+    var busy = new Set(); revealQ.forEach(function (q) { (q.eggs || []).forEach(function (id) { busy.add(id); }); }); if (rev && rev.eggs) rev.eggs.forEach(function (id) { busy.add(id); }); if (tray) tray.eggs.forEach(function (id) { busy.add(id); });
+    var h = hiddenSet(), keep = [], back = [];
+    cur.forEach(function (id) { var p = w.byId[id]; if (!p) { keep.push(id); return; } if (p.owner !== ME || p.dead || p.released || inPile(p, h)) return; keep.push(id); if (!busy.has(id) && p.art) back.push(id); });
+    if (keep.length !== cur.length) uWrite(keep); if (back.length) trayAdd(back); }
+  function trayAdd(ids) { if (!tray) tray = { eggs: [] }; var s = new Set(tray.eggs); ids.forEach(function (id) { if (!s.has(id)) { s.add(id); tray.eggs.push(id); } }); trayDraw(); }
   function trayDraw() { var el = $('hatchTray');
     if (!tray || !tray.eggs.length) { if (el) el.remove(); return; }
     if (!el) { el = document.createElement('div'); el.id = 'hatchTray'; el.className = 'htray'; el.setAttribute('role', 'status'); document.body.appendChild(el);
-      el.addEventListener('click', function (e) { if (e.target.closest('.htx')) { tray = null; trayDraw(); return; } if (e.target.closest('.htgo')) trayOpen(); }); }
+      el.addEventListener('click', function (e) { if (e.target.closest('.htx')) { if (tray) uDel(tray.eggs); tray = null; trayDraw(); return; } if (e.target.closest('.htgo')) trayOpen(); }); }
     var f = hatchFinds(world(), tray.eggs), n = f.n || tray.eggs.length, bits = [];
     if (f.weird) bits.push('<b class="htw">🌀 ' + f.weird + ' weird</b>'); if (f.special) bits.push('<b class="hts">✨ ' + f.special + ' special</b>'); if (f.leg) bits.push('<b class="htl">🏆 ' + f.leg.toLocaleString('en-US') + ' Legendary</b>');
     el.innerHTML = '<button type="button" class="htgo" title="See your new pets"><span class="hticon" aria-hidden="true">🥚</span><span class="httxt"><span class="htn">' + n.toLocaleString('en-US') + ' new pet' + (n === 1 ? '' : 's') + ' hatched</span>' +
       (bits.length ? '<span class="htbits">' + bits.join(' ') + '</span>' : '') + '</span><span class="htcta">Open ›</span></button><button type="button" class="htx" aria-label="Hide this (your pets stay)" title="Hide this (your pets stay in My Pets)">✕</button>';
     el.classList.toggle('htgold', !!(f.weird || f.special)); }
   function trayOpen() { if (!tray) return; var ids = tray.eggs; tray = null; trayDraw(); if (rev && $('packBox').classList.contains('on')) closeReveal();
-    revealQ.unshift({ kind: 'eggs', eggs: ids, tray: 1, hatchAnim: 1, away: 1 }); released = true; nextReveal(); }
+    revealQ.unshift({ kind: 'eggs', eggs: ids, all: ids.slice(), tray: 1, hatchAnim: 1, away: 1 }); released = true; nextReveal(); }
   var wspinOn = false; /* wheel-spin-anim: the 8-bit Pepe Wheel reveal (js/v2-wheel-anim.js) plays once before a gear batch that came from a wheel spin. Display only. */
   /* box-reveal-1124: never open on top of another pop-up (a community pet's arrival, a pixel scene, a burn confirm); try again when it closes */
   var otherT = 0;
@@ -714,7 +739,7 @@
     var miss = q.eggs.filter(function (id) { var x = w.byId[id]; return x && !x.art; }); if (!miss.length) return false;
     if (!q.artAsked && window.V2Split && V2Split.dress) { q.artAsked = 1; V2Split.dress(miss).then(function () { nextReveal(); }, function () { nextReveal(); }); return true; }
     q.eggs = q.eggs.filter(function (id) { var x = w.byId[id]; return !x || x.art; }); if (!q.eggs.length) { revealQ.shift(); setTimeout(nextReveal, 0); return true; } return false; }
-  function nextReveal() { if (wspinOn || $('packBox').classList.contains('on') || !revealQ.length) return; if (otherUp()) { if (!otherT) otherT = setTimeout(function () { otherT = 0; nextReveal(); }, 1500); return; } if (holding()) { heldR = true; awayPing(); if (!holdT) holdT = setTimeout(function () { holdT = 0; nextReveal(); }, Math.max(50, 8050 - (Date.now() - firstDataT))); return; } /* box-reveal-1124: the 8 s hold used to end only at the next repaint (about a minute later), so the reveal came late */ if (revNeedsArt()) return; rev = revealQ.shift(); rev.page = 0; rev.sel = {}; if (rev.kind === 'eggs' && rev.sort == null && rev.eggs.length > 1) rev.sort = 'rar'; if (rev.kind === 'eggs') { rev.n0 = rev.eggs.length; rev.gone = 0; if (rev.intro == null) rev.intro = rev.eggs.length >= INTRO_MIN; } /* box-reveal-1124: 7+ eggs open on the box reveal first */ /* pet-flow-smoother: a hatch review opens Rarest first (Legendaries on page 1); the Sort menu still offers Hatch order */ if (packY == null) packY = window.scrollY || 0; if (rev.kind === 'eggs') lastHatchN = rev.eggs.length;
+  function nextReveal() { if (wspinOn || $('packBox').classList.contains('on') || !revealQ.length) return; if (otherUp()) { if (!otherT) otherT = setTimeout(function () { otherT = 0; nextReveal(); }, 1500); return; } if (holding()) { heldR = true; awayPing(); if (!holdT) holdT = setTimeout(function () { holdT = 0; nextReveal(); }, Math.max(50, 8050 - (Date.now() - firstDataT))); return; } /* box-reveal-1124: the 8 s hold used to end only at the next repaint (about a minute later), so the reveal came late */ if (revNeedsArt()) return; rev = revealQ.shift(); rev.page = 0; rev.sel = {}; if (rev.kind === 'eggs' && rev.sort == null && rev.eggs.length > 1) rev.sort = 'rar'; if (rev.kind === 'eggs') { if (!rev.all) rev.all = rev.eggs.slice(); revReady(rev); if (!rev.eggs.length) { rev = null; return nextReveal(); } rev.n0 = rev.eggs.length; rev.gone = 0; if (rev.intro == null) rev.intro = rev.eggs.length >= INTRO_MIN; } /* box-reveal-1124: 7+ eggs open on the box reveal first */ /* pet-flow-smoother: a hatch review opens Rarest first (Legendaries on page 1); the Sort menu still offers Hatch order */ if (packY == null) packY = window.scrollY || 0; if (rev.kind === 'eggs') lastHatchN = rev.eggs.length;
     var WA = window.V2WheelAnim, ws = null; if (rev.kind === 'gear' && WA) try { ws = WA.fromWins(rev.wins, world(), communityName(world())); } catch (e) { ws = null; }
     var paid = rev.kind === 'gear' && !rev.gearAnim && !lifeReduced() && (rev.wins || []).some(function (x) { return x && x.src === 'roll'; }); /* pixel-anims batch 4: a paid gear roll's piece lands on the pet (js/v2-life-anim.js gearRoll, lazy) after the wheel */
     var openG = function (r2) { if (paid && !r2.gearAnim) { r2.gearAnim = 1; wspinOn = true; withLife(function (ok) { var go2 = function () { wspinOn = false; if (rev !== r2) return; drawReveal(); open('packBox'); }; if (!ok || !window.V2LifeAnim || !V2LifeAnim.gearRoll) return go2(); try { V2LifeAnim.gearRoll(world(), r2.wins, ME, go2); } catch (e) { go2(); } }); return; } drawReveal(); open('packBox'); };
@@ -804,9 +829,10 @@
     all.forEach(function (x) { tiers[x.art.tierIndex]++; if (revEl(x)) nEl++; });
     if (!rev.best) rev.best = revBest(w, all).map(function (id) { return id.id; }); if (rev.luck == null) rev.luck = revLuck(w, all);
     var best = rev.best.map(function (id) { return w.byId[id]; }).filter(Boolean).slice(0, 6), star = best.filter(revStar), wd = all.filter(function (x) { return revStar(x) === 'weird'; }).length, sp = all.filter(revStar).length - wd;
+    var nBox = (function () { var t = {}, k = 0; all.forEach(function (x) { if (!revEl(x)) return; var b = String(x.hatchTx || '').replace(/:\d+$/, ''); if (b && !t[b]) { t[b] = 1; k++; } }); return k; })();
     var box = nEl >= 100 && nEl >= n / 2, ex = Math.round(nEl * (V.ELECTRIC_TIER_10K || [3000, 4000, 2200, 800])[3] / 10000);
     var ck = star.length ? 'weird' : box && ex && tiers[3] >= ex * 1.1 ? 'luck' : tiers[3] ? 3 : tiers[2] ? 2 : tiers[1] ? 1 : 0, caps = INTRO_CAPS[ck], cap = caps[(n + tiers[3]) % caps.length];
-    $('packTitle').textContent = box ? '⚡ Shock Box opened!' : '🥚 ' + n.toLocaleString('en-US') + ' eggs hatched!';
+    $('packTitle').textContent = box ? (nBox > 1 ? '⚡ ' + nBox + ' Shock Boxes opened!' : '⚡ Shock Box opened!') : '🥚 ' + n.toLocaleString('en-US') + ' eggs hatched!';
     var bars = [3, 2, 1, 0].map(function (t) { var c = tiers[t], pc = n ? Math.max(c ? 2 : 0, Math.round(c * 100 / n)) : 0;
       return '<div class="pkibar t' + t + '"><span class="pkil">' + esc(TIERS[t].label) + '</span><span class="pkit"><i data-w="' + pc + '" style="width:0;background:' + TIER_C[t] + '"></i></span><b class="pkic" data-n="' + c + '">0</b></div>'; }).join('');
     var head = star.length ? (wd ? '🌀 ' + wd + ' weird' : '') + (wd && sp ? ' + ' : '') + (sp ? '✨ ' + sp + ' special' : '') + (star.length === 1 && !(wd + sp > 1) ? ' find!' : ' finds!') : '🏆 Your best pulls';
@@ -818,7 +844,7 @@
     /* owner Nov 24 2026: 'Make it easy to find and keep the best pets'. One tap stars the best: every weird & special find plus the cards shown. Starred = never discarded. */
     var keepL = all.filter(revStar).concat(best).filter(function (x, i, a) { return a.indexOf(x) === i; }).map(function (x) { return x.id; }), keepN = keepL.filter(function (id) { return !isKept(id); }).length;
     $('packSummary').innerHTML = '<div class="pki' + (rev.introDone || lifeReduced() ? ' pki-done' : '') + '">' +
-      '<div class="pkisub">' + (rev.away ? 'While you were away, ' : '') + (rev.away ? 'your ' : 'Your ') + (box ? 'box' : 'eggs') + ' gave you <b>' + n.toLocaleString('en-US') + ' new pet' + (n === 1 ? '' : 's') + '</b></div>' +
+      '<div class="pkisub">' + (rev.away ? 'While you were away, ' : '') + (rev.away ? 'your ' : 'Your ') + (box ? (nBox > 1 ? nBox + ' boxes' : 'box') : 'eggs') + ' gave you <b>' + n.toLocaleString('en-US') + ' new pet' + (n === 1 ? '' : 's') + '</b></div>' +
       '<div class="pkibars" role="img" aria-label="' + esc([3, 2, 1, 0].map(function (t) { return tiers[t] + ' ' + TIERS[t].label; }).join(', ')) + '">' + bars + '</div>' +
       (cards ? '<div class="pkifinds"><div class="pkbh">' + head + '</div><div class="pkirow">' + cards + '</div></div>' : '') +
       '<div class="pkicap" aria-hidden="true">' + esc(cap) + '</div>' + rev.luck +
@@ -843,7 +869,12 @@
     $('pkiLater').onclick = function () { var ids = rev.eggs.slice(); if (!revealQ.length) packY = null; close('packBox'); rev = null; trayAdd(ids); render(); setTimeout(nextReveal, 250); };
     try { $('pkiAll').focus({ preventScroll: true }); } catch (e) { }
   }
-  function drawReveal() {
+  /* unopened-1125: a pet without its look (art) used to throw inside the review, after the eggs were already marked seen, so the pop-up
+   * never opened and nothing showed. revReady() moves such eggs to the pill (they open once their look has loaded); drawReveal() never
+   * throws: on any error the review closes and its eggs go to the pill. */
+  function revReady(r) { var w = world(), bad = []; r.eggs = r.eggs.filter(function (id) { var x = w.byId[id]; if (x && x.art) return true; if (x) bad.push(id); return false; }); if (bad.length) trayAdd(bad); }
+  function drawReveal() { try { drawReveal0(); } catch (e) { if (window.console) console.warn('hatch review', e); var r = rev; if (r && r.kind === 'eggs') { close('packBox'); rev = null; trayAdd(r.eggs); setTimeout(nextReveal, 250); } else throw e; } }
+  function drawReveal0() {
     $('packBox').classList.toggle('pkintro', !!(rev.kind === 'eggs' && rev.intro));
     if (rev.kind === 'eggs' && rev.intro) { var wi = world(); if (rev.eggs.some(function (id) { return wi.byId[id]; })) return drawIntro(wi); rev.intro = false; }
     var w = world(), gear = rev.kind === 'gear', list = gear ? rev.wins : rev.eggs.map(function (id) { return w.byId[id]; }).filter(Boolean), tiers = [0, 0, 0, 0];
@@ -937,7 +968,7 @@
   var GEAR_CAPS = [['gm. it\'s something.', 'ser, this is a Common.', 'it\'s honest work.'], ['not bad, anon.', 'a little drip never hurt.', 'up only (slightly).'], ['wen moon? now.', 'rare drip acquired.', 'number go up.'], ['MUCH WOW. VERY RARE.', 'GIGABRAIN DROP.', 'WAGMI. legendary pull.']];
   function UXB_CAP(list) { var best = null; list.forEach(function (x) { var t = x.legendary ? 3 : x.tier || 0; if (!best || t > best.t) best = { t: t, x: x }; });
     return best ? GEAR_CAPS[best.t][(String(best.x.gid || best.x.item).length + best.t) % 3] : ''; }
-  function closeReveal() { setTimeout(hdFlush, 400); var toInv = rev && rev.kind === 'gear', toPets = rev && rev.kind === 'eggs' && lastHatchN > 1; if (toPets && window.UXB && UXB.afterHatch) UXB.afterHatch(); if (!revealQ.length) packY = null; close('packBox'); rev = null; render(); setTimeout(nextReveal, 250);
+  function closeReveal() { if (rev && rev.kind === 'eggs') uDel(rev.all || rev.eggs); setTimeout(hdFlush, 400); var toInv = rev && rev.kind === 'gear', toPets = rev && rev.kind === 'eggs' && lastHatchN > 1; if (toPets && window.UXB && UXB.afterHatch) UXB.afterHatch(); if (!revealQ.length) packY = null; close('packBox'); rev = null; render(); setTimeout(nextReveal, 250);
     if (toPets && $('petsPanel')) setTimeout(function () { if (!$('packBox').classList.contains('on')) try { $('petsPanel').scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) { } }, 300);
     if (toInv && $('invPanel')) setTimeout(function () { if (!$('packBox').classList.contains('on')) try { $('invPanel').scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) { } }, 300); }
   /* pet total near the hatch buttons (2026-10-19, display only): every pet in the replayed world (w.pets.length, same as the top 'pets hatched'),
@@ -1156,7 +1187,7 @@
     var hs = hiddenSet(), gone = w.pets.filter(function (p) { return p.owner === ME && !p.released && !ZB(p) && hs.has(p.id) && !!p.dead === !!cem; }); /* a risen zombie is never in the pile (inPile) */ /* one read of the discard list: parsing it once per owned pet froze My Pets when the pile held thousands */
     if (gone.length) box.appendChild(discardedBox(gone, w));
     if (!cem && V.hdPlan) { var hdBar = chainDiscardBar(w); if (hdBar) box.appendChild(hdBar); }
-    if (!cem) pileLink(gone.length); /* discard-pile jump link */
+    if (!cem) { pileLink(gone.length); lastHatchLink(w); } /* discard-pile jump link; unopened-1125: the last hatch, always one tap away */
     $('petPager').textContent = partial ? (fmt(alive.length) + ' of ' + fmt(rost.alive) + ' loaded') : (w._pages && !w._full) ? 'Showing ' + fmt(Math.min(upto, list.length)) + ' of ' + fmt(list.length) + ' loaded · ' + fmt(w._pages.n) + ' living' : (list.length > upto ? 'Showing ' + fmt(upto) + ' of ' + fmt(list.length) + ' pets' : list.length + ' of ' + (cem ? dead.length : alive.length) + ' pets');
   }
   /* Discard pile (discard-pile, 2026-10-21; was 'Show discarded', build 2 2026-10-16). Display/localStorage only: no burn, nothing on chain.
@@ -1280,6 +1311,16 @@
     var m = el.querySelector('#hdMigrate'); if (m) m.onclick = function () { chainDiscardIds(hid, false); };
     var bk = el.querySelector('#hdBack'); if (bk) bk.onclick = function () { chainDiscardIds(chain.map(function (p) { return p.id; }), true); };
     return el; }
+  /* unopened-1125 (Jake: 'what if a player misses the popup'): '🥚 Last hatch (N)' next to the Discard pile reopens the review of your newest
+   * hatch (every egg of the newest hatch block, last 7 days, still yours and not discarded), with Keep Rare & Legendary, Discard all, sort. */
+  var LH = { w: null, ids: [] };
+  function lastHatchIds(w) { var h = hiddenSet(); if (LH.w === w && LH.nh === h.size) return LH.ids; var top = 0, ids = [], lo = (w.tip || 0) - 1008, i, p;
+    for (i = 0; i < w.pets.length; i++) { p = w.pets[i]; if (!p || p.owner !== ME || p.dead || p.released || p.community || p.lastGot != null || !(p.hatchBlock >= lo) || /^XCPETS:/.test(p.hatchTx || '') || inPile(p, h)) continue;
+      if (p.hatchBlock > top) { top = p.hatchBlock; ids = []; } if (p.hatchBlock === top) ids.push(p.id); }
+    LH = { w: w, nh: h.size, ids: ids }; return ids; }
+  function lastHatchLink(w) { var a = $('lhJump'), ids = ME ? lastHatchIds(w) : []; if (!a) { var anc = $('bulkAnchor'); if (!anc || !ids.length) return; a = document.createElement('button'); a.type = 'button'; a.className = 'q'; a.id = 'lhJump'; anc.parentNode.appendChild(a);
+      a.onclick = function () { var L = lastHatchIds(world()).slice(); if (!L.length) return; if (rev && $('packBox').classList.contains('on')) closeReveal(); revealQ.unshift({ kind: 'eggs', eggs: L, all: L.slice(), tray: 1, hatchAnim: 1, away: 1 }); released = true; nextReveal(); }; }
+    a.hidden = !ids.length; a.textContent = '🥚 Last hatch (' + fmt(ids.length) + ')'; a.title = 'Open your newest hatch again: sort it, keep the best, discard the rest'; }
   function pileLink(n) { var a = $('dpJump'); if (!a) { var anc = $('bulkAnchor'); if (!anc) return; a = document.createElement('button'); a.type = 'button'; a.className = 'q'; a.id = 'dpJump'; anc.parentNode.appendChild(a);
       a.onclick = openPile; }
     a.hidden = !n; a.textContent = '🗑️ Discard pile (' + n + ')'; a.title = 'Open the Discard pile: restore pets you discarded'; }
@@ -2130,12 +2171,12 @@
   /* hatch-exit (2026-10-21, display only): '🥚 Hatch more' and '✕ Close' under every hatch / gear result. Both keep every pet (same as Later: nothing discarded),
    * still show any queued result next, and never jump to the inventory. Hatch more scrolls to the hatch buttons and highlights the size you hatched last
    * (it does NOT open a burn confirm); Close puts you back where you were when the results opened. */
-  function packExit(then) { close('packBox'); rev = null; render(); setTimeout(nextReveal, 250);
+  function packExit(then) { if (rev && rev.kind === 'eggs') uDel(rev.all || rev.eggs); close('packBox'); rev = null; render(); setTimeout(nextReveal, 250);
     setTimeout(function () { if ($('packBox').classList.contains('on')) return; var y = packY; packY = null; then(y); }, 300); }
   if ($('packX')) $('packX').onclick = function () { packExit(function (y) { if (y != null) window.scrollTo({ top: y, behavior: 'auto' }); }); };
   if ($('packHatchMore')) $('packHatchMore').onclick = function () { packExit(function () { var hp = $('hatchPanel'); if (!hp) return; try { hp.scrollIntoView({ behavior: 'auto', block: 'start' }); } catch (e) { }
     var b = $(lastHatchN >= 1000 ? 'zapBtn' : lastHatchN >= 144 ? 'caseBtn' : lastHatchN >= 12 ? 'dozenBtn' : 'hatchBtn'); if (b) { try { b.focus({ preventScroll: true }); } catch (e) { } b.classList.remove('flash'); void b.offsetWidth; b.classList.add('flash'); setTimeout(function () { b.classList.remove('flash'); }, 2400); } }); };
-  $('packClose').onclick = closeReveal; $('packSkip').onclick = function () { if (!revealQ.length) packY = null; close('packBox'); rev = null; render(); setTimeout(nextReveal, 250); };
+  $('packClose').onclick = closeReveal; $('packSkip').onclick = function () { if (rev && rev.kind === 'eggs') uDel(rev.all || rev.eggs); if (!revealQ.length) packY = null; close('packBox'); rev = null; render(); setTimeout(nextReveal, 250); };
   /* egg-review-sort 2026-10-24: the review's 'Discard all Commons' button is removed (owner); Rarity: low to high puts Commons first. My Pets' own Discard all Commons (delCommonsBox) is unchanged. */
   $('packDiscard').onclick = function () { if (!rev || rev.kind !== 'eggs') return; var ids = Object.keys(rev.sel).map(Number); if (!ids.length) return toast('Tap a pet to select it first.');
     var dw = world(), gd = ids.filter(function (id) { var p = dw.byId[id]; return p && !isKept(id) && dudGuard(dw, p).length; });

@@ -34,7 +34,7 @@ ok(/!A \|\| !B \|\| !A\.art \|\| !B\.art/.test(rd('js/v2.js')), 'a fight replay 
 ok(/m\.cmd === 'follow'/.test(rd('js/v2-verify-worker.js')), 'the check worker answers follow');
 ok(/function follow\(\)/.test(rd('js/v2-split.js')) && /V2Split\.follow\(\)/.test(rd('js/v2-chain.js')), 'the 60 s poll asks the check worker to follow newer blocks');
 const tok = (rd('js/v2-split.js').match(/v2-verify-worker\.js\?v=([a-z0-9]+)/) || [])[1];
-ok(tok && tok !== 'stable1125a', 'the check worker URL carries a new cache token (' + tok + ')');
+ok(tok && tok !== "stable1125a" && tok !== "stable1125b", 'the check worker URL carries a new cache token (' + tok + ')');
 
 /* 4b. the eggs of a hatch the page picked up after the published world carry their art (the box reveal threw without it) */
 ok(/self\._arts\[p\.id\]/.test(rd('js/v2-verify-worker.js')), 'the check worker sends the art of pets the page has never seen');

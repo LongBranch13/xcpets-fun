@@ -1,0 +1,2 @@
+# Known, accepted layout-check findings: one per line, any part of "page | size | scene | kind | where" (see run.js keyOf).
+# Keep this list short: fix the layout instead whenever you can.

@@ -87,6 +87,10 @@ function start(m) {
           root = null; parts = null; mark('restore');
           var rows = (sync.rows && sync.rows.list) || [];
           var tip = sync.tip || man.tip;
+          /* Nov 25 2026 (Jake: 3 Shock Boxes, no reveal): the page already has the look (art) of every pet in the published world, so art is
+           * left out of 'mine' to keep it small. A pet hatched (or brought into this wallet) after the published block has no art on the page:
+           * it showed as a blank card and the hatch reveal crashed on it. Remember who owned what in the published world; those new pets keep art. */
+          var pubOwner = {}, pw = w.pets || [], pj; for (pj = 0; pj < pw.length; pj++) if (pw[pj]) pubOwner[pw[pj].id] = pw[pj].owner;
           var seen = {}, list = meta.seen || [], s;
           for (s = 0; s < list.length; s++) seen[list[s]] = 1;
           world = self.V2Rules.replay(rows, sync.hashes || {}, [], { tip: tip, live: self.LiveEngine.RealCore, dex: sync.dex && sync.dex.body || undefined,
@@ -102,7 +106,8 @@ function start(m) {
               var p = pets[i2];
               if (!p || p.owner !== meAddr) continue;
               var c = {}, pk = Object.keys(p), pi;
-              for (pi = 0; pi < pk.length; pi++) if (pk[pi] !== 'art') c[pk[pi]] = p[pk[pi]];
+              var needArt = pubOwner[p.id] !== meAddr;
+              for (pi = 0; pi < pk.length; pi++) if (pk[pi] !== 'art' || needArt) c[pk[pi]] = p[pk[pi]];
               c.worn = wornBy[p.id] || [];
               if (p.art) arts[p.id] = p.art;
               if (p.deed && world.deeds && world.deeds[p.deed]) ownerDeeds[p.deed] = world.deeds[p.deed];

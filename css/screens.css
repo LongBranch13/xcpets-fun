@@ -1,0 +1,50 @@
+/* screens.css (Nov 25 2026, Jake: "I want this game to be perfect on every screen"). Display only. Loaded on every page, after phone.css.
+ * Shared layout rules for pop-ups and sheets, so each new sheet gets them without its own patch. Found by tools/layout-check (run it
+ * after any layout change: it opens every page and the main sheets at phone, tablet, laptop and desktop sizes and fails on overlaps,
+ * cut-off buttons and text, oversized titles and freezes). Rules are prefixed "html body" so they win over the stylesheets and injected
+ * <style> blocks that load later, without !important. */
+
+/* 1 · One layer on top at a time. (Same list as SHEETS in js/v2-tutorial.js; add a new full-screen pop-up to both.) While a sheet or pop-up is open, the floating helpers (Coach Peepo's tips, the "N new pets hatched"
+ *     tray, the 2-min tour chip) step aside. Before, Coach Peepo's tip (z-index 100003) sat over the Sign & burn sheet and covered its
+ *     fee buttons on phones, and over the pet page's "Open pet page" link. They come back as soon as the sheet closes. */
+html body:has(.reveal.on, .mgr-bg, .ca-ov, .la-ov, .qa-ov, .cp-bg, .csac-bg, .dz-modal, .eggpop, .mg-dlg-wrap, .sg-bg, .wspin, .xcs-ov, .cs-ov.on, .sh-ov, .ip-sheet:not([hidden]), .pk-modal, .sh-modal.on, .ftg-ov, #xhOv) .tut-tip,
+html body:has(.reveal.on, .mgr-bg, .ca-ov, .la-ov, .qa-ov, .cp-bg, .csac-bg, .dz-modal, .eggpop, .mg-dlg-wrap, .sg-bg, .wspin, .xcs-ov, .cs-ov.on, .sh-ov, .ip-sheet:not([hidden]), .pk-modal, .sh-modal.on, .ftg-ov, #xhOv) .tut-point,
+html body:has(.reveal.on, .mgr-bg, .ca-ov, .la-ov, .qa-ov, .cp-bg, .csac-bg, .dz-modal, .eggpop, .mg-dlg-wrap, .sg-bg, .wspin, .xcs-ov, .cs-ov.on, .sh-ov, .ip-sheet:not([hidden]), .pk-modal, .sh-modal.on, .ftg-ov, #xhOv) .htray{visibility:hidden;pointer-events:none}
+
+/* 2 · A sheet's own buttons stay in reach. The last button row of a sheet (Sign & burn / Cancel, Apply, Discard...) is pinned to the
+ *     bottom of the sheet while its middle scrolls. Before, a 40-burn Sign & burn sheet on a 1280x720 laptop put the Sign button
+ *     150px below the bottom of the sheet: you had to find the sheet's own scroll bar first. The hatch review has its own pinned bar. */
+html body .reveal:not(#packBox) .box > .row:last-child{position:sticky;bottom:-22px;z-index:3;margin:12px -22px -22px;padding:10px 22px 14px;
+  background:var(--panel,#18221b);border-top:2px solid rgba(61,220,132,.35);box-shadow:0 -8px 12px -8px rgba(0,0,0,.6)}
+
+/* 3 · Phones: "vh" is the height with the browser's toolbars hidden, so a sheet 92vh tall had its bottom (and its buttons) under the
+ *     toolbar on iPhone Safari and Android Chrome. "dvh" is the height you can actually see. Same sizes, measured on what is visible. */
+@supports (height:1dvh){
+  html body .reveal .box{max-height:92dvh}
+  html body .reveal.archstory .box,html body .gf .box,html body .dz-box{max-height:88dvh}
+  html body #detail .box.wide,html body .mgr{max-height:96dvh}
+  html body #inReqBox .box,html body .pk-box,html body .cp{max-height:92dvh}
+  html body .ip-sh-box,html body .xcs-sh{max-height:78dvh}
+  html body .sh-sheet{max-height:85dvh}
+  html body .sg{max-height:90dvh}
+}
+
+/* 4 · Short laptop screens (720px and less): the hatch review's opening card fits with its buttons in view (Done / Later were half
+ *     under the bottom edge after a 1,000-egg Shock Box at 1280x720). */
+@media (min-width:601px) and (max-height:760px){
+  html body #packBox.pkintro .box h2{font-size:30px;margin:0 0 4px}
+  html body #packBox.pkintro .pkic-card canvas{max-height:56px}
+}
+
+/* 5 · Phones: page titles never wider than the screen allows (Verify's 48px title took 3 lines of a 390px phone). */
+@media (max-width:600px){
+  html body main h1{font-size:clamp(24px,8.5vw,36px);overflow-wrap:anywhere}
+  /* Practice: the header's links (Hatch a real pet, Play for real, wallet) ran 100px past the right edge with no way to reach them.
+     The link row now scrolls sideways inside the header like the game's own nav does. */
+  html body header.nav nav.px-nav,html.hd3 body header.nav nav.px-nav{flex:1 1 auto;min-width:0;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  html.hd3 body header.nav nav.px-nav::-webkit-scrollbar,html body header.nav nav.px-nav::-webkit-scrollbar{display:none}
+}
+
+/* 6 · Button groups wrap instead of running off the screen: the community feed amounts (69 / 690 / 6,900 at full price) become
+ *     "267.375"-style numbers during halvings and Fire Sales, and on a 390px phone the last button hung past the right edge. */
+html body .camtseg{flex-wrap:wrap;max-width:100%}
