@@ -44,6 +44,9 @@ let bad = 0;
 for (let i = 0; i < live.pets.length; i++) if (JSON.stringify(live.pets[i]) !== JSON.stringify(again.pets[i])) bad++;
 const objectBytes = JSON.stringify({ blockHeight: live.blockHeight, count: live.count, pets: live.pets }).length;
 ok(bad === 0 && again.pets.length === live.pets.length, 'committed pets.json round-trips (' + bad + ' mismatches, ' + again.pets.length + ' pets)');
-ok(packed.length < 20 * 1024 * 1024 && packed.length < objectBytes * 0.3, 'packed pets.json is under 20MB and under 30% of the object file (' + packed.length + ' vs ' + objectBytes + ')');
+/* Size per pet, not a fixed 20 MB: the game went from 159,579 to 207,726 pets in one day (Nov 25 2026) and a fixed cap
+ * turns red as the game grows while the format is unchanged. ~108 bytes per pet then. */
+const perPet = packed.length / Math.max(1, live.pets.length);
+ok(perPet < 140 && packed.length < objectBytes * 0.3, 'packed pets.json is under 140 bytes a pet and under 30% of the object file (' + Math.round(perPet) + ' B/pet, ' + packed.length + ' vs ' + objectBytes + ')');
 console.log('pets-feed-test: ' + pass + ' passed, ' + fail + ' failed; packed ' + packed.length + ' bytes');
 process.exit(fail ? 1 : 0);
