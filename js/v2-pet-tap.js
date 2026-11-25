@@ -13,7 +13,7 @@
     doge: ['much pet. very wow.', 'such tap'], peepo: ['peepoHappy', 'hehe'], bobo: ['ok but have you considered: bear', 'ngmi (affectionate)'], mumu: ['moooon', 'green candles only'],
     lenny: ['( ͡° ͜ʖ ͡°)', 'heh'], snibby: ['slow and steady', 'shell yeah'], kevin: ['kevin.', 'it’s kevin'], dodo: ['not extinct, just early', 'squawk'],
     sarutobi: ['ninja mode', 'sneaky'], nakamoto: ['i am not satoshi', 'read the whitepaper'], wizard: ['magic internet money', 'abracadabra, ser'], kek: ['KEK', 'shadilay'],
-    funtrump: ['tremendous pat. the best.', 'many people are saying this is a great pat'], homer: ['mmm... XCPETS', 'woohoo!'], djpepe: ['drop the beat', 'one more track'],
+    funtrump: ['tremendous pat. the best.', 'many people are saying this is a great pat'], homer: ['mmm... XCPETS', 'woohoo!'], djpepe: ['drop the beat', 'one more track'], aspie: ['...hi.', 'no refunds.', 'ok fine. one pat.'],
     hungry: ['bro i haven’t eaten in blocks', 'pats are nice but food is nicer', 'feed me and i’ll love you forever'],
     mythic: ['i am eternal', 'mortals pet me now?', 'MYTHIC VIBES'],
     combo: ['MORE', 'again again', 'ok ok OK', 'vibes rising', 'MAXIMUM VIBES']
