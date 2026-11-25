@@ -14,5 +14,20 @@
   function isLiving(p, me, o) { if (!p || !me || p.owner !== me || p.dead || p.released || p.community) return false; if (o && o.zombies === false && isZ(p)) return false; return true; }
   function living(w, me, o) { if (!w || !me) return []; return (w.pets || []).filter(function (p) { return isLiving(p, me, o); }); }
   function canEat(p, me) { return isLiving(p, me, { zombies: false }) && p.hd !== me && !!p.hungry; }
-  root.V2Own = { living: living, isLiving: isLiving, isZ: isZ, canEat: canEat };
+  /* The Discard pile (Nov 25 2026, G Money: "I burned like 10 times to discard pets officially and it still won't let me feed them to zombies").
+   * A wallet's Discard pile is BOTH lists: pets discarded ON CHAIN (pet:hd, p.hd === me, every device) and this browser's free Discard pile
+   * (localStorage xcpets-hidden-NET-ME). The zombie meal picker, the cemetery sacrifice sheet and the altar each read only the browser list,
+   * so a player who discarded on chain (the default since the owner made Discard permanent) saw "no Discarded pets", while the rules accept
+   * exactly the on-chain ones (cemOfferWhy: 'only a discarded pet can be offered'). A risen zombie is never in the pile (inPile in v2.js).
+   *   V2Own.pileIds(me)          this browser's Discard pile, as { id: 1 }
+   *   V2Own.discardSet(w, me)    the whole pile: browser list + on-chain discards of this wallet's pets, as { id: 1 }
+   *   V2Own.inPile(p, me, set)   one pet: not a risen zombie, and on chain or in the given browser set */
+  function pileIds(me) { var h = {}; if (!me) return h; try { var net = (root.LiveEngine && root.LiveEngine.CFG && root.LiveEngine.CFG.network) || 'mainnet', ls = root.localStorage;
+      var raw = ls ? JSON.parse(ls.getItem('xcpets-hidden-' + net + '-' + me) || '[]') : []; if (raw && raw.forEach) raw.forEach(function (id) { id = +id; if (id > 0) h[id] = 1; }); } catch (e) {}
+    return h; }
+  function inPile(p, me, set) { return !!(p && me && !isZ(p) && (p.hd === me || (set && set[p.id]))); }
+  function discardSet(w, me) { var h = pileIds(me), P = (w && w.pets) || [], i, p; if (!me) return h;
+    for (i = 0; i < P.length; i++) { p = P[i]; if (p && p.owner === me && p.hd === me && !isZ(p)) h[p.id] = 1; }
+    return h; }
+  root.V2Own = { living: living, isLiving: isLiving, isZ: isZ, canEat: canEat, pileIds: pileIds, inPile: inPile, discardSet: discardSet };
 })(typeof self !== 'undefined' ? self : this);
