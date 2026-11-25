@@ -233,7 +233,7 @@ jobs:
             # Nov 23 2026 (Jake approved): the burn check service (~1 GB) runs inside this service next to the follower (~0.7-0.9 GB).
             # A drop-in read after the unit's own lines; the checker still waits for 1,200 MB free on the machine and stops during builds.
             mkdir -p /mnt/r/etc/systemd/system/xcpets-sync.service.d
-            # Nov 24 2026: the server is now 8 GB (CPX22). Node sizes its heap from the service's memory limit (~1 GB here), and the
+            # Nov 24 2026: the server was meant to be 8 GB, but the plan picked by hand (CPX22) has about 2 GB: check the "== memory:" line, never the plan name. These limits assume 8 GB (CX33 or bigger). Node sizes its heap from the service's memory limit (~1 GB here), and the
             # service crash-looped about once a minute after the upgrade (65 starts in an hour, heap limit 984 MB). Give it room.
             printf '[Service]\nMemoryHigh=5000M\nMemoryMax=5600M\nEnvironment=NODE_OPTIONS=--max-old-space-size=3584\n' > /mnt/r/etc/systemd/system/xcpets-sync.service.d/zz-check-memory.conf
             echo "sync memory raised: $(grep -oE '^(Memory(High|Max)|Environment)=[^ ]+' /mnt/r/etc/systemd/system/xcpets-sync.service.d/zz-check-memory.conf | tr '\n' ' ')(drop-in zz-check-memory.conf; delete it to undo)"
