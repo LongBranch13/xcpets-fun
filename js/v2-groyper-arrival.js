@@ -79,8 +79,12 @@
     return open; }
   function bindReplay(scope, getW) { [].forEach.call((scope || root.document).querySelectorAll('.gpreplay'), function (a) { a.onclick = function (e) { e.preventDefault(); play(typeof getW === 'function' ? getW() : getW); }; }); }
   /** watch(el, getW): first time el is on screen while Groyper is the community pet, play once per player. */
+  /* playtest Nov 25 2026: the arrival played the moment its card scrolled into view, even under an open sheet (Gift several pets,
+   * Sign & burn), and covered its buttons. It now waits until no other pop-up is open. */
+  function sheetUp() { return [].some.call(document.querySelectorAll('.reveal.on, .la-ov'), function (e) { return !e.classList.contains('returnov') && !!(e.offsetWidth || e.offsetHeight); }); /* a hidden sheet (calm mode) does not count */ }
+  function playFree(w, getW) { if (sheetUp()) { setTimeout(function () { playFree(typeof getW === 'function' ? getW() : w, getW); }, 1500); return; } play(w); }
   function watch(el, getW) { if (!el || el.__gpArr) return; el.__gpArr = 1;
-    var go = function () { var w = typeof getW === 'function' ? getW() : getW, c = w && w.community; if (!previewRequested() && !(c && c.current === 'groyper')) return false; if (seen() && !previewRequested()) return true; play(w); return true; };
+    var go = function () { var w = typeof getW === 'function' ? getW() : getW, c = w && w.community; if (!previewRequested() && !(c && c.current === 'groyper')) return false; if (seen() && !previewRequested()) return true; playFree(w, getW); return true; };
     if (previewRequested()) { setTimeout(go, 300); return; }
     if (!('IntersectionObserver' in root)) { go(); return; }
     var io = new IntersectionObserver(function (es) { es.forEach(function (e) { if (e.isIntersecting && go()) io.disconnect(); }); }, { threshold: 0.4 }); io.observe(el); }
