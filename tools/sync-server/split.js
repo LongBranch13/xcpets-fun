@@ -606,7 +606,13 @@ function write(dir, world, meta) {
     const huntedBy = (world.cem && world.cem.huntedBy) || {};
     /* open altars (pledges held for a seance), so the slim cemetery shows pieces a player already gave */
     const altars = {}; Object.keys((world.cem && world.cem.altars) || {}).forEach(k => { const a = world.cem.altars[k]; if (a && a.status === 'open') altars[k] = a; });
-    bytes += writeJson(path.join(dir, 'zombies.json'), { v: 2, tip: tip, rsig: rsig, n: zpets.length, huntedBy: huntedBy, altars: altars, pets: zpets });
+    /* Mythic God table (Nov 25 2026): the Pantheon seats, the meals, the unleash list and the per-wallet clocks.
+     * Without it a page on the fast world read 0 of 21 seats, lost a pending unleash from the zombie's card and
+     * could not check the 30-day unleash / God gaps before a burn. 21 seats + a few dozen unleashes: tiny. */
+    const mgSrc = (world.cem && world.cem.mg) || null;
+    const mg = mgSrc ? { seats: mgSrc.seats || [], meals: mgSrc.meals || [], unleash: mgSrc.unleash || [], byWallet: mgSrc.byWallet || {}, godBy: mgSrc.godBy || {} }
+      : { seats: [], meals: [], unleash: [], byWallet: {}, godBy: {} };
+    bytes += writeJson(path.join(dir, 'zombies.json'), { v: 2, tip: tip, rsig: rsig, n: zpets.length, huntedBy: huntedBy, altars: altars, mg: mg, pets: zpets });
     files++;
     bytes += writeJson(path.join(dir, 'owners.json'), owners); files++;
     const rankPets = [];
