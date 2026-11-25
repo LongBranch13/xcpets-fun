@@ -581,7 +581,7 @@
     if (el._zbox) { el._zbox.ctx = ctx; return; } el._zbox = { ctx: ctx };
     function cur() { var C = el._zbox.ctx; C.w = C.M.world(); C.b = (C.w.tip || 0) + 1; return C; }
     function go(L, title) { var C = cur(), tags = L.map(function (q) { return q.tag; }); altarJs(function () { if (window.V2CemeteryAltar && V2CemeteryAltar.sendPlans) V2CemeteryAltar.sendPlans(title, L.map(function (q) { return C.V.cemPetAmount ? C.V.cemPetAmount(C.w, q, C.b) : q; }), C); else location.href = 'play.html#cem-' + encodeURIComponent(tags.join('~')); }); }
-    function mine(C) { return C.ME ? (C.w.pets || []).filter(function (q) { return q.owner === C.ME && !q.dead && !q.released && !q.community && !C.V.isZ(q); }) : []; }
+    function mine(C) { return C.ME ? (C.w.pets || []).filter(function (q) { return V2Own.isLiving(q, C.ME, { zombies: false }); }) : []; }
     function fill(C) { return C.ME && window.xcpLivingFill ? window.xcpLivingFill(C.ME).then(function () { return cur(); }, function () { return cur(); }) : Promise.resolve(C); }
     function busy(t, on) { if (!t) return; t.disabled = on; t.classList.toggle('cv2-busy', on); }
     el.addEventListener('click', function (e) { var t = e.target.closest('[data-zsac],[data-hunt],[data-res]'); if (!t || t.disabled) return; e.preventDefault(); var C = cur(), z = +(t.getAttribute('data-z') || t.getAttribute('data-hunt') || t.getAttribute('data-res'));

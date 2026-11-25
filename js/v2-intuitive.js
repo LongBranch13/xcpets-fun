@@ -72,7 +72,7 @@
       roadBar(S, max, got ? care : null, got, 'Short road', fmt(S[5]) + ' care · ' + fmt(N[5] - S[5]) + ' less', false) +
       (care != null ? '<p class="small ip-mp-you"><b class="ip-mp-me ip-mp-dot"></b> #' + p.id + ' is here: ' + fmt(care) + ' care.</p>' : '');
     if (got) { var m = care != null ? mealsTo(R, care, sp, tip, S) : null; if (m) h += '<p class="small">#' + p.id + ' is ' + m + ' meal' + (m === 1 ? '' : 's') + ' from Mythic.</p>'; }
-    else if (mine && w && w.pets) { var best = null; w.pets.forEach(function (q) { if (q.owner === who && !q.dead && !q.released && !q.community && q.stage < 5 && (!R.raisedBy || !w.mythicGot || R.raisedBy(w, q)) && (!best || q.care > best.care)) best = q; });
+    else if (mine && w && w.pets) { var best = null; w.pets.forEach(function (q) { if (V2Own.isLiving(q, who) && q.stage < 5 && (!R.raisedBy || !w.mythicGot || R.raisedBy(w, q)) && (!best || q.care > best.care)) best = q; });
       if (best) { var bm = mealsTo(R, best.care, best.species, tip, R.petThresholds({}, best, tip)); h += '<p class="small ip-mp-tip">🎯 <b>Closest to unlocking it:</b> #' + best.id + (best.name ? ' ' + esc(best.name) : '') + ', ' + fmt(best.care) + ' / ' + fmt(N[5]) + ' care' + (bm ? ', about ' + bm + ' meal' + (bm === 1 ? '' : 's') + ' (one a day)' : '') + '.</p>'; } }
     if (full) h += '<ul class="ip-list small"><li><b>Raise it yourself.</b> It counts if the Mythic never left your wallet, or you fed more than half its care. A Mythic you bought, swapped or were gifted doesn\'t unlock the short road.</li>' +
       '<li><b>No stages skipped.</b> On the short road every stage comes sooner: Juvenile ' + fmt(S[2]) + ', Adult ' + fmt(S[3]) + ', Elder ' + fmt(S[4]) + '. Meals cost the same.</li>' +
@@ -207,7 +207,7 @@
   /* playfreeze-1113: tick() runs every 1.2 s and badge/nba/urgent each filtered every pet in the world. Same world object + same wallet = same list. */
   var liveMemo = { w: null, m: null, tip: null, n: -1, list: [] };
   function myLive(w) { var m = me(); if (!w || !m) return []; if (liveMemo.w === w && liveMemo.m === m && liveMemo.tip === w.tip && liveMemo.n === w.pets.length) return liveMemo.list;
-    var list = w.pets.filter(function (p) { return p.owner === m && !p.dead && !p.released && !p.community; }); liveMemo = { w: w, m: m, tip: w.tip, n: w.pets.length, list: list }; return list; }
+    var list = w.pets.filter(function (p) { return V2Own.isLiving(p, m); }); liveMemo = { w: w, m: m, tip: w.tip, n: w.pets.length, list: list }; return list; }
   function urgent(w) { return myLive(w).filter(function (p) { return p.neglected && !p.mythicCare && p.deathBlock != null && p.deathBlock > w.tip; }); }
   function left(blocks) { var m = blocks * 10, dd = Math.floor(m / 1440), h = Math.round((m % 1440) / 60); return dd ? dd + 'd ' + h + 'h' : h + 'h'; }
   function badge(w) { var tab = $('tabAlive'); if (!tab) return; var n = urgent(w).length;
