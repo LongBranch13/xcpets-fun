@@ -60,8 +60,13 @@ const base = opt('--replay-base'), SNAPS = ['snap-971786.json', 'snap-972883.jso
 const tasks = tests.map(f => ({ kind: 'test', f, args: [path.join(T, f)] }))
   .concat(base ? SNAPS.map(s => ({ kind: 'replay', f: 'replay ' + s, s, args: [path.join(T, 'replay-check.js'), '--compare', base, '--snap', path.join(T, 'snapshots', s)] })) : []);
 (async () => {
-  const q = tasks.slice().sort((a, b) => (times[b.f] || 0) - (times[a.f] || 0) || (a.f < b.f ? -1 : 1)), done = [];
+  /* SOLO: tests that time the page's longest freeze run alone after the pool, one at a time. Next to three other
+   * replays on CI's 4 cores, rare-unequip-perf's Rare Room open measured over 8 s while it takes 2.5 s alone
+   * (Nov 25 2026): the contention, not the page, failed it. */
+  const SOLO = new Set(['rare-unequip-perf-test.js']);
+  const q = tasks.filter(t => !SOLO.has(t.f)).sort((a, b) => (times[b.f] || 0) - (times[a.f] || 0) || (a.f < b.f ? -1 : 1)), done = [];
   await Promise.all(Array.from({ length: Math.min(jobs, q.length) }, async () => { while (q.length) { const i = q.findIndex(t => roomFor(t.f)); if (i < 0) { await new Promise(r => setTimeout(r, 1000)); continue; } const t = q.splice(i, 1)[0]; pend += want(t.f); done.push(Object.assign(t, await child(t.args, t.f))); } }));
+  for (const t of tasks.filter(t => SOLO.has(t.f))) { pend += want(t.f); done.push(Object.assign(t, await child(t.args, t.f))); }
   const results = done.filter(r => r.kind === 'test').sort((a, b) => a.f < b.f ? -1 : 1); let bad = 0; const seenKnown = new Set();
   for (const r of results) {
     const fails = r.out.split('\n').map(l => l.replace(/\s+$/, '').replace(/\d+(\.\d+)?\s?ms\b/g, '')).filter(failLine).map(l => r.f + ' | ' + l.trim());
