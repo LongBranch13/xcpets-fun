@@ -15,7 +15,7 @@ var KEEP_TIPS = 2;
  * (tools/world-copy.js). When the game server's latest.json does not answer, fails, or names a world 6+ blocks older than the
  * copy's for the same rules, the page gets the copy's latest.json instead. Its manifest is an absolute URL on the copy, so every
  * file of that world then comes from the copy, never mixed with the server's. Empty = off. */
-var COPY = '';
+var COPY = 'https://xcpets-world.jakewinburn.workers.dev';
 var NODE_HOST = 'node.xcpets.fun';
 var COPY_AHEAD = 6, NODE_WAIT_MS = 6000, COPY_WAIT_MS = 1500;
 
