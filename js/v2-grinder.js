@@ -30,9 +30,9 @@
   function goldOdds(n, b) { var v = V(), G = G_(); return v.grindGoldOdds ? v.grindGoldOdds(n, b) : Math.min(G.GOLD_MAX, n * G.GOLD_PER_PET); } /* per million */
   /* the 1-in-777 slot pet right now (display only: the replay decides). Same order as the rules' special-egg chain. */
   /* species-registry (Nov 25 2026): the newest community pet in Cold Storage whose eggs hatch (community.eggs: FUNTRUMP #4 onward), from js/species-registry.js */
-  function specialName(w) { var R = window.XcpSpecies, o = null; if (R) R.coldOrder().forEach(function (x) { if (R.get(x.id).community.eggs && w[x.key]) o = R.shortName(x.id); }); return o || 'the special egg'; }
+  function specialName(w) { var v = V(); if (v.aspieOn && v.aspieOn((w && w.tip || 0) + 1)) return 'Aspie'; /* ASPIE (rules ACTIVATE_ASPIE_BLOCK): the Grinder's own pet */ var R = window.XcpSpecies, o = null; if (R) R.coldOrder().forEach(function (x) { if (R.get(x.id).community.eggs && w[x.key]) o = R.shortName(x.id); }); return o || 'the special egg'; }
   /* every pet that isn't a normal egg species glows pink in the result list (community pets, 1 of 1s, special eggs: Aspie and later ones too) */
-  var SPECIAL_SP = window.XcpSpecies ? XcpSpecies.specialMap() : { homer: 1, rabbit: 1, groyper: 1, funtrump: 1, kek: 1, wizard: 1 };
+  var SPECIAL_SP = window.XcpSpecies ? XcpSpecies.specialMap() : { homer: 1, rabbit: 1, groyper: 1, funtrump: 1, kek: 1, wizard: 1, aspie: 1 };
   var KEEP = [[3, '🥩 Everything'], [2, '⭐ Keep Legendaries'], [1, '💎 Keep Rares + Legendaries'], [0, '🪨 Commons only']], KEEP_KEY = 'xcpets-grind-keep';
   function keepGet() { try { var r = localStorage.getItem(KEEP_KEY), k = +r; return r != null && k >= 0 && k <= 3 ? k : 3; } catch (e) { return 3; } }
   function keepSet(k) { try { localStorage.setItem(KEEP_KEY, String(k)); } catch (e) { } }
@@ -59,6 +59,9 @@
       '.mgr-saus{position:absolute;left:50%;top:208px;margin-left:-30px;display:flex;gap:2px;animation:mgOut 2s linear infinite;z-index:2}.mgr-saus span{width:40px;height:17px;border-radius:10px;background:#e86a7d;border:3px solid #000;box-shadow:inset -5px -4px 0 #b84a5b}' +
       '@keyframes mgOut{0%{transform:translateX(0)}100%{transform:translateX(-170px)}}' +
       '.mgr-spl{position:absolute;right:10px;bottom:8px;font-family:Bangers,Impact,sans-serif;font-size:24px;color:#ffd166;text-shadow:2px 2px 0 #000;transform:rotate(-6deg);z-index:5}' +
+      '.mgr-host{display:flex;align-items:center;gap:8px;margin:2px 0 8px;cursor:pointer}.mgr-host canvas{width:64px;height:64px;image-rendering:pixelated;background:#1b1520;border:3px solid #000;border-radius:6px;flex:none}' +
+      '.mgr-bub{position:relative;background:#fafaf5;color:#100e14;border:3px solid #000;border-radius:10px;padding:5px 9px;font:700 13px "Comic Neue",sans-serif;box-shadow:2px 2px 0 #000}' +
+      '.mgr-bub:before{content:"";position:absolute;left:-10px;top:50%;margin-top:-6px;border:6px solid transparent;border-right:6px solid #000}' +
       '.mgr-sign{position:absolute;left:8px;top:8px;background:#fafaf5;color:#100e14;border:3px solid #000;padding:3px 6px;font:700 12px "Comic Neue",sans-serif;transform:rotate(-4deg);box-shadow:2px 2px 0 #000;max-width:96px;line-height:1.15;z-index:5}' +
       /* grinding: pets fall in, crank whirs, meat sprays, comic words */
       '.mgr-mach.go{animation:mgShake .09s linear infinite}@keyframes mgShake{25%{transform:translate(2px,-2px)}75%{transform:translate(-2px,1px)}}.mgr-mach.go .mgr-crank{animation-duration:.22s}' +
@@ -114,6 +117,18 @@
   function machine(ids) { return '<div class="mgr-mach" aria-hidden="true"><div class="mgr-sign">NO REFUNDS. NO REGRETS.</div><div class="mgr-hop"></div><div class="mgr-pets">' +
     ids.map(function (id) { return '<canvas width="32" height="32" data-mg="' + id + '"></canvas>'; }).join('') + '</div><div class="mgr-teeth"></div>' +
     '<div class="mgr-body"><b>GRIND-O-MATIC<br>9000</b><i></i></div>' + crank() + '<div class="mgr-chute"></div><div class="mgr-saus"><span></span><span></span><span></span><span></span><span></span><span></span></div><div class="mgr-spl">SPLORCH</div></div>'; }
+  /* ASPIE, the Grinder's host (Jake Nov 25 2026: "she can be the character thats at the meat grinder welcoming players like gooby, captain dan, luke spam and mort").
+   * Display only: her own sprite (cleaver in hand), idle frames, a speech bubble; tap her for the next line. After ACTIVATE_ASPIE_BLOCK she is also the prize. */
+  var HOST_T = null, HOST_I = 0;
+  function hostLines(b) { var v = V(), on = !!(v.aspieOn && v.aspieOn(b)), L = ['Welcome to the Grinder. I\u2019m Aspie.', 'Junk in. Sausage out.', 'Pick how many. I don\u2019t judge. Much.', 'No refunds. No regrets.'];
+    return on ? L.concat(['Golden Sausage? That\u2019s me. Legendary.', 'Grind 2,000 for a 20% shot at me.', 'The only way to get me is right here.']) : L.concat(['Every 1,000 meat hatches a Sausage Egg.']); }
+  function host(b) { if (!window.AspieSprite) return ''; return '<div class="mgr-host" id="mgHost" role="button" tabindex="0" aria-label="Aspie, the Grinder host. Tap for more."><canvas width="32" height="32"></canvas><div class="mgr-bub" aria-live="polite">' + esc(hostLines(b)[0]) + '</div></div>'; }
+  function hostGo(b) { var el = $('mgHost'); if (!el || !window.AspieSprite) return; var c = el.querySelector('canvas'), x = c.getContext && c.getContext('2d'); if (!x) return;
+    var F = AspieSprite.frames(3, '#1b1520', { hand: { item: 'as-cleaver', label: 'Meat cleaver' } }), f = 0, L = hostLines(b); HOST_I = 0;
+    function draw() { var im = x.createImageData(32, 32); im.data.set(F[[0, 0, 1, 0, 0, 2, 0, 3][f % 8]].data); x.putImageData(im, 0, 0); f++; }
+    draw(); clearInterval(HOST_T); HOST_T = setInterval(function () { if (!document.body.contains(c)) { clearInterval(HOST_T); return; } draw(); }, 420);
+    function next() { HOST_I = (HOST_I + 1) % L.length; el.querySelector('.mgr-bub').textContent = L[HOST_I]; }
+    el.onclick = next; el.onkeydown = function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); next(); } }; }
   function sprite(c, p, w) { try { if (window.V2Render && V2Render.lazy && V2Render.petFrames) V2Render.lazy(c, function () { return V2Render.petFrames(p, w); }, true); } catch (e) { } }
   function paintSprites(box, w) { box.querySelectorAll('[data-mg]').forEach(function (c) { var p = w.byId[c.getAttribute('data-mg')]; if (p) sprite(c, p, w); }); }
   /* meat spray + comic word out of the machine (display only) */
@@ -154,7 +169,7 @@
     var nextEgg = (Math.floor(meat / G.EGG_EVERY) + 1) * G.EGG_EVERY;
     var chips = [100, 500, 1000].filter(function (k) { return k < max; });
     box.innerHTML = '<button type="button" class="mgr-x" aria-label="Close">✕</button><span class="mgr-meatchip">MEAT ' + fmt(meat) + '</span>' +
-      '<h3 id="mgT">THE MEAT <br>GRINDER<sup>®</sup></h3><p class="mgr-sub">Your junk goes in. Spins and Sausage Eggs come out.</p>' +
+      '<h3 id="mgT">THE MEAT <br>GRINDER<sup>®</sup></h3><p class="mgr-sub">Your junk goes in. Spins and Sausage Eggs come out.</p>' + host(b) +
       '<div class="mgr-cols"><div>' + machine(ids.slice(0, 6)) +
       '<div class="mgr-lbl"><span>MEAT METER</span><span id="mgNext">' + fmt(meat) + ' · next egg at ' + fmt(nextEgg) + '</span></div>' +
       '<div class="mgr-bar" id="mgBar"><div style="width:' + Math.round((meat % G.EGG_EVERY) / G.EGG_EVERY * 100) + '%"></div><div class="add" style="left:0;width:0"></div><span style="left:25%"></span><span style="left:50%"></span><span style="left:75%"></span></div>' +
@@ -188,6 +203,7 @@
       if (bar) { var ad = bar.querySelector('.add'); ad.style.left = fill + '%'; ad.style.width = add + '%'; }
       $('mgNext').textContent = fmt(meat) + ' → ' + fmt(s.after);
       go.textContent = 'GRIND ' + fmt(n) + ' PET' + (n === 1 ? '' : 'S'); }
+    hostGo(b); /* ASPIE greets the player (display only) */
     if (pv.ok) { paint(n);
       var raf = 0; if (rng) rng.addEventListener('input', function () { if (raf) return; raf = requestAnimationFrame(function () { raf = 0; paint(+rng.value); }); });
       box.querySelectorAll('.mgr-chips button[data-n]').forEach(function (c) { c.onclick = function () { paint(+c.getAttribute('data-n')); sfx('blip'); }; }); }
@@ -212,7 +228,7 @@
   function result(w, last) { var box = shell(false), G = G_(), a = me(), R = w.grind[a], pets = (last.newPets || []).map(function (id) { return w.byId[id]; }).filter(Boolean);
     var before = Math.max(0, (R.meat || 0) - (last.meat || 0)), rows = [];
     if (last.spins) rows.push('<div class="mgr-rw sp hide" data-k="spin"><svg aria-hidden="true" width="52" height="52" viewBox="0 0 44 44"><circle cx="22" cy="22" r="19" fill="#ffd166" stroke="#000" stroke-width="3"/><path d="M22 3v38M3 22h38M8 8l28 28M36 8L8 36" stroke="#000" stroke-width="2"/><circle cx="22" cy="22" r="5" fill="#ff4d4d" stroke="#000" stroke-width="2"/></svg><div><b>+' + last.spins + ' PEPE WHEEL SPIN' + (last.spins === 1 ? '' : 'S') + '</b><span class="mgr-small">Saved for the Pepe Wheel in The Rare Room.</span></div></div>');
-    pets.forEach(function (p) { var t = Math.min(3, p.tier | 0); rows.push('<div class="mgr-rw ' + (p.golden ? 'gold' : 'egg') + ' hide" data-k="egg" data-t="' + (SPECIAL_SP[p.species] ? 4 : t) + '" style="--tc:' + (SPECIAL_SP[p.species] ? '#ff8ad8' : TC[t]) + '"><div class="mgr-egg">' + eggSvg(p.golden) + '<canvas width="32" height="32" data-mg="' + p.id + '"></canvas></div><div><b>' + (p.golden ? 'GOLDEN SAUSAGE!' : SPECIAL_SP[p.species] ? 'SAUSAGE EGG: SPECIAL EGG!' : 'SAUSAGE EGG: ' + T[t].toUpperCase()) + '</b><span class="mgr-small">#' + p.id + ' hatched: ' + T[t] + ' ' + esc(p.name || p.species) + '</span></div></div>'); });
+    pets.forEach(function (p) { var t = Math.min(3, p.tier | 0); rows.push('<div class="mgr-rw ' + (p.golden ? 'gold' : 'egg') + ' hide" data-k="egg" data-t="' + (SPECIAL_SP[p.species] ? 4 : t) + '" style="--tc:' + (SPECIAL_SP[p.species] ? '#ff8ad8' : TC[t]) + '"><div class="mgr-egg">' + eggSvg(p.golden) + '<canvas width="32" height="32" data-mg="' + p.id + '"></canvas></div><div><b>' + (p.golden ? 'GOLDEN SAUSAGE!' : SPECIAL_SP[p.species] ? (p.species === 'aspie' ? 'SAUSAGE EGG: ASPIE!' : 'SAUSAGE EGG: SPECIAL EGG!') : 'SAUSAGE EGG: ' + T[t].toUpperCase()) + '</b><span class="mgr-small">#' + p.id + ' hatched: ' + T[t] + ' ' + esc(p.name || p.species) + '</span></div></div>'); });
     if (!last.golden) rows.push('<div class="mgr-rw miss hide" data-k="miss"><svg aria-hidden="true" width="52" height="52" viewBox="0 0 44 44"><ellipse cx="22" cy="24" rx="15" ry="18" fill="#c9a43a" stroke="#000" stroke-width="3"/><path d="M14 18l16 14M30 18L14 32" stroke="#000" stroke-width="3"/></svg><div><b>GOLDEN SAUSAGE: NOT THIS TIME</b><span class="mgr-small">Grind more at once for a better shot (up to ' + (G.GOLD_MAX / 10000) + '%).</span></div></div>');
     box.innerHTML = '<button type="button" class="mgr-skip">Skip ⏩</button><div class="mgr-big" id="mgT">SPLORCH!</div>' +
       '<div class="mgr-rope" aria-hidden="true"><i>' + new Array(12).join('<span></span>') + '</i></div>' +
