@@ -42,11 +42,11 @@
       /* select: checkboxes only while selecting; the actions ride in a bar pinned to the bottom */
       'body:not(.selmode):not(.mpc-sel) #petsPanel .pet.card .pick-cb{display:none}' +
       '#petsPanel #bulkRow{display:none!important}#petsPanel #selBar{display:none!important}#petsPanel #bulkRow #selLair{white-space:nowrap}' +
-      'body.selmode #petsPanel #bulkRow,body.mpc-sel #petsPanel #bulkRow{display:flex!important;position:fixed;left:50%;transform:translateX(-50%);bottom:10px;z-index:900;width:min(980px,calc(100% - 16px));box-sizing:border-box;' +
+      'body.mpc-inview.selmode #petsPanel #bulkRow,body.mpc-inview.mpc-sel #petsPanel #bulkRow{display:flex!important;position:fixed;left:50%;transform:translateX(-50%);bottom:10px;z-index:900;width:min(980px,calc(100% - 16px));box-sizing:border-box;' +
         'flex-wrap:wrap;align-items:center;gap:8px;margin:0!important;padding:8px 10px;background:#101a12;border:3px solid #3ddc84;border-radius:10px;box-shadow:4px 4px 0 #000,0 0 0 2px #000}' +
       'body.selmode #petsPanel,body.mpc-sel #petsPanel{padding-bottom:96px}' +
       /* playtest (Nov 25 2026): the wallet pill (bottom-left, z-index 9000) sat on top of this bar and covered Discard selected; it steps aside while you select */
-      'body.selmode #xwPill,body.mpc-sel #xwPill{display:none!important}' +
+      'body.mpc-inview.selmode #xwPill,body.mpc-inview.mpc-sel #xwPill{display:none!important}' +
       '#petsPanel #bulkRow .ip-why,#petsPanel #bulkRow #keepHint,#petsPanel #bulkRow .grow,#petsPanel #bulkRow #bDiscUnfed{display:none!important}' +
       '#petsPanel #bulkRow .mpc-count{font-weight:bold;white-space:nowrap;order:-2}#petsPanel #bulkRow .mpc-count small{display:block;font-weight:normal;color:#9be08a;font-size:11px}' +
       '#petsPanel #bulkRow #bulkOld{display:inline-flex;flex-wrap:wrap;gap:6px;align-items:center;order:-1}#petsPanel #bulkRow #selCount,#petsPanel #bulkRow #selMode{display:none}' +
@@ -54,7 +54,7 @@
       '#petsPanel #bulkRow .mpt-alt{display:inline-flex;gap:6px;order:2}#petsPanel #bulkRow #bFeedHungry,#petsPanel #bulkRow #bDiscAsk{display:none!important}' +
       '@media (max-width:640px){#petsPanel .mpc-head #dcRow{flex:1 1 100%}#petsPanel .mpc-head #dcRow .dc-note{flex:1 1 140px}#petsPanel #ctlRow{flex-wrap:wrap}#petsPanel #ctlRow .psearch{flex:1 1 100%}#petsPanel #ctlRow .psort{flex:1 1 0;min-width:0}#petsPanel #ctlRow .psort xc-select{flex:1;min-width:0}' +
         '#petsPanel #ctlRow .psort{font-size:0}#petsPanel #ctlRow .psort xc-select{font-size:14px}#petsPanel #ctlRow .mpc-tb,#petsPanel #ctlRow .mpt-view{padding-left:8px;padding-right:8px;font-size:13px}#petsPanel .mpc-rar{flex-wrap:wrap}#petsPanel .mpc-rar #fRarRow{flex:1 1 100%;flex-wrap:nowrap;overflow-x:auto}#petsPanel .mpc-rar #fShowingSlot{display:none}' +
-        'body.selmode #petsPanel #bulkRow,body.mpc-sel #petsPanel #bulkRow{bottom:0;width:100%;border-radius:10px 10px 0 0;border-width:3px 0 0;padding:8px 10px calc(8px + env(safe-area-inset-bottom))}' +
+        'body.mpc-inview.selmode #petsPanel #bulkRow,body.mpc-inview.mpc-sel #petsPanel #bulkRow{bottom:0;width:100%;border-radius:10px 10px 0 0;border-width:3px 0 0;padding:8px 10px calc(8px + env(safe-area-inset-bottom))}' +
         '#petsPanel #bulkRow #bFeedKept{flex:1 1 100%;order:3}#petsPanel #bulkRow .mpt-alt{order:2}#petsPanel #bulkRow .selall{font-size:13px}}';
     d.head.appendChild(s); }
   function el(tag, attrs, html) { var e = d.createElement(tag); for (var k in attrs) e.setAttribute(k, attrs[k]); if (html != null) e.innerHTML = html; return e; }
@@ -108,6 +108,11 @@
     var sc = $('selCount'); if (sc && window.MutationObserver) new MutationObserver(soon).observe(sc, { childList: true, characterData: true, subtree: true });
     if (window.MutationObserver) new MutationObserver(soon).observe(d.body, { attributes: true, attributeFilter: ['class'] });
     d.addEventListener('xcpets-sel', soon); d.addEventListener('change', function (e) { if (e.target && e.target.closest && e.target.closest('#petsPanel')) soon(); }, true);
+    /* Nov 26 2026 (Jake: "this feed bar is stuck"): the selection bar was pinned to the screen whenever a pet was ticked, so it followed
+     * you down Play to the Grinder, the Pantry and over their burn sheets. It now pins only while My Pets is on screen (class mpc-inview);
+     * scroll back to My Pets and it is there again, with your ticks kept. */
+    var panel = $('petsPanel'); if (panel && window.IntersectionObserver) new IntersectionObserver(function (es) { es.forEach(function (e) { d.body.classList.toggle('mpc-inview', e.isIntersecting); }); }, { rootMargin: '0px 0px -140px 0px' }).observe(panel);
+    else d.body.classList.add('mpc-inview');
     setInterval(sync, 2000); sync(); return true; }
   window.V2MyPetsCalm = { init: init, sync: sync };
   var tries = 0; (function poll() { if (!init() && tries++ < 600) setTimeout(poll, 200); })();

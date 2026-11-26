@@ -4,12 +4,20 @@
  * cut-off buttons and text, oversized titles and freezes). Rules are prefixed "html body" so they win over the stylesheets and injected
  * <style> blocks that load later, without !important. */
 
-/* 1 · One layer on top at a time. (Same list as SHEETS in js/v2-tutorial.js; add a new full-screen pop-up to both.) While a sheet or pop-up is open, the floating helpers (Coach Peepo's tips, the "N new pets hatched"
+/* 1 · One layer on top at a time. Nov 26 2026: the My Pets selection bar (#bulkRow, z-index 900) and the bottom pills/bars sat ON TOP of
+ *     the Grinder's Sign & burn sheet (z-index 50) and hid its warning and buttons. Nothing covers an open sheet now: they hide too. (Same list as SHEETS in js/v2-tutorial.js; add a new full-screen pop-up to both.) While a sheet or pop-up is open, the floating helpers (Coach Peepo's tips, the "N new pets hatched"
  *     tray, the 2-min tour chip) step aside. Before, Coach Peepo's tip (z-index 100003) sat over the Sign & burn sheet and covered its
  *     fee buttons on phones, and over the pet page's "Open pet page" link. They come back as soon as the sheet closes. */
 html body:has(.reveal.on, .mgr-bg, .ca-ov, .la-ov, .qa-ov, .cp-bg, .csac-bg, .dz-modal, .eggpop, .mg-dlg-wrap, .sg-bg, .wspin, .xcs-ov, .cs-ov.on, .sh-ov, .ip-sheet:not([hidden]), .pk-modal, .sh-modal.on, .ftg-ov, #xhOv) .tut-tip,
 html body:has(.reveal.on, .mgr-bg, .ca-ov, .la-ov, .qa-ov, .cp-bg, .csac-bg, .dz-modal, .eggpop, .mg-dlg-wrap, .sg-bg, .wspin, .xcs-ov, .cs-ov.on, .sh-ov, .ip-sheet:not([hidden]), .pk-modal, .sh-modal.on, .ftg-ov, #xhOv) .tut-point,
-html body:has(.reveal.on, .mgr-bg, .ca-ov, .la-ov, .qa-ov, .cp-bg, .csac-bg, .dz-modal, .eggpop, .mg-dlg-wrap, .sg-bg, .wspin, .xcs-ov, .cs-ov.on, .sh-ov, .ip-sheet:not([hidden]), .pk-modal, .sh-modal.on, .ftg-ov, #xhOv) .htray{visibility:hidden;pointer-events:none}
+html body:has(.reveal.on, .mgr-bg, .ca-ov, .la-ov, .qa-ov, .cp-bg, .csac-bg, .dz-modal, .eggpop, .mg-dlg-wrap, .sg-bg, .wspin, .xcs-ov, .cs-ov.on, .sh-ov, .ip-sheet:not([hidden]), .pk-modal, .sh-modal.on, .ftg-ov, #xhOv) .htray,
+html body:has(.reveal.on, .mgr-bg, .ca-ov, .la-ov, .qa-ov, .cp-bg, .csac-bg, .dz-modal, .eggpop, .mg-dlg-wrap, .sg-bg, .wspin, .xcs-ov, .cs-ov.on, .sh-ov, .ip-sheet:not([hidden]), .pk-modal, .sh-modal.on, .ftg-ov, #xhOv) #bulkRow,
+html body:has(.reveal.on, .mgr-bg, .ca-ov, .la-ov, .qa-ov, .cp-bg, .csac-bg, .dz-modal, .eggpop, .mg-dlg-wrap, .sg-bg, .wspin, .xcs-ov, .cs-ov.on, .sh-ov, .ip-sheet:not([hidden]), .pk-modal, .sh-modal.on, .ftg-ov, #xhOv) #xhBar,
+html body:has(.reveal.on, .mgr-bg, .ca-ov, .la-ov, .qa-ov, .cp-bg, .csac-bg, .dz-modal, .eggpop, .mg-dlg-wrap, .sg-bg, .wspin, .xcs-ov, .cs-ov.on, .sh-ov, .ip-sheet:not([hidden]), .pk-modal, .sh-modal.on, .ftg-ov, #xhOv) #xhPill,
+html body:has(.reveal.on, .mgr-bg, .ca-ov, .la-ov, .qa-ov, .cp-bg, .csac-bg, .dz-modal, .eggpop, .mg-dlg-wrap, .sg-bg, .wspin, .xcs-ov, .cs-ov.on, .sh-ov, .ip-sheet:not([hidden]), .pk-modal, .sh-modal.on, .ftg-ov, #xhOv) #xwPill,
+html body:has(.reveal.on, .mgr-bg, .ca-ov, .la-ov, .qa-ov, .cp-bg, .csac-bg, .dz-modal, .eggpop, .mg-dlg-wrap, .sg-bg, .wspin, .xcs-ov, .cs-ov.on, .sh-ov, .ip-sheet:not([hidden]), .pk-modal, .sh-modal.on, .ftg-ov, #xhOv) .ip-away,
+html body:has(.reveal.on, .mgr-bg, .ca-ov, .la-ov, .qa-ov, .cp-bg, .csac-bg, .dz-modal, .eggpop, .mg-dlg-wrap, .sg-bg, .wspin, .xcs-ov, .cs-ov.on, .sh-ov, .ip-sheet:not([hidden]), .pk-modal, .sh-modal.on, .ftg-ov, #xhOv) .ip-tour,
+html body:has(.reveal.on, .mgr-bg, .ca-ov, .la-ov, .qa-ov, .cp-bg, .csac-bg, .dz-modal, .eggpop, .mg-dlg-wrap, .sg-bg, .wspin, .xcs-ov, .cs-ov.on, .sh-ov, .ip-sheet:not([hidden]), .pk-modal, .sh-modal.on, .ftg-ov, #xhOv) .ip-awayfix{visibility:hidden;pointer-events:none}
 
 /* 2 · A sheet's own buttons stay in reach. The last button row of a sheet (Sign & burn / Cancel, Apply, Discard...) is pinned to the
  *     bottom of the sheet while its middle scrolls. Before, a 40-burn Sign & burn sheet on a 1280x720 laptop put the Sign button
@@ -48,3 +56,12 @@ html body .reveal:not(#packBox) .box > .row:last-child{position:sticky;bottom:-2
 /* 6 · Button groups wrap instead of running off the screen: the community feed amounts (69 / 690 / 6,900 at full price) become
  *     "267.375"-style numbers during halvings and Fire Sales, and on a 390px phone the last button hung past the right edge. */
 html body .camtseg{flex-wrap:wrap;max-width:100%}
+
+/* 7 · Pinned action bars come first (Nov 26 2026, Jake: the "gm! Say WAGMI" pop-up sat on the Select / Feed selected bar). Every floating
+ *     thing at the bottom of the screen used to pick its own spot, so each one landed on My Pets' selection bar in turn (PR 290, PR 297,
+ *     then WAGMI). js/v2-dock.js measures the pinned bar (#bulkRow, or anything with data-dock) into --dock-h, and every bottom floater
+ *     below is lifted by that much, so it sits just above the bar. "translate" adds to each floater's own transform (centering, slide-in).
+ *     A NEW bottom floater goes in this list: tools/dock-test.js fails until it does. */
+html.docked body :is(#toasts, .toasts, .shtoast, .dz-toast, .sh-toast, .htray, .tut-tip, .ip-away, .ip-tour, .ip-awayfix, #nfeePop, #xwPill, #xhPill, #xhBar, #dexStaleNote, #riskNote){translate:0 calc(-1 * var(--dock-h, 0px))}
+/*     and the page itself scrolls clear of the bar, however tall it wraps (it was a fixed 96px; the desktop bar is ~150px) */
+html.docked body #petsPanel{padding-bottom:calc(var(--dock-h, 0px) + 16px)}

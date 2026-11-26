@@ -1074,34 +1074,14 @@
       : '<span class="sk-tag sk-w">WAGMI?</span> <b>Say WAGMI once a chain day</b> <span class="sk-joke">and watch your 🔥 streak grow. 1 dander, no feeding needed.</span>';
     setTimeout(function () { var b = $('wagmiBtn'); if (b && !b.disabled) b.onclick = function () { confirmPlans('WAGMI check-in', [{ tag: 'pet:wagmi', amount: 0.00000001 }]); }; }, 0);
     return '<span class="sk-msg">' + msg + '</span>' + btn; }
-  /* wagmi-daily (owner, Oct 22 2026): right after V2Wallet.connect, offer WAGMI once per wallet per chain day if it can be sent (gate open, not said
-   * today, none pending; same sendBlock check as the button). One tap opens the normal confirm (one XCP Wallet window, one-window lock applies).
-   * Dismiss = not again today. localStorage key xcpets-wagmi-offer:<addr> = chain day it was shown. The My Pets WAGMI button stays. */
-  var WAGMI_PLAN = { tag: 'pet:wagmi', amount: 0.00000001 };
-  function wagmiOffer(w) { try {
-    if (!ME || viewOnly() || !w || !w.tip || !V.wagmiOn || !V.wagmiOn(w.tip + 1)) return; var ss = window.sessionStorage, ls = window.localStorage;
-    if (ss.getItem('xcpets-wagmi-connect') !== ME) return; var d = V.day ? V.day(w.tip + 1) : Math.floor((w.tip + 1) / 144), k = 'xcpets-wagmi-offer:' + ME;
-    if (ls.getItem(k) === String(d) || $('wagmiOffer') || sendWhy(WAGMI_PLAN)) return;
-    ls.setItem(k, String(d)); ss.removeItem('xcpets-wagmi-connect');
-    var first = V.wagmiFirst ? V.wagmiFirst(w, d).length : 5, prize = V.wagmiPrizeOn && V.wagmiPrizeOn(w.tip + 1) && first < (V.WAGMI_PRIZE_N || 5);
-    var el = document.createElement('div'); el.id = 'wagmiOffer'; el.className = 'wagmi-offer'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'Say WAGMI today');
-    el.innerHTML = '<b>🚀 gm! Say WAGMI for today?</b><span>One tap keeps your 🔥 streak going (1 dander, plus the network fee).' + (prize ? ' Only ' + first + ' of 5 Day One Degen spots taken today: the first five wallets each get +1 saved Pepe Wheel spin.' : '') + '</span>' +
-      '<div class="wo-btns"><button type="button" class="btn" id="wagmiOfferGo">🚀 Say WAGMI</button><button type="button" class="btn ghost" id="wagmiOfferNo">Not today</button></div>';
-    document.body.appendChild(el);
-    $('wagmiOfferGo').onclick = function () { el.remove(); confirmPlans('WAGMI check-in', [WAGMI_PLAN]); };
-    $('wagmiOfferNo').onclick = function () { el.remove(); };
-  } catch (e) { } }
-  window.addEventListener('xcpets:connected', function () { setTimeout(function () { wagmiOffer(world()); }, 0); });
-  if (!document.getElementById('wagmiOfferCss')) { var woc = document.createElement('style'); woc.id = 'wagmiOfferCss';
-    woc.textContent = '.wagmi-offer{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:60;width:min(440px,calc(100vw - 24px));background:#181327;color:#ece6ff;border:3px solid #ffc93c;border-radius:12px;padding:12px 14px;box-shadow:0 6px 24px #000a;display:flex;flex-direction:column;gap:6px}' +
-      '.wagmi-offer b{font-family:"Press Start 2P",monospace;font-size:11px;color:#ffc93c;line-height:1.5}.wagmi-offer span{font-size:13px;line-height:1.4}.wagmi-offer .wo-btns{display:flex;gap:8px;flex-wrap:wrap}.wagmi-offer .btn{min-height:40px}';
-    document.head.appendChild(woc); }
+  /* wagmi-daily pop-up removed (Jake, Nov 26 2026: "gm! Say WAGMI for today?" floated over the Select / Feed selected bar). WAGMI stays one
+   * tap away in the WAGMI bar at the top of My Pets (#streakBar, wagmiBar above). Floating pop-ups now lift above pinned bars (js/v2-dock.js). */
   var CARDC = new Map(); /* speed2-1101: last grid card per pet id (see mk) */
   function renderPets(w) {
     if (CARDC.size > 4000) CARDC.clear();
     var all = mine(w), alive = all.filter(function (p) { return !p.dead; }), dead = all.filter(function (p) { return p.dead; });
     if (V.streakOf && $('streakBar')) { var stk = ME ? V.streakOf(w, ME, w.tip) : null; /* WAGMI / NGMI daily check-in (login-streak rework, Oct 21 2026) */
-      $('streakBar').style.display = stk ? '' : 'none'; if (stk) $('streakBar').innerHTML = wagmiBar(stk, w);  wagmiOffer(w); }
+      $('streakBar').style.display = stk ? '' : 'none'; if (stk) $('streakBar').innerHTML = wagmiBar(stk, w); }
     var rost = w._roster, partial = !!(rost && !w._full);
     $('nAlive').textContent = partial ? rost.alive : alive.length; $('nDead').textContent = partial ? rost.dead : dead.length; $('petBadge').textContent = partial ? rost.alive : alive.length;
     if (window.V2TokFilter && $('fTok')) { var tc = V2TokFilter.counts(w, petList(alive, dead, false, true));
