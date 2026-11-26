@@ -29,5 +29,12 @@
   function discardSet(w, me) { var h = pileIds(me), P = (w && w.pets) || [], i, p; if (!me) return h;
     for (i = 0; i < P.length; i++) { p = P[i]; if (p && p.owner === me && p.hd === me && !isZ(p)) h[p.id] = 1; }
     return h; }
-  root.V2Own = { living: living, isLiving: isLiving, isZ: isZ, canEat: canEat, pileIds: pileIds, inPile: inPile, discardSet: discardSet };
+  /* pileList(w, me, set, dead) (Nov 25 2026, Evan: "they are said to be in discard pile but they aren't"): the pets the Discard pile box SHOWS.
+   * It has to be inPile's whole answer, or a pet hidden from My Pets lands nowhere: My Pets hid every on-chain discard, the box listed only
+   * this browser's list (set, as { id: 1 } or a Set). dead = the Pet Cemetery tab (browser list only: a dead pet can't be added back on chain). */
+  function pileList(w, me, set, dead) { var P = (w && w.pets) || [], out = [], i, p, has = set ? (typeof set.has === 'function' ? function (id) { return set.has(id); } : function (id) { return !!set[id]; }) : function () { return false; };
+    if (!me) return out;
+    for (i = 0; i < P.length; i++) { p = P[i]; if (!p || p.owner !== me || p.released || isZ(p) || !!p.dead !== !!dead) continue; if (has(p.id) || (!dead && p.hd === me)) out.push(p); }
+    return out; }
+  root.V2Own = { living: living, isLiving: isLiving, isZ: isZ, canEat: canEat, pileIds: pileIds, inPile: inPile, discardSet: discardSet, pileList: pileList };
 })(typeof self !== 'undefined' ? self : this);

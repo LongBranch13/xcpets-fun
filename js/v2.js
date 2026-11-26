@@ -1190,7 +1190,11 @@
       /* Nov 22 2026: scrolling near the end shows the next batch by itself (players had to press Show more again and again). The button stays for keyboards. */
       if (window.IntersectionObserver) { var mbIo = new IntersectionObserver(function (es) { if (renderPets.tok !== tok || !mb.parentNode) { if (renderPets.tok !== tok) mbIo.disconnect(); return; }
         var bt = mb.querySelector('button'); if (es[0] && es[0].isIntersecting && bt && !bt.disabled) bt.click(); }, { rootMargin: '800px 0px' }); mbIo.observe(mb); } }
-    var hs = hiddenSet(), gone = w.pets.filter(function (p) { return p.owner === ME && !p.released && !ZB(p) && hs.has(p.id) && !!p.dead === !!cem; }); /* a risen zombie is never in the pile (inPile) */ /* one read of the discard list: parsing it once per owned pet froze My Pets when the pile held thousands */
+    /* Nov 25 2026 (Evan: "pets I can't feed because they are said to be in discard pile but they aren't"): the pile listed only THIS browser's
+     * list, while My Pets also hides every pet discarded ON CHAIN (inPile). Pets discarded from another device, before a cache clear or by a burn
+     * that landed on other pets were hidden everywhere: not in My Pets, not in the pile, and the feed check said 'discarded'. The pile is now
+     * inPile's whole answer: this browser's list plus this wallet's living on-chain discards (⛓ chip, Restore signs the Add back burn). */
+    var hs = hiddenSet(), gone = V2Own.pileList(w, ME, hs, !!cem); /* a risen zombie is never in the pile (inPile) */ /* one read of the discard list: parsing it once per owned pet froze My Pets when the pile held thousands */
     if (gone.length) box.appendChild(discardedBox(gone, w));
     if (!cem && V.hdPlan) { var hdBar = chainDiscardBar(w); if (hdBar) box.appendChild(hdBar); }
     if (!cem) { pileLink(gone.length); lastHatchLink(w); } /* discard-pile jump link; unopened-1125: the last hatch, always one tap away */
@@ -1235,6 +1239,7 @@
     if (S0 === 'power') list.sort(function (a, b) { return pw(b) - pw(a) || a.id - b.id; });
     if (DS.flip) list.reverse();
     Object.keys(DS.sel).forEach(function (k) { if (!gone.some(function (p) { return String(p.id) === k; })) delete DS.sel[k]; });
+    var nChain = gone.filter(onChainDiscarded).length;
     var nsel = Object.keys(DS.sel).length, shown = list.slice(0, DS.n), allOn = shown.length > 0 && shown.every(function (p) { return DS.sel[p.id]; });
     var inPile = 0; if (idSet) gone.forEach(function (p) { if (idSet[p.id]) inPile++; });
     var meta = iq && iq.mode === 'bad' ? 'Not pet numbers. Nothing was selected.' : iq && iq.mode === 'ids' ? (list.length + ' shown · ' + inPile + ' of ' + iq.ids.length + ' IDs in this pile' + (iq.ids.length - inPile > 0 ? ' · ' + (iq.ids.length - inPile) + ' not in this pile' : '') + (iq.capped ? ' · first ' + iq.ids.length + ' of ' + iq.pasted : '')) : (list.length + ' of ' + gone.length + ' match');
@@ -1243,12 +1248,12 @@
         '<h4>' + esc(p.name || spOf(p)) + ' <span class="muted">#' + p.id + '</span>' + (p.blackEye ? ' 🤕' : '') + (p.crowned ? ' 👑' : '') + '</h4>' +
         '<div class="chips"><span class="chip">' + esc(spOf(p)) + '</span>' + tierPill(p.tier, p) + '<span class="chip stg">' + esc((V.stageLabelOf ? V.stageLabelOf(p) : p.stageName)) + '</span><span class="chip' + (f.warn ? ' warn' : '') + '">' + f.chip + '</span>' +
         (R.eraChip ? R.eraChip(w, p) : '') +
-        '<span class="chip gearchip" title="Gear worn / slots">🎒 ' + R.worn(w, p.id).length + '/' + p.capacity + ' slots</span>' + (window.UXB && UXB.power ? '<span class="chip pow"' + ptA(p) + '>⚡ ' + pw(p) + '</span>' : '') + '</div>' +
+        '<span class="chip gearchip" title="Gear worn / slots">🎒 ' + R.worn(w, p.id).length + '/' + p.capacity + ' slots</span>' + (window.UXB && UXB.power ? '<span class="chip pow"' + ptA(p) + '>⚡ ' + pw(p) + '</span>' : '') + (onChainDiscarded(p) ? '<span class="chip warn" title="Discarded on chain: hidden on every device and the rules never feed it. Restore signs a tiny Add back burn (1 dander).">⛓ On chain</span>' : '') + '</div>' +
         (window.PetScore && PetScore.discardInfo ? PetScore.discardInfo(w, p, spOf(p)) : '') +
         '<div class="small muted dp-fed">' + f.line + '</div>' +
         '<div class="row dp-acts"><a class="q" href="pet.html?id=' + p.id + '" aria-label="Open #' + p.id + '">Open ▸</a><button type="button" class="btn" data-restore="' + p.id + '" title="Put #' + p.id + ' back in My Pets">↩️ Restore</button></div></div>'; };
     hb.innerHTML = '<details' + (DS.open ? ' open' : '') + '><summary><span class="dp-title">🗑️ Discard pile</span> <span class="chip">' + gone.length + ' pet' + (gone.length === 1 ? '' : 's') + '</span> <span class="small muted">' + (DS.open ? 'tap to close' : 'tap to open') + '</span></summary>' +
-      '<p class="small muted">Pets you discarded. They are only hidden in this browser: they still exist on chain (other devices and players still see them). Restore puts them back in My Pets. Free, no burn. Starred pets are never discarded.</p>' +
+      '<p class="small muted">Pets you discarded. ' + (nChain ? '<b>⛓ ' + fmt(nChain) + ' discarded on chain</b>: hidden on every device and never fed. Restoring them signs one tiny Add back burn (1 dander), nothing else. ' : '') + (nChain < gone.length ? 'The others are only hidden in this browser: Restore is free, no burn. ' : '') + 'Starred pets are never discarded.</p>' +
       '<div class="row small dctl dp-birth" role="group" aria-label="Birth trait">' + [['', 'All births'], ['weird', '🌀 Weird'], ['legend', '🏆 Legends']].concat(kinds.map(function (k) { var sample = gone.filter(function (p) { var i = dsRare(p); return i && i.kind === k; })[0], i = sample && dsRare(sample); return [k, (i && i.icon ? i.icon + ' ' : '') + (i && i.name || k)]; })).map(function (o) { return '<button type="button" class="q' + (DS.birth === o[0] ? ' on' : '') + '" data-dbirth="' + esc(o[0]) + '" aria-pressed="' + (DS.birth === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div>' +
       '<div class="row small dctl"><label>Sort <xc-select data-ds="sort">' + DS_SORTS.map(function (o) { return '<option value="' + o[0] + '">' + o[1] + '</option>'; }).join('') + '</xc-select></label> <button type="button" class="q" data-dsa="dir" aria-pressed="' + DS.flip + '" title="Reverse the order">⇅ Reverse</button> ' +
       '<label>Rarity <xc-select data-ds="tier"><option value="all">All</option>' + TIER_ID.map(function (t, k) { return '<option value="' + t + '">' + TL[k] + '</option>'; }).join('') + '</xc-select></label> ' +
@@ -1267,12 +1272,20 @@
       hb.querySelector('[data-dsa="selall"]').checked = shown.length > 0 && shown.every(function (p) { return DS.sel[p.id]; }); };
     hb.querySelectorAll('.dcb').forEach(function (c) { c.onchange = function () { var d = c.closest('.dcard'), id = d.dataset.did; if (c.checked) DS.sel[id] = 1; else delete DS.sel[id]; d.classList.toggle('selected', c.checked); selUpd(); }; });
     hb.querySelector('[data-dsa="selall"]').onchange = function () { var on = this.checked; shown.forEach(function (p) { if (on) DS.sel[p.id] = 1; else delete DS.sel[p.id]; }); hb.querySelectorAll('.dcard').forEach(function (d) { d.classList.toggle('selected', on); d.querySelector('.dcb').checked = on; }); selUpd(); };
-    hb.querySelectorAll('[data-restore]').forEach(function (a) { a.onclick = function (e) { e.preventDefault(); var id = Number(a.getAttribute('data-restore')); delete DS.sel[id]; restoreLocal([id]); }; });
+    hb.querySelectorAll('[data-restore]').forEach(function (a) { a.onclick = function (e) { e.preventDefault(); var id = Number(a.getAttribute('data-restore')); delete DS.sel[id]; pileRestore([id]); }; });
     hb.querySelectorAll('button[data-dsa]').forEach(function (b) { b.onclick = function () { var a = b.dataset.dsa; if (a === 'dir') { DS.flip = !DS.flip; return render(); } if (a === 'more') { DS.n += 120; return render(); } if (a === 'none') { DS.sel = {}; return render(); }
       var ids = a === 'all' ? gone.map(function (p) { return p.id; }) : Object.keys(DS.sel).map(Number); if (!ids.length) return;
-      if (ids.length > 1 && !window.confirm('Restore ' + (a === 'all' ? 'all ' : '') + ids.length + ' pets from the Discard pile to My Pets?\n\nFree, no burn. They show in My Pets again in this browser.')) return; DS.sel = {}; restoreLocal(ids); }; });
+      var nc = ids.filter(function (id) { return onChainDiscarded(w.byId[id]); }).length;
+      if (ids.length > 1 && !window.confirm('Restore ' + (a === 'all' ? 'all ' : '') + ids.length + ' pets from the Discard pile to My Pets?\n\n' + (nc ? nc + ' of them ' + (nc === 1 ? 'was' : 'were') + ' discarded on chain: you sign one tiny Add back burn (1 dander) for ' + (nc === 1 ? 'it' : 'them') + '. ' : '') + (nc < ids.length ? (ids.length - nc) + ' only hidden in this browser come back free, no burn.' : ''))) return; DS.sel = {}; pileRestore(ids); }; });
     hb.querySelectorAll('.dcard').forEach(function (d) { var p = w.byId[d.dataset.did]; if (p) R.lazy(d.querySelector('canvas'), function () { return petFrames(p, w); }); });
     return hb; }
+  /* pileRestore (Nov 25 2026, Evan): Restore in the pile undoes BOTH kinds of discard. Browser-only pets come back at once (free); pets
+   * discarded on chain get the Add back burn (pet:hu) for exactly those pets, in the normal confirm sheet; they leave this browser's list too
+   * once it confirms (sweepHu). Restoring only the browser list left an on-chain pet hidden, unfed and unfeedable. */
+  function pileRestore(ids) { var w = world(), chain = [], local = [];
+    ids.map(Number).forEach(function (id) { var p = w.byId[id]; if (onChainDiscarded(p) && !p.dead && !p.released) chain.push(id); else local.push(id); });
+    if (local.length) restoreLocal(local);
+    if (chain.length) { if (!(V.hdOn && V.hdOn((S.tip || 0) + 1))) return toast('These pets were discarded on chain. Add back opens again at block ' + fmt(V.ACTIVATE_ONCHAIN_DISCARD_BLOCK) + '.'); chainDiscardIds(chain, true); } }
   /* 'Discard pile (N)' jump link next to the bulk discard buttons: opens + scrolls to the pile */
   function openPile() { DS.open = true; var d = document.querySelector('#discardPile .dgrid'); if (d) { var det = d.closest('details'); if (det) det.open = true; d.scrollIntoView({ block: 'start' }); return; } render(); var d2 = document.querySelector('#discardPile details'); if (d2) d2.scrollIntoView({ block: 'start' }); }
   /* On-chain discard. The game never signs: this only fills the same confirm sheet as every other burn.
