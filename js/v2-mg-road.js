@@ -76,7 +76,7 @@
     if (!p) return null;
     var mine = !me || p.owner === me, mv = view(w, p, b);
     if (p.mythicGod) return { step: STEPS.length, done: true, seat: p.mythicGod.seat,
-      next: 'Seat ' + p.mythicGod.seat + ' of ' + ((MG().SEATS) || 21) + ' in the Pantheon. ' + esc(nameOf(p)) + ' never dies.' };
+      next: (p.mythicGod.seat ? 'Seat ' + p.mythicGod.seat + ' of ' + ((MG().SEATS) || 21) + ' in the Pantheon. ' : (p.mythicGod.fallen ? 'A Fallen God: it lost its seat in a seat battle. ' : 'A God with no seat: all ' + ((MG().SEATS) || 21) + ' were taken. ') + 'It can win one in a seat battle on the Pantheon page. ') + esc(nameOf(p)) + ' never dies.' };
     if (isMythicZ(p)) {
       var I = resInfo(w, p, b), c = capInfo(w, p, b), min = (I && I.min) || MG().RES_MIN || 66;
       var ready = I && I.points >= min;

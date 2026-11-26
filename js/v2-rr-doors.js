@@ -64,9 +64,27 @@
       (ST.ups || []).slice(0, ST.more ? 30 : 5).map(function (x) { var sl = Object.keys(x.by), first = sl[0] && x.by[sl[0]];
         return '<div class="rrc-up"><canvas width="32" height="32" data-pid="' + x.p.id + '" aria-hidden="true"></canvas><div class="rrc-ut"><b>#' + x.p.id + ' ' + esc(x.p.name || '') + '</b><small>' + (first ? esc(X.label(first.g.item)) + ' in ' + esc(X.slotName(sl[0])) + (sl.length > 1 ? ' + ' + (sl.length - 1) + ' more' : '') : '') + '</small></div><span class="rrc-g">+' + x.gain + '</span><button type="button" class="btn rrc-go" data-dress="' + x.p.id + '">Dress</button></div>'; }).join('') +
       (nUp > 5 ? '<button type="button" class="q rrc-more" data-rc="more">' + (ST.more ? 'Show fewer' : 'Show ' + Math.min(25, nUp - 5) + ' more') + '</button>' : '') +
-      (nUp ? '<button type="button" class="btn ico-flame rrc-all" data-rc="all">⚡ Dress all ' + fmt(nUp) + ' · +' + fmt(total) + ' gear power <span class="cost">free</span></button>' : '') + '</section>';
-    h += gearHtml(w, P);
+      (nUp && !forgeLive() ? '<button type="button" class="btn ico-flame rrc-all" data-rc="all">⚡ Dress all ' + fmt(nUp) + ' · +' + fmt(total) + ' gear power <span class="cost">free</span></button>' : '') + '</section>';
+    h += forgeHtml(w, P) + gearHtml(w, P);
     el.innerHTML = h; bindSprites(el, w); if (ST.picking) drawFind(); }
+  /* ---- GEAR FORGE (Jake Nov 26 2026, rules: V2Rules.forge*, from ACTIVATE_GEAR_FORGE_BLOCK). Every button builds the burn with V2Rules.forgePlan and
+   * hands it to the normal confirm sheet (pre-sign checks, wallet approval). Nothing here signs. Before the gate the box is hidden. */
+  function forgeLive() { var V = window.V2Rules, u = U(); return !!(V && V.forgeOn && u && u.world && V.forgeOn(((u.world() || {}).tip || 0) + 1)); }
+  var FG = { key: null, v: null };
+  function forgeView(w) { var V = window.V2Rules, ME = U().ME, b = (w.tip || 0) + 1, k = D().index(w) + '|' + b; if (FG.key === k) return FG.v;
+    var v = { up: V.forgePreview(w, ME, 'gearup', [], b), sm: [0, 1, 2, 3].map(function (t) { return V.forgePreview(w, ME, 'smash', t, b); }), fu: V.forgePreview(w, ME, 'fuse', null, b), dust: V.dustOf(w, ME) };
+    FG.key = k; FG.v = v; return v; }
+  function forgeHtml(w, P) { var V = window.V2Rules; if (!V || !V.forgePreview || !forgeLive()) return ''; var f = forgeView(w), RAR = ['Commons', 'Uncommons', 'Rares', 'Legendaries'];
+    return '<section class="rrc-forge" aria-label="Gear Forge"><div class="rrc-uh"><h3>🔨 Gear Forge</h3><span class="small">🪙 ' + fmt(f.dust) + ' Gear Dust</span></div>' +
+      '<button type="button" class="btn ico-flame rrc-fg-up" data-fg="up"' + (f.up.ok ? '' : ' disabled') + '>' + (f.up.ok ? '⚡ Gear up for real: ' + fmt(f.up.n) + ' piece' + (f.up.n === 1 ? '' : 's') + ' on ' + fmt(f.up.pets) + ' pet' + (f.up.pets === 1 ? '' : 's') + ' · +' + fmt(f.up.gain) + ' per hit' : '✓ Every pet wears your best spare gear') + ' <span class="cost">1 burn</span></button>' +
+      '<p class="small">Gear up is saved on Bitcoin: battles count it and every phone shows it.</p>' +
+      '<div class="rrc-fg-row"><b>Smash spares into Dust</b> <span class="small">(one copy of every piece is always kept)</span><div class="rrc-fg-pills">' +
+      f.sm.map(function (x, t) { return '<button type="button" class="q rrc-fg-sm" data-fg="sm" data-t="' + t + '"' + (x.ok ? '' : ' disabled') + '>' + (t ? 'up to ' : '') + RAR[t] + (t ? '' : ' only') + '<small>' + fmt(x.n || 0) + ' → ' + fmt(x.dust || 0) + ' dust</small></button>'; }).join('') + '</div></div>' +
+      '<div class="rrc-fg-row"><b>Fuse</b> <span class="small">3 spare copies → 1 piece one rarity higher</span> <button type="button" class="q" data-fg="fu"' + (f.fu.ok ? '' : ' disabled') + '>' + (f.fu.ok ? '✨ Fuse ' + fmt(f.fu.used) + ' into ' + fmt(f.fu.n) : 'Nothing to fuse yet') + '</button></div>' +
+      (P ? '<div class="rrc-fg-row"><b>Dust roll</b> <span class="small">' + V.DUST_ROLL + ' Gear Dust = one gear roll for #' + P.id + '</span> <button type="button" class="q" data-fg="dr" data-pid="' + P.id + '"' + (f.dust >= V.DUST_ROLL ? '' : ' disabled') + '>🎲 Roll for #' + P.id + '</button></div>' : '') + '</section>'; }
+  function forgeGo(kind, arg) { var V = window.V2Rules, u = U(), w = u.world(), pl = V.forgePlan(w, u.ME, kind, arg, (w.tip || 0) + 1);
+    if (!pl.ok) return u.toast ? u.toast(pl.why) : null; FG.key = null;
+    u.confirmPlans(pl.label, [{ tag: pl.tag, amount: pl.amount, label: pl.label }], function () { FG.key = null; ST.ups = null; setTimeout(closet, 800); }); }
   function bindSprites(el, w) { el.querySelectorAll('canvas[data-pid]').forEach(function (c) { var p = w.byId[+c.getAttribute('data-pid')]; if (p) sprite(c, p, w); }); }
   /* your gear by slot: a tab per slot with counts, then one tile per piece kind (copies, spare, who wears it, what it adds on the mirror pet) */
   function gearHtml(w, P) { var u = U(), X = D(), V = window.V2Rules, ME = u.ME, SL = (V.V2_SLOTS || ['head', 'hand', 'body', 'back', 'face', 'feet']).slice(), by = {}, tot = 0, spare = 0;
@@ -96,7 +114,8 @@
     if (ds.rc === 'pick') { ST.picking = !ST.picking; draw(w); var f = $('rrcFind'); if (f && ST.picking) try { f.focus({ preventScroll: true }); } catch (er) { } return; }
     if (ds.rc === 'more') { ST.more = !ST.more; return draw(w); }
     if (ds.rc === 'allgear') { ST.allGear = true; return draw(w); }
-    if (ds.rc === 'all') { X.dressAll(); ST.ups = null; setTimeout(closet, 600); } }
+    if (ds.rc === 'all') { X.dressAll(); ST.ups = null; setTimeout(closet, 600); }
+    if (ds.fg === 'up') return forgeGo('gearup', []); if (ds.fg === 'sm') return forgeGo('smash', +ds.t); if (ds.fg === 'fu') return forgeGo('fuse', null); if (ds.fg === 'dr') return forgeGo('dustroll', +ds.pid); }
 
   /* ---- the room's mirror and door open the drawer here (they used to switch the page into #dressing-room) */
   function onHash() { var h = location.hash; if (h === '#dressing-room') { var pid = null; try { var s = V2Shop._state(); pid = s.pet != null ? s.pet : s.mpId; } catch (e) { }
@@ -115,6 +134,7 @@
     '.rrc-mirror{display:flex;gap:12px;align-items:center;background:#160c28;border:3px solid #ffd166;border-radius:10px;padding:10px}.rrc-glass{flex:0 0 auto;width:120px;height:136px;border:5px solid #c08a2a;border-radius:60px 60px 8px 8px;background:radial-gradient(#bfeaff,#2c5f86 72%);display:flex;align-items:center;justify-content:center}' +
     '.rrc-glass canvas{width:104px;height:104px;image-rendering:pixelated}.rrc-mi{flex:1;min-width:0;display:flex;flex-direction:column;gap:8px}.rrc-pet{min-height:40px;text-align:left}.rrc-pow{font-family:Bangers,cursive;font-size:28px;letter-spacing:1px}.rrc-pow small{font-family:"Comic Neue",sans-serif;font-size:13px;letter-spacing:0;opacity:.8}.rrc-dress{min-height:46px}' +
     '.rrc-find[hidden]{display:none!important}.rrc-find{display:flex;flex-direction:column;gap:6px}.rrc-find input{min-height:40px;width:min(320px,100%)}.rrc-chips{display:flex;flex-wrap:wrap;gap:6px}.rrc-chip{display:inline-flex;align-items:center;gap:6px;min-height:44px}.rrc-chip canvas{width:28px;height:28px;image-rendering:pixelated}' +
+    '.rrc-forge{background:#2a1208;border:2px solid #ff9a3c;border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:8px}.rrc-forge h3{color:#ffb35c}.rrc-fg-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.rrc-fg-pills{display:flex;flex-wrap:wrap;gap:6px;width:100%}.rrc-fg-sm{display:flex;flex-direction:column;align-items:center;min-width:120px}.rrc-fg-sm small{opacity:.8;font-size:11px}.rrc-fg-up{width:100%}' +
     '.rrc-ups,.rrc-gear{background:#1b1030;border:2px solid #3ddc84;border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:6px}.rrc-gear{border-color:#6b5590}.rrc-uh{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:6px}.rrc-ups h3{color:#3ddc84}.rrc-gear h3{color:#ffd166}' +
     '.rrc-up{display:flex;align-items:center;gap:8px;min-height:48px}.rrc-up canvas{width:40px;height:40px;image-rendering:pixelated;border-radius:4px}.rrc-ut{flex:1;min-width:0;display:flex;flex-direction:column}.rrc-ut small{opacity:.8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rrc-g{font-family:Bangers,cursive;font-size:22px;color:#3ddc84}.rrc-go{min-height:40px}.rrc-all{min-height:48px;margin-top:4px}' +
     '.rrc-tabs{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:6px}.rrc-tab{min-height:44px;font-family:"Press Start 2P",monospace;font-size:8px;background:#2a1748;color:#f3eaff;border:2px solid #6b5590;border-radius:6px;cursor:pointer}.rrc-tab b{color:#ffd166}.rrc-tab.on{background:#ffd166;color:#2a1530;border-color:#000}.rrc-tab.on b{color:#2a1530}' +
