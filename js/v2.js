@@ -47,6 +47,11 @@
   /* least rare Discarded pet, not ripe, lowest id. One meal refills hunger, so the default is a single cheap Discarded pet, named on the button. */
   function zDefaultMeal(L, H) { var best = null, bk = Infinity, any = false; L.forEach(function (a) { if (H[a.id]) any = true; }); if (!any) return null;
     L.forEach(function (a) { if (!H[a.id]) return; var key = ((a.tier | 0) * 2 + (a.neglected ? 1 : 0)) * 1e12 + a.id; if (key < bk) { bk = key; best = a; } }); return best; }
+  /* Nov 26 2026 (G Money: "won't let me feed my zombie even after I discarded pets"): a zombie eats only pets discarded ON CHAIN. Pets hidden
+   * only in this browser's Discard pile (never burned, or added back with pet:hu) look discarded but the rules refuse them, so the empty list
+   * says so and offers the one burn that makes them permanent (the same path as every discard button). */
+  function zBrowserOnly(w) { var o = []; if (!ME || !w) return o; var set = V2Own.pileIds(ME); Object.keys(set).forEach(function (id) { var a = w.byId && w.byId[id]; if (a && V2Own.isLiving(a, ME, { zombies: false }) && V2Own.discarded(a, ME, { set: set }) === 'browser') o.push(a.id); }); return o; }
+  function zPermHtml(w) { var bo = zBrowserOnly(w); if (!bo.length) return ''; return '<br><b>' + fmt(bo.length) + ' pet' + (bo.length === 1 ? ' is' : 's are') + ' in your Discard pile only in this browser</b>, not discarded on chain, so a zombie can\'t eat ' + (bo.length === 1 ? 'it' : 'them') + ' yet. <button type="button" class="btn zb-mkperm">Make ' + (bo.length === 1 ? 'it' : 'them') + ' permanent (1 dander per burn)</button> Once that burn confirms (about one block), they show here.'; }
   function zFeedHtml(p, w) { if (!ZB(p) || !ME || p.owner !== ME || !V.cemOn || !V.cemCost) return ''; var b = (S.tip || 0) + 1; if (!V.cemOn(b)) return ''; zPickCss();
     var pend = zPendIds(['zfeed', 'rpl']), mine = zPendMeals(p.id), all = zMeals(w, ME, b).filter(function (a) { return a.id !== p.id && pend.indexOf(a.id) < 0 && !zPledgedAny(w, a.id); });
     var L = all.filter(function (a) { return !isKept(a.id); }), kept = all.length - L.length, H = zDiscarded(w), D = L.filter(function (a) { return H[a.id]; }), cost = V.cemCost(w, 'zmeal', b), v = V.cemView(w, p, b) || {};
@@ -55,7 +60,7 @@
     var help = 'A zombie eats <b>pets</b>, not XCPETS meals. Every pet you tick is <b>eaten for good</b>. The fee is ' + fmt(cost) + ' XCPETS <b>per burn</b>, and one burn eats as many pets as fit in it (pets with close ids pack best). Any meal refills hunger to full. Each row shows the <b>power</b> that pet alone would add.' + zCapNote(p) + (gate ? ' <b>Only Discarded pets</b> can be offered (🗑️ Discard in My Pets). Tokenized pets can\'t be offered.' : '') + (kept ? ' ★ Starred pets are never listed (' + fmt(kept) + ').' : '') + ' Pets offered at a seance are Sacrificed. A meal is different: the zombie eats the pet.';
     var note = meal ? 'One Discarded pet is ticked: the least rare one. A meal refills hunger. Each row says what that meal does.' : (D.length ? 'Tick a Discarded pet. A meal refills hunger.' : 'No Discarded pets to feed yet. Discard pets in My Pets first.');
     if (cap) note += ' This zombie is at its power cap, so meals add no power. They still refill hunger.';
-    var empty = gate ? 'No Discarded pets it can eat. Discard pets in My Pets (🗑️, free) first. Tokenized pets can\'t be offered.' : 'No pets it can eat. Discard pets in My Pets (🗑️, free) and they show first here.';
+    var empty = (gate ? 'No Discarded pets it can eat. Discard pets in My Pets (🗑️) first. Tokenized pets can\'t be offered.' : 'No pets it can eat. Discard pets in My Pets (🗑️) and they show first here.') + zPermHtml(w);
     return '<div class="zb-feed zb-pk zb-step" data-zf="' + p.id + '" data-pk="feed">' + pn +
       '<h3 class="zb-h">Feed discarded pets ' + zQ(help) + '</h3>' +
       '<p class="small zb-stepnote">' + note + '</p>' +
@@ -180,7 +185,7 @@
       res +
       '<details class="zb-pickbox"><summary class="small">😇 Pledge pets &amp; gear <span class="muted">(' + ri.points + (ri.bonus ? ' + ' + ri.bonus + ' Halloween' : '') + ' of ' + MIN + ' points · ' + Math.round(ri.chance * 100) + '% chance)</span></summary>' +
       '<p class="small zb-stepnote">Tick pets or gear. They are used up when you try the Resurrection.</p>' +
-      zSortBar('rpl', D.length, L.length > D.length) + zList({ items: L, w: w, H: H, valOf: zRpPts, unit: '✨', empty: (V.cemTokenOfferOn && V.cemTokenOfferOn((S.tip || 0) + 1) ? 'No Discarded pets you can pledge. Discard pets in My Pets (🗑️) first. Tokenized pets can\'t be offered.' : 'No pets you can pledge.') }, true) +
+      zSortBar('rpl', D.length, L.length > D.length) + zList({ items: L, w: w, H: H, valOf: zRpPts, unit: '✨', empty: (V.cemTokenOfferOn && V.cemTokenOfferOn((S.tip || 0) + 1) ? 'No Discarded pets you can pledge. Discard pets in My Pets (🗑️) first. Tokenized pets can\'t be offered.' : 'No pets you can pledge.') + zPermHtml(w) }, true) +
       (G.length ? '<details class="zb-gear"><summary class="small">🛡️ Your gear (' + fmt(G.length) + ')</summary>' + gr + '</details>' : '') +
       '<div class="small zb-sum"></div>' +
       '<p class="small zb-noact zb-need">Tick a pet or a gear piece to pledge it.</p>' +
@@ -343,6 +348,7 @@
   if (typeof document !== 'undefined') document.addEventListener('click', function (e) {
     var qb = e.target && e.target.closest && e.target.closest('.zb-qbtn');
     if (qb) { e.preventDefault(); e.stopPropagation(); var box = qb.nextElementSibling; if (!box || !box.classList || !box.classList.contains('zb-help')) box = qb.parentNode && qb.parentNode.nextElementSibling; if (box && box.classList && box.classList.contains('zb-help')) { var open = box.hidden; box.hidden = !open; qb.setAttribute('aria-expanded', open ? 'true' : 'false'); } return; }
+    var mp = e.target && e.target.closest && e.target.closest('.zb-mkperm'); if (mp) { e.preventDefault(); e.stopPropagation(); var ids = zBrowserOnly(world()); if (ids.length) chainDiscardIds(ids, false); return; }
     var bt = e.target && e.target.closest && e.target.closest('.mg-unlbtn'); if (!bt) return; e.stopPropagation(); e.preventDefault(); if (!bt.disabled) mgUnlDialog(+bt.dataset.z);
   }, true);
   try { var mgc = document.createElement('style'); mgc.textContent = '.mg-dlg-wrap{position:fixed;inset:0;background:rgba(0,0,0,.66);z-index:9999;display:flex;align-items:center;justify-content:center;padding:12px}.mg-dlg{background:#1a0c0c;border:2px solid #b3261e;border-radius:10px;max-width:520px;width:100%;padding:14px;color:#f6e7e5;box-shadow:0 0 24px rgba(179,38,30,.5)}.mg-dlg h3{margin:0 0 6px;color:#ff8a80}.mg-dlg canvas{width:48px;height:48px;image-rendering:pixelated}.mg-dlg-btns{display:flex;gap:8px;justify-content:flex-end;margin-top:10px}.mg-dlg .btn.mg-red{background:#b3261e;border-color:#7a1c1c;color:#fff}.mg-dlg .btn.mg-red:disabled{opacity:.45}'; (document.head || document.documentElement).appendChild(mgc); } catch (e) {}

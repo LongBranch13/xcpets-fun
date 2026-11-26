@@ -9,9 +9,11 @@
  *  3. the heading says it once: N pets, B burns, left out by reason (no repeat, no per-pet list);
  *  4. the "Make my browser discards permanent (N)" count is browser-only pets;
  *  5. while a discard burn is still confirming no new discard sheet opens (XCP Wallet blocks a burn on its unconfirmed change: 'Couldn't verify
- *     asset status'), and the bell's Continue rebuilds a saved discard run from its pets instead of re-sending the saved tag.
+ *     asset status'), and the bell's Continue rebuilds a saved discard run from its pets instead of re-sending the saved tag;
+ *  6. the zombie card names pets discarded only in this browser (a zombie eats only on-chain discards) and offers Make permanent.
  *  5. while a discard burn is still confirming no new discard sheet opens (XCP Wallet blocks a burn on its unconfirmed change: 'Couldn't verify
- *     asset status'), and the bell's Continue rebuilds a saved discard run from its pets instead of re-sending the saved tag.
+ *     asset status'), and the bell's Continue rebuilds a saved discard run from its pets instead of re-sending the saved tag;
+ *  6. the zombie card names pets discarded only in this browser (a zombie eats only on-chain discards) and offers Make permanent.
  *   node tools/discard-button-skip-test.js */
 'use strict';
 const fs = require('fs'), path = require('path'), vm = require('vm');
@@ -37,7 +39,7 @@ const ctx = vm.createContext({ console, ME, V, V2Own: own.V2Own, S: { tip: 97760
   hdSettleThen: () => false, myPendingTags: () => pendTags, loadResume: () => saved, saveResume: (t, r) => { saved = r && r.length ? { title: t, plans: r } : null; }, toast: m => toasts.push(m), confirmPlans: (t, plans) => { sheet = { t, plans }; }, noteHuSent() {}, window: {},
   hiddenIds: () => JSON.parse(st['xcpets-hidden-mainnet-' + ME]), isKept: () => false, onChainDiscarded: p => own.V2Own.onChain(p, ME),
   document: { createElement: () => ({ querySelector: () => null, set innerHTML(h) { ctx.__html = h; } }) } });
-vm.runInContext(['hdConfirming', 'hdWaitNote', 'chainDiscardIds', 'chainDiscardBar', 'resumeGo'].map(fn).join('\n') + '\nthis.cd = chainDiscardIds; this.bar = chainDiscardBar; this.resumeGo = resumeGo;', ctx);
+vm.runInContext(['hdConfirming', 'hdWaitNote', 'chainDiscardIds', 'chainDiscardBar', 'resumeGo', 'zBrowserOnly', 'zPermHtml'].map(fn).join('\n') + '\nthis.cd = chainDiscardIds; this.bar = chainDiscardBar; this.resumeGo = resumeGo; this.zbo = zBrowserOnly; this.zperm = zPermHtml;', ctx);
 
 /* 1 + 3: Jake's selection: 2,000 on chain + 2 browser-only + 1 confirming */
 ctx.cd(pets.map(p => p.id), false);
@@ -56,6 +58,11 @@ ok(!sheet && /still confirming/.test(toasts[1] || ''), 'only confirming: no shee
 ctx.bar(w);
 const m = /Make my browser discards permanent \((\d[\d,]*)\)/.exec(ctx.__html || '');
 ok(m && m[1] === '2', 'bar offers the 2 browser-only pets, not ' + N + ' (' + (m && m[1]) + ')');
+/* 6 (G Money, Nov 26 2026): the zombie card's empty list says which pets are discarded only in this browser and offers the burn */
+const bo = ctx.zbo(w), zh = ctx.zperm(w);
+ok(bo.join() === '2001,2002', 'zombie card: browser-only pets = the 2 never burned (not the 2,000 on chain, not the 1 confirming): ' + bo.join());
+ok(/2 pets are in your Discard pile only in this browser/.test(zh) && /zb-mkperm/.test(zh), 'zombie card says so and has the Make permanent button');
+ok(fs.readFileSync(path.join(REPO, 'js', 'v2.js'), 'utf8').indexOf("closest('.zb-mkperm')") > 0, 'the button is wired to the discard path');
 /* 5: a discard burn still confirming */
 pendTags = ['pet:hd:M5:OOENA1HTB1KB1IA1H31IOF']; asked = null; sheet = null; toasts = [];
 ctx.cd([2001, 2002], false);
