@@ -581,8 +581,6 @@
     doc.addEventListener('visibilitychange', function () { if (doc.visibilityState === 'visible') silent(); });
     win.addEventListener('focus', function () { silent(); });
     win.addEventListener('pageshow', function (e) { if (e && e.persisted) silent(true); }); }
-  /* wagmi-daily (2026-10-22): a successful connect marks this tab so play.html can offer WAGMI once (survives the reload to the connected address). */
-  var OFFER_KEY = 'xcpets-wagmi-connect';
   function feeUiOn() { if (label() === 'Practice wallet') return false; try { if (win.location && /inscriptions\.html/.test(win.location.pathname || '')) return false; } catch (e) { } return true; }
   var NFEE_CSS = '.nfee{margin:8px 0;padding:8px;background:#141a2e;border:3px solid #000;box-shadow:4px 4px 0 #000;color:#f4f4f4;text-align:left;image-rendering:pixelated;max-width:100%;box-sizing:border-box}' +
     '.nfee-h{font-family:"Press Start 2P",monospace;font-size:10px;line-height:1.6;color:#ffd166;letter-spacing:1px;margin:0 0 8px}' +
@@ -630,7 +628,7 @@
   function toggleFeePop() { var doc = win.document; if (!doc || !doc.body || !feeUiOn()) return; injectFeeCss(); var pop = doc.getElementById('nfeePop');
     if (!pop) { pop = doc.createElement('div'); pop.id = 'nfeePop'; pop.setAttribute('role', 'dialog'); pop.setAttribute('aria-label', 'Network fee'); pop.hidden = true; doc.body.appendChild(pop); mountFeePicker(pop, { burns: 1, setting: true }); }
     pop.hidden = !pop.hidden; }
-  function connect() { return getWallet().then(function (w) { remember(); emit(); try { win.sessionStorage.setItem(OFFER_KEY, w.address); } catch (e) { }
+  function connect() { return getWallet().then(function (w) { remember(); emit();
     try { if (win.dispatchEvent && win.CustomEvent) win.dispatchEvent(new win.CustomEvent('xcpets:connected', { detail: { address: w.address } })); } catch (e) { } return w.address; }); }
   /** paint the play.html top bar: viewed address + connect / connected state. */
   function paint(ME, $) {
