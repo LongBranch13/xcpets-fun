@@ -1,6 +1,6 @@
 {
- "lastBlock": 977612,
- "count": 521,
+ "lastBlock": 977623,
+ "count": 532,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -6254,6 +6254,138 @@
    "speciesLabel": "Snidokek (hybrid)",
    "rarity": "Legendary",
    "stage": "Elder"
+  },
+  {
+   "id": 210460,
+   "asset": "A12504386585592594958",
+   "tiedBlock": 977614,
+   "tiedTx": "0d90099e691fd4247277e6752e47e4b6cba95bb36f3b0605acd9eeec5a5ebfe8",
+   "kind": "deed",
+   "name": "Kanoli",
+   "species": "kevin",
+   "speciesLabel": "KEVIN",
+   "rarity": "Legendary",
+   "stage": "Elder"
+  },
+  {
+   "id": 210492,
+   "asset": "A1694606786749042392",
+   "tiedBlock": 977614,
+   "tiedTx": "343992a10aa8c3f289ccaa23d9b6d3c2c9bdfbd8068415796d177f78cf3ee1ef",
+   "kind": "deed",
+   "name": "Dejijobit",
+   "species": "snibby",
+   "speciesLabel": "Snibby",
+   "rarity": "Rare",
+   "stage": "Elder"
+  },
+  {
+   "id": 210884,
+   "asset": "A3422621008571196265",
+   "tiedBlock": 977614,
+   "tiedTx": "6240d347989eae475e1f6ce8805b46b4c298cb29f125aa03c4e2b5a567672f7a",
+   "kind": "deed",
+   "name": "Noyubak",
+   "species": "sarutobi",
+   "speciesLabel": "Sarutobi",
+   "rarity": "Rare",
+   "stage": "Elder"
+  },
+  {
+   "id": 210959,
+   "asset": "A10450580565255313374",
+   "tiedBlock": 977614,
+   "tiedTx": "726fc4a72a5880c436d7b9445c3e50f7214936b375b5cd189337d0178c7f6331",
+   "kind": "deed",
+   "name": "Guvikekin",
+   "species": "homer",
+   "speciesLabel": "Homer Pepe",
+   "rarity": "Legendary",
+   "stage": "Elder"
+  },
+  {
+   "id": 211046,
+   "asset": "A12877384217018118264",
+   "tiedBlock": 977614,
+   "tiedTx": "f18dcc414d4bc8b21096c6bd6fcd6f8af31e1f8443dd04bb8598a3da3f434d0c",
+   "kind": "deed",
+   "name": "Rilekin",
+   "species": "homer",
+   "speciesLabel": "Homer Pepe",
+   "rarity": "Legendary",
+   "stage": "Elder"
+  },
+  {
+   "id": 211111,
+   "asset": "A17822183449536299962",
+   "tiedBlock": 977614,
+   "tiedTx": "3f033b8fa40623f68fc95a1ac50a53e7b8b27cafdaa0eccc02fad2c2298dfcd7",
+   "kind": "deed",
+   "name": "Hisobun",
+   "species": "bobo",
+   "speciesLabel": "Bobo",
+   "rarity": "Rare",
+   "stage": "Elder"
+  },
+  {
+   "id": 211161,
+   "asset": "A14907080291705548761",
+   "tiedBlock": 977614,
+   "tiedTx": "bb66091935db23daec1a0ca1fc55d43f99b8635bbd9298c3b7f02c2ca4129b15",
+   "kind": "deed",
+   "name": "Repujakin",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
+   "rarity": "Legendary",
+   "stage": "Elder"
+  },
+  {
+   "id": 211213,
+   "asset": "A18200643407564829369",
+   "tiedBlock": 977614,
+   "tiedTx": "d85621a26bf343643fb9b10c8afe06358596b580b9ed36163ff5fcacc8d09f42",
+   "kind": "deed",
+   "name": "Silochuki",
+   "species": "sarutobi",
+   "speciesLabel": "Sarutobi",
+   "rarity": "Rare",
+   "stage": "Elder"
+  },
+  {
+   "id": 211399,
+   "asset": "A12502731240493533620",
+   "tiedBlock": 977614,
+   "tiedTx": "3ede0e60bb5a5d5f6b08e72ae7ff344d3ca0efec8dc87ad8db953916e2591226",
+   "kind": "deed",
+   "name": "Jeluvumi",
+   "species": "dodo",
+   "speciesLabel": "Dodo",
+   "rarity": "Legendary",
+   "stage": "Elder"
+  },
+  {
+   "id": 211430,
+   "asset": "A6704946091177946523",
+   "tiedBlock": 977614,
+   "tiedTx": "8d934ac31412561ef46c1d50228c1b59ecbbf1fa38a4b2190f44559f77604983",
+   "kind": "deed",
+   "name": "Kichukin",
+   "species": "chad",
+   "speciesLabel": "Chad",
+   "rarity": "Rare",
+   "stage": "Elder"
+  },
+  {
+   "id": 154188,
+   "asset": "A7802995769271118551",
+   "tiedBlock": 977618,
+   "tiedTx": "c4ca0b77010b8b17754d8a8176f338edb5cdc88af4b32601bd411fe745a7d152",
+   "kind": "deed",
+   "name": "Fonamoo",
+   "species": "hyb3:kek:snibby:funtrump",
+   "speciesLabel": "Keknibtrump (hybrid)",
+   "rarity": "Rare",
+   "stage": "Mythic"
   }
  ]
 }

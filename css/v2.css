@@ -683,3 +683,21 @@ html.viewonly #pkiStar{display:none} /* box-reveal-1124: starring is for the wal
 
 /* burn-click-menu (Nov 25 2026): the confirm sheet title stays readable; long titles (permanent discard) shrink instead of wrapping into 5 huge lines */
 #confirmBox #cfTitle{font-size:20px;line-height:1.3;overflow-wrap:anywhere}#confirmBox #cfTitle.cf-long{font-size:13px;line-height:1.45}@media (max-width:600px){#confirmBox #cfTitle{font-size:17px}#confirmBox #cfTitle.cf-long{font-size:12px}}
+/* keep-pick (Nov 26 2026, Jake: pick what to KEEP): the mode switch, the plan line, green kept cards, faded cards that will go, shield on protected ones */
+#packBox .pkmode{display:flex;align-items:center;justify-content:center;gap:6px;margin:2px 0 4px;font-size:13px;flex-wrap:wrap}
+#packBox .pkmode .pkmb{min-height:34px;padding:4px 14px;border-radius:999px;border:2px solid #4a5568;background:#111827;color:#cbd5e1;font-weight:bold;cursor:pointer}
+#packBox .pkmode .pkmk[aria-pressed="true"]{background:#1f7a46;border-color:#3ddc84;color:#fff}
+#packBox .pkmode .pkmd[aria-pressed="true"]{background:#7a2323;border-color:#ff5a5a;color:#fff}
+#packBox .pktip.pktipk{color:#d7f5e3}#packBox .pktip .pkgo{color:#ff8a80}
+#packBox.pkkeepm .pkcheck{font-size:0}
+#packBox.pkkeepm .pkcheck::after{position:absolute;inset:0;font-size:15px;line-height:22px;color:#fff;text-align:center}
+#packBox.pkkeepm .packgrid .egg.pkcard.picked{outline:3px solid #3ddc84;background:rgba(61,220,132,.1)}
+#packBox.pkkeepm .packgrid .egg.pkcard.picked>:not(.pkcheck){opacity:1}
+#packBox.pkkeepm .packgrid .egg.pkcard.picked .pkcheck{background:#3ddc84;border-color:#3ddc84}
+#packBox.pkkeepm .packgrid .egg.pkcard.picked .pkcheck::after{content:'✓';color:#06210f;font-weight:bold}
+#packBox.pkkeepm .packgrid .egg.pkcard.pkauto .pkcheck{border-color:#ffd166;background:#2b2412}
+#packBox.pkkeepm .packgrid .egg.pkcard.pkauto .pkcheck::after{content:'🛡'}
+#packBox.pkkeepm .packgrid.pkhaspick .egg.pkcard:not(.picked):not(.pkauto)>:not(.pkcheck){opacity:.45}
+#packBox.pkkeepm .packgrid.pkhaspick .egg.pkcard:not(.picked):not(.pkauto) .pkcheck{border-color:#ff5a5a}
+#packBox.pkkeepm .packgrid.pkhaspick .egg.pkcard:not(.picked):not(.pkauto) .pkcheck::after{content:'🗑'}
+#packBox #packDiscard.pkrest:not(:disabled){background:#7a2323;border-color:#ff5a5a;color:#fff}
