@@ -16,8 +16,8 @@
   /** selHungry(): the checked pets for Feed selected (mine() already leaves out discarded pets; hidden list checked again below).
    *  mypets-species-filter (Oct 28 2026): while species are ticked, only the checked pets that are shown (UXB.shownSel) */
   function selHungry() { var d = D(), w = d && d.world && d.world(); if (!w || !d.mine) return { w: w, sel: [], hungry: [] };
-    var s0 = (d.S().sel || []).map(Number), s = new Set(window.UXB && UXB.shownSel ? UXB.shownSel(s0) : s0), h = new Set(d.hiddenIds ? d.hiddenIds() : []);
-    var sel = d.mine(w).filter(function (p) { return s.has(p.id) && !p.dead && !p.released && !h.has(p.id); });
+    var s0 = (d.S().sel || []).map(Number), s = new Set(window.UXB && UXB.shownSel ? UXB.shownSel(s0) : s0);
+    var sel = d.mine(w).filter(function (p) { return s.has(p.id) && !p.dead && !p.released; }); /* d.mine already leaves out the whole Discard pile (V2Own.inPile) */
     return { w: w, sel: sel, hungry: sel.filter(function (p) { return p.hungry; }) }; }
   /* smooth-select (Nov 26 2026): this label re-planned the checked pets' meals after every page update (the count text is rewritten each time),
    * 40,000 pets on a Select all. The plan is kept while the world, tip, checked hungry pets, discards and unconfirmed burns are the same. Label only:

@@ -51,7 +51,8 @@
     /* Nov 25 2026 (play-test robot): pets discarded ON CHAIN (pet:hd) were still in this list. The rules refuse their meals, so a big wallet's
      * chores burn was charged for every discarded hungry pet (294,249 XCPETS for 146 real meals). Both kinds of discard are left out now. */
     var ph = {}; try { ph = (u.pendingFeedIds && u.pendingFeedIds().hd) || {}; } catch (e) { } /* Nov 25 2026: discard burns still waiting to confirm count as discarded */
-    w.pets.forEach(function (p) { if (p.owner !== u.ME || !p.hungry) return; if (h.has(p.id) || p.hd === u.ME || ph[p.id]) { if (!p.dead && !p.released && eats(p, nb)) gone++; return; } if (p.zombie && !p.zombie.end) return; ids.push(p.id); });
+    var dz = { set: h, pend: ph }; /* Nov 26 2026: V2Own.discarded is the one answer (browser pile, on chain, or still confirming) */
+    w.pets.forEach(function (p) { if (p.owner !== u.ME || !p.hungry) return; if (V2Own.discarded(p, u.ME, dz)) { if (!p.dead && !p.released && eats(p, nb)) gone++; return; } if (p.zombie && !p.zombie.end) return; ids.push(p.id); });
     var set = new Set(ids); ids.indexOf = function (x) { return set.has(x) ? 0 : -1; }; /* the planner asks ids.indexOf(id) >= 0 per pet; a Set keeps big wallets fast */
     var P = v.dailyChoresPlan(w, u.ME, nb, { ids: ids }); if (!P) return null;
     P.feedTotal = P.plans.reduce(function (a, q) { return a + (q && q.petIds ? q.petIds.length : q && q.petId != null ? 1 : 0); }, 0); P.discardedSkipped = gone; return P; }

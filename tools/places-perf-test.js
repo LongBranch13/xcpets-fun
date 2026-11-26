@@ -272,7 +272,9 @@ async function renderMeasure(page, label) {
     });
     ok(filt.allWeird && filt.n > 0 && filt.n <= 120, 'discard pile Weird filter shows only weird pets (' + filt.n + ', ' + filt.match + ')');
     await desk.evaluate(() => { const q = document.querySelector('#discardPile [data-ds="q"]'); q.value = 'giant'; q.dispatchEvent(new Event('input', { bubbles: true })); });
-    await desk.waitForTimeout(400);
+    /* wait for the search to apply (a fixed 400 ms was too short on a busy CI runner: it read the unfiltered first page) */
+    await desk.waitForFunction(() => { const w = V2Mock.world(), c = Array.from(document.querySelectorAll('#discardPile .dcard'));
+      return c.length > 0 && c.every(d => { const p = w.byId[d.getAttribute('data-did')]; return p && p.art && p.art.rareHatch && p.art.rareHatch.kind === 'giant'; }); }, null, { timeout: 15000 }).catch(() => {});
     const giant = await desk.evaluate(() => {
       const w = V2Mock.world();
       const cards = Array.from(document.querySelectorAll('#discardPile .dcard'));
