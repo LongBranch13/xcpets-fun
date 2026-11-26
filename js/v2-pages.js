@@ -221,7 +221,7 @@
     return { frames: coldEntryFrames(entryOf('homer')), ghosts: [coldEntryFrames(entryOf('funtrump')), coldEntryFrames(entryOf('kek')), coldEntryFrames(entryOf('wizard'))].filter(Boolean),
       total: x ? x.total : (T[5] || 6906900), next: homerNextLine(w) }; }
   function withHomerFarewell(cb) { if (window.V2HomerFarewell) return cb(); var t = document.createElement('script'); t.src = 'js/v2-homer-farewell.js?v=e6db15afb2'; t.onload = cb; document.body.appendChild(t); }
-  function withRabbitArrival(cb) { if (window.V2RabbitArrival) return cb(); var t = document.createElement('script'); t.src = 'js/v2-rabbit-arrival.js?v=a1125f1f'; t.onload = cb; document.body.appendChild(t); }
+  function withRabbitArrival(cb) { if (window.V2RabbitArrival) return cb(); var t = document.createElement('script'); t.src = 'js/v2-rabbit-arrival.js?v=5b7d2e19'; t.onload = cb; document.body.appendChild(t); }
   /* WHITE RABBIT + GROYPER farewells (Nov 24 2026): one scene maker, js/v2-cold-farewell.js. Ghosts = the earlier community pets inside the vault.
    * The Rabbit's last line hands off to Groyper only once V2Rules.ACTIVATE_GROYPER_BLOCK is set (else no footer: the gap card says what is next). */
   function rabbitNextLine(w) { var g = V.ACTIVATE_GROYPER_BLOCK, cur = w && w.community && w.community.current; if (cur === 'groyper') return 'Groyper is the new community pet';
@@ -234,7 +234,7 @@
       total: x ? x.total : (T[5] || 6906900), next: id === 'rabbit' ? rabbitNextLine(w) : null }; }
   function coldInfo(w, id, name) { var x = w && w[id + 'Mythic']; return x ? name + ' · Mythic at block ' + fmt(x.block) + ' · now in Cold Storage' : name + ' farewell (preview)'; }
   function withColdFarewell(cb) { if (window.V2ColdFarewell) return cb(); var t = document.createElement('script'); t.src = 'js/v2-cold-farewell.js?v=gp7a1124'; t.onload = cb; document.body.appendChild(t); }
-  function withGroyperArrival(cb) { if (window.V2GroyperArrival) return cb(); var t = document.createElement('script'); t.src = 'js/v2-groyper-arrival.js?v=a1125f1f'; t.onload = cb; document.body.appendChild(t); }
+  function withGroyperArrival(cb) { if (window.V2GroyperArrival) return cb(); var t = document.createElement('script'); t.src = 'js/v2-groyper-arrival.js?v=5b7d2e19'; t.onload = cb; document.body.appendChild(t); }
 
   /* Cold Storage portrait (owner 2026-10-20): every community pet shows at Mythic (COLD_STAGE) in its full signature loadout, read from the entry's
    * sp + loadout (data only, no pet ids). Nakamoto is the exception (bare, nakaFrames). A future entry (e.g. Lord Kek: sp 'kek', loadout [...]) just
