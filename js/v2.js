@@ -1425,17 +1425,31 @@
   function actBack(p, back) { actBack.going = 0; setTimeout(function () { var cb = $('confirmBox'); if (!cb || !cb.classList.contains('on')) return; var link = '<a href="pet.html?id=' + p.id + '">← Back to #' + p.id + ' ' + esc(p.name || '') + '</a>';
       $('cfBody').insertAdjacentHTML('afterbegin', '<p class="small cf-back">' + link + (back ? ' <span class="muted">· you return there after the feed</span>' : '') + '</p>');
       var mo = new MutationObserver(function () { if (cb.classList.contains('on')) return; mo.disconnect(); if (actBack.going) return; if (back) return petBackGo(p.id); toast(link + ' <span class="muted">· results show on the pet page once the burn confirms</span>', 15000); }); mo.observe(cb, { attributes: true, attributeFilter: ['class'] }); }, 50); }
+  /* card-actions-fast (Nov 26 2026, Jake: "I pressed Unleash on a Mythic and it just went back to My Pets"): every hand-off from the pet
+   * page, the Pet Cemetery card and the gift / swap sheets (#act-, #gift-, #swap-, #cem-) waited for burn rows (S.rows), but a fast
+   * (published-world) page never has burn rows, so the link sat for 3 minutes in silence and was then dropped. They now wait for the
+   * page's own world (V2Mock.ready, the same test the Fire Sale banner uses), say what they are opening, fetch a pet the slim world has
+   * not loaded yet, and say plainly when it still cannot open. They open a pop-up over My Pets and never touch its filter or sort.
+   * Nothing is ever sent from here: every burn still goes through the confirm sheet. */
+  function routeReady() { if (!ME) return false; try { return (M.ready ? !!M.ready() : !!(S.rows && S.rows.length)) && !!world(); } /* ready first: world() before then would replay an empty chain */ catch (e) { return false; } }
+  function routeWait(fn, what, id) { var h = location.hash, k = fn.wait && fn.wait.h === h ? fn.wait : (fn.wait = { h: h, n: 0 }); k.n++;
+    var WL = window.V2Wallet && V2Wallet.label ? V2Wallet.label() : 'XCP Wallet';
+    if (k.n === 3) toast(ME ? '⏳ Opening ' + what + '… (still loading your pets)' : 'Connect ' + esc(WL) + ' to open ' + what + '. It opens here once connected.', 12000);
+    if (id && !k.asked && ME && routeReady() && !world().byId[id] && window.V2Split && V2Split.ensurePet) { k.asked = 1; V2Split.ensurePet(+id).then(function () { if (location.hash === h) fn(); }, function () {}); }
+    if (k.n < 90) { setTimeout(function () { if (location.hash === h) fn(); }, 2000); return true; }
+    fn.wait = null; history.replaceState(null, '', location.pathname + location.search);
+    toast('⚠️ ' + what.charAt(0).toUpperCase() + what.slice(1) + ' did not open: ' + (!ME ? 'no wallet is connected' : !routeReady() ? 'the game data did not finish loading' : 'this page could not find pet #' + id) + '. Nothing was sent. Reload the page and press it again.', 20000); return true; }
   /* pet-gift: pet.html / the batch picker arrive as play.html#gift-<id.id.id>-<player# base 32>; the confirm then signs each 1-dander burn in turn
    * (same confirmPlans queue: one XCP Wallet window at a time, Stop + Resume). Locked pets are dropped here and skipped by the engine anyway. */
   function swapRoute() { var m = /^#(swap)-(\d+)-(\d+)$|^#(swapok|swapno)-(\d+)$/.exec(location.hash); if (!m || !V.swapPlan) return false; if (V.tokenOnly && V.tokenOnly()) { history.replaceState(null, '', location.pathname + location.search); toast('🔁 Swap burns are off: swap by gifting each other the pet tokens, or a token-for-token DEX order.', 9000); return true; }
-    if (!world() || !ME || !S.rows || !S.rows.length) { swapRoute.n = (swapRoute.n || 0) + 1; if (swapRoute.n < 90) setTimeout(swapRoute, 2000); return true; }
+    if (!routeReady()) return routeWait(swapRoute, 'the swap'); swapRoute.wait = null;
     history.replaceState(null, '', location.pathname + location.search);
     if (m[1]) confirmPlans('🔁 Offer #' + m[2] + ' for #' + m[3], [V.swapPlan(Number(m[2]), Number(m[3]))]); else if (m[4] === 'swapok') confirmPlans('🔁 Accept swap ' + m[5], [V.swapOkPlan(Number(m[5]))]); else confirmPlans('Close swap offer ' + m[5], [V.swapNoPlan(Number(m[5]))]); return true; }
   window.V2HiGo = function () { confirmPlans('👋 Get my player #', [V.hiPlan]); };
   window.V2SwapGo = function (h) { location.hash = h; swapRoute(); };
   function giftRoute() { if (swapRoute()) return true; var m = /^#gift-([0-9.]+)-([0-9A-Va-v]+)$/.exec(location.hash); if (!m || !V.giveBatches) return false;
     if (V.tokenOnly && V.tokenOnly()) { history.replaceState(null, '', location.pathname + location.search); toast('🎁 Gifts are pet token sends now: use 🎁 Gift (pick pets, paste the address, Send).', 9000); return true; }
-    var w = world(); if (!w || !ME || !S.rows || !S.rows.length) { giftRoute.n = (giftRoute.n || 0) + 1; if (giftRoute.n < 90) setTimeout(giftRoute, 2000); return true; }
+    if (!routeReady()) return routeWait(giftRoute, 'the gift'); giftRoute.wait = null; var w = world();
     history.replaceState(null, '', location.pathname + location.search); var n = parseInt(m[2], 32), b = (S.tip || 0) + 1, ok = [], no = [];
     m[1].split('.').map(Number).forEach(function (id) { var why = V.giveWhy(w, { petId: id, to: n }, ME, b); if (why) no.push('#' + id + ' ' + why); else ok.push(id); });
     if (no.length) toast('🎁 Not in the gift: ' + esc(no.join(' · ')), 9000); if (!ok.length) return true;
@@ -1448,7 +1462,7 @@
   var CEM_ROUTE_MAX = 200;
   function cemRoute() { var m = /^#cem-(.+)$/.exec(location.hash); if (!m || !V.cemCost) return false; var tags; try { tags = decodeURIComponent(m[1]).split('~'); } catch (e) { return false; } /* was .slice(0, 24): a 25th+ tag (often the seance itself, it is last) was dropped without a word */
     if (tags.length > CEM_ROUTE_MAX) { history.replaceState(null, '', location.pathname + location.search); toast('That cemetery link holds ' + tags.length + ' burns, more than ' + CEM_ROUTE_MAX + ' at once. Offer fewer pets per send.'); return true; }
-    var w = world(); if (!ME || !S.rows || !S.rows.length) { cemRoute.n = (cemRoute.n || 0) + 1; if (cemRoute.n === 3 && !ME) toast('🕯️ Your cemetery burns (' + tags.length + ') are waiting here. Connect XCP Wallet and they open to sign.', 15000); if (cemRoute.n < 90) setTimeout(cemRoute, 2000); else toast('🕯️ The cemetery burns were not opened (wallet or chain data not ready). Nothing was sent. Go back to the Pet Cemetery: your offering is saved there.', 20000); return true; } /* wait for the wallet and the chain replay (cemetery-handoff: no longer silent) */
+    if (!routeReady()) return routeWait(cemRoute, 'your ' + tags.length + ' cemetery burn' + (tags.length > 1 ? 's' : '') + ' (your offering is also saved in the Pet Cemetery)'); cemRoute.wait = null; var w = world(); /* wait for the wallet and the page's world (card-actions-fast: no longer burn rows, which fast pages never have) */
     history.replaceState(null, '', location.pathname + location.search); var b = (S.tip || 0) + 1, bad = null;
     var plans = tags.map(function (tag) { var t = V.parseTag(tag); if (!t) { bad = bad || tag; return null; } var rn = null; if (t.action === 'cemr') { if (!V.cemRunsOn || !V.cemRunsOn(b) || !V.cemRunsCost) { bad = bad || tag; return null; } rn = { kind: t.kind, n: V.cemRunsIds(w, ME, t, b).length }; if (!rn.n) { bad = bad || tag; return null; } t = { action: t.kind, grave: t.kind === 'alt' || t.kind === 'seance' ? t.target : null, zombie: t.kind === 'zfeed' || t.kind === 'rpl' ? t.target : null }; } var k = CEM_KIND[t.action] || (t.action === 'fight' && w.byId[t.b] && ZB(w.byId[t.b]) ? 'hunt' : null); if (!k) { bad = bad || tag; return null; }
       return { tag: tag, amount: rn ? V.cemRunsCost(w, rn.kind, rn.n, b) : (V.cemPetAmount ? V.cemPetAmount(w, { tag: tag, amount: V.cemCost(w, k, b) }, b).amount : V.cemCost(w, k, b)), runs: rn ? true : undefined, ids: rn ? V.cemRunsIds(w, ME, V.parseTag(tag), b) : undefined, petId: t.grave != null ? t.grave : t.zombie != null ? t.zombie : t.b, label: k }; }).filter(Boolean);
@@ -1460,10 +1474,18 @@
   /* pet-page-zombies: play.html#act-unleash-ID (the Unleash link on the pet page and in the Pet Cemetery) opens that zombie's pop-up here,
    * where the Unleash button keeps its live chain-tip checks */
   function unleashRoute() { var m = /^#act-unleash-(\d+)$/.exec(location.hash); if (!m) return false; var w = world(), p = w && w.byId[m[1]];
-    if (!p || !ME || !S.rows || !S.rows.length) { unleashRoute.n = (unleashRoute.n || 0) + 1; if (unleashRoute.n === 3 && !ME) toast('🩸 Connect ' + (window.V2Wallet && V2Wallet.label ? V2Wallet.label() : 'XCP Wallet') + ' to unleash #' + m[1] + '.', 15000); if (unleashRoute.n < 90) setTimeout(unleashRoute, 2000); return true; }
-    history.replaceState(null, '', location.pathname + location.search); detailId = p.id; detail(p); return true; }
+    if (!routeReady() || !p) return routeWait(unleashRoute, 'Unleash for #' + m[1], m[1]); unleashRoute.wait = null;
+    history.replaceState(null, '', location.pathname + location.search); detailId = p.id; detail(p);
+    /* card-actions-fast: land on the Unleash part of the pop-up (it sits under the big picture), or say why there is none */
+    (function aim(n, hit) { var on = $('detail').classList.contains('on'), u = on && $('dInfo').querySelector('.mg-unl'), box = $('detail').querySelector('.box');
+      if (u && box) { var r = u.getBoundingClientRect(), br = box.getBoundingClientRect(); if (r.top < br.top || r.bottom > br.bottom) box.scrollTop += r.top - br.top - Math.max(0, (br.height - r.height) / 2);
+        if (!hit) { u.style.boxShadow = '0 0 0 3px #ff6b5a, 0 0 16px rgba(255,107,90,.6)'; setTimeout(function () { var v = $('dInfo').querySelector('.mg-unl'); if (v) v.style.boxShadow = ''; }, 2600); }
+        if (n < 3) setTimeout(function () { aim(n + 1, true); }, 700); return; } /* the pop-up repaints once more as the page settles, so aim again twice */
+      if (hit || !on) return; if (n < 8) return setTimeout(function () { aim(n + 1); }, 500);
+      toast(p.owner !== ME ? '#' + p.id + ' is not in your wallet, so you can\'t unleash it.' : '#' + p.id + ' can\'t be unleashed right now: it has to be your feral zombie, not fed by a Mythic, and you can unleash once every 30 days. The pop-up shows its state.', 12000); })(0);
+    return true; }
   function actRoute() { if (cemRoute()) return true; if (giftRoute()) return true; if (unleashRoute()) return true; var m = /^#act-(feed|roll|froll|oroll)-(\d+)(-pet)?$/.exec(location.hash); if (!m) return false;
-    var w = world(), p = w && w.byId[m[2]], a = m[1]; if (!p || !ME || !S.rows || !S.rows.length) { actRoute.n = (actRoute.n || 0) + 1; if (actRoute.n < 90) setTimeout(actRoute, 2000); return true; } /* wait for the chain replay */
+    var w = world(), p = w && w.byId[m[2]], a = m[1]; if (!routeReady() || !p) return routeWait(actRoute, ({ feed: 'Feed', roll: 'Gear roll', froll: 'Free roll', oroll: 'Overflow roll' })[a] + ' for #' + m[2], m[2]); actRoute.wait = null; /* card-actions-fast: wait for the page's world, not burn rows */
     history.replaceState(null, '', location.pathname + location.search); var back = !!m[3] && a === 'feed', bounce = function () { if (back) setTimeout(function () { petBackGo(p.id); }, 3500); return true; };
     if (!ME || p.owner !== ME || p.dead || p.released) { toast('Only the owner of a living pet can do that. Connect the wallet that owns #' + p.id + '.'); return true; } /* stays on Play: the wallet connect is here */
     if (a === 'feed') { if (p.mythicCare || !p.hungry) { toast('#' + p.id + (ZB(p) ? ' is a risen zombie: it eats pets, not meals. Use 🍖 Feed zombie on its card.' : p.mythicCare ? ' is Mythic: no meals needed.' : ' is not hungry right now.')); return bounce(); } actBack(p, back); confirmPlans('Feed #' + p.id, feedQ(w, ME, [p.id]), back ? function () { petBackGo(p.id, (S.tip || 0) + 1); } : null); }
