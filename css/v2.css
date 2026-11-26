@@ -682,3 +682,11 @@ html.viewonly #pkiStar{display:none} /* box-reveal-1124: starring is for the wal
 
 /* burn-click-menu (Nov 25 2026): the confirm sheet title stays readable; long titles (permanent discard) shrink instead of wrapping into 5 huge lines */
 #confirmBox #cfTitle{font-size:20px;line-height:1.3;overflow-wrap:anywhere}#confirmBox #cfTitle.cf-long{font-size:13px;line-height:1.45}@media (max-width:600px){#confirmBox #cfTitle{font-size:17px}#confirmBox #cfTitle.cf-long{font-size:12px}}
+/* trait-badges-1126: born special traits (Legendary Mix, twin, throwback, mutation, 1 of 1 cross) as one chip style everywhere; tap for the explainer */
+.chip.trait{cursor:pointer;font-weight:700;border-color:#c77dff;background:rgba(199,125,255,.14);color:#f0dcff}.chip.trait:focus-visible{outline:2px solid #ffd84d;outline-offset:1px}
+.chip.trait-legmix{border-color:#ffd84d;background:linear-gradient(90deg,rgba(255,216,77,.22),rgba(199,125,255,.22));color:#ffe9a3}
+.chip.trait-glitch,.chip.trait-palette{border-color:#3df2ff;background:rgba(61,242,255,.12);color:#c9fbff}
+.chip.trait-twin{border-color:#ff9fd1;background:rgba(255,159,209,.14);color:#ffd9ec}
+.chip.trait-throwback{border-color:#9be37a;background:rgba(155,227,122,.12);color:#dcffcc}
+.chip.trait-cross,.chip.trait-raretier{border-color:#ffd84d;background:rgba(255,216,77,.14);color:#fff0b3}
+.trait-pop{position:absolute;z-index:100000;box-sizing:border-box;padding:10px 12px;border-radius:10px;border:2px solid #c77dff;background:#1b1030;color:#f4ecff;font:14px/1.4 'Comic Neue',system-ui,sans-serif;box-shadow:0 6px 22px rgba(0,0,0,.55);pointer-events:auto}

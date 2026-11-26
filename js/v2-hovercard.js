@@ -29,7 +29,7 @@
   function row(k, v, cls) { return '<div class="hc-r' + (cls ? ' ' + cls : '') + '"><span>' + k + '</span><b>' + v + '</b></div>'; }
   function head(p) { var hy = V().isHybrid && V().isHybrid(p.species);
     return '<div class="hc-h"><b>#' + p.id + ' ' + esc(p.name || '') + '</b><span class="hc-t t' + p.tier + '">' + esc((p.resurrected ? 'God' : TL[p.tier]) || '') + '</span></div>' +
-      '<div class="hc-s">' + (hy ? '🧬 ' : '') + esc(spL(p)) + ' · ' + esc((window.V2Rules && V2Rules.stageLabelOf ? V2Rules.stageLabelOf(p) : p.stageName) || '') + (window.V2Badges && V2Badges.oldMoneyMark ? ' ' + V2Badges.oldMoneyMark(p) : '') + '</div>'; }
+      '<div class="hc-s">' + (hy ? '🧬 ' : '') + esc(spL(p)) + ' · ' + esc((window.V2Rules && V2Rules.stageLabelOf ? V2Rules.stageLabelOf(p) : p.stageName) || '') + (window.V2Badges && V2Badges.oldMoneyMark ? ' ' + V2Badges.oldMoneyMark(p) : '') + '</div>' + (function () { var R = window.V2Render, L = R && R.traitsOf ? R.traitsOf(null, p) : []; /* trait-badges-1126: born special traits, same names as the pet page */ return L.length ? '<div class="hc-s hc-traits">' + L.map(function (t) { return t.icon + ' ' + esc(t.short); }).join(' · ') + '</div>' : ''; })(); }
   /* Carried stat floors live on p.carried and on the full card as "Carries: Dodo traits from Name #id (GRIT 30 floor for its future children)".
    * Beside that stat here, a mate pick does not need the full card. No extra text when the pet carries nothing. Hidden-trait
    * carriers stay off this card, the same as the full card. Display only: the stored floor is shown, never recomputed. */
