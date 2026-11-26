@@ -719,8 +719,16 @@
     });
   }
   /* Nov 25 2026 (robot, 40,000-pet wallet): shards that arrive together were all opened (art built for every pet) in one run of promise
-   * callbacks, one long freeze. Each shard now opens in its own task, so the page can paint and take taps in between. Same pets. */
-  function nextTask(v) { return typeof setTimeout === 'function' ? new Promise(function (r) { setTimeout(function () { r(v); }, 0); }) : v; }
+   * callbacks, one long freeze. After about 40 ms of that work in one task the next shard waits for a new task, so the page can paint and take taps
+   * in between. Yielding after every shard halved the load speed (hundreds of timer waits), so only a busy run yields. Same pets. */
+  var runOpen = false, runT0 = 0;
+  function nextTask(v) {
+    var t = Date.now();
+    if (typeof setTimeout !== 'function') return v;
+    if (!runOpen) { runOpen = true; runT0 = t; setTimeout(function () { runOpen = false; }, 0); return v; } /* first shard of this task */
+    if (t - runT0 < 40) return v;
+    return new Promise(function (r) { setTimeout(function () { r(v); }, 0); });
+  }
   function resolveIdsNow(ids, keep) {
     var folder = viewFolder, need = {}, i, id, name, names;
     for (i = 0; i < ids.length; i++) {
