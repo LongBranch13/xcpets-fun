@@ -1349,6 +1349,12 @@
       if (Date.now() > hdWait.until) { hdWait = null; return; } if (!hatchListSettled(world())) return pull(); var job = hdWait; hdWait = null; chainDiscardIds(job.ids, job.restore); }, 3000);
     return true; }
   function chainDiscardIds(ids, restore) { var w = world(), b = (S.tip || 0) + 1; if (!V.hdOn(b)) return toast('On-chain discard opens at block ' + fmt(V.ACTIVATE_ONCHAIN_DISCARD_BLOCK) + '. Until then, Discard only hides pets in this browser.');
+    /* Nov 26 2026 (Jake: 2,000 of 2,002 picked pets were already discarded, the sheet offered 2 tiny burns and a wall of text): every discard
+     * button comes here, so the one discard answer (V2Own.discarded) drops pets already discarded on chain or named by a discard burn still
+     * confirming, before anything is counted or offered. */
+    var skip = { chain: 0, pending: 0 };
+    if (!restore) { ids = (ids || []).filter(function (id) { var p = w && w.byId[id], d = p ? V2Own.discarded(p, ME, { set: null }) : null; if (d) { skip[d]++; return false; } return true; });
+      if (!ids.length) return toast(skip.chain ? 'Those pets are already discarded on chain. Nothing to burn.' : 'Your discard burn for those pets is still confirming. Nothing more to burn.', 7000); }
     if (hdSettleThen(ids, restore)) return;
     /* Nov 24 2026 (one safety check): a permanent discard is what feeds the Meat Grinder, so special pets get the same sheet as a sacrifice first */
     if (!restore && !chainDiscardIds._ok && window.V2SacGuard) return V2SacGuard.check({ w: w, ids: ids, me: ME, verb: 'discard them permanently',
@@ -1357,11 +1363,17 @@
     var plan = V.hdPlan(w, ME, ids, b, { restore: !!restore }); if (!plan || !plan.ok) return toast((plan && plan.why) || 'No exact burn for that selection.');
     var n = plan.plans.reduce(function (a, q) { return a + ((q.petIds && q.petIds.length) || 0); }, 0);
     var title = (restore ? 'Add ' + fmt(n) + ' pets back to My Pets' : 'Discard ' + fmt(n) + ' pet' + (n === 1 ? '' : 's') + ' permanently (every device)');
-    if (!plan.one) title = 'This selection does not fit in one 34-byte burn. ' + plan.plans.length + ' exact burns, 1 dander each. ' + (plan.why || '');
-    else title += plan.why ? ' · ' + plan.why : ''; /* burn-click-menu: the cost (1 burn, 1 dander + Bitcoin fee) is already in the sheet's amount line, not repeated in the title */
+    /* Nov 26 2026: plain title (the sheet said 'does not fit in one 34-byte burn' twice and listed every left-out pet). One line on the burns,
+     * one count of what was left out and why; the per-pet list stays out of the heading. */
+    if (!plan.one) title += ' · ' + plan.plans.length + ' burns, 1 dander each (too many pets to name in one burn)';
+    var why = {}; (plan.left || []).forEach(function (x) { why[x.why] = (why[x.why] || 0) + 1; });
+    if (skip.chain) why['already discarded on chain'] = (why['already discarded on chain'] || 0) + skip.chain;
+    if (skip.pending) why['discard burn still confirming'] = (why['discard burn still confirming'] || 0) + skip.pending;
+    var wk = Object.keys(why); if (wk.length) title += ' · left out: ' + wk.map(function (k) { return fmt(why[k]) + ' ' + k; }).join(', ');
+    /* burn-click-menu: the cost (1 burn, 1 dander + Bitcoin fee) is already in the sheet's amount line, not repeated in the title */
     confirmPlans(title, plan.plans, restore ? function () { noteHuSent(plan.plans.reduce(function (a, q) { return a.concat(q.petIds || []); }, [])); } : null); }
   function chainDiscardBar(w) { if (!ME || !V.hdPlan || !V.hdOn) return null; var b = (S.tip || 0) + 1, on = V.hdOn(b);
-    var hid = hiddenIds().map(Number).filter(function (id) { var p = w.byId[id]; return p && V2Own.isLiving(p, ME, { zombies: false }) && !isKept(id); });
+    var hid = hiddenIds().map(Number).filter(function (id) { var p = w.byId[id]; return p && V2Own.isLiving(p, ME, { zombies: false }) && !isKept(id) && !V2Own.discarded(p, ME, { set: null }); }); /* browser-only: not already on chain or confirming (Nov 26 2026) */
     var chain = (w.pets || []).filter(function (p) { return p.owner === ME && onChainDiscarded(p) && !p.dead && !p.released; }); /* inPile rule: an old flag on a risen zombie does not count */
     if (!hid.length && !chain.length) return null;
     var el = document.createElement('div'); el.className = 'small hdbar'; el.id = 'hdBar';
