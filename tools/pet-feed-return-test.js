@@ -28,10 +28,10 @@ function run(hash, pet, opts) {
   const ctx = vm.createContext({ location: loc, history: { replaceState: () => { loc.hash = ''; } },
     setTimeout: (f, ms) => timers.push({ f, ms }), MutationObserver: function (f) { this.observe = () => obs.push(f); this.disconnect = () => {}; },
     __t: h => toasts.push(String(h)), __c: (t, pl, after) => confirms.push({ t, pl, after }) });
-  vm.runInContext('var ME = "bc1qme", S = { rows: [1], tip: 100 }, V = { freeRollPlan: id => ({ tag: "pet:fr:" + id }), overflowRollPlan: id => ({ tag: "pet:of:" + id }), rollQueue: () => [{ tag: "pet:roll" }] };' +
+  vm.runInContext('var ME = "bc1qme", S = { rows: opts.rows || [1], tip: 100 }, M = { ready: function () { return !opts.notReady; } }, window = {}, V = { freeRollPlan: id => ({ tag: "pet:fr:" + id }), overflowRollPlan: id => ({ tag: "pet:of:" + id }), rollQueue: () => [{ tag: "pet:roll" }] };' +
     'var W = { byId: {} }; function world() { return W; } function cemRoute() { return false; } function giftRoute() { return false; } function unleashRoute() { return false; } function toast(h) { __t(h); } function esc(s) { return String(s); }' +
     'function ZB() { return false; } function feedQ(w, me, ids) { return [{ tag: "pet:feed:" + ids[0] }]; } function confirmPlans(t, pl, after) { __c(t, pl, after); }' +
-    'var BODY = { insertAdjacentHTML: function (w, h) { BODY.h = h; } }; function $(id) { return id === "confirmBox" ? __cb : id === "cfBody" ? BODY : null; }\n' + block + '\nthis.T = { actRoute: actRoute, W: W, BODY: BODY };', Object.assign(ctx, { __cb: cb }));
+    'var BODY = { insertAdjacentHTML: function (w, h) { BODY.h = h; } }; function $(id) { return id === "confirmBox" ? __cb : id === "cfBody" ? BODY : null; }\n' + block + '\nthis.T = { actRoute: actRoute, W: W, BODY: BODY };', Object.assign(ctx, { __cb: cb, opts }));
   ctx.T.W.byId[pet.id] = pet; const r = ctx.T.actRoute();
   const flush = (max) => { let n = 0; while (timers.length && n++ < 20) { const t = timers.shift(); if (max != null && t.ms > max) { timers.unshift(t); break; } t.f(); } };
   flush(100); // actBack's 50 ms sheet hook
@@ -63,6 +63,17 @@ ok(/play\.html/.test(x.loc.href) && /Back to #74349/.test(x.toasts.join(' ')), '
 // rolls unchanged
 x = run('#act-froll-74349', pet()); x.close(); x.obs.forEach(f => f());
 ok(x.confirms.length === 1 && x.confirms[0].t === 'Free roll #74349' && /play\.html/.test(x.loc.href), 'free roll from the pet page unchanged');
+
+// ---- card-actions-fast (Nov 26 2026, Jake: Unleash from the pet page "just went back to My Pets"): a fast (published-world) page has
+// no burn rows, so a hand-off that waited for S.rows never opened. It waits for the page's world (V2Mock.ready) instead.
+x = run('#act-feed-74349-pet', pet(), { rows: [] });
+ok(x.r === true && x.confirms.length === 1 && x.confirms[0].t === 'Feed #74349', 'fast page (no burn rows): the pet-page feed still opens the confirm');
+x = run('#act-roll-74349', pet(), { rows: [] });
+ok(x.confirms.length === 1 && x.confirms[0].t === 'Gear roll #74349', 'fast page (no burn rows): the gear roll still opens the confirm');
+x = run('#act-feed-74349-pet', pet(), { rows: [], notReady: true });
+ok(x.r === true && x.confirms.length === 0 && x.timers.length === 1 && x.loc.hash === '#act-feed-74349-pet', 'page not loaded yet: waits, keeps the link, nothing opens');
+for (let i = 0; i < 95 && x.timers.length; i++) x.flush();
+ok(x.confirms.length === 0 && x.toasts.some(t => /did not open/.test(t) && /Nothing was sent/.test(t)) && x.loc.hash === '', 'never loads: says plainly it did not open (no silent give-up), nothing sent');
 
 // ---- (4) pet page fed status (fedSent / fedNote / petActs from js/v2-pages.js)
 const pblock = slice(pages, '  function fedSent(w, p)', '  function petActs(w, p)') + slice(pages, '  function petActs(w, p)', '\n  document.addEventListener(');
