@@ -54,7 +54,11 @@ ok(ctx.inPile(dusted, ctx.hiddenSet()), 'a zombie that turned to dust follows th
 ok(ctx.inPile(hdLiving, ctx.hiddenSet()) && ctx.inPile(plain, ctx.hiddenSet()), 'inPile: normal discards still count');
 
 // the pile box and the on-chain list use the same rule
-ok(/hs\.has\(p\.id\) && !!p\.dead === !!cem/.test(src) && /!ZB\(p\) && hs\.has\(p\.id\)/.test(src), 'the Discard pile box leaves risen zombies out');
+/* since PR 295 (Nov 25 2026) the box lists V2Own.pileList (browser pile + living on-chain discards): run it, don't pin v2.js text */
+vm.runInContext(rd('js/v2-own.js'), ctx);
+const box = ctx.V2Own.pileList(w, 'me', ctx.hiddenSet(), false).map(p => p.id).sort((a, b) => a - b), graves = ctx.V2Own.pileList(w, 'me', ctx.hiddenSet(), true).map(p => p.id);
+ok(JSON.stringify(box) === '[1,6]' && JSON.stringify(graves) === '[]', 'the Discard pile box leaves risen zombies out (living ' + JSON.stringify(box) + ', graves ' + JSON.stringify(graves) + ')');
+ok(/V2Own\.pileList\(/.test(src), 'the Discard pile box in js/v2.js reads V2Own.pileList'); // stale-pin-ok: the box must ask the one shared list, not its own copy
 ok(/onChainDiscarded\(p\) && !p\.dead && !p\.released/.test(src), 'the "make permanent / add back" list uses onChainDiscarded (zombie-aware)');
 ok(/hideLocal\(ids\)/.test(cut('  function discardIds(ids)', '\n  function hiddenSet()')) && (src.match(/hideLocal\(/g) || []).length === 2, 'hideLocal is only called from discardIds (one chokepoint)');
 

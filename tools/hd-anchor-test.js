@@ -14,10 +14,13 @@ const { load, ROOT } = require('./lib/load-rules');
 const A = process.argv.slice(2), opt = k => { const i = A.indexOf(k); return i >= 0 ? A[i + 1] : null; };
 let fails = 0; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) fails++; };
 const boot = JSON.parse(fs.readFileSync(path.resolve(opt('--boot') || path.join(ROOT, 'api', 'boot.json')), 'utf8'));
-const GM = 'bc1qtke38j72qv4d8eljn7pccaykypw8luytfwdn7q', TIP = 977472, FR = [3212375, 3212376, 3212377, 3212379];
+const GM = 'bc1qtke38j72qv4d8eljn7pccaykypw8luytfwdn7q', TIP = 977472;
+/* the 4 feed burns, by tx hash: the feed renumbered tx_index (3212375.. became 3212367..) and the old numbers then named his discards */
+const FR = ['e66a19720646d30932985c5520796f46ea4415f0e2b6f8e7bc6a0946adcebd47', 'f969cce5085f2a8bfa28655fa5248ad407d8580f54bc731add8d85df96de6a48',
+  'd6972ed91f63c938a36fcf0b6b1ec04c7141fc6c1cab60f4515fe47e789e3104', 'ff0418b3ae81536df1e2fb237695b14b240c5d9dc2e741cb24e62b67317f33b4'];
 const rows = boot.rows.filter(r => r.block_index <= TIP).sort((a, b) => a.block_index - b.block_index || a.tx_index - b.tx_index);
-if (!rows.some(r => r.tx_index === 3212379)) { console.log('skip: api/boot.json does not reach block 977,469'); process.exit(0); }
-const hashOf = {}; rows.forEach(r => { hashOf[r.tx_index] = r.tx_hash; });
+if (!FR.every(h => rows.some(r => r.tx_hash === h))) { console.log('skip: api/boot.json does not reach block 977,469'); process.exit(0); }
+const hashOf = {}; FR.forEach(h => { hashOf[h] = h; });
 function run(gate) { const c = load(), V = c.V2Rules; if (gate !== undefined) V._setHdAnchorActivation(gate);
   const w = V.replay(rows, Object.assign({}, c.XCPETS_BLOCK_HASHES || {}, boot.hashes || {}), [], { tip: TIP, live: c.LiveEngine && c.LiveEngine.RealCore, dex: boot.dex });
   const byTx = {}; w.log.forEach(e => { if (e.tx) (byTx[e.tx] = byTx[e.tx] || []).push(e); }); return { V, w, byTx }; }
