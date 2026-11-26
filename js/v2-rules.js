@@ -329,7 +329,7 @@
    * not move a feed's places. The saved-spin list (spinList: pet:ut / pet:rw) kept reading the flag as it is NOW, so a pet:hd landing just
    * before a pet:ut in the same few blocks moved the spins onto other pets: the same bug in the third copy of the list. From this block it
    * reads hdHiddenAt like refList. Before the block nothing changes. */
-  var ACTIVATE_SPIN_HD_ANCHOR_BLOCK = 977650;
+  var ACTIVATE_SPIN_HD_ANCHOR_BLOCK = 977672;
   function spinHdAnchorOn(b) { return ACTIVATE_SPIN_HD_ANCHOR_BLOCK != null && b != null && b >= ACTIVATE_SPIN_HD_ANCHOR_BLOCK; }
   function deadPlaceGone(w, p, A, b) { return deadPlacesOn(b) && !!p.dead && !(p.deathBlock != null && p.deathBlock > A) && frMythic(w, p, b); }
   function hdSet(p, v, b) { if (!p) return; var was = p.hd || null; v = v || null; if (was === v) return;
