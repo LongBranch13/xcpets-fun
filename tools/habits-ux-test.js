@@ -8,7 +8,7 @@ const st = {}, ls = { getItem: k => st[k] || null, setItem: (k, v) => { st[k] = 
 const win = { console: { log() {}, warn() {}, error() {}, info() {} }, localStorage: ls, sessionStorage: ls, location: { search: '', hostname: 'xcpets.fun', href: 'https://xcpets.fun/' }, navigator: { userAgent: 'node' }, setTimeout, clearTimeout, TextEncoder, TextDecoder };
 win.document = { getElementById: () => null, querySelector: () => null, querySelectorAll: () => [], createElement: () => ({ getContext: () => null, style: {} }), addEventListener() {}, body: null, documentElement: { style: {} } };
 win.addEventListener = () => {}; win.window = win; win.self = win; win.globalThis = win;
-const ctx = vm.createContext(win); for (const f of ['js/pet-core.js', 'js/bonus-gear.js', 'js/v2-gear.js', 'js/v2-fit.js', 'js/v2-rules.js', 'js/v2-habits.js']) vm.runInContext(rd(f), ctx, { filename: f });
+const ctx = vm.createContext(win); for (const f of ['js/pet-core.js', 'js/bonus-gear.js', 'js/v2-gear.js', 'js/v2-fit.js', 'js/v2-rules.js', 'js/v2-own.js', 'js/v2-habits.js']) vm.runInContext(rd(f), ctx, { filename: f });
 const V = ctx.V2Rules, H = ctx.V2Habits;
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) pass++; else { fail++; console.log('FAIL', m); } };
 const ME = 'bc1qme', NB = 980000;

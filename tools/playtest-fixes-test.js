@@ -22,7 +22,7 @@ ok(g.plans.length === 1 && g.plans[0].tag === 'pet:feed:1' && g.skipped.indexOf(
 const ctx = { self: {} }; vm.createContext(ctx); vm.runInContext(rd('js/v2-own.js'), ctx);
 const O = ctx.self.V2Own;
 ok(O.canEat(Object.assign({}, base), me) && !O.canEat(Object.assign({}, base, { hd: me }), me) && !O.canEat(Object.assign({}, base, { zombie: {} }), me) && !O.canEat(Object.assign({}, base, { dead: true }), me), 'V2Own.canEat leaves out discarded, zombie and dead pets');
-ok(/p\.hd === u\.ME/.test(rd('js/v2-chores.js')), 'Daily chores leaves out pets discarded on chain (it charged 294,249 XCPETS for 146 real meals)');
+ok(/V2Own\.discarded\(p, u\.ME, dz\)/.test(rd('js/v2-chores.js')), 'Daily chores leaves out pets discarded on chain, via the one discard answer (it charged 294,249 XCPETS for 146 real meals; behaviour: tools/discard-one-answer-test.js, chores-discard-test.js)');
 ok(/V2Own\.canEat/.test(rd('js/v2-today.js')) && /V2Own\.canEat/.test(rd('js/v2-mypets-top.js')), 'the hungry counts (Today, My Pets) use V2Own.canEat');
 
 /* 3. drawing a pet with no art (fast pages carry other players' pets without it) never throws */
