@@ -6,7 +6,7 @@
 const fs = require('fs'), path = require('path');
 const JS = path.join(__dirname, '..', 'js');
 /* shared on purpose: the same host element filled by two scripts, or shared class names that mean the same thing */
-const SHARED_IDS = { cemAltar: 1, nfGroup: 1 };
+const SHARED_IDS = { cemAltar: 1, nfGroup: 1, dwCss: 1 /* the one Doom stylesheet link: js/boot-look.js writes it in <head>, js/doom-week.js reuses it (creates it only if boot-look did not) */ };
 const SHARED_CLASSES = { chip: 1, 'ez-c': 1, 'lf-acts': 1, 'lq-chip': 1, mfx: 1, 'mg-unl': 1, 'mps-card': 1, 'mr-row': 1, open: 1, pet: 1, 'pk-key': 1, 'pk-keys': 1, shop8: 1, 'zb-opt': 1 };
 const ids = new Map(), cls = new Map(), put = (m, k, f) => { if (!m.has(k)) m.set(k, new Set()); m.get(k).add(f); };
 for (const f of fs.readdirSync(JS).filter(n => n.endsWith('.js'))) {
