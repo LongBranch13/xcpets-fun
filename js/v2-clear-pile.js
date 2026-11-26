@@ -44,7 +44,7 @@
     return null; }
   var KEEP_LABEL = { star: '⭐ starred', god: '😇 God or Mythic', wiz: '🧙 Wizard', fed: '🍖 fed lately', one: '🏆 one of a kind', tok: '🎟 tokenized', sale: '🏷️ in the shop', quest: '🗺️ on a quest', cold: '🧊 Cold Storage' };
   function pool(w) { var d = D(), v = V(); if (!d || !w || !d.mine) return [];
-    return d.mine(w).filter(function (p) { return !p.dead && !p.released && !p.community && !(v.isZ && v.isZ(p)) && !(p.zombie && !p.zombie.end) && p.hd == null; }); }
+    return d.mine(w).filter(function (p) { return !p.dead && !p.released && !p.community && !(v.isZ && v.isZ(p)) && !(p.zombie && !p.zombie.end) && !V2Own.onChain(p, p.owner); }); } /* not already discarded on chain by its owner (V2Own: a former owner's flag does not count, as in the rules) */
   function matches(p) { if (ST.nf && !neverFed(p)) return false; if (!ST.tiers[Math.min(3, p.tier | 0)]) return false; if (ST.sp !== 'all' && spName(p) !== ST.sp) return false;
     var q = ST.q.trim().toLowerCase(); if (!q) return true; return q.split(/\s+/).every(function (t) { return ('#' + p.id + ' ' + (p.name || '') + ' ' + spName(p) + ' ' + TIERS[Math.min(3, p.tier | 0)][0]).toLowerCase().indexOf(t) >= 0; }); }
   /* go = the pets the button will clear; kept = filtered pets the guards keep; spared = tapped by hand */

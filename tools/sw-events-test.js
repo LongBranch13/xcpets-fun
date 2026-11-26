@@ -34,7 +34,7 @@ ok(S.isWorldFile(U(base + 'view/summary.json')) && S.isWorldFile(U(base + 'view/
 ok(!S.isWorldFile(U('https://node.xcpets.fun/xp/v1/world/latest.json')), 'latest.json is not cached');
 ok(!S.isWorldFile(U('https://node.xcpets.fun/xp/v1/sync')) && !S.isWorldFile(U('https://node.xcpets.fun/v2/blocks/975800')), 'live chain API is not a world file');
 ok(S.isRules(U('http://127.0.0.1:8766/js/v2-rules.js')) && !S.versionedStatic(U('http://127.0.0.1:8766/js/v2-rules.js')), 'an unversioned rules file stays on the network');
-ok(!S.isRules(U('http://127.0.0.1:8766/js/v2-rules.js?v=abc')) && S.versionedStatic(U('http://127.0.0.1:8766/js/v2-rules.js?v=abc')), 'a versioned rules file is cache-first');
+ok(!S.isRules(U('http://127.0.0.1:8766/js/v2-rules.js?v=1025c08293')) && S.versionedStatic(U('http://127.0.0.1:8766/js/v2-rules.js?v=1025c08293')), 'a versioned rules file is cache-first');
 ok(S.versionedStatic(U('http://127.0.0.1:8766/js/v2.js?v=abc')) && !S.versionedStatic(U('http://127.0.0.1:8766/js/v2.js')), 'only versioned static files are cache-first');
 ok(!S.versionedStatic(U('http://127.0.0.1:8766/sw.js?v=sw66-1')), 'the worker script is not cached');
 ok(S.worldTip(U(base + 'cp-root.json')) === 975800 && S.KEEP_TIPS === 2 && S.MAX_ENTRIES === 4000, 'tip parsing and the cache cap');

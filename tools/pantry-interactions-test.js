@@ -15,7 +15,7 @@ const win = { console: { log() {}, warn() {}, error() {}, info() {} }, localStor
 win.document = { getElementById: () => null, querySelector: () => null, querySelectorAll: () => [], createElement: () => ({ getContext: () => null, style: {} }), addEventListener() {}, body: null, head: { appendChild() {} }, documentElement: { style: {} } };
 win.addEventListener = () => {}; win.window = win; win.self = win; win.globalThis = win; const ctx = vm.createContext(win);
 for (const f of SCRIPTS) { if (f === '@LIVE') { vm.runInContext('window.LiveEngine={RealCore:window.RealCore,Chain:window.Chain&&window.Chain.Chain,CFG:window.XCPETS_CONFIG};', ctx); continue; } vm.runInContext(require('./lib/fork-replay').patchRules(f, fs.readFileSync(path.join(ROOT, f), 'utf8')), ctx, { filename: f }); } /* fork-replay patch: one live replay, each scenario continues from a copy (7 full replays ran ~300 s alone and hit 600 s under --jobs 4) */
-vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/v2-pantry.js'), 'utf8'), ctx, { filename: 'js/v2-pantry.js' });
+['js/v2-own.js', 'js/v2-pantry.js'].forEach(f => vm.runInContext(fs.readFileSync(path.join(ROOT, f), 'utf8'), ctx, { filename: f })); /* v2-own first, as on the pages */
 let fails = 0, n = 0; const ok = (c, m) => { n++; if (!c) { fails++; console.log('FAIL ' + m); } else console.log('ok   ' + m); };
 const V = ctx.V2Rules, E = ctx.LiveEngine, P = ctx.V2Pantry;
 ok(P && typeof P.canEat === 'function', 'js/v2-pantry.js exports canEat (the picker\'s one "can the Pantry feed it" answer)');

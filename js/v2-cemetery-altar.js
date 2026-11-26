@@ -183,9 +183,7 @@
   function living(w, who) { return w.pets.filter(function (p) { return V2Own.isLiving(p, who, { zombies: false }); }); }
   /* offer-discards-only-1105: Discard pile = browser localStorage (same key as My Pets). Not on chain; UI enforces "only Discarded" when the gate is on. */
   /* Nov 25 2026 (G Money): the pile is the browser list AND on-chain discards (V2Own.discardSet); the rules accept only the on-chain ones. */
-  function discSet() { var me = A.ctx && A.ctx.ME; if (window.V2Own && V2Own.discardSet) return V2Own.discardSet(A.ctx && A.ctx.w, me); var h = {}, net = (window.LiveEngine && LiveEngine.CFG && LiveEngine.CFG.network) || 'mainnet';
-    try { JSON.parse(localStorage.getItem('xcpets-hidden-' + net + '-' + (me || '')) || '[]').forEach(function (id) { h[+id] = 1; }); } catch (e) {}
-    return h; }
+  function discSet() { return V2Own.discardSet(A.ctx && A.ctx.w, A.ctx && A.ctx.ME); }
   function buildMine() { var w = A.ctx.w, V = A.ctx.V, b = bk(), me = A.ctx.ME, discOnly = !!(V.cemTokenOfferOn && V.cemTokenOfferOn(b)), H = discOnly ? discSet() : null; A.who = me || ''; A.sample = false;
     /* When the gate is on, list ONLY Discarded pets (browser Discard pile). Non-discarded never appear. Tied/tokenized still get cemOfferWhy. */
     A.mine = me ? living(w, me).filter(function (p) { return !discOnly || H[p.id]; }).map(function (p) { var why = V.cemOfferWhy(w, p, me, b); return { id: p.id, name: p.name, tier: p.tier | 0, stage: p.stage, stageName: p.stageName, ripe: !!p.neglected, dies: p.deathBlock, myth: myth(p), why: why, worn: wornTiers(w, p), disc: !!(H && H[p.id]) }; })

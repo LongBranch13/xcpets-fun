@@ -15,7 +15,7 @@ const cut = (from, to) => { const a = src.indexOf(from), b = src.indexOf(to, a +
 const st = {}, ls = { getItem: k => (k in st ? st[k] : null), setItem: (k, v) => { st[k] = String(v); }, removeItem: k => { delete st[k]; } };
 const el = () => ({ style: {}, classList: { add() {}, remove() {}, toggle() {} }, setAttribute() {}, appendChild() {}, querySelectorAll: () => [] });
 const win = { console, localStorage: ls, sessionStorage: ls, setTimeout, clearTimeout }; win.window = win;
-win.document = { readyState: 'complete', getElementById: () => null, createElement: el, head: el(), body: el(), addEventListener() {} }; const ctx = vm.createContext(win);
+win.document = { readyState: 'complete', getElementById: () => null, createElement: el, head: el(), body: el(), addEventListener() {} }; const ctx = vm.createContext(win); vm.runInContext(rd('js/v2-own.js'), ctx, { filename: 'js/v2-own.js' }); /* loaded first on every page (the one discard answer) */
 const toasts = [], hidden = []; ctx.__toast = h => toasts.push(String(h)); ctx.__hide = ids => hidden.push(...ids);
 vm.runInContext([
   'var NET = "mainnet", ME = "me", W = null; function world() { return W; } function toast(h) { __toast(h); } function idList(ids) { return "#" + ids.join(", #"); }',
@@ -54,7 +54,8 @@ ok(ctx.inPile(dusted, ctx.hiddenSet()), 'a zombie that turned to dust follows th
 ok(ctx.inPile(hdLiving, ctx.hiddenSet()) && ctx.inPile(plain, ctx.hiddenSet()), 'inPile: normal discards still count');
 
 // the pile box and the on-chain list use the same rule
-ok(/hs\.has\(p\.id\) && !!p\.dead === !!cem/.test(src) && /!ZB\(p\) && hs\.has\(p\.id\)/.test(src), 'the Discard pile box leaves risen zombies out');
+{ const box = ctx.V2Own.pileList(w, 'me', ctx.hiddenSet(), false).map(p => p.id); /* the box reads V2Own.pileList since PR 295 (the old source pin here failed on main) */
+  ok(box.indexOf(zombie.id) < 0 && box.indexOf(zOldHd.id) < 0 && box.indexOf(plain.id) >= 0, 'the Discard pile box leaves risen zombies out (' + JSON.stringify(box) + ')'); }
 ok(/onChainDiscarded\(p\) && !p\.dead && !p\.released/.test(src), 'the "make permanent / add back" list uses onChainDiscarded (zombie-aware)');
 ok(/hideLocal\(ids\)/.test(cut('  function discardIds(ids)', '\n  function hiddenSet()')) && (src.match(/hideLocal\(/g) || []).length === 2, 'hideLocal is only called from discardIds (one chokepoint)');
 
