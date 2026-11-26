@@ -14,10 +14,13 @@ const { load, ROOT } = require('./lib/load-rules');
 const A = process.argv.slice(2), opt = k => { const i = A.indexOf(k); return i >= 0 ? A[i + 1] : null; };
 let fails = 0; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) fails++; };
 const boot = JSON.parse(fs.readFileSync(path.resolve(opt('--boot') || path.join(ROOT, 'api', 'boot.json')), 'utf8'));
-const GM = 'bc1qtke38j72qv4d8eljn7pccaykypw8luytfwdn7q', TIP = 977472, FR = [3212375, 3212376, 3212377, 3212379];
+const GM = 'bc1qtke38j72qv4d8eljn7pccaykypw8luytfwdn7q', TIP = 977472, FR = [ /* the 4 pet:fr burns by tx hash: the feed's tx_index numbers shift when it is rebuilt (they moved by 8 on Nov 26 2026) */
+  'e66a19720646d30932985c5520796f46ea4415f0e2b6f8e7bc6a0946adcebd47', 'f969cce5085f2a8bfa28655fa5248ad407d8580f54bc731add8d85df96de6a48',
+  'd6972ed91f63c938a36fcf0b6b1ec04c7141fc6c1cab60f4515fe47e789e3104', 'ff0418b3ae81536df1e2fb237695b14b240c5d9dc2e741cb24e62b67317f33b4'];
 const rows = boot.rows.filter(r => r.block_index <= TIP).sort((a, b) => a.block_index - b.block_index || a.tx_index - b.tx_index);
-if (!rows.some(r => r.tx_index === 3212379)) { console.log('skip: api/boot.json does not reach block 977,469'); process.exit(0); }
-const hashOf = {}; rows.forEach(r => { hashOf[r.tx_index] = r.tx_hash; });
+if (!rows.some(r => r.block_index >= 977469)) { console.log('skip: api/boot.json does not reach block 977,469'); process.exit(0); }
+const hashOf = {}; FR.forEach(h => { hashOf[h] = h; });
+ok(FR.every(h => rows.some(r => r.tx_hash === h && r.block_index === 977469 && r.source === GM)), 'the 4 G Money feed burns are in block 977,469 of the feed');
 function run(gate) { const c = load(), V = c.V2Rules; if (gate !== undefined) V._setHdAnchorActivation(gate);
   const w = V.replay(rows, Object.assign({}, c.XCPETS_BLOCK_HASHES || {}, boot.hashes || {}), [], { tip: TIP, live: c.LiveEngine && c.LiveEngine.RealCore, dex: boot.dex });
   const byTx = {}; w.log.forEach(e => { if (e.tx) (byTx[e.tx] = byTx[e.tx] || []).push(e); }); return { V, w, byTx }; }
@@ -28,7 +31,8 @@ ok(kinds(off).every(k => k === 'rejected'), 'gate off: the 4 feed burns are reje
 ok(kinds(on).every(k => k && k !== 'rejected'), 'gate on: the 4 feed burns are not rejected (' + kinds(on).join(', ') + ')');
 const fed = [].concat(...FR.map(t => (on.byTx[hashOf[t]] || []).map(e => e.petIds || []))).flat();
 ok(fed.length > 0, 'gate on: ' + fed.length + ' pets fed by those burns');
-const before = new Set([].concat(...rows.filter(r => r.block_index === 977469 && r.source === GM && r.tx_index < 3212375).map(r => (on.byTx[r.tx_hash] || []).filter(e => e.kind === 'discard').map(e => e.petIds || [])).flat()));
+const firstFr = rows.find(r => r.tx_hash === FR[0]).tx_index; /* the first of the 4 feeds in its block */
+const before = new Set([].concat(...rows.filter(r => r.block_index === 977469 && r.source === GM && r.tx_index < firstFr).map(r => (on.byTx[r.tx_hash] || []).filter(e => e.kind === 'discard').map(e => e.petIds || [])).flat()));
 ok(fed.every(id => !before.has(id)), 'gate on: no pet discarded earlier in the block is fed (' + before.size + ' discarded before the feeds)');
 const pl = R => R.V.refList(R.w, GM, TIP, TIP + 1).map(p => p.id).join(',');
 ok(pl(off) === pl(on), 'planner list at the tip is the same with the gate on and off');

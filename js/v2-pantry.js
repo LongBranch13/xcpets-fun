@@ -40,7 +40,7 @@
    * not dead or discarded on chain, not a Mythic (Mythics don't take normal meals), not away on a quest, and still mine. Nov 24 2026: the picker
    * used to offer every pet of the tag list, zombies and Mythics too, which then never ate. tools/pantry-interactions-test.js checks the two agree. */
   function canEat(v, w, p, me, b) { if (!p || p.community || p.released || p.owner !== me || p.dead || p.ascended || p.mythicCare || p.stage === 5) return false;
-    if (v.isZ && v.isZ(p)) return false; if (p.hd && p.hd === me && (!v.hdOn || v.hdOn(b))) return false;
+    if (v.isZ && v.isZ(p)) return false; if (V2Own.onChain(p, me) && (!v.hdOn || v.hdOn(b))) return false;
     if (v.questOn && v.questAway && v.questOn(b) && v.questAway(p, b)) return false; return true; }
   function lists(c, I) { var ref = (c.v.refList ? c.v.refList(c.w, c.me, c.w.tip, c.nb) : []).filter(function (p) { return canEat(c.v, c.w, p, c.me, c.nb) || I.ids.indexOf(p.id) >= 0; }), on = new Set(I.ids), eat = new Set(I.eat);
     var item = function (p) { var listed = on.has(p.id), add = st.add.has(p.id), del = st.del.has(p.id), will = (listed && !del) || add;
