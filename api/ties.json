@@ -1,6 +1,6 @@
 {
- "lastBlock": 977607,
- "count": 518,
+ "lastBlock": 977612,
+ "count": 521,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -6181,7 +6181,7 @@
    "species": "hyb3:wojak:kek:funtrump",
    "speciesLabel": "Wokektrump (hybrid)",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 205420,
@@ -6193,7 +6193,7 @@
    "species": "hyb:dodo:chud",
    "speciesLabel": "Dochud (hybrid)",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 205421,
@@ -6205,7 +6205,7 @@
    "species": "hyb:dodo:funtrump",
    "speciesLabel": "Dotrump (hybrid)",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 205422,
@@ -6216,6 +6216,42 @@
    "name": "Chejipeboo",
    "species": "hyb3:mumu:wojak:kek",
    "speciesLabel": "Mujokek (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 67017,
+   "asset": "A11868201627428941638",
+   "tiedBlock": 977611,
+   "tiedTx": "283e8cdfa7b06716c401288b489ace415e0eff34d66ea7a4792e1729a72068aa",
+   "kind": "deed",
+   "name": "Busi",
+   "species": "chud",
+   "speciesLabel": "Chud",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 205423,
+   "asset": "A9043864656745084371",
+   "tiedBlock": 977611,
+   "tiedTx": "8ef218f4a2ae6736b4858a31ba953a1f1d2a64e9f0d1ba8c7c5f4940ecc4972b",
+   "kind": "deed",
+   "name": "Wunesilu",
+   "species": "kek",
+   "speciesLabel": "Lord Kek",
+   "rarity": "Rare",
+   "stage": "Mythic"
+  },
+  {
+   "id": 205424,
+   "asset": "A6705724981978382463",
+   "tiedBlock": 977611,
+   "tiedTx": "aa27c662e82eb32b4328371d2459181e57de7d6913ee79f150ffc9a25be7e4df",
+   "kind": "deed",
+   "name": "Kuwoob",
+   "species": "hyb3:snibby:dodo:kek",
+   "speciesLabel": "Snidokek (hybrid)",
    "rarity": "Legendary",
    "stage": "Elder"
   }
