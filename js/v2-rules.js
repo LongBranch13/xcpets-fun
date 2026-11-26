@@ -5816,9 +5816,9 @@
     return { groups: order.map(function (tx) { return { tx: tx, eggs: g[tx], n: g[tx].length }; }), seen: s, first: first };
   }
   // ---------------------------------------------------------------- bulk planners (pure; UI turns plans into burns)
-  function feedQueue(w, owner, ids, nextBlock) { // ids null => all hungry. From ACTIVATE_FEEDM_BLOCK: always bundled, as many pets per burn as the 34-byte tag fits
+  function feedQueue(w, owner, ids, nextBlock) { // ids null => all hungry. A pet discarded on chain (hdHidden) is left out: the engine refuses to feed it (feedPetNo), Nov 26 2026. From ACTIVATE_FEEDM_BLOCK: always bundled, as many pets per burn as the 34-byte tag fits
     var idSet = ids ? new Set(ids) : null; /* bigfix: Set lookup (same result as ids.indexOf, O(1) instead of O(n) per pet) */
-    var ps = w.pets.filter(function (p) { return p.owner === owner && p.hungry && (!idSet || idSet.has(p.id)); });
+    var ps = w.pets.filter(function (p) { return p.owner === owner && p.hungry && !hdHidden(p, owner, nextBlock != null ? nextBlock : w.tip) && (!idSet || idSet.has(p.id)); });
     var nb = nextBlock != null ? nextBlock : (w.tip || 0);  /* bundle only once the chain TIP itself is >= ACTIVATE_FEEDM_BLOCK (no tip -> 0 -> single feeds) */
     if (nb < ACTIVATE_FEEDM_BLOCK || ps.length < 2) return ps.map(function (p) { return { tag: 'pet:feed:' + p.id, amount: p.nextMeal, petId: p.id, label: 'Feed #' + p.id }; });
     if (feedAllOn(nb)) { ps = ps.filter(function (p) { return !(questOn(nb) && questAway(p, nb)); }); if (ps.length) { var fa = feedAllPlan(w, owner, ps, nb, true), fp = ps.length > 1 ? feedPlan(ps, retireOn(nb)) : null; /* feed-burns-fix: the skip-list sync (pet:sk/su) is one-time and saves (fp-1) burns on each later feed. Use it only if it pays for itself within
@@ -5967,7 +5967,7 @@
   /** feedQueueAsync(w, owner, ids, nextBlock, onProgress(done, total)) -> Promise of the same plans as feedQueue, built in ~40 ms slices
    *  with a yield between them so the page never freezes (bigfix 2026-10-20, UI helper; rules unchanged). */
   function feedQueueAsync(w, owner, ids, nextBlock, onProgress) {
-    var idSet = ids ? new Set(ids) : null, ps = w.pets.filter(function (p) { return p.owner === owner && p.hungry && (!idSet || idSet.has(p.id)); }), nb = nextBlock != null ? nextBlock : (w.tip || 0);
+    var idSet = ids ? new Set(ids) : null, ps = w.pets.filter(function (p) { return p.owner === owner && p.hungry && !hdHidden(p, owner, nextBlock != null ? nextBlock : w.tip) && (!idSet || idSet.has(p.id)); }), nb = nextBlock != null ? nextBlock : (w.tip || 0);
     if (nb < ACTIVATE_FEEDM_BLOCK || ps.length < 2 || !feedListOn(nb) || feedAllOn(nb)) return Promise.resolve(feedQueue(w, owner, ids, nextBlock));
     var job = feedPlanJob(ps, retireOn(nb));
     return new Promise(function (res, rej) { (function go() { try { var t0 = Date.now(), fin = false, k = 50;

@@ -21,9 +21,10 @@ const rows = boot.rows.slice().sort((a, b) => a.block_index - b.block_index || a
 const hashes = Object.assign({}, ctx.XCPETS_BLOCK_HASHES || {}, boot.hashes || {}); [nb, nb + 1].forEach(b => { if (!hashes[b]) hashes[b] = crypto.createHash('sha256').update('fake-block-' + b).digest('hex'); });
 const opts = t => ({ tip: t, live: E && E.RealCore, dex: boot.dex }); let txi = rows[rows.length - 1].tx_index + 1;
 const mk = (b, src, amt, tag) => ({ tx_index: txi++, tx_hash: crypto.createHash('sha256').update('dcd-test:' + tag + ':' + b + ':' + txi).digest('hex'), block_index: b, source: src, asset: 'XCPETS', quantity: Math.round(amt * 1e8), tag: hex(tag), status: 'valid' });
+/* eaters: hungry pets the engine can feed (a pet discarded on chain, p.hd === owner, never eats) */
 const G = V.dailyChoresGate(); V._setDailyChoresActivation(nb);
 const w = V.replay(rows, hashes, [], opts(tip)), eaters = {};
-w.pets.forEach(p => { if (!p.community && !p.dead && !p.released && p.owner && V.frEats(p, nb)) (eaters[p.owner] = eaters[p.owner] || []).push(p); });
+w.pets.forEach(p => { if (!p.community && !p.dead && !p.released && p.owner && p.hd !== p.owner && V.frEats(p, nb)) (eaters[p.owner] = eaters[p.owner] || []).push(p); });
 const cand = Object.keys(eaters).map(o => ({ o, n: eaters[o].length })).filter(x => x.n >= 6 && x.n <= 600).sort((a, b) => b.n - a.n);
 ok(cand.length > 0, 'a wallet with 6-600 hungry eaters at tip ' + tip + ' (' + cand.length + ' found)');
 const who = cand[0].o, mine = eaters[who].slice().sort((a, b) => a.id - b.id);
@@ -47,7 +48,8 @@ if (P) { const all = P.plans.map(q => mk(nb, who, q.amount, q.tag)), w2 = V.repl
   ok(fed.length === want.length && want.every(id => fed.indexOf(id) >= 0), 'engine: fed exactly the ' + want.length + ' not-discarded hungry eaters (fed ' + fed.length + ')');
   /* 4. counts in the sheet */
   ok(P.feedTotal === fed.length, 'sheet count: feedTotal ' + P.feedTotal + ' = pets really fed ' + fed.length);
-  ok(P.discardedSkipped === hidden.length, 'sheet count: ' + P.discardedSkipped + ' discarded pets left out');
+  const onChain = w.pets.filter(p => p.owner === who && p.hd === who && p.hungry && !p.dead && !p.released && V.frEats(p, nb)).length; /* the sheet counts both kinds of discard */
+  ok(P.discardedSkipped === hidden.length + onChain, 'sheet count: ' + P.discardedSkipped + ' discarded pets left out (' + hidden.length + ' in this browser + ' + onChain + ' on chain)');
   const html = C.sheetTitle(P); ok(html.indexOf('feed ' + P.feedTotal.toLocaleString('en-US') + ' pet') >= 0 && /discarded pets? left out/.test(html), 'sheet title: "' + html + '"'); }
 /* everything discarded: no feed part, WAGMI/spins only (or nothing) */
 hidden = mine.map(p => p.id); const P2 = C.plan(); ok(!P2 || !ids(P2).some(id => mine.some(p => p.id === id)), 'all discarded: no pet of this wallet is fed' + (P2 ? ' [' + P2.plans.map(q => q.tag).join(' | ') + ']' : ' (nothing to do)'));
