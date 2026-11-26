@@ -42,6 +42,7 @@
     menu.innerHTML = '<summary aria-label="Menu" title="Menu"><span aria-hidden="true">☰</span></summary><div class="hd-panel" role="menu"></div>';
     panel = menu.querySelector('.hd-panel'); right.appendChild(menu);
     hdr.appendChild(right);
+    topStrip();
 
     var go = group('Game');
     var rk = nav.querySelector('a.navrank'); if (rk) { rk.classList.add('hd-item'); if (!/🏆/.test(rk.textContent)) rk.insertAdjacentHTML('afterbegin', '<span aria-hidden="true">🏆 </span>'); go.appendChild(rk); }
@@ -63,6 +64,28 @@
     new MutationObserver(adopt).observe(hdr, { childList: true, subtree: true });
     setInterval(paintChip, 2000); w.addEventListener('storage', paintChip);
   }
+  /* top strip (Nov 26 2026, smooth load): the page's status bars (the published-world bar, the halving chip, the data-lag bar and the status
+   * line) used to be inserted above the page one by one as their data arrived, each pushing everything down (play.html moved 4 times in its
+   * first 3 s). They all go into this one strip now. It exists from the first paint (this file runs right after </header>) and keeps the
+   * height it had the last time this page was open, so the bars fill a slot that is already there instead of shoving the page.
+   * XcpTopStrip.mount(el) puts a bar in; a page without this header falls back to the old place (each caller checks). */
+  var strip = null, stripIn = null, SKEY = 'xcpets-topstrip-h:' + page().replace(/\.html$/, '');
+  function topStrip() {
+    if (stripIn) return stripIn; hdr = hdr || d.querySelector('header.nav'); if (!hdr || !hdr.parentNode) return null;
+    strip = d.createElement('div'); strip.id = 'topStrip'; stripIn = d.createElement('div'); stripIn.className = 'ts-in'; strip.appendChild(stripIn);
+    var h = +ls(SKEY) || +ls('xcpets-topstrip-h:any') || 0; if (h > 0 && h < 260) strip.style.minHeight = h + 'px'; /* this page's last height, else any page's */
+    hdr.parentNode.insertBefore(strip, hdr.nextSibling);
+    var save = function () { var ih = Math.round(stripIn.getBoundingClientRect().height); try { if (ih > 0) { localStorage.setItem(SKEY, String(ih)); localStorage.setItem('xcpets-topstrip-h:any', String(ih)); } else localStorage.removeItem(SKEY); } catch (e) { } };
+    /* the reserved height is let go the moment the real bars fill it (or after 40 s, if they never come) */
+    var release = function () { if (strip.style.minHeight) strip.style.minHeight = ''; };
+    if (w.ResizeObserver) new ResizeObserver(function () { if (stripIn.getBoundingClientRect().height >= (parseFloat(strip.style.minHeight) || 0) - 1) release(); }).observe(stripIn);
+    setTimeout(release, 40000);
+    d.addEventListener('visibilitychange', function () { if (d.hidden) save(); }); w.addEventListener('pagehide', save);
+    return stripIn;
+  }
+  function mount(el) { var t = topStrip(); if (!t) return false; if (el.parentNode !== t) t.appendChild(el); return true; }
+  w.XcpTopStrip = { mount: mount };
+
   /* late arrivals: the Simple-menu switch (js/v2-simple.js), the glossary / receipt icons (#ipTools) and the sound button (#xc-music) */
   var busy = false;
   function adopt() { if (busy || !right) return; busy = true;
@@ -72,6 +95,8 @@
       var mu = d.getElementById('xc-music'); if (mu && mu.parentNode !== right && hdr.contains(mu)) { mu.classList.remove('abs'); right.insertBefore(mu, right.firstChild); }
     } finally { busy = false; } }
 
-  if (d.readyState === 'loading') d.addEventListener('DOMContentLoaded', build); else build();
+  /* boot-look (Nov 26 2026): this file now loads right after </header> (not deferred at the end of the page), so the slim header is built
+   * before the first paint. The full header used to paint first and then collapse, pushing the whole page up (the biggest jump on every page). */
+  if (d.querySelector('header.nav nav')) build(); else if (d.readyState === 'loading') d.addEventListener('DOMContentLoaded', build); else build();
   w.V2Header = { paint: paintChip };
 })();

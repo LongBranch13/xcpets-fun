@@ -29,6 +29,8 @@ body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; bottom: 
 button { cursor: pointer; font: inherit; } button.q, a.q { background:#1f2d23; color:var(--ink); border:2px solid #000; border-radius:8px; padding:6px 10px; font-size:13px; font-weight:700; text-decoration: none; }
 input.amt, select.pick { background:#0a0f0b; color:var(--ink); border:1px solid var(--line); border-radius:8px; padding:8px 10px; }
 .pets { display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap:16px; margin-top: 12px; }
+/* smooth (Nov 26 2026): the browser skips layout and paint of My Pets cards that are far off screen (a big wallet keeps thousands in the list); a card remembers its real height once shown */
+.pets > .pet.card { content-visibility: auto; contain-intrinsic-size: auto 330px; }
 .pet.card { background: var(--bg2); border:3px solid var(--pixline); border-radius: 6px; padding: 10px; cursor:pointer; box-shadow: 3px 3px 0 #000; }
 .pet.card:hover, .pet.card:focus { border-color: #3ddc84; outline: none; transform: translateY(-2px); }
 .pet .sprite { width:100%; aspect-ratio:1; image-rendering: pixelated; border-radius: 4px; background:#0a0f0b; display:block; }

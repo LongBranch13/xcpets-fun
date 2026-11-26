@@ -38,7 +38,7 @@
       '.csac-x{background:#2f2a4a;color:#f3ecd8;border:3px solid #000;font:16px/1 "Press Start 2P",monospace;padding:6px 8px;cursor:pointer}' +
       '.csac-p{margin:0 14px 8px;font-size:15px;line-height:1.4}.csac-p b{color:#7dff6a}' +
       '.csac-q{display:flex;flex-wrap:wrap;gap:6px;margin:0 14px 8px}.csac-q button{font:9px "Press Start 2P",monospace;background:#f3ecd8;color:#111;border:2px solid #000;box-shadow:2px 2px 0 #000;padding:6px 8px;cursor:pointer}' +
-      '.csac-l{overflow:auto;padding:0 14px 10px;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;flex:1;min-height:120px}' +
+      '.csac-l{overflow:auto;padding:0 14px 10px;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));grid-auto-rows:max-content;align-content:start;gap:8px;flex:1;min-height:120px}' +
       '.csac-t{display:grid;grid-template-columns:40px 1fr;gap:6px;align-items:center;background:#2f2a4a;border:3px solid #000;padding:5px;cursor:pointer;text-align:left;color:inherit;font:inherit;min-width:0}' +
       '.csac-t canvas{width:40px;height:40px;image-rendering:pixelated;background:#0f0d1e}.csac-t[aria-pressed=true]{background:#3c2a12;box-shadow:inset 0 0 0 3px #ff4d4d}' +
       '.csac-t span{min-width:0;font-size:13px;line-height:1.2;overflow-wrap:anywhere}.csac-t i{font:normal 7px/1.3 "Press Start 2P",monospace;display:inline-block;border:2px solid #000;padding:1px 3px;margin-top:2px}' +

@@ -131,3 +131,6 @@ html.dw header.nav::after { content: ''; position: absolute; left: 0; right: 0; 
   .dw-stext b { font-size: 10px; } .dw-stext i { font-size: 12px; } .dw-sarrow { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { .dw-sign-page::after, .dw-stext b, .dw-sarrow { animation: none; } }
+/* boot-look (Nov 26 2026): the Doom logo from the very first paint. doom-week.js still swaps the img src later (same picture), this only
+   stops the regular logo from showing for a moment first. */
+html.dw header.nav .brand img[src$="img/logo.png"]{content:url("../img/doom/logo.png")}

@@ -81,7 +81,7 @@
     var G = window.GenPetCore || PetCore, live = window.PetCore, NONE = { band: 'none', crown: 'none', armor: 'none', cape: 'none', weapon: 'none' }, LW = 320, LH = 56, list = [], normal = null, doomList = null, doomNow = false;
     /* Doom (owner Nov 23 2026): while the Doom look is on, the parade marches in Doom gear with the DOOM flag on a red-candle sky. */
     var DOOM_SKY = [[58, 10, 18], [36, 8, 14], [20, 6, 12]];
-    function doomOn() { try { return !!(window.XCDoomWeek && XCDoomWeek.isOn() && window.DoomGear && DoomGear.frames); } catch (e) { return false; } }
+    function doomOn() { try { return !!((window.XCDoomWeek ? XCDoomWeek.isOn() : window.XcpBootLook && XcpBootLook.doom) && window.DoomGear && DoomGear.frames); } catch (e) { return false; } } /* boot-look: Doom art from the first draw */
     function doomCut(f) { var c = document.createElement('canvas'); c.width = c.height = 32; var x2 = c.getContext('2d'), d = new Uint8ClampedArray(f.data);
       for (var i = 0; i < d.length; i += 4) if (DOOM_SKY.some(function (k) { return d[i] === k[0] && d[i + 1] === k[1] && d[i + 2] === k[2]; })) d[i + 3] = 0; x2.putImageData(new ImageData(d, 32, 32), 0, 0); return c; }
     function buildDoom() { var out = [];
@@ -127,7 +127,7 @@
      * random-looking pets (any species, any tier, own colours, pattern and eyes) and dresses them in Doom gear with the DOOM flag.
      * Display only: rolled from a throwaway seed, never a real pet. Off again the moment Doom is off. */
     var TIERS = ['common', 'uncommon', 'rare', 'legendary'], roll = 0, dcache = {}, dn = 0;
-    function doomOn() { try { return !!(window.XCDoomWeek && XCDoomWeek.isOn() && window.DoomGear && DoomGear.frames); } catch (e) { return false; } }
+    function doomOn() { try { return !!((window.XCDoomWeek ? XCDoomWeek.isOn() : window.XcpBootLook && XcpBootLook.doom) && window.DoomGear && DoomGear.frames); } catch (e) { return false; } } /* boot-look: Doom art from the first draw */
     function doomFrames(id) {
       var key = id + '|' + roll; if (dcache[key]) return dcache[key];
       var fr = null, n = roll++, pet;

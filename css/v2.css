@@ -235,7 +235,8 @@ table.odds td,table.odds th{padding:2px 6px}table.odds .t1{color:#4fd18b}table.o
 #packBox.reveal{padding:12px}
 #packBox .box{display:flex;flex-direction:column;max-height:calc(100vh - 24px);max-height:calc(100dvh - 24px);overflow:hidden;padding:16px}
 #packBox .box>h2,#packBox .box>#packSummary,#packBox .box>.row,#packBox .box>p{flex:0 0 auto}
-#packBox .packgrid{flex:1 1 auto;min-height:0;max-height:none;overflow-y:auto;overflow-x:hidden;padding:4px}
+#packBox .packgrid{flex:1 1 auto;min-height:0;max-height:none;overflow-y:auto;overflow-x:hidden;padding:4px;grid-auto-rows:max-content;align-content:start} /* gear-blank-cards (Nov 26 2026): a scrolling grid squeezed its rows to fit the box, and cards with overflow:hidden have no minimum height, so 401 gear cards shrank to empty outlines. Rows now keep their full height and the grid scrolls. */
+#packBox.gearmode #packSummary{max-height:24vh}
 #packBox.gearmode #packSummary{max-height:38vh;overflow-y:auto}
 #packBox.gearmode .packgrid{grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:8px}
 #packBox.gearmode .packgrid .egg{min-width:0;overflow:hidden;overflow-wrap:anywhere;font-size:11px;padding:6px 4px}

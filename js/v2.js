@@ -755,6 +755,9 @@
       withLife(function (ok) { if (!ok || !window.V2LifeAnim) return go(); try { V2LifeAnim.hatch(world(), r1.eggs, go); } catch (e) { go(); } }); return; }
     drawReveal(); open('packBox'); }
   /* share-links: the real hatch review, for a preview (?moment=hatch&pet=ID). Display only. Sabo #1765 is left out. */
+  /* gear reveal preview (Nov 26 2026, layout check): opens the 'N new gear pieces' pop-up with the first n pieces this wallet owns, like a big
+   * batch landing while away. Display only (nothing is stored: the seen list is not touched). Used by tools/layout-check 'gear-reveal-400'. */
+  window.V2GearRevealPreview = function (n) { var w = world(); if (!w || !ME || !$('packBox')) return 0; var r = V.newWins(w, ME, {}), wins = r.wins.slice(0, n || 400); if (!wins.length) return 0; revealQ.push({ kind: 'gear', wins: wins, away: true }); nextReveal(); return wins.length; };
   window.V2RevealPreview = function (ids) { ids = (ids || []).map(Number).filter(function (n) { return n >= 1 && n !== 1765; }); if (!ids.length || !$('packBox')) return; revealQ.push({ kind: 'eggs', eggs: ids }); nextReveal(); };
   /* egg-review-sort 2026-10-24: the sort options and logic now live in js/pet-sort.js (PetSort), shared with Gooby's Hotel mate search. */
   function sortEggs(w, list, k) { return window.PetSort ? PetSort.sort(w, list, k) : list; }
@@ -915,6 +918,7 @@
     $('packBox').classList.toggle('pkintro', !!(rev.kind === 'eggs' && rev.intro));
     if (rev.kind === 'eggs' && rev.intro) { var wi = world(); if (rev.eggs.some(function (id) { return wi.byId[id]; })) return drawIntro(wi); rev.intro = false; }
     var w = world(), gear = rev.kind === 'gear', list = gear ? rev.wins : rev.eggs.map(function (id) { return w.byId[id]; }).filter(Boolean), tiers = [0, 0, 0, 0];
+    if (gear) list = list.slice().sort(function (a, b) { return (b.legendary ? 4 : b.tier || 0) - (a.legendary ? 4 : a.tier || 0); }); /* gear best first (Nov 26 2026): a 400-piece batch opens on its Legendaries, not on page after page of Commons. Display order only. */
     if (!gear) list = sortEggs(w, list, rev.sort); /* egg-review-sort 2026-10-24: display order only; rev.sel is keyed by pet id, so ticks survive re-sorting */
     var all = list; list.forEach(function (x) { tiers[gear ? (x.legendary ? 3 : x.tier) : x.art.tierIndex]++; });
     var nMy = gear ? 0 : list.filter(function (x) { return x.stage === 5; }).length;

@@ -15,9 +15,12 @@
   function flag() { var m = /[?&]doom=([01])\b/.exec(location.search); return m ? m[1] : null; }
   function tip() { try { var M = window.V2Mock, s = M && M.state && M.state(); return s && s.tip ? s.tip : null; } catch (e) { return null; } }
   function inWindow(t) { return ENABLED && t != null && t >= START && t < END; }
-  function wanted() { var f = flag(); return f === '1' ? true : f === '0' ? false : inWindow(tip()); }
+  /* boot-look (Nov 26 2026): js/boot-look.js already put the look on before the first paint. Until the chain tip is known, trust it, so the
+   * page never paints regular first and flips to Doom later (the "glitch"). Once the tip is known the block window decides, as before. */
+  function booted() { return !!(window.XcpBootLook && XcpBootLook.doom); }
+  function wanted() { var f = flag(); if (f === '1') return true; if (f === '0') return false; var t = tip(); return t == null ? ENABLED && booted() : inWindow(t); }
   function el(tag, cls, html) { var e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
-  function loadCss() { if (cssEl) return; cssEl = document.createElement('link'); cssEl.rel = 'stylesheet'; cssEl.href = 'css/doom-week.css' + (ver ? '?v=' + ver : ''); document.head.appendChild(cssEl); }
+  function loadCss() { if (cssEl) return; cssEl = document.getElementById('dwCss'); if (cssEl) return; cssEl = document.createElement('link'); cssEl.id = 'dwCss'; cssEl.rel = 'stylesheet'; cssEl.href = 'css/doom-week.css' + (ver ? '?v=' + ver : ''); document.head.appendChild(cssEl); }
   function parseCoinbase(j) { var n = j && j.data && Number(j.data.amount); return n > 0 ? n : null; }
   function parseKraken(j) {
     var r = j && j.result; if (!r) return null;
@@ -275,7 +278,7 @@
     paintCount(); paintBadge();
   }
   function turnOff() {
-    if (!on) return; on = false; badgeKey = 'x'; root.classList.remove('dw');
+    if (!on && !root.classList.contains('dw')) return; /* boot-look may have put the class + stylesheet on before this file ran */ cssEl = cssEl || document.getElementById('dwCss'); on = false; badgeKey = 'x'; root.classList.remove('dw');
     if (layer && layer.parentNode) layer.parentNode.removeChild(layer); layer = null;
     swapShowcase(false); clearShop(); clearCem(); clearPlaces(); clearSign();
     if (countEl && countEl.parentNode) countEl.parentNode.removeChild(countEl); countEl = null;

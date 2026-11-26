@@ -38,7 +38,7 @@
   function render(P) { var key = P ? P.s.id + (P.live ? ':L' : ':T') : '';
     if (!P || hidden(key)) { if (el) { el.remove(); el = null; } return; }
     if (!el || el.dataset.key !== key) { css(); if (!el) { el = document.createElement('div'); el.id = 'seasonBar'; el.setAttribute('role', 'status');
-        var nav = document.querySelector('nav, .nav, header'); if (nav && nav.parentNode) nav.parentNode.insertBefore(el, nav.nextSibling); else document.body.insertBefore(el, document.body.firstChild);
+        var nav = document.querySelector('nav, .nav, header'); if (window.XcpTopStrip && XcpTopStrip.mount(el)) { } /* smooth load: the reserved strip */ else if (nav && nav.parentNode) nav.parentNode.insertBefore(el, nav.nextSibling); else document.body.insertBefore(el, document.body.firstChild);
         el.addEventListener('click', function (e) { if (!e.target.closest || !e.target.closest('.sbar-x')) return; try { sessionStorage.setItem(HIDE, el.dataset.key); } catch (er) { } el.remove(); el = null; }); }
       var s = P.s; el.className = 'sbar'; el.dataset.key = key; el.dataset.theme = s.id;
       el.innerHTML = (s.id === 'kekmas' ? snow() : '') + '<span class="sbar-t">' + (P.live ? 'SEASON ' + s.n + ' IS LIVE' : 'SEASON ' + s.n + ' INCOMING') + '</span>' +
