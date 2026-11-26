@@ -12,7 +12,8 @@ let pass = 0, fail = 0;
 const ok = (c, m) => { if (c) pass++; else { fail++; console.log('FAIL', m); } };
 
 { /* run the real resumeGo with stubs instead of pinning its source text (maintenance guards may sit in front of it) */
-  const m = /  function resumeGo\(\) \{[^\n]*\}\n/.exec(v2), seen = [];
+  const m = (() => { const i = v2.indexOf('  function resumeGo() {'); if (i < 0) return null; let d = 0, j = v2.indexOf('{', i); /* the whole function, any number of lines */
+    for (; j < v2.length; j++) { if (v2[j] === '{') d++; else if (v2[j] === '}' && --d === 0) break; } return [v2.slice(i, j + 1) + '\n']; })(), seen = [];
   const run = (saved, maint) => { seen.length = 0; const c = vm.createContext({ window: maint ? { XcpMaint: { on: () => true, stop: () => 'maint' } } : {}, XcpMaint: { on: () => !!maint, stop: () => 'maint' },
     loadResume: () => saved, confirmPlans: (t, pl) => seen.push({ t, pl }) }); vm.runInContext((m ? m[0] : '') + 'this.r = resumeGo();', c); return c.r; };
   const plans = [{ tag: 'pet:feed:1', amount: 1 }];
