@@ -15,7 +15,7 @@ const src = rd('js/v2-dress.js'), tok = md5(src).slice(0, 10);
   ok(rd(f).indexOf('js/v2-dress.js?v=' + tok) >= 0, f + ' loads js/v2-dress.js?v=' + tok);
   ok(rd(f).indexOf('js/v2-lair-qol.js') < rd(f).indexOf('js/v2-dress.js'), f + ' loads it after v2-lair-qol.js');
 });
-{ const RP = require('./lib/rules-pin'); ok(RP.md5('js/v2-rules.js') === RP.pin('js/v2-rules.js'), 'js/v2-rules.js matches the rules pin (a rules PR updates tools/fixtures/rules-pin.json; comparing with origin/main failed every later rules PR)'); }
+{ const RP = require('./lib/rules-pin'); ok(RP.md5('js/v2-rules.js') === RP.pin('js/v2-rules.js'), 'js/v2-rules.js is the reviewed, pinned rules file (tools/fixtures/rules-pin.json)'); } /* was: matches origin/main, which turned red on every rules PR */
 ok(/kind: 'equip'/.test(src) && !/pet:[a-z]/.test(src) && !/confirmPlans\('(?!Equip)/.test(src), 'only the free local equip op, no burn tags');
 ok(/html\.viewonly #pcDress/.test(src), 'the pet page button is hidden in view-only mode');
 /* card-tidy (Jake Nov 23 2026): no Dress button on My Pets cards; dress from the pet's own page */
