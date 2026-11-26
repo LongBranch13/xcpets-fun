@@ -1162,9 +1162,14 @@
   /* blank-sprite-1123 (Jake Nov 23 2026: "missing sprite", a new Egg-stage hybrid on My Pets): a card canvas could stay empty for good when its
    * observer callback never came (the card was built, moved or reused while the list was being rebuilt). Every 1.5 s, any queued canvas that is
    * on the page and near the screen is painted anyway. Same frames, same queue; it only catches the ones the observer missed. */
-  if (lazyObs) setInterval(function () { if (document.hidden || !lazyQ.size) return; var H = window.innerHeight || 800, add = 0;
-    lazyQ.forEach(function (j, c) { if (!c.isConnected || lazyRun.indexOf(c) >= 0) return; var r = c.getBoundingClientRect(); if (r.width > 0 && r.bottom > -300 && r.top < H + 300) { lazyObs.unobserve(c); lazyRun.push(c); add++; } });
-    if (add && !lazyT) lazyDrain(); }, 1500);
+  /* smooth-select (Nov 26 2026, play-test robot: Select froze Evan's page): reading every queued canvas's box right after the page changed (Select
+   * adds a tick box to thousands of cards) made the browser redo the whole layout inside this timer (190-380 ms on a phone). The sweep now waits
+   * for the next painted frame, when the layout is already done, and skips cards the browser is not laying out (far off screen), so the reads
+   * are cheap. Same canvases, same queue. */
+  function lazySweep() { if (document.hidden || !lazyQ.size) return; var H = window.innerHeight || 800, add = 0, inRun = new Set(lazyRun);
+    lazyQ.forEach(function (j, c) { if (!c.isConnected || inRun.has(c)) return; if (c.checkVisibility && !c.checkVisibility({ contentVisibilityAuto: true })) return; /* a card the browser skips (content-visibility:auto, far off screen): asking for its box would lay it out */ var r = c.getBoundingClientRect(); if (r.width > 0 && r.bottom > -300 && r.top < H + 300) { lazyObs.unobserve(c); lazyRun.push(c); add++; } });
+    if (add && !lazyT) lazyDrain(); }
+  if (lazyObs) setInterval(function () { if (document.hidden || !lazyQ.size) return; if (window.requestAnimationFrame) requestAnimationFrame(function () { setTimeout(lazySweep, 0); }); else lazySweep(); }, 1500);
   /* mypets-first3-1103 (owner Nov 3 2026 [pt2760u] 'the first 3 here are buggy', display only): a grid card reused by the speed2 card cache (js/v2.js
    * mk/put) skips its repaint, but while it was off the page the 300 ms tick dropped its canvas from the animation list and mythTick removed its
    * Mythic electric outline, so it came back frozen and without the outline. revive(c) re-runs the same frames the canvas last got (same pixels,
@@ -1510,15 +1515,18 @@
   function artless(p) { if (p && p.id != null && !artAsked[p.id] && window.V2Split && V2Split.dress) { artAsked[p.id] = 1; try { V2Split.dress([p.id]); } catch (e) { } } return eggFrames(); }
   function petFrames(p, w, extra) { if (!p || !p.art) return artless(p); var fr = petFrames0(p, w, extra);
     if (p && (p.mutation || p.shows) && V.lookFx) try { var mk2 = petFrames0(Object.assign({}, p, { art: Object.assign({}, p.art, { background: 'solid', bgColor: '#ff00fe', pattern: 'none' }) }), w, extra); fr = V.lookFx(fr, mk2, p); } catch (e) { if (window.console) console.warn('breed look failed #' + p.id, e); } /* breeding v2: mutation + throwback looks */
+    /* smooth-select (Nov 26 2026): a Mythic with looks drew the same two keyed sprites (magenta / green background, no mutation) twice, once for
+     * the Mythic outline and once for the looks. They are made once per petFrames call now and shared: same inputs, same pixels. */
+    var KEYED = {}; function keyed0(bg) { return KEYED[bg] || (KEYED[bg] = petFrames0(Object.assign({}, p, { mutation: null, shows: null, art: Object.assign({}, p.art, { background: 'solid', bgColor: bg, pattern: 'none' }) }), w, extra)); }
     var bare = fr, cut = V.CUTOFF_BLOCK || 971500, hd = extra && extra.noHunger ? 0 : hungerDays(p, w);
     try { if (hd) fr = hungerLook(fr, p, w, extra, hd);
       fr = p && p.art && p.hatchBlock > cut ? fr.map(function (f, i) { return window.V2Bg ? V2Bg.apply(f, p.art, i, cpLogo) : cpLogo(f, p.art); }) : fr; } catch (e) { fr = null; if (window.console) console.warn('petFrames look step failed for #' + (p && p.id), e); }
     /* fail safe: if the hunger / background steps break a frame, draw the bare sprite instead of an empty (black) canvas */
     fr = okFrames(fr) ? fr : bare;
-    if (MYTH_MODE && p && p.stage === 5 && !p.dead && !p.released && !(p.art && p.art.rareHatch && ['tiny','giant','two-headed','backwards'].indexOf(p.art.rareHatch.kind)>=0)) fr = mythFx(fr, function (bg) { var kf = petFrames0(Object.assign({}, p, { mutation: null, shows: null, art: Object.assign({}, p.art, { background: 'solid', bgColor: bg, pattern: 'none' }) }), w, extra); return fr.length === kf.length ? kf : fr.map(function (_, i) { return kf[i % kf.length]; }); }); /* mythic-look options */
+    if (MYTH_MODE && p && p.stage === 5 && !p.dead && !p.released && !(p.art && p.art.rareHatch && ['tiny','giant','two-headed','backwards'].indexOf(p.art.rareHatch.kind)>=0)) fr = mythFx(fr, function (bg) { var kf = keyed0(bg); return fr.length === kf.length ? kf : fr.map(function (_, i) { return kf[i % kf.length]; }); }); /* mythic-look options */
     if (p && p.art && p.art.rareHatch) fr = rareHatchFrames(fr, p, w, extra);
     var lk = looksOf(p, w, extra); /* looks-draw REAL (display only): realistic look overlays on top of the pixel sprite, see js/v2-looks.js */
-    if (lk.length) try { var lkKey = function (bg) { var kf = petFrames0(Object.assign({}, p, { mutation: null, shows: null, art: Object.assign({}, p.art, { background: 'solid', bgColor: bg, pattern: 'none' }) }), w, extra); return fr.map(function (_, i) { return kf[i % kf.length]; }); };
+    if (lk.length) try { var lkKey = function (bg) { var kf = keyed0(bg); return fr.map(function (_, i) { return kf[i % kf.length]; }); };
       var A0 = lkKey('#ff00fe'), B0 = lkKey('#00ff01');if(p.art.rareHatch){A0=rareHatchFrames(A0,Object.assign({},p,{art:Object.assign({},p.art,{bgColor:'#ff00fe'})}),w,extra);B0=rareHatchFrames(B0,Object.assign({},p,{art:Object.assign({},p.art,{bgColor:'#00ff01'})}),w,extra);} window.V2Looks.attachInfo(fr, A0, B0, lk, p.id); } catch (e) { if (window.console) console.warn('looks failed #' + (p && p.id), e); }
     return fr; }
   function looksOf(p, w, extra) { if (extra && extra.looks && window.V2Looks) return extra.looks; /* look picker previews: draw exactly these looks */

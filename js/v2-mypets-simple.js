@@ -19,8 +19,16 @@
     var s0 = (d.S().sel || []).map(Number), s = new Set(window.UXB && UXB.shownSel ? UXB.shownSel(s0) : s0), h = new Set(d.hiddenIds ? d.hiddenIds() : []);
     var sel = d.mine(w).filter(function (p) { return s.has(p.id) && !p.dead && !p.released && !h.has(p.id); });
     return { w: w, sel: sel, hungry: sel.filter(function (p) { return p.hungry; }) }; }
+  /* smooth-select (Nov 26 2026): this label re-planned the checked pets' meals after every page update (the count text is rewritten each time),
+   * 40,000 pets on a Select all. The plan is kept while the world, tip, checked hungry pets, discards and unconfirmed burns are the same. Label only:
+   * the button plans fresh when pressed. */
+  var LQ = { w: null, k: null, q: null };
+  function plan(r) { var u = window.V2UI || {}, ids = r.hungry.map(function (p) { return p.id; }), h = 0, k;
+    for (var i = 0; i < r.hungry.length; i++) h = (h * 31 + r.hungry[i].id + (Number(r.hungry[i].nextMeal) || 0) * 7) % 2147483647;
+    try { k = [r.w.tip, ids.length, h, (r.w.pets || []).length, u.myPendingTags ? u.myPendingTags().join(',') : '', u.hiddenIds ? u.hiddenIds().join(',') : ''].join('|'); } catch (e) { k = Math.random(); }
+    if (LQ.w === r.w && LQ.k === k) return LQ.q; LQ = { w: r.w, k: k, q: D().feedQueueList(r.w, ids) }; return LQ.q; }
   function label() { var b = $('bFeedKept'); if (!b || !D() || !D().world) return;
-    var r = selHungry(), q = r.hungry.length && D().feedQueueList ? D().feedQueueList(r.w, r.hungry.map(function (p) { return p.id; })) : [], sum = q.reduce(function (t, x) { return t + (x.amount || 0); }, 0);
+    var r = selHungry(), q = r.hungry.length && D().feedQueueList ? plan(r) : [], sum = q.reduce(function (t, x) { return t + (x.amount || 0); }, 0);
     if (window.V2Rules && V2Rules.feedRunsOn && r.w && V2Rules.feedRunsOn(r.w.tip || 0)) { var fed = q.reduce(function (a, x) { return a + (x.petIds ? x.petIds.length : 1); }, 0); r.hungry = r.hungry.slice(0, fed); } /* feed-all-one-burn: count the pets that really eat (Mythics never eat) */
     b.innerHTML = '🍖 Feed selected <span class="cost">(' + (r.hungry.length ? fmt(r.hungry.length) + ' hungry of ' + fmt(r.sel.length) + ' selected · ' + fmt(sum) + ' XCPETS · ' + fmt(q.length) + ' burn' + (q.length === 1 ? '' : 's') : r.sel.length ? 'all ' + fmt(r.sel.length) + ' selected pets fed' : 'tick pets to feed them') + ')</span>';
     b.disabled = !r.hungry.length; }

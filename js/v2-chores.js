@@ -56,8 +56,16 @@
     var P = v.dailyChoresPlan(w, u.ME, nb, { ids: ids }); if (!P) return null;
     P.feedTotal = P.plans.reduce(function (a, q) { return a + (q && q.petIds ? q.petIds.length : q && q.petId != null ? 1 : 0); }, 0); P.discardedSkipped = gone; return P; }
   /* playfreeze-1113: the 2 s ensure() loop only needs a new plan when the world, tip, wallet or discarded list changes. go() still calls plan() fresh. */
+  /* smooth-chores (Nov 26 2026, play-test robot: "Do it all in one burn" froze Evan's page ~1 s on a phone): the plan AND its before-signing check
+   * (sendWhy) are worked out ahead, in idle time, for the exact inputs they read: the same world object, tip, wallet, discarded list and
+   * unconfirmed burns. go() reuses them only when all of those are unchanged (same inputs = same answer); otherwise it works them out fresh as before. */
   var pm = { k: null, w: null, P: null };
-  function planMemo(u, tip) { var w = u && u.world && u.world(), k = [tip, u && u.ME, Array.from(hiddenSet()).join(',')].join('|'); if (pm.w === w && pm.k === k) return pm.P; var P = plan(); pm = { k: k, w: w, P: P }; return P; }
+  function memoKey(u, tip) { var pt = ''; try { pt = u && u.myPendingTags ? u.myPendingTags().join(',') : ''; } catch (e) { pt = '?' + Date.now(); }
+    return [tip, u && u.ME, Array.from(hiddenSet()).join(','), pt].join('|'); }
+  function planMemo(u, tip) { var w = u && u.world && u.world(), k = memoKey(u, tip); if (pm.w === w && pm.k === k) return pm.P; var P = plan(); pm = { k: k, w: w, P: P }; if (P) whyLater(u, P); return P; }
+  var idle = window.requestIdleCallback || function (f) { return setTimeout(f, 200); };
+  function whyLater(u, P) { idle(function () { if (pm.P !== P || P._why !== undefined) return; try { P._why = u.sendWhy(P.plans[0]) || ''; } catch (e) { } }, { timeout: 3000 }); }
+  function ready(u) { var w = u && u.world && u.world(), tip = u && u.S ? u.S().tip : 0; if (!pm.P || pm.w !== w || pm.k !== memoKey(u, tip)) return null; return pm.P; }
   function feedLine(P) { var n = P.feedTotal != null ? P.feedTotal : P.parts.feed; return n ? '✓ feed ' + fmt(n) + ' pet' + (n === 1 ? '' : 's') : '– no pet needs food'; }
   function goneLine(P) { var g = P.discardedSkipped || 0; return g ? '– ' + fmt(g) + ' discarded pet' + (g === 1 ? '' : 's') + ' left out (not fed)' : ''; }
   function sheetParts(P) { var p = P.parts; return '<ul class="dc-parts small" style="text-align:left;margin:6px auto;max-width:420px;padding-left:18px">' +
@@ -71,9 +79,9 @@
     bits.push(p.spins ? '✓ use all saved spins' : '– no saved spins');
     var dan = P.plans.reduce(function (s, q) { return s + dander(q.amount || 0); }, 0);
     return '🧹 Daily chores · ' + bits.join(' · ') + ' · ' + P.plans.length + ' burn' + (P.plans.length === 1 ? '' : 's') + ' instead of ' + P.oldBurns + ' · ' + (dan < 1e8 ? fmt(dan) + ' dander' : fmt(dan / 1e8) + ' XCPETS'); }
-  function go() { var u = U(), P = plan(); if (!P) return u.toast('🧹 Nothing to do today: WAGMI said, pets fed, no saved spins.');
-    var why = u.sendWhy(P.plans[0]); if (why) return u.toast('⚠️ ' + why);
-    u.confirmPlans('🧹 Daily chores', P.plans, function () { u.toast('🧹 Sent. Your chores run when the burn confirms.'); u.render(); });
+  function go() { var u = U(), M = ready(u), P = M || plan(); if (!P) return u.toast('🧹 Nothing to do today: WAGMI said, pets fed, no saved spins.');
+    var why = M && M._why !== undefined ? M._why : u.sendWhy(P.plans[0]); if (why) return u.toast('⚠️ ' + why);
+    u.confirmPlans('🧹 Daily chores', P.plans.map(function (q) { return Object.assign({}, q); }), function () { u.toast('🧹 Sent. Your chores run when the burn confirms.'); u.render(); });
     var b = $('cfBody'); if (b && !b.querySelector('.dc-parts')) b.insertAdjacentHTML('afterbegin', sheetParts(P)); }
   function ensure() { var bar = $('streakBar'), u = U(), v = V(); if (!bar || !u || !v || !v.dailyChoresGate) return;
     var gate = v.dailyChoresGate(), on = gate != null || PREVIEW, row = $('dcRow');
