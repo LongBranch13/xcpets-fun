@@ -1,0 +1,9 @@
+{
+  "_note": "Legendary Mix explainer (Jake Nov 26 2026: 'have hatchbot explain that to the chat'). Rule live since block 972,589 (Oct 22 2026, Breeding v2, LEGMIX_1_IN = 4 in js/v2-rules.js). Example Yaboli #216448 = Zibetot #205410 (Peepo) x Favaki #147179 (Nakamoto), third donor White Rabbit (ears). Posted via Actions > hatchbot > Run workflow > update: legendary-mix.",
+  "posts": [
+    {
+      "art": { "kind": "lineup", "ids": [205410, 216448, 147179], "top": "LEGENDARY MIX" },
+      "text": "👑 LEGENDARY MIX: the 3-way baby nobody saw coming {rabbit}\n\nBreed two LEGENDARY pets into a hybrid and 1 in 4 times the swamp gets greedy 😳 the baby STEALS a body part from a random THIRD species.\n\nMeet Yaboli #216448 (the one in the middle) 👇\n{peepo} Zibetot #205410 (Peepo) gave the green skin and the eyes\n{nakamoto} Favaki #147179 (Nakamoto) gave the body and the hair\n{rabbit} The White Rabbit? Nobody invited him. He left his EARS anyway.\n\n✅ Looks only: same species, same stats, nothing lost\n✅ Pet page shows a 👑 LEGENDARY MIX badge + \"Traded parts\"\n✅ Live since Oct 22, so you might already own one. Go check your hybrids 👀\n\nHow to roll one: breed two Legendaries of different species. 25% chance, decided by the block hash. Pure swamp luck 🎲\n\nxcpets.fun/pet.html?id=216448"
+    }
+  ]
+}
