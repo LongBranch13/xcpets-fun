@@ -1,6 +1,6 @@
 {
- "lastBlock": 977705,
- "count": 532,
+ "lastBlock": 977707,
+ "count": 534,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -5233,7 +5233,7 @@
    "species": "hyb3:bobo:dodo:viking",
    "speciesLabel": "Bodoking (hybrid)",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 205411,
@@ -5497,7 +5497,7 @@
    "species": "hyb3:dodo:djpepe:viking",
    "speciesLabel": "Dodjking (hybrid)",
    "rarity": "Legendary",
-   "stage": "Juvenile"
+   "stage": "Adult"
   },
   {
    "id": 8540,
@@ -6385,6 +6385,30 @@
    "species": "hyb3:kek:snibby:funtrump",
    "speciesLabel": "Keknibtrump (hybrid)",
    "rarity": "Rare",
+   "stage": "Mythic"
+  },
+  {
+   "id": 184389,
+   "asset": "A1280828342118698341",
+   "tiedBlock": 977707,
+   "tiedTx": "ba18e6b16cf4095af243d9625f28ffc53fcdc12691d2563d2b0e7e6ab87a8747",
+   "kind": "deed",
+   "name": "Finozik",
+   "species": "hyb:kek:lenny",
+   "speciesLabel": "Kekny (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 184390,
+   "asset": "A18141108747806754755",
+   "tiedBlock": 977707,
+   "tiedTx": "425feeeca176aa224963f6db41e4d58177da5a635b0d73d1e7c08fffc03217a1",
+   "kind": "deed",
+   "name": "Fizazizy",
+   "species": "hyb:kek:lenny",
+   "speciesLabel": "Kekny (hybrid)",
+   "rarity": "Legendary",
    "stage": "Mythic"
   }
  ]
