@@ -256,7 +256,9 @@ function start(root, api) {
     }, 500);
   }
   css();
-  if (d.body) new MutationObserver(function () { sync(); }).observe(d.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+  /* smooth (Nov 26 2026): one pass per 60 ms at most. It ran a whole-page scan for every DOM change, synchronously, so a list adding
+   * 150 cards or a class flip on each sprite ran it again and again inside the same frame. */
+  var syncQ = 0; if (d.body) new MutationObserver(function () { if (!syncQ) syncQ = setTimeout(function () { syncQ = 0; sync(); }, 60); }).observe(d.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
   sync(); preview();
   root.V2Share.row = row; root.V2Share.sync = sync; root.V2Share.open = sheet; root.V2Share.close = close;
 }

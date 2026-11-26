@@ -13,7 +13,7 @@
   function ribbon(h) { var el = document.getElementById('halvingRibbon');
     var show = h && h.defeat && (h.era > 0 || h.next); if (!show) { if (el) el.remove(); return; }
     if (!el) { el = document.createElement('div'); el.id = 'halvingRibbon'; el.className = 'halving-ribbon'; el.setAttribute('role', 'status');
-      var host = document.querySelector('main') || document.body, nav = document.querySelector('nav, .nav, header'); if (nav && nav.parentNode) nav.parentNode.insertBefore(el, nav.nextSibling); else host.insertBefore(el, host.firstChild); }
+      var host = document.querySelector('main') || document.body, nav = document.querySelector('nav, .nav, header'); if (window.XcpTopStrip && XcpTopStrip.mount(el)) { } /* smooth load: the reserved strip under the header */ else if (nav && nav.parentNode) nav.parentNode.insertBefore(el, nav.nextSibling); else host.insertBefore(el, host.firstChild); }
     var left = h.next ? Math.max(0, h.next - h.tip) : 0; el.classList.add('halving-chip'); /* calm-first-screen (Nov 1 2026): a small chip, not a box */
     var full = h.era > 0 ? 'Halving ' + h.era + ' is live: every burn costs 1/' + Math.pow(2, h.era) + ' of the base amount.' : 'Lord Kek has been defeated. From block ' + fmt(h.next) + ' every burn costs half.';
     if (el.title !== full) { el.title = full; el.setAttribute('aria-label', full); }

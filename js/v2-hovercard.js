@@ -108,7 +108,19 @@
   /* ---------- (i) corner on each pet ---------- */
   function deco() { document.querySelectorAll(SEL).forEach(function (el) { if (el.querySelector('.hc-i')) return; var I = info(el); if (!I) return;
     var s = document.createElement('span'); s.className = 'hc-i'; s.setAttribute('role', 'button'); s.setAttribute('tabindex', '-1'); s.setAttribute('aria-label', 'Full card #' + I.id); s.title = 'Full card'; s.textContent = 'i'; el.appendChild(s); }); }
-  var dq = 0; new MutationObserver(function () { if (!dq) dq = requestAnimationFrame(function () { dq = 0; deco(); if (cur && !cur.el.isConnected) hide(); }); }).observe(document.documentElement, { childList: true, subtree: true });
+  /* smooth (Nov 26 2026): the whole-page scan for pets without their (i) ran every frame anything changed (all frames while a big list loads or
+   * scrolls). Now: the pets that were just added are decorated in the next frame, and a whole-page pass runs at most twice a second (catches a
+   * pet whose info arrived later). */
+  var dq = 0, added = [], lastFull = 0, trail = 0;
+  function deco1(el) { if (el.querySelector('.hc-i')) return; var I = info(el); if (!I) return;
+    var s = document.createElement('span'); s.className = 'hc-i'; s.setAttribute('role', 'button'); s.setAttribute('tabindex', '-1'); s.setAttribute('aria-label', 'Full card #' + I.id); s.title = 'Full card'; s.textContent = 'i'; el.appendChild(s); }
+  function full() { lastFull = Date.now(); deco(); }
+  new MutationObserver(function (ms) { ms.forEach(function (m) { for (var i = 0; i < m.addedNodes.length; i++) if (m.addedNodes[i].nodeType === 1) added.push(m.addedNodes[i]); });
+    if (!dq) dq = requestAnimationFrame(function () { dq = 0; var list = added; added = [];
+      if (Date.now() - lastFull > 500) full();
+      else { list.forEach(function (n) { if (!n.isConnected) return; if (n.matches && n.matches(SEL)) deco1(n); if (n.querySelectorAll) n.querySelectorAll(SEL).forEach(deco1); });
+        if (!trail) trail = setTimeout(function () { trail = 0; full(); }, 520); }
+      if (cur && !cur.el.isConnected) hide(); }); }).observe(document.documentElement, { childList: true, subtree: true });
   /* ---------- events (capture, so the pick handlers never see an (i) or a long-press tap) ---------- */
   window.addEventListener('click', function (e) { if (eatClick) { eatClick = false; e.preventDefault(); e.stopPropagation(); return; }
     var i = e.target.closest && e.target.closest('.hc-i'); if (i) { var el = i.parentNode.closest(SEL), I = el && info(el); e.preventDefault(); e.stopPropagation(); if (I) openCard(I.id, el); return; }

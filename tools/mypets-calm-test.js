@@ -12,6 +12,9 @@ ok(!/V2Wallet|\.send\(|pet:/.test(src), 'layout only: no burns or wallet calls i
 let chromium; try { chromium = require('playwright').chromium; } catch (e) { console.log('mypets-calm: ' + pass + ' passed, ' + fail + ' failed (no playwright: browser part skipped)'); process.exit(fail ? 1 : 0); }
 const server = http.createServer((q, r) => { const f = path.join(ROOT, decodeURIComponent(q.url.split('?')[0])); if (!f.startsWith(ROOT) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { r.writeHead(404); return r.end(); }
   r.writeHead(200, { 'content-type': TYPES[path.extname(f).slice(1)] || 'application/octet-stream' }); fs.createReadStream(f).pipe(r); });
+/* scroll like a player (mouse wheel) until My Pets' Select button sits in the middle of the screen (scrollIntoView is undone while practice.html loads) */
+async function toSelect(p) { await p.mouse.move(200, 200); for (let i = 0; i < 60; i++) { const r = await p.evaluate(() => ({ t: document.getElementById('mpcSelBtn').getBoundingClientRect().top, h: innerHeight }));
+  if (r.t > 80 && r.t < r.h * 0.6) return; await p.mouse.wheel(0, r.t >= r.h * 0.6 ? Math.min(400, r.t - r.h / 3) : -300); await p.waitForTimeout(60); } }
 (async () => {
   await new Promise(res => server.listen(0, '127.0.0.1', res)); const base = 'http://127.0.0.1:' + server.address().port;
   const b = await chromium.launch();
@@ -34,9 +37,15 @@ const server = http.createServer((q, r) => { const f = path.join(ROOT, decodeURI
     ok(s.cb === false, tag + 'card checkboxes hidden until selecting'); ok(s.rar === 'mpcRar', tag + 'rarity pills under the toolbar'); ok(s.stat === 'mpcHead', tag + 'one stat line');
     ok(s.hungry, tag + 'Feed all hungry lives in More'); ok(!s.flex, tag + 'My Flex list is gone from My Pets'); ok(s.flexLink, tag + 'More links to Flex Forge in The Rare Room');
     await p.evaluate(() => document.getElementById('mpcMoreBtn').click()); ok(await p.evaluate(() => !document.getElementById('mpcMore').hidden), tag + 'More opens the drawer');
-    await p.evaluate(() => document.getElementById('mpcSelBtn').click()); await p.waitForTimeout(300);
+    await toSelect(p); await p.evaluate(() => document.getElementById('mpcSelBtn').click()); await p.waitForTimeout(300); /* a player scrolls to My Pets and taps Select where they see it */
     const t = await p.evaluate(() => { const r = document.getElementById('bulkRow').getBoundingClientRect(); return { pos: getComputedStyle(document.getElementById('bulkRow')).position, inView: r.bottom <= innerHeight + 1 && r.height > 0, feed: !!document.querySelector('#bulkRow #bFeedKept'), disc: !!document.querySelector('#bulkRow #bDiscSel'), cb: getComputedStyle(document.querySelector('#pets .pet.card .pick-cb')).display !== 'none' }; });
-    ok(t.pos === 'fixed' && t.inView, tag + 'Select shows the action bar pinned to the bottom'); ok(t.feed && t.disc, tag + 'bar has Feed selected and Discard selected'); ok(t.cb, tag + 'checkboxes show while selecting');
+    ok(t.pos === 'fixed' && t.inView, tag + 'Select shows the action bar pinned to the bottom');
+    /* Nov 26 2026 (Jake: "this feed bar is stuck"): scrolled away from My Pets, the bar is no longer pinned over other sections and comes back on return */
+    await p.mouse.move(200, 200); for (let i = 0; i < 40; i++) { await p.mouse.wheel(0, -400); await p.waitForTimeout(40); } await p.waitForTimeout(500);
+    const away = await p.evaluate(() => { const b = document.getElementById('bulkRow'), P = document.getElementById('petsPanel').getBoundingClientRect(); return { off: P.top > innerHeight - 140 || P.bottom < 0, pinned: getComputedStyle(b).position === 'fixed' && b.offsetHeight > 0 }; });
+    if (away.off) ok(!away.pinned, tag + 'scrolled away from My Pets, the selection bar is not pinned');
+    await toSelect(p); await p.waitForTimeout(500);
+    ok(await p.evaluate(() => getComputedStyle(document.getElementById('bulkRow')).position === 'fixed'), tag + 'back on My Pets, the bar is pinned again'); ok(t.feed && t.disc, tag + 'bar has Feed selected and Discard selected'); ok(t.cb, tag + 'checkboxes show while selecting');
     await p.evaluate(() => { const c = document.querySelector('#pets .pet.card .pick-cb'); c.click(); }); await p.waitForTimeout(400);
     ok(await p.evaluate(() => /1 selected/.test(document.getElementById('mpcCount').textContent)), tag + 'bar counts the ticked pet');
     await p.evaluate(() => document.getElementById('mpcDone').click()); await p.waitForTimeout(400);
