@@ -42,7 +42,7 @@
     var L = zFeedPlans(w, z, ids, b), n = L.length, pp = !!(V.cemRunsOn && V.cemRunsOn(b)), one = ids.length === 1 ? '1 discarded pet' : fmt(ids.length) + ' pets';
     var mult = pp && ids.length > 1 ? fmt(ids.length) + ' times ' + fmt(cost) + ' = ' + fmt(zSum(L)) : fmt(zSum(L));
     return '🍖 Feed ' + one + ' · ' + n + ' burn' + (n > 1 ? 's' : '') + ' · ' + mult + ' XCPETS'; }
-  function zDiscarded(w) { var h = {}; hiddenIds().forEach(function (id) { h[+id] = 1; }); /* Nov 25 2026: on-chain discards are in the pile too (the rules feed zombies ONLY those) */ (w.pets || []).forEach(function (a) { if (ME && a.owner === ME && a.hd === ME && !ZB(a)) h[a.id] = 1; }); if (!(V.retiredUI && V.retiredUI(w))) (w.pets || []).forEach(function (a) { if (ME && a.skipBy === ME) h[a.id] = 1; }); /* skip lists stop mattering once pet:sk / su are retired */ return h; }
+  function zDiscarded(w) { var h = {}; hiddenIds().forEach(function (id) { h[+id] = 1; }); /* Nov 25 2026: on-chain discards are in the pile too (the rules feed zombies ONLY those) */ (w.pets || []).forEach(function (a) { if (ME && a.owner === ME && V2Own.onChain(a, ME)) h[a.id] = 1; }); if (!(V.retiredUI && V.retiredUI(w))) (w.pets || []).forEach(function (a) { if (ME && a.skipBy === ME) h[a.id] = 1; }); /* skip lists stop mattering once pet:sk / su are retired */ return h; }
   function zQ(html) { return '<button type="button" class="ip-q zb-qbtn" aria-expanded="false" aria-label="What is this?">?</button><div class="zb-help" hidden>' + html + '</div>'; }
   /* least rare Discarded pet, not ripe, lowest id. One meal refills hunger, so the default is a single cheap Discarded pet, named on the button. */
   function zDefaultMeal(L, H) { var best = null, bk = Infinity, any = false; L.forEach(function (a) { if (H[a.id]) any = true; }); if (!any) return null;
@@ -471,7 +471,7 @@
   function hdLive() { return !!(ME && V.hdOn && V.hdPlan && V.hdOn((S.tip || 0) + 1)); }
   function hdLater(ids) { if (!hdLive()) return; ids.forEach(function (id) { id = Number(id); if (hdQueue.indexOf(id) < 0) hdQueue.push(id); }); clearTimeout(hdTimer); hdTimer = setTimeout(hdFlush, 900); }
   function hdFlush() { clearTimeout(hdTimer); if (!hdQueue.length) return; if (rev || ($('packBox') && $('packBox').classList.contains('on'))) return; /* closeReveal flushes */
-    var w = world(), ids = hdQueue.filter(function (id) { var p = w.byId[id]; return p && V2Own.isLiving(p, ME) && p.hd !== ME && !isKept(id); }); hdQueue = [];
+    var w = world(), ids = hdQueue.filter(function (id) { var p = w.byId[id]; return p && V2Own.isLiving(p, ME) && !V2Own.onChain(p, ME) && !isKept(id); }); hdQueue = [];
     if (ids.length) chainDiscardIds(ids, false); }
   function idList(ids) { return '#' + ids.slice(0, 5).join(', #') + (ids.length > 5 ? ' +' + (ids.length - 5) + ' more' : ''); }
   var JUST_BACK = []; /* restore-fix (owner Oct 27 2026, "I can't find my never fed pets I took out of the discard pile"): pets restored this visit go to the top of My Pets, outside the Never fed fold, so they show right away (they used to land folded inside Never fed, often past the first 150 cards) */
@@ -543,8 +543,8 @@
    * discarded (the rules refuse pet:hd for zombies, so it could never be made permanent), so neither flag hides it: an old on-chain
    * discard from before it died, or this browser's pile, where bulk discards (Select all, Hide all Commons) used to sweep zombies for good.
    * inPile() is the ONE answer to 'is this pet in my Discard pile?': My Pets, the pile box and every V2UI.mine() reader use it. */
-  function onChainDiscarded(p) { return !!(p && ME && p.hd === ME && !ZB(p)); }
-  function inPile(p, h) { return !!p && !ZB(p) && (h.has(p.id) || onChainDiscarded(p)); }
+  function onChainDiscarded(p) { return !!ME && V2Own.onChain(p, ME); } /* V2Own.discarded is the one answer (Nov 26 2026) */
+  function inPile(p, h) { return !!ME && V2Own.inPile(p, ME, h); }
   function mine(w) { var h = hiddenSet(); return w.pets.filter(function (p) { return p.owner === ME && !p.released && !inPile(p, h); }); }
   function sel() { return S.sel.slice(); }
   var commAnim = null;
@@ -1334,7 +1334,7 @@
   function huKey() { return 'xcpets-hu-sent-' + NET + '-' + (ME || ''); }
   function noteHuSent(ids) { try { var cur = JSON.parse(sessionStorage.getItem(huKey()) || '[]'); sessionStorage.setItem(huKey(), JSON.stringify(cur.concat(ids))); } catch (e) {} }
   function sweepHu(w) { if (!ME || !w || !V.hdOn || !V.hdOn((S.tip || 0) + 1)) return; var cur; try { cur = JSON.parse(sessionStorage.getItem(huKey()) || '[]'); } catch (e) { return; }
-    if (!cur || !cur.length) return; var drop = {}; cur.forEach(function (id) { var p = w.byId[id]; if (p && p.owner === ME && !p.hd) drop[id] = 1; });
+    if (!cur || !cur.length) return; var drop = {}; cur.forEach(function (id) { var p = w.byId[id]; if (p && p.owner === ME && !V2Own.onChain(p, ME)) drop[id] = 1; });
     var hid = hiddenIds(), next = hid.filter(function (id) { return !drop[Number(id)]; }); if (next.length !== hid.length) setHidden(next);
     try { sessionStorage.setItem(huKey(), JSON.stringify(cur.filter(function (id) { return !drop[id]; }))); } catch (e) {} }
   /* clear-pile (Nov 23 2026): a discard tag names pets by their place in the owner's WHOLE living list (class filters and runs).
@@ -1405,12 +1405,12 @@
   $('selNone').onclick = function () { S.sel = []; save(); selUi(); toast('Selection cleared'); }; /* Select none */
   /* Feed all hungry / Feed selected NEVER include a discarded pet: the browser discard list, or an on-chain pet:hd flag.
    * Filtered by those sets, not by what is on screen, so a cache clear or an active filter can't feed a discarded pet. */
-  function noDiscarded(plans) { var h = hiddenIds(); return plans.filter(function (q) { return h.indexOf(q.petId) < 0 && !(q.petId && onChainDiscarded(world().byId[q.petId])); }); }
+  function noDiscarded(plans) { var o = { set: hiddenSet(), pend: V2Own.pendingHd() }, w = world(); return plans.filter(function (q) { return !(q.petId && V2Own.discarded(w.byId[q.petId], ME, o)); }); } /* a discard still waiting to confirm counts too (Nov 26 2026) */
   /* bigfix 2026-10-20: big feeds are planned in small slices (V.feedQueueAsync) with a progress bar in the confirm box, so the page never freezes.
    * The overfeed guard runs on the pet list first, so the plan is built once. Same burns as before. */
   var feedTok = 0;
   function feedAsync(title, ids, list) { if (viewBlock()) return; if (!ME) return confirmPlans(title, []);
-    var w = world(), hs = new Set(hiddenIds()), hungry = ids.filter(function (id) { var p = w.byId[id]; return !hs.has(id) && p && p.owner === ME && p.hungry && !onChainDiscarded(p); });
+    var w = world(), dz = { set: hiddenSet(), pend: V2Own.pendingHd() }, hungry = ids.filter(function (id) { var p = w.byId[id]; return p && p.owner === ME && p.hungry && !V2Own.discarded(p, ME, dz); });
     if (runsOn(w) != null) { var gr = guardIds(w, hungry); if (!gr.ok.length) return feedBlocked(title, gr.text); return confirmPlans(title, noDiscarded(feedQ(w, ME, gr.ok, undefined, list)), null, gr); } /* feed-all-one-burn: runs plan, no slow planner */
     if (hungry.length < 300 || !V.feedQueueAsync) return confirmPlans(title, noDiscarded(feedQ(w, ME, hungry, undefined, list)));
     var g = guardIds(w, hungry), tok = ++feedTok; if (!g.ok.length) return feedBlocked(title, g.text); /* habits-ux: block, never the unguarded queue */

@@ -144,7 +144,7 @@
       var c = document.createElement('canvas'); c.width = 32; c.height = 32; c.className = 'mgr-drop'; c.style.setProperty('--x', Math.round((Math.random() - 0.5) * 220) + 'px'); c.style.setProperty('--r', Math.round((Math.random() - 0.5) * 360) + 'deg');
       mach.appendChild(c); sprite(c, p, w); setTimeout(function () { c.remove(); burst(mach, i % 6 === 5 ? ['CHONK', 'BLORP', 'SPLORCH', 'GRRRIND'][(i / 6 | 0) % 4] : null); if (i % 2) sfx('munch'); ctr.textContent = fmt(Math.round((i + 1) * n / k)) + ' / ' + fmt(n) + ' IN'; }, 700); }, i * step); })(i); }
   /* browser-only discards: pets hidden in this browser that are not discarded on chain yet (the Grinder only takes on-chain discards) */
-  function browserOnly(w) { var hid = (U().hiddenIds && U().hiddenIds()) || [], a = me(), n = 0; hid.forEach(function (id) { var p = w.byId[id]; if (p && V2Own.isLiving(p, a) && p.hd !== a) n++; }); return n; }
+  function browserOnly(w) { var a = me(), set = V2Own.pileIds(a), n = 0; Object.keys(set).forEach(function (id) { var p = w.byId[id]; if (p && V2Own.isLiving(p, a) && V2Own.discarded(p, a, { set: set, pend: null }) === 'browser') n++; }); return n; }
 
   var bg = null;
   function close() { if (bg) bg.remove(); bg = null; document.removeEventListener('keydown', onKey);
