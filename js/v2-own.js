@@ -53,5 +53,5 @@
     for (i = 0; i < P.length; i++) { p = P[i]; if (!p || p.owner !== me || p.released || isZ(p) || !!p.dead !== !!dead) continue; if (has(p.id) || (!dead && onChain(p, me))) out.push(p); }
     return out; }
   var api = root.V2Own = { living: living, isLiving: isLiving, isZ: isZ, canEat: canEat, discarded: discarded, onChain: onChain, pendingHd: pendingHd, pileOrder: pileOrder, pileIds: pileIds, inPile: inPile, discardSet: discardSet, pileList: pileList };
-  if (typeof module !== 'undefined' && module.exports) module.exports = api; /* node tools can require it (v2-habits under node) */
+  if (typeof module !== 'undefined' && module.exports) { module.exports = api; api.V2Own = api; } /* require(..).V2Own as before; node tools can require it (v2-habits under node) */
 })(typeof self !== 'undefined' ? self : this);
