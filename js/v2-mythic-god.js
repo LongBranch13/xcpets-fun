@@ -266,7 +266,8 @@
   function view(w, p) { var v = V(); try { return v.mgView ? v.mgView(w, p) : null; } catch (e) { return null; } }
   function seatTitle(n) { return (SEATS[n - 1] || [''])[0]; }
   function chips(p, w) { if (!p) return ''; var h = '';
-    if (p.mythicGod) h += '<span class="chip mg-god" title="' + esc(seatTitle(p.mythicGod.seat)) + ' · never dies, never starves · Moon Ward: the first battle it loses each chain day costs it nothing">🌕 Mythic God · Seat ' + ROMAN[(p.mythicGod.seat || 1) - 1] + ' of 21</span>';
+    if (p.mythicGod) { var sn = p.mythicGod.seat | 0, fl = p.mythicGod.fallen; /* SEAT BATTLES: seat 0 = a God with no seat (risen into a full Pantheon, or Fallen) */
+      h += '<span class="chip mg-god" title="' + esc(sn ? seatTitle(sn) : (fl ? 'lost Seat ' + ROMAN[fl.seat - 1] + ' in a seat battle' : 'rose when all 21 seats were taken')) + ' · never dies, never starves · Moon Ward: the first battle it loses each chain day costs it nothing">🌕 Mythic God · ' + (sn ? 'Seat ' + ROMAN[sn - 1] + ' of 21' : fl ? '💔 Fallen (no seat)' : 'no seat yet') + '</span>'; }
     else if (isZ(p) && p.zombie.mfed) h += '<span class="chip mg-fed" title="It ate Mythic #' + esc(p.zombie.mfed.mythic) + ': cured for good, it never goes feral, never crumbles and can\'t be hunted">🌙 Mythic-fed</span>';
     else if (isZ(p) && p.mgDead) h += '<span class="chip mg-mz" title="A Mythic raised from its violet grave. Resurrection can make it a Mythic God (needs 66+ points)">💜 Mythic zombie</span>';
     else if (p.mgDead && !p.mgDead.over) h += '<span class="chip mg-grave" title="Eaten by zombie #' + esc(p.mgDead.by) + ' at block ' + esc(p.mgDead.block) + '">💜 Mythic grave</span>';
