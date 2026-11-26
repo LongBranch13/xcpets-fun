@@ -31,7 +31,7 @@
     el = document.createElement('div'); el.id = 'dataLagBar'; el.className = 'halving-ribbon data-lag'; el.setAttribute('role', 'status');
     el.innerHTML = '<b>⏳ Catching up</b> <span></span> <span class="dl-behind"></span>'; el.querySelector('span').textContent = TEXT; el.querySelector('.dl-behind').textContent = sn ? behindText(sn) : '';
     var nav = document.querySelector('nav, .nav, header'), host = document.querySelector('main') || document.body;
-    if (nav && nav.parentNode) nav.parentNode.insertBefore(el, nav.nextSibling); else host.insertBefore(el, host.firstChild); }
+    if (window.XcpTopStrip && XcpTopStrip.mount(el)) { } /* smooth load: the reserved strip under the header */ else if (nav && nav.parentNode) nav.parentNode.insertBefore(el, nav.nextSibling); else host.insertBefore(el, host.firstChild); }
   function tick() { if (document.getElementById('v2boot') || !(M.state().rows || []).length) return; /* wait for the page's own boot */ try { var sn = snap(); bar(pv || lagging(sn, Date.now()), sn);
     var cn = document.getElementById('crNote'); if (cn && /^Replayed from /.test(cn.textContent)) { var t = note((M.state().rows || []).length, sn); if (cn.textContent !== t) cn.textContent = t; } /* stale-copy-fix: keep #crNote in step with the shown copy */ } catch (e) { } }
   function start() { tick(); setInterval(tick, 3000); }

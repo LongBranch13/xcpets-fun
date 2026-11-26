@@ -18,9 +18,12 @@
   var vd0 = new Date(Date.UTC(2026, 10, 3, 6, 0, 0)), vd1 = new Date(Date.UTC(2026, 10, 4, 6, 0, 0)), vf = flag('votingday');
   if (vf === '1' || (vf !== '0' && now >= vd0 && now < vd1)) add('js/voting-day.js');
   /* Doom 2 is on until the owner says stop (doom-week.js starts it at block 977,136, no end block). */
-  var DOOM_ENABLED = true; /* keep in step with ENABLED in js/doom-week.js */
+  /* boot-look (Nov 26 2026): js/boot-look.js (in <head>, before the first paint) is the one Doom switch now; it already put the Doom look
+   * on and fetched doom-week.js. This fallback only runs on a page that has no boot-look tag. */
+  var DOOM_ENABLED = true; /* keep in step with DOOM in js/boot-look.js and ENABLED in js/doom-week.js */
   var practice = /practice/i.test(location.pathname || ''), df = flag('doom');
-  if (!practice && df !== '0' && (df === '1' || DOOM_ENABLED)) add('js/doom-week.js');
+  if (window.XcpBootLook) { if (XcpBootLook.doom) add('js/doom-week.js'); }
+  else if (!practice && df !== '0' && (df === '1' || DOOM_ENABLED)) add('js/doom-week.js');
 
   /* Season 1 look, "Kekmas in Cold Storage" (block 979,058 for 4,032 blocks, about Dec 6 2026 to Jan 3 2027): fetched only around those dates;
    * js/season-kekmas.js itself switches on only while the chain tip is inside the season's blocks. ?kekmas=1 previews it. */
