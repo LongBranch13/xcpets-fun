@@ -12,6 +12,7 @@
   var STATS = ['vigor', 'spark', 'grit', 'zoom', 'luck'], SL = { vigor: 'Vigor', spark: 'Spark', grit: 'Grit', zoom: 'Zoom', luck: 'Luck' };
   function power(p) { var s = (p && p.stats) || {}; return Object.keys(s).reduce(function (a, k) { return a + (Number(s[k]) || 0); }, 0); }
   function score(w, p) { var s = window.PetScore && PetScore.of ? PetScore.of(w, p) : null; return s ? s.score : -1; }
+  function peekScore(w, p) { var s = window.PetScore && PetScore.peek ? PetScore.peek(w, p) : null; return s ? s.score : -1; }
   function rbits(w, p) { var r = window.PetScore && PetScore.rarity ? PetScore.rarity(w, p) : null; return r && isFinite(r.bits) ? r.bits : -1; } /* the 💎 Rarity number on the card */
   function tier(p) { return p.art && p.art.tierIndex != null ? p.art.tierIndex : (p.tier || 0); }
   function sp(p) { var R = V(), s = String(p.species), h = R.isHybrid ? R.isHybrid(s) : /^hyb3?:/.test(s), lab = function (x) { return String(R.speciesLabel ? R.speciesLabel(x) : x).toLowerCase(); };
@@ -37,7 +38,9 @@
   function wr(p) { var n = (p.wins || 0) + (p.losses || 0); return n ? (p.wins || 0) / n : -1; }
   /* KEYS: [key, menu label, high-first words, low-first words, value(w, p, b), card line(w, p, b) or null] */
   var KEYS = [
-    ['pow', '⚡ Power', 'high to low', 'low to high', function (w, p) { return [power(p), score(w, p)]; }],
+    /* freeze-hunt (Nov 25 2026, robot: breed/fight froze 1-1.6 s per repaint on a 40,000-pet wallet): the Pet Score is only the tie-break here,
+     * so it is peeked (a big world is scored in the background, then the page repaints) instead of scoring every pet inside the paint. */
+    ['pow', '⚡ Power', 'high to low', 'low to high', function (w, p) { return [power(p), peekScore(w, p)]; }],
     ['gain', '⚡ Power to gain', 'most first', 'least first', function (w, p, b) { return [gain(p, b), power(p)]; }, function (w, p, b) { return '⚡ +' + gain(p, b) + ' to gain'; }],
     ['vigor'], ['spark'], ['grit'], ['zoom'], ['luck'],
     ['sc', '⭐ Pet Score', 'high to low', 'low to high', function (w, p) { return [score(w, p)]; }],
