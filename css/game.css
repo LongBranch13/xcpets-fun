@@ -46,6 +46,9 @@ input.amt, select.pick { background:#0a0f0b; color:var(--ink); border:1px solid 
 .reveal .box.wide { max-width: 640px; } canvas.big { width: 240px; height: 240px; image-rendering: pixelated; display:block; margin: 8px auto; }
 .bigamt { font: 800 30px ui-monospace, monospace; color: #ff9a5a; margin: 6px 0; }
 #toasts { position: fixed; right: 16px; bottom: 16px; z-index: 60; display:flex; flex-direction:column; gap:8px; max-width: 360px; }
+/* Nov 25 2026 (play-test robot, Evan's wallet): a background news toast (fight result, hatch, meal) sat on top of the Sign & burn sheet and covered
+ * its Cancel and fee buttons. News waits while the sheet is open; error toasts still show. */
+body:has(#confirmBox.on) #toasts > .toast.evtoast { display: none; }
 .toast { background:#16241a; border:2px solid #33d6ff; color: var(--ink); border-radius: 8px; padding: 10px 14px; font-weight:700; box-shadow: 3px 3px 0 #000; }
 /* toast-tidy-1101: phones show one compact toast at the bottom (newest), tap to close.
    phone-toast-fit: this left+right anchor used to keep shop.css's translateX(-50%) on .toasts, which

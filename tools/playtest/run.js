@@ -260,7 +260,13 @@ FLOWS.feed = async (H, T, ctx) => {
     await H.layout(why + ' sheet');
     const says = Number(((sh.body.match(/feeding ([\d,]+) pets/) || sh.body.match(/feed ([\d,]+) pets?/) || [])[1] || '0').replace(/,/g, ''));
     const b = await H.sign(why);
-    if (b.length && says && !land) land = { b, says, why };
+    /* Nov 25 2026: a big wallet's chores are more burns than the wallet sends unconfirmed at once (Evan: 8 burns, 6 sent, the last 2 after
+     * the first confirm). The sheet's total covers all 8; the promise for THIS landing is the pets the sent burns name. */
+    const named = b.length ? await H.pg.evaluate(({ tags, me }) => { try { const V = window.V2Rules, w = V2Mock.world(), nb = (w.tip || 0) + 1; let n = 0;
+      for (const g of tags) { const fr = /^pet:dc:\d+:/.test(g) ? 'pet:fr:' + g.split(':').slice(3).join(':') : g, t = V.parseTag(fr); if (!t) return null;
+        if (t.action === 'feedr') n += V.feedRunsIds(w, me, t, nb).length; else if (t.action === 'feed') n += 1; else if (t.action === 'feedm' || t.action === 'feedl') n += t.ids.length; else if (!/^pet:dc:\d+$/.test(g)) return null; }
+      return n; } catch (e) { return null; } }, { tags: b.map(x => x.tag), me: ctx.me }) : null;
+    if (b.length && says && !land) land = { b, says: named != null && named < says ? named : says, why: why + (named != null && named < says ? ' (' + b.length + ' burns sent now, naming ' + fmt(named) + ' of the ' + fmt(says) + ' pets)' : '') };
     if (!b.length) problem('no-burn', why + ': Sign sent nothing'); else {
       const bad = b.filter(x => !(x.amount > 0) || !/^pet:/.test(x.tag)); if (bad.length) problem('bad-burn', why + ': ' + JSON.stringify(bad[0]));
       ok(why + ': ' + b.length + ' burn(s), ' + fmt(b.reduce((a, x) => a + x.amount, 0)) + ' XCPETS: ' + b.slice(0, 3).map(x => x.tag).join(' '));
