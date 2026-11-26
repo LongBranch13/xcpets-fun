@@ -442,6 +442,86 @@
   /** grindPlan(w, src, b, n, maxT): the burn for one grind. maxT 0-2 (from ACTIVATE_GRIND2_BLOCK) keeps every pet above that rarity: pet:grind:N:C|U|R */
   function grindPlan(w, src, b, n, maxT) { var v = grindPreview(w, src, b, n, maxT); if (!v.ok) return v; var cap = n && n < GRIND_MAX ? n : 0, keep = v.maxT < 3 ? 'CUR'[v.maxT] : '';
     v.tag = 'pet:grind' + (keep ? ':' + (cap || GRIND_MAX) + ':' + keep : cap ? ':' + cap : ''); v.amount = costAt(w, GRIND_COST, b != null ? b : ((w.tip || 0) + 1)); v.label = 'Meat Grinder: ' + v.n + ' pet' + (v.n === 1 ? '' : 's'); return v; }
+  /* ===== GEAR FORGE (Jake Nov 26 2026: "I have too much gear, how can we make gear better in every regard"; he picked "Wear for real + Smash + Fuse").
+   * Until now every free Dress / Wear was a local op (one browser) and battles read only on-chain gear (ACTIVATE_FIGHT_GEAR_BLOCK), so spare gear had
+   * no job. From ACTIVATE_GEAR_FORGE_BLOCK, each for FORGE_COST (1 dander) + the Bitcoin fee:
+   *  - pet:gearup            WEAR FOR REAL: every living pet of the signer wears the best spare pieces it can (on chain, so battles count them and
+   *    pet:gearup:ID[:ID..] every device shows them). Only that pet / those pets (up to GEARUP_MAX_IDS). Never a downgrade: a slot changes only when a
+   *                          spare piece hits harder (1 + 2 x tier per hit). Pets go strongest first (stage, rarity, then lowest number); in each
+   *                          slot the hardest-hitting spare piece the pet may wear goes on (ties: oldest piece first). The piece it wore goes to the stash.
+   *  - pet:smash:T           SMASH: melts the signer's spare pieces up to rarity T (C, U, R or L) into Gear Dust (DUST_OF: 1 / 3 / 9 / 27), gone forever.
+   *                          Always keeps one copy of every piece the signer owns (a worn copy counts), so the collection never shrinks.
+   *  - pet:fuse              FUSE: for every piece the signer holds 3+ spare copies of (after keeping one), 3 copies become 1 random piece of the SAME slot one
+   *                          rarity higher (shared pieces only, no species ★), up to FUSE_MAX fusions per burn, lowest rarity first.
+   *  - pet:dustroll:ID       DUST ROLL: DUST_ROLL (100) Gear Dust buys one gear roll for pet ID, exactly like pet:roll:ID (same stream, same pool).
+   * "Spare" = owned, not worn, not in a pet's bag, not pledged or grave-locked, not a Rumble trophy. Smashed / fused pieces end like spent seance gear
+   * (owner null, spent = { block, why, from }). Before the gate these four are unknown tags (community food), replay unchanged.
+   * Switched on Nov 26, 2026 (Jake picked "Wear for real + Smash + Fuse"): block 977,655, about 5 hours after the PR. */
+  var ACTIVATE_GEAR_FORGE_BLOCK = 977655;
+  var FORGE_COST = HD_COST, DUST_OF = [1, 3, 9, 27], DUST_ROLL = 100, FUSE_N = 3, FUSE_MAX = 100, GEARUP_MAX_IDS = 3, SMASH_TOP = { C: 0, U: 1, R: 2, L: 3 };
+  var FORGE_ACTIONS = { gearup: 1, smash: 1, fuse: 1, dustroll: 1 };
+  function forgeOn(b) { return ACTIVATE_GEAR_FORGE_BLOCK != null && b != null && Number(b) >= ACTIVATE_GEAR_FORGE_BLOCK; }
+  function gDmg(g) { var it = view(BY_ID[g.item]); return 1 + 2 * ((it ? it.tier : g.tier) | 0); }
+  function gTier(g) { var it = view(BY_ID[g.item]); return Math.min(3, Math.max(0, (it ? it.tier : g.tier) | 0)); }
+  function dustOf(w, a) { return (w.dust && w.dust[a]) || 0; }
+  /* a piece still on a dead pet (not a zombie, not grave-locked) is spare too: the end-of-block sweep takes it off anyway, and the page's finished world
+   * already shows it in the stash, so the preview and the replay agree (found by tools/gear-forge-test.js: 138 such pieces in one wallet) */
+  function onDead(w, g, b) { if (g.on == null) return true; var q = w.byId[g.on]; if (!q) return false; liveAt(w, q, b); return !!q.dead && !isZ(q) && !q.community; }
+  function spareG(w, g, a, b) { return !!g && g.owner === a && g.bag == null && g.pledge == null && g.grave == null && g.src !== 'trophy' && onDead(w, g, b) && !graveLocked(w, g, b); }
+  /* the signer's items, oldest first (w.items key order = creation order) */
+  function ownItems(w, a) { var o = []; Object.keys(w.items).forEach(function (k) { var g = w.items[k]; if (g && g.owner === a) o.push(g); }); return o; }
+  /** spareSets(w, a, b) -> { item: [spare pieces, oldest first] } with ONE copy of every owned item held back (a worn / locked copy counts as the kept one;
+   *  if every copy is spare, the oldest stays). */
+  function spareSets(w, a, b) { var all = ownItems(w, a), by = {}, keepTaken = {};
+    all.forEach(function (g) { if (!spareG(w, g, a, b)) keepTaken[g.item] = 1; });
+    all.forEach(function (g) { if (!spareG(w, g, a, b)) return; if (!keepTaken[g.item]) { keepTaken[g.item] = 1; return; } (by[g.item] = by[g.item] || []).push(g); });
+    return by; }
+  function forgeSpend(w, g, why, b) { var from = g.owner; g.on = null; g.spent = { block: b, why: why, from: from }; g.owner = null; }
+  function gearUpPets(w, a, ids, b) { var L = ids && ids.length ? ids.map(function (id) { return w.byId[id]; }) : w.pets;
+    L = L.filter(function (p) { if (!p || p.owner !== a || p.community || p.released) return false; liveAt(w, p, b); return !p.dead; });
+    return L.sort(function (x, y) { return (y.stage || 0) - (x.stage || 0) || (y.tier || 0) - (x.tier || 0) || x.id - y.id; }); }
+  /** gearUpMoves(w, a, ids, b) -> [{ petId, slot, gid, from: gid|null, gain }]: what pet:gearup would do right now (pure, nothing is changed). */
+  function gearUpMoves(w, a, ids, b) { var keep = ELIG_B; ELIG_B = b; try {
+    var free = {}, used = {}, out = [];
+    ownItems(w, a).forEach(function (g) { if (spareG(w, g, a, b)) (free[g.slot] = free[g.slot] || []).push(g); });
+    Object.keys(free).forEach(function (sl) { free[sl] = free[sl].map(function (g, i) { return { g: g, d: gDmg(g), i: i }; }).sort(function (x, y) { return y.d - x.d || x.i - y.i; }); });
+    gearUpPets(w, a, ids, b).forEach(function (p) { var sls = V2_SLOTS.concat(p.species === 'wizard' ? ['weapon'] : []);
+      sls.forEach(function (sl) { var F = free[sl]; if (!F || !F.length || !slotOpen(p, sl)) return; var cur = wornIn(w, p.id, sl), floor = cur ? gDmg(cur) : 0;
+        for (var j = 0; j < F.length; j++) { var x = F[j]; if (x.d <= floor) break; if (used[x.g.gid] || (cur && x.g.item === cur.item)) continue;
+          if (!eligible(x.g.item, p.species, bodyOf(p), p.tier, p)) continue; used[x.g.gid] = 1; out.push({ petId: p.id, slot: sl, gid: x.g.gid, from: cur ? cur.gid : null, gain: x.d - floor });
+          if (cur && cur.owner === a && cur.pledge == null && cur.grave == null && cur.src !== 'trophy') { var cd = gDmg(cur), k2 = F.length; while (k2 > 0 && F[k2 - 1].d < cd) k2--; F.splice(k2, 0, { g: cur, d: cd, i: 1e9 }); } /* its old piece goes back in the pool for weaker pets */
+          break; } }); });
+    return out; } finally { ELIG_B = keep; } }
+  /** smashList(w, a, b, top) -> spare pieces up to rarity top (0-3) that pet:smash would melt, with the dust. */
+  function smashList(w, a, b, top) { var S = spareSets(w, a, b), L = [], dust = 0;
+    Object.keys(S).forEach(function (k) { S[k].forEach(function (g) { var t = gTier(g); if (t <= top) { L.push(g); dust += DUST_OF[t]; } }); });
+    return { list: L, dust: dust }; }
+  function fuseTarget(slot, tier) { return RAW.map(view).filter(function (x) { return x && !x.noRoll && !x.exclusive && !x.alias && x.slot === slot && x.tier === tier; }); }
+  /** fuseGroups(w, a, b) -> [{ item, slot, tier, gids: [3 gids] }]: the fusions pet:fuse would do, lowest rarity first (then piece id), up to FUSE_MAX. */
+  function fuseGroups(w, a, b) { var keep = ELIG_B; ELIG_B = b; try { var S = spareSets(w, a, b), out = [];
+    Object.keys(S).sort().map(function (k) { return S[k]; }).sort(function (x, y) { return gTier(x[0]) - gTier(y[0]); }).forEach(function (L) { var t = gTier(L[0]); if (t >= 3 || !fuseTarget(L[0].slot, t + 1).length) return;
+      for (var i = 0; i + FUSE_N <= L.length && out.length < FUSE_MAX; i += FUSE_N) out.push({ item: L[0].item, slot: L[0].slot, tier: t, gids: L.slice(i, i + FUSE_N).map(function (g) { return g.gid; }) }); });
+    return out.slice(0, FUSE_MAX); } finally { ELIG_B = keep; } }
+  function fusePick(hex, slot, tier) { var P = fuseTarget(slot, tier); if (!P.length) return null; var tot = P.reduce(function (s2, x) { return s2 + (x.w || 1); }, 0), r = parseInt(hex.slice(0, 12), 16) % tot;
+    for (var i = 0; i < P.length; i++) { if (r < (P[i].w || 1)) return P[i]; r -= (P[i].w || 1); } return P[P.length - 1]; }
+  /** forgePreview(w, a, kind, arg, b) -> what one forge burn would do now: { ok, why, n, ... } (UI + pre-sign check; replay does not call it). */
+  function forgePreview(w, a, kind, arg, b) { var keepE = ELIG_B; ELIG_B = b != null ? b : ((w && w.tip) || 0) + 1; try { return forgePreview0(w, a, kind, arg, b); } finally { ELIG_B = keepE; } } /* every gear read (view, eligible) at the burn's block, as in replay */
+  function forgePreview0(w, a, kind, arg, b) { b = b != null ? b : ((w && w.tip) || 0) + 1; if (!w || !a) return { ok: false, why: 'no wallet' };
+    if (!forgeOn(b)) return { ok: false, why: 'The Gear Forge opens at block ' + (ACTIVATE_GEAR_FORGE_BLOCK == null ? '(not set yet)' : ACTIVATE_GEAR_FORGE_BLOCK) };
+    if (kind === 'gearup') { var mv = gearUpMoves(w, a, arg, b), gain = mv.reduce(function (s2, m) { return s2 + m.gain; }, 0), pets = {}; mv.forEach(function (m) { pets[m.petId] = 1; });
+      return { ok: mv.length > 0, why: mv.length ? null : 'Every pet already wears the best spare gear you own.', n: mv.length, pets: Object.keys(pets).length, gain: gain, moves: mv }; }
+    if (kind === 'smash') { var sm = smashList(w, a, b, arg == null ? 0 : arg), byT = [0, 0, 0, 0]; sm.list.forEach(function (g) { byT[gTier(g)]++; });
+      return { ok: sm.list.length > 0, why: sm.list.length ? null : 'No spare copies at that rarity (one copy of every piece is always kept).', n: sm.list.length, dust: sm.dust, byTier: byT, before: dustOf(w, a), after: dustOf(w, a) + sm.dust }; }
+    if (kind === 'fuse') { var fg = fuseGroups(w, a, b), up = [0, 0, 0, 0]; fg.forEach(function (f) { up[f.tier + 1]++; });
+      return { ok: fg.length > 0, why: fg.length ? null : 'Fuse needs 3 spare copies of the same piece (after keeping one).', n: fg.length, used: fg.length * FUSE_N, upTo: up, groups: fg }; }
+    if (kind === 'dustroll') { var p = w.byId[arg], d = dustOf(w, a), why = !p ? 'no such pet' : p.owner !== a ? 'not your pet' : p.released ? 'released' : (liveAt(w, p, b), p.dead) ? 'dead' : d < DUST_ROLL ? 'needs ' + DUST_ROLL + ' Gear Dust (you have ' + d + ')' : null;
+      return { ok: !why, why: why, n: why ? 0 : 1, before: d, after: why ? d : d - DUST_ROLL }; }
+    return { ok: false, why: 'unknown forge action' }; }
+  /** forgePlan(w, a, kind, arg, b) -> the burn plan for one forge action (tag + amount) or { ok:false, why }. */
+  function forgePlan(w, a, kind, arg, b) { var v = forgePreview(w, a, kind, arg, b); if (!v.ok) return v;
+    v.tag = kind === 'gearup' ? 'pet:gearup' + (arg && arg.length ? ':' + arg.slice(0, GEARUP_MAX_IDS).join(':') : '') : kind === 'smash' ? 'pet:smash:' + 'CURL'[arg | 0] : kind === 'fuse' ? 'pet:fuse' : 'pet:dustroll:' + arg;
+    v.amount = FORGE_COST; v.label = kind === 'gearup' ? 'Gear up: ' + v.n + ' piece' + (v.n === 1 ? '' : 's') + ' on ' + v.pets + ' pet' + (v.pets === 1 ? '' : 's') : kind === 'smash' ? 'Smash ' + v.n + ' spare piece' + (v.n === 1 ? '' : 's') + ' into ' + v.dust + ' Gear Dust' : kind === 'fuse' ? 'Fuse ' + v.used + ' pieces into ' + v.n : 'Dust roll for #' + arg + ' (' + DUST_ROLL + ' Gear Dust)';
+    return v; }
   var FEED_LIST_BLOCK = 972132;    // set at deploy 2026-10-19: chain tip 972126 + 6 (Counterparty API 972126, Bitcoin 972126)
   var THRESHOLDS = [0, 69, 8349, 22149, 41469, 69069];             // normal pets (unchanged; Mythic day 9 at 1 meal/day)
   var MEAL_SIZES = [0, 4140, 6900, 9660, 9200];
@@ -2425,6 +2505,11 @@
     if ((a === 'PP' || a === 'PX') && p.length === 4 && /^[0-9A-V]{2}$/.test(p[2]) && /^[0-9A-V]{2,24}$/.test(p[3]) && t.length <= MAX_TAG_BYTES) {
       var ppr = frDecode(p[3]); if (!ppr || ppr.length < 2 || ppr.length % 2) return { action: 'invalid' }; for (var ppk = 1; ppk < ppr.length; ppk++) if (!(ppr[ppk] > 0)) return { action: 'invalid' };
       return { action: 'pantry', op: a === 'PP' ? 'add' : 'del', a: parseInt(p[2], 32), runs: ppr }; }
+    /* GEAR FORGE (unknown tags = community food before ACTIVATE_GEAR_FORGE_BLOCK) */
+    if (a === 'GEARUP' && p.length >= 2 && p.length <= 2 + GEARUP_MAX_IDS) { for (var gui = 2; gui < p.length; gui++) if (!idOk(p[gui])) return { action: 'invalid' }; return { action: 'gearup', ids: p.slice(2).map(Number) }; }
+    if (a === 'SMASH' && p.length === 3 && SMASH_TOP.hasOwnProperty(p[2])) return { action: 'smash', top: SMASH_TOP[p[2]] };
+    if (a === 'FUSE' && p.length === 2) return { action: 'fuse' };
+    if (a === 'DUSTROLL' && p.length === 3 && idOk(p[2])) return { action: 'dustroll', petId: n(2) };
     if ((a === 'HD' || a === 'HU') && t.length <= MAX_TAG_BYTES) { /* on-chain discard / add back (community food before ACTIVATE_ONCHAIN_DISCARD_BLOCK) */
       var hide = a === 'HD';
       if (p.length === 3 && /^(ALL|C|U|R|L|NF|S[0-5])$/.test(p[2])) return { action: hide ? 'hd' : 'hu', filter: p[2].toLowerCase() };
@@ -2944,6 +3029,9 @@
     if (retiredAt(t, b)) return RETIRED_ACTIONS[t.action] + ' was retired at block ' + ACTIVATE_RETIRE_TAGS_BLOCK + ': this burn would only be community food';
     if (t.action === 'feed' || t.action === 'feedm' || t.action === 'feedr' || (t.action === 'chores' && t.runs)) { var fsw = feedSendWhy(w, t, me, b, amt, pend); if (fsw) return fsw; } /* wasted-burns audit: every feed, pet by pet */
     if (t.action === 'dip') { var dpp = P(t.petId); if (pend.some(function (q) { return q.action === 'dip' && q.petId === t.petId; })) return '#' + t.petId + ' already has a dip waiting to confirm'; return dipWhy(w, dpp, me || (dpp && dpp.owner), amt, b); } /* POOL DIP (UI only: the replay runs dipWhy itself) */
+    if (FORGE_ACTIONS[t.action]) { if (!forgeOn(b)) return 'The Gear Forge opens at a later block'; if (amt != null && !(Number(amt) >= FORGE_COST)) return 'below the 1 dander forge cost';
+      if (pend.some(function (q) { return FORGE_ACTIONS[q.action]; })) return 'a Gear Forge burn is already waiting to confirm: wait for it, then press again';
+      if (me) { var fpv = forgePreview(w, me, t.action, t.action === 'gearup' ? t.ids : t.action === 'smash' ? t.top : t.action === 'dustroll' ? t.petId : null, b); if (!fpv.ok) return fpv.why; } return null; } /* GEAR FORGE: never sign a burn that would do nothing */
     if (t.action === 'grind') { if (!grindOn(b)) return 'The Meat Grinder opens at a later block'; if (amt != null && below(w, Number(amt), GRIND_COST, b)) return 'below grind cost ' + costAt(w, GRIND_COST, b); if (pend.some(function (q) { return q.action === 'grind'; })) return 'a grind is already waiting to confirm'; if (t.maxT != null && !grind2On(b)) return 'the keep-rarity choice opens at block ' + ACTIVATE_GRIND2_BLOCK; return me ? grindPreview(w, me, b, t.n, t.maxT).why : null; }
     if (t.action === 'hd' || t.action === 'hu') { if (!hdOn(b)) return 'on-chain discard opens at block ' + ACTIVATE_ONCHAIN_DISCARD_BLOCK; if (amt != null && !(Number(amt) >= HD_COST)) return 'below discard cost 1 dander'; return pickSendWhy(w, t, plan, me, b); }
     if (t.action === 'feedr') { if (!feedRunsOn(b)) return 'one-burn feeding opens at block ' + ACTIVATE_FEED_RUNS_BLOCK; if (plan && plan.anchor != null && b - plan.anchor > 900) return 'this feed plan is too old, press Feed again'; }
@@ -4223,6 +4311,7 @@
     if (t.action === 'chores' && !choresOn(b)) t = { action: 'invalid' }; /* daily chores OFF: same as before (unknown tag) */
     if (t.action === 'grind' && !grindOn(b)) t = { action: 'invalid' }; /* MEAT GRINDER OFF: same as before (unknown tag, community food) */
     if (t.action === 'grind' && t.maxT != null && !grind2On(b)) t = { action: 'invalid' }; /* pet:grind:N:T before MEAT GRINDER 2: unknown tag, as before */
+    if (FORGE_ACTIONS[t.action] && !forgeOn(b)) t = { action: 'invalid' }; /* GEAR FORGE OFF: same as before (unknown tag, community food) */
     if (t.action === 'pantry' && !pantryOn(b)) t = { action: 'invalid' }; /* pantry OFF: same as before (unknown tag) */
     if (t.action === 'dip' && !dipOn(b)) t = { action: 'invalid' }; /* POOL DIP OFF: same as before (unknown tag) */
     if (t.action === 'raid' && !raidOn(b)) t = { action: 'invalid' }; /* raids OFF: same as before (unknown tag) */
@@ -4330,6 +4419,34 @@
         var gl = L(r, 'grind', 'Meat Grinder: ground ' + gIds.length + ' pet' + (gIds.length === 1 ? '' : 's') + ' into ' + gMeat + ' meat (meter ' + gR.meat + ')' + (gSpins ? ' · +' + gSpins + ' spin' + (gSpins === 1 ? '' : 's') : '') + (gEggs ? ' · ' + gEggs + ' Sausage Egg' + (gEggs === 1 ? '' : 's') : '') + (gGold ? ' · GOLDEN SAUSAGE' : ''),
           { petIds: gIds, petId: gIds[0], meat: gMeat, spins: gSpins, newPets: gNew, golden: gGold });
         gNew.forEach(function (id) { token(w.byId[id], 'stageUp'); }); return gl; }
+      case 'gearup': { /* GEAR FORGE: wear for real (see ACTIVATE_GEAR_FORGE_BLOCK) */
+        if (!(amt >= FORGE_COST)) return L(r, 'rejected', 'below gear up cost 1 dander');
+        var guM = gearUpMoves(w, src, t.ids, b), guDone = [], guPets = {};
+        guM.forEach(function (m) { var gp = w.byId[m.petId], gg = w.items[m.gid]; if (gp && gg && wear(w, gp, gg)) { guDone.push(m); guPets[m.petId] = 1; } });
+        if (!guDone.length) return L(r, 'rejected', 'gear up: every pet already wears the best spare gear');
+        var guGain = guDone.reduce(function (s2, m) { return s2 + m.gain; }, 0), guIds = Object.keys(guPets).map(Number);
+        return L(r, 'gearup', 'Gear up: ' + guDone.length + ' piece' + (guDone.length === 1 ? '' : 's') + ' on ' + guIds.length + ' pet' + (guIds.length === 1 ? '' : 's') + ' (+' + guGain + ' per hit)', { petIds: guIds, petId: guIds[0], n: guDone.length, gain: guGain }); }
+      case 'smash': { /* GEAR FORGE: melt spare pieces into Gear Dust */
+        if (!(amt >= FORGE_COST)) return L(r, 'rejected', 'below smash cost 1 dander');
+        var smL = smashList(w, src, b, t.top); if (!smL.list.length) return L(r, 'rejected', 'smash: no spare copies at that rarity');
+        smL.list.forEach(function (g) { forgeSpend(w, g, 'smash', b); }); w.dust = w.dust || {}; w.dust[src] = dustOf(w, src) + smL.dust;
+        return L(r, 'smash', 'Smashed ' + smL.list.length + ' spare piece' + (smL.list.length === 1 ? '' : 's') + ' into ' + smL.dust + ' Gear Dust (' + w.dust[src] + ' now)', { n: smL.list.length, dust: smL.dust }); }
+      case 'fuse': { /* GEAR FORGE: 3 spare copies -> 1 piece one rarity higher, same slot */
+        if (!(amt >= FORGE_COST)) return L(r, 'rejected', 'below fuse cost 1 dander');
+        if (!bh) return L(r, 'rejected', 'block hash pending');
+        var fuG = fuseGroups(w, src, b), fuNew = [], fuK; if (!fuG.length) return L(r, 'rejected', 'fuse: no piece with 3 spare copies');
+        var fuKeep = ELIG_B; ELIG_B = b;
+        try { for (fuK = 0; fuK < fuG.length; fuK++) { var fz = fuG[fuK], fit2 = fusePick(sha(bh + r.tx_hash + ':' + fuK + 'XCPETS:v2:fuse'), fz.slot, fz.tier + 1); if (!fit2) continue;
+          fz.gids.forEach(function (gid) { forgeSpend(w, w.items[gid], 'fuse', b); }); var fni2 = newItem(w, fit2, src, 'fuse'); fni2.fusedFrom = fz.item; fuNew.push(fni2.gid); } } finally { ELIG_B = fuKeep; }
+        if (!fuNew.length) return L(r, 'rejected', 'fuse: nothing could be fused');
+        return L(r, 'fuse', 'Fused ' + (fuNew.length * FUSE_N) + ' spare pieces into ' + fuNew.length + ' better piece' + (fuNew.length === 1 ? '' : 's'), { n: fuNew.length, gids: fuNew, gid: fuNew[0] }); }
+      case 'dustroll': { /* GEAR FORGE: 100 Gear Dust = one gear roll for the pet, same as pet:roll:ID */
+        var dg = pet(t.petId), dwy = !(amt >= FORGE_COST) ? 'below dust roll cost 1 dander' : !dg ? 'no such pet' : dg.released ? 'released' : dg.owner !== src ? 'owner only' : dg.dead ? 'dead' : dustOf(w, src) < DUST_ROLL ? 'not enough Gear Dust (' + dustOf(w, src) + ' of ' + DUST_ROLL + ')' : !bh ? 'block hash pending' : null;
+        if (dwy) return L(r, 'rejected', dwy);
+        var dh = sha(bh + r.tx_hash + 'XCPETS:v2:gear-roll'), dsl = rollSlotOf(dg, dh, b), dit = pickItem(dh, dsl, dg.species, dg.tier, dedupFor(w, b, dg.owner), bodyOf(dg));
+        if (!dit) return L(r, 'rejected', 'dust roll: no piece fits #' + dg.id);
+        w.dust[src] = dustOf(w, src) - DUST_ROLL; var dni = newItem(w, dit, dg.owner, 'dustroll'); dni.rolledOn = dg.id; placeRolled(w, dg, dni, b);
+        return L(r, 'roll', '#' + dg.id + ' dust roll: ' + dit.label + ' (' + slotLabel(dsl) + ') · ' + w.dust[src] + ' Gear Dust left', { petId: dg.id, gid: dni.gid, dust: true }); }
       case 'hd': case 'hu': { /* ON-CHAIN DISCARD / ADD BACK. 1 dander for the burn. Ineligible pets are skipped, not used to reject the rest. */
         if (!hdOn(b)) return L(r, 'plain', 'plain burn (community food)');
         if (!(amt >= HD_COST)) return L(r, 'rejected', 'below discard cost 1 dander');
@@ -6003,7 +6120,7 @@
     return ranked.filter(function (r) { return r.p.owner === owner; }).map(function (r) {
       var top = r.rank <= n - r.rank + 1, pct = Math.max(1, Math.ceil((top ? r.rank : n - r.rank + 1) / n * 100));
       return { rank: r.rank, total: n, id: r.p.id, name: r.p.name, half: top ? 'top' : 'bottom', pct: pct, label: '#' + r.rank + ' of ' + n, note: (top ? 'top ' : 'bottom ') + pct + '%' }; }); }
-  return { ACTIVATE_TRANSFER_GAPS_BLOCK: ACTIVATE_TRANSFER_GAPS_BLOCK, transferGapsGate: function () { return ACTIVATE_TRANSFER_GAPS_BLOCK; }, xferOn: xferOn, _setTransferGaps: function (b) { ACTIVATE_TRANSFER_GAPS_BLOCK = b == null ? null : Number(b); }, ACTIVATE_CARRYPICK_BLOCK: ACTIVATE_CARRYPICK_BLOCK, carryPickGate: function () { return ACTIVATE_CARRYPICK_BLOCK; }, carryPickOn: carryPickOn, _setCarryPick: function (b) { ACTIVATE_CARRYPICK_BLOCK = b == null ? null : Number(b); }, ACTIVATE_SPIN_TARGET_BLOCK: ACTIVATE_SPIN_TARGET_BLOCK, spinTargetGate: function () { return ACTIVATE_SPIN_TARGET_BLOCK; }, spinTargetOn: spinTargetOn, _setSpinTargetActivation: function (b) { ACTIVATE_SPIN_TARGET_BLOCK = b; }, spinList: spinList, spinTargetPlans: spinTargetPlans, REWEAR_GRANTS: REWEAR_GRANTS, rewearGrant: rewearGrant, rewearPlan: rewearPlan, rewearPlans: rewearPlans,
+  return { ACTIVATE_GEAR_FORGE_BLOCK: ACTIVATE_GEAR_FORGE_BLOCK, forgeGate: function () { return ACTIVATE_GEAR_FORGE_BLOCK; }, _setGearForge: function (b) { ACTIVATE_GEAR_FORGE_BLOCK = b; }, forgeOn: forgeOn, forgePreview: forgePreview, forgePlan: forgePlan, gearUpMoves: gearUpMoves, dustOf: dustOf, FORGE_COST: FORGE_COST, DUST_ROLL: DUST_ROLL, DUST_OF: DUST_OF, FUSE_N: FUSE_N, ACTIVATE_TRANSFER_GAPS_BLOCK: ACTIVATE_TRANSFER_GAPS_BLOCK, transferGapsGate: function () { return ACTIVATE_TRANSFER_GAPS_BLOCK; }, xferOn: xferOn, _setTransferGaps: function (b) { ACTIVATE_TRANSFER_GAPS_BLOCK = b == null ? null : Number(b); }, ACTIVATE_CARRYPICK_BLOCK: ACTIVATE_CARRYPICK_BLOCK, carryPickGate: function () { return ACTIVATE_CARRYPICK_BLOCK; }, carryPickOn: carryPickOn, _setCarryPick: function (b) { ACTIVATE_CARRYPICK_BLOCK = b == null ? null : Number(b); }, ACTIVATE_SPIN_TARGET_BLOCK: ACTIVATE_SPIN_TARGET_BLOCK, spinTargetGate: function () { return ACTIVATE_SPIN_TARGET_BLOCK; }, spinTargetOn: spinTargetOn, _setSpinTargetActivation: function (b) { ACTIVATE_SPIN_TARGET_BLOCK = b; }, spinList: spinList, spinTargetPlans: spinTargetPlans, REWEAR_GRANTS: REWEAR_GRANTS, rewearGrant: rewearGrant, rewearPlan: rewearPlan, rewearPlans: rewearPlans,
     ACTIVATE_BORP_BLOCK: ACTIVATE_BORP_BLOCK, borpGate: function () { return ACTIVATE_BORP_BLOCK; }, borpOn: borpOn, isBorpPair: isBorpPair, _setBorp: function (b) { ACTIVATE_BORP_BLOCK = b == null ? null : Number(b); },
     ACTIVATE_TWIN_ALIKE_BLOCK: ACTIVATE_TWIN_ALIKE_BLOCK, twinAlikeGate: function () { return ACTIVATE_TWIN_ALIKE_BLOCK; }, twinAlikeOn: twinAlikeOn, twinAlike: twinAlike, _setTwinAlike: function (b) { ACTIVATE_TWIN_ALIKE_BLOCK = b == null ? null : Number(b); },
     ACTIVATE_ONEOFONE_CROSS_BLOCK: ACTIVATE_ONEOFONE_CROSS_BLOCK, crossGate: function () { return ACTIVATE_ONEOFONE_CROSS_BLOCK; }, crossOn: crossOn, crossOf: crossOf, crossLabel: crossLabel, petSpeciesLabel: petSpeciesLabel, ACTIVATE_SPECIAL_PAIR_BLOCK: ACTIVATE_SPECIAL_PAIR_BLOCK, specialPairOn: specialPairOn, specialPairOf: specialPairOf, _setSpecialPair: function (b) { ACTIVATE_SPECIAL_PAIR_BLOCK = b; }, ACTIVATE_SPECIAL_PAIR_RETRO_BLOCK: ACTIVATE_SPECIAL_PAIR_RETRO_BLOCK, ACTIVATE_WAGMI_DAYS_FIX_BLOCK: ACTIVATE_WAGMI_DAYS_FIX_BLOCK, wagmiFixOn: wagmiFixOn, SP_PAIR_RETRO: SP_PAIR_RETRO, spPairRetro: spPairRetro, ACTIVATE_RAGNAR_GIFT_BLOCK: ACTIVATE_RAGNAR_GIFT_BLOCK, RAGNAR_GIFT: RAGNAR_GIFT, ragnarGift: ragnarGift, _setRagnarGift: function (b) { ACTIVATE_RAGNAR_GIFT_BLOCK = b; }, _setSpecialPairRetro: function (b) { ACTIVATE_SPECIAL_PAIR_RETRO_BLOCK = b; }, CROSS_PLANS: CROSS_PLANS, _jackpotEgg: jackpotEgg, _setOneOfOneCross: function (b) { ACTIVATE_ONEOFONE_CROSS_BLOCK = b == null ? null : Number(b); },
