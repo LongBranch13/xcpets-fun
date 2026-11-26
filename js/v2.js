@@ -1348,6 +1348,8 @@
     if (!hdSettleThen.t) hdSettleThen.t = setInterval(function () { if (!hdWait) { clearInterval(hdSettleThen.t); hdSettleThen.t = null; return; }
       if (Date.now() > hdWait.until) { hdWait = null; return; } if (!hatchListSettled(world())) return pull(); var job = hdWait; hdWait = null; chainDiscardIds(job.ids, job.restore); }, 3000);
     return true; }
+  function hdConfirming() { return myPendingTags().some(function (g) { return /^pet:h[du]:/.test(g); }); }
+  function hdWaitNote() { return '⏳ Your last discard burn is still confirming. Bitcoin needs about one block (~10 min) before the next discard burn can be checked by your wallet. The pets stay in your Discard pile; tap "Make my browser discards permanent" after the next block. Nothing was sent or lost.'; }
   function chainDiscardIds(ids, restore) { var w = world(), b = (S.tip || 0) + 1; if (!V.hdOn(b)) return toast('On-chain discard opens at block ' + fmt(V.ACTIVATE_ONCHAIN_DISCARD_BLOCK) + '. Until then, Discard only hides pets in this browser.');
     /* Nov 26 2026 (Jake: 2,000 of 2,002 picked pets were already discarded, the sheet offered 2 tiny burns and a wall of text): every discard
      * button comes here, so the one discard answer (V2Own.discarded) drops pets already discarded on chain or named by a discard burn still
@@ -1355,6 +1357,10 @@
     var skip = { chain: 0, pending: 0 };
     if (!restore) { ids = (ids || []).filter(function (id) { var p = w && w.byId[id], d = p ? V2Own.discarded(p, ME, { set: null }) : null; if (d) { skip[d]++; return false; } return true; });
       if (!ids.length) return toast(skip.chain ? 'Those pets are already discarded on chain. Nothing to burn.' : 'Your discard burn for those pets is still confirming. Nothing more to burn.', 7000); }
+    /* ...and while an earlier discard burn is still confirming, the wallet can't check a burn that spends its change (XCP Wallet: 'Couldn't verify
+     * asset status, input status unknown'), so wait for the next block instead of opening a sheet the wallet will block. The pets stay hidden
+     * here and the 'Make my browser discards permanent' button offers them again. */
+    if (hdConfirming()) return toast(hdWaitNote(), 12000);
     if (hdSettleThen(ids, restore)) return;
     /* Nov 24 2026 (one safety check): a permanent discard is what feeds the Meat Grinder, so special pets get the same sheet as a sacrifice first */
     if (!restore && !chainDiscardIds._ok && window.V2SacGuard) return V2SacGuard.check({ w: w, ids: ids, me: ME, verb: 'discard them permanently',
@@ -1793,7 +1799,14 @@
   /* chores-resume-1110: Continue / Dismiss are not onclick on the toast node. The away sheet (and the Rare Room queue)
    * copy the toast's HTML and drop those handlers. js/v2-intuitive.js listens on the document, so the same links work
    * in the toast and in the copied sheet. Both call these. */
-  function resumeGo() { if (window.XcpMaint && XcpMaint.on()) return XcpMaint.stop(); var o = loadResume(); if (!o || !o.plans || !o.plans.length) return false; confirmPlans('Continue: ' + (o.title || 'burns'), o.plans); return true; }
+  function resumeGo() { if (window.XcpMaint && XcpMaint.on()) return XcpMaint.stop(); var o = loadResume(); if (!o || !o.plans || !o.plans.length) return false;
+    /* Nov 26 2026 (Jake, the 🔔 Continue re-offered a saved discard burn): a saved pet:hd / pet:hu tag names pets by place at the block it was
+     * built for. Rebuild it from the pets it named instead, through the same path as every discard button (skips pets already discarded or
+     * confirming, waits while the last discard burn confirms). */
+    if (o.plans.every(function (q) { return /^pet:h[du]:/.test((q && q.tag) || '') && q.petIds && q.petIds.length; })) {
+      var ids = [].concat.apply([], o.plans.map(function (q) { return q.petIds; })), back = /^pet:hu:/.test(o.plans[0].tag);
+      if (hdConfirming()) { toast(hdWaitNote(), 12000); return true; } saveResume(null, null); chainDiscardIds(ids, back); return true; }
+    confirmPlans('Continue: ' + (o.title || 'burns'), o.plans); return true; }
   function resumeDrop() { saveResume(null, null); return true; }
   function resumePending() { var o = loadResume(); return !!(o && o.plans && o.plans.length); }
   /* X / Skip all close the sheet and drop its copied HTML. The saved run is still there, so show a live Continue toast once the hold is off. Dismiss is the only action that forgets it. */
