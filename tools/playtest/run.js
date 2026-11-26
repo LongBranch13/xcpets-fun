@@ -85,6 +85,8 @@ function hands(pg) {
         await pg.waitForTimeout(600);
       }
     },
+    /* is a scene, box reveal or dialog (never the Sign & burn sheet) on screen right now? */
+    async scene() { return pg.evaluate(() => [...document.querySelectorAll('.reveal.on, .la-ov, .tut-tip, [role=dialog]')].some(e => e.id !== 'confirmBox' && !e.closest('#confirmBox') && e.getBoundingClientRect().width > 2 && getComputedStyle(e).display !== 'none' && getComputedStyle(e).visibility !== 'hidden')).catch(() => false); },
     /* press a visible button by its words (regex) or css, like a finger would. Returns false (and reports) when there is none. */
     async press(what, why, opts) {
       opts = opts || {};
@@ -92,17 +94,31 @@ function hands(pg) {
       const el = loc.filter({ visible: true }).first();
       if (!(await el.count())) { if (!opts.quiet) problem('missing-button', (why || String(what)) + ': no visible button'); return false; }
       await el.evaluate(n => n.scrollIntoView({ block: 'center', inline: 'center' })).catch(() => {}); /* a thumb brings a button to the middle of the screen */
-      const t = await now(pg);
+      const t = await now(pg); H.from = pg.url();
+      /* heartbeat: the page writes the time every 200 ms, so if the press opens another page the robot can still tell whether the old one
+       * froze before it left (sessionStorage outlives the page change in the same tab) */
+      await pg.evaluate(() => { clearInterval(window.__ptBeat); try { sessionStorage.setItem('pt-beatmax', '0'); } catch (e) {} let last = 0; const b = () => { const t = Date.now(); try { if (last && t - last > +sessionStorage.getItem('pt-beatmax')) sessionStorage.setItem('pt-beatmax', String(t - last)); sessionStorage.setItem('pt-beat', String(t)); } catch (e) {} last = t; }; b(); window.__ptBeat = setInterval(b, 200); }).catch(() => {});
       /* something popped up in front (a fight replay, Coach Peepo)? a player closes it first, then presses again */
       let pressed = false;
+      /* did the tap land? The browser robot's click also waits for the page it opens, so a slow page change (or a page busy after the
+       * tap) makes click() time out although the tap went through. A capture listener notes each tap in sessionStorage: a tap that
+       * landed, a page that changed, or a page too busy to answer right after the tap counts as pressed (freezes() then judges the wait). */
+      const t0tap = Date.now();
+      await pg.evaluate(() => { if (window.__ptTap) return; window.__ptTap = 1; document.addEventListener('click', () => { try { sessionStorage.setItem('pt-tap', String(Date.now())); } catch (e) {} }, true); }).catch(() => {});
+      const landed = async () => { if (pg.url() !== H.from) return true; const v = await Promise.race([pg.evaluate(() => +sessionStorage.getItem('pt-tap') || 0).catch(() => 0), new Promise(r => setTimeout(() => r(-1), 1500))]); return v === -1 || v >= t0tap; };
+      const tap = async (o) => { try { await el.click(o); return true; } catch (e) { if (!/intercepts pointer events/.test(e.message) && await landed()) return true; throw e; } };
       const onTop = () => el.evaluate(n => { const r = n.getBoundingClientRect(), t = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return !!t && (t === n || n.contains(t)); }).catch(() => false);
-      try { await el.click({ timeout: 2500 }); pressed = true; } catch (e0) { await H.dismiss(2500); await pg.waitForTimeout(400); }
+      try { await tap({ timeout: 2500 }); pressed = true; } catch (e0) { await H.dismiss(2500); await pg.waitForTimeout(400); }
       /* a button that wobbles (the hatch buttons wiggle) never counts as 'stable' to the browser robot, but a finger taps it fine:
        * if nothing covers its middle, tap it there */
-      if (!pressed && await onTop()) { try { await el.click({ force: true, timeout: 2500 }); pressed = true; } catch (e1) {} }
+      if (!pressed && await onTop()) { try { await tap({ force: true, timeout: 2500 }); pressed = true; } catch (e1) {} }
       /* scenes can come one after another (a life scene after an arrival): close again and look once more */
-      if (!pressed) { await H.dismiss(3000); if (await onTop()) { try { await el.click({ force: true, timeout: 2500 }); pressed = true; } catch (e2) {} } }
-      try { if (!pressed) await el.click({ timeout: 5000 }); } catch (e) { const by = (e.message.match(/<[^>]+>(?: from <[^>]+> subtree)? intercepts pointer events/g) || []).pop(); await H.shot('blocked');
+      if (!pressed) { await H.dismiss(3000); if (await onTop()) { try { await tap({ force: true, timeout: 2500 }); pressed = true; } catch (e2) {} } }
+      /* a big wallet can put scenes up one after another (fight replays, a hatch box, an arrival) while the list redraws under them:
+       * close them again and tap once more, up to 3 times, before calling the button blocked (a player would keep closing them too) */
+      for (let k = 0; k < 3 && !pressed; k++) { if (!(await H.scene())) break; await H.dismiss(4000); await el.evaluate(n => n.scrollIntoView({ block: 'center', inline: 'center' })).catch(() => {});
+        if (await onTop()) { try { await tap({ force: true, timeout: 2500 }); pressed = true; } catch (e3) {} } }
+      try { if (!pressed) await tap({ timeout: 5000 }); } catch (e) { const by = (e.message.match(/<[^>]+>(?: from <[^>]+> subtree)? intercepts pointer events/g) || []).pop(); await H.shot('blocked');
         const top = await el.evaluate(n => { const r = n.getBoundingClientRect(), t = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); if (!t) return ''; const c = t.closest('[id]'); return (t.tagName + '.' + String(t.className).slice(0, 40) + (c ? ' in #' + c.id : '') + ' "' + (t.innerText || '').replace(/\s+/g, ' ').slice(0, 50) + '"'); }).catch(() => '');
         problem('button-blocked', (why || String(what)) + ': ' + (by ? 'covered by ' + (top || by) : e.message.split('\n')[0])); return false; }
       await pg.waitForTimeout(opts.wait || 900);
@@ -110,7 +126,20 @@ function hands(pg) {
       return true;
     },
     async freezes(since, what, budget) {
-      const ms = await L.responsive(pg, 10000); if (ms < 0) { problem('freeze', what + ': the page stopped answering for 10 s'); return; }
+      let ms = await L.responsive(pg, 10000);
+      /* the press opened another page (Open ▸ -> pet.html): the old page stops answering while the browser swaps pages, which on a slow
+       * machine with a 40,000-pet wallet can take longer than 10 s. That is a page change, not a freeze: wait for the new page (30 s) and
+       * ask it instead. A page that never leaves, or a new page that does not answer within 10 s, is still a freeze. */
+      if (ms < 0 && H.from) { const t1 = Date.now(); while (Date.now() - t1 < 30000 && pg.url() === H.from) await pg.waitForTimeout(500);
+        if (pg.url() !== H.from) { await pg.waitForLoadState('domcontentloaded', { timeout: 30000 }).catch(() => {}); ms = await L.responsive(pg, 10000); if (ms >= 0) ok(what + ': opened ' + pg.url().replace(/^.*\//, '') + ' (the page change took over 10 s)'); } }
+      /* the heartbeat's longest gap (and, if the press opened another page, the old page's last beat vs the moment the new page started):
+       * over 10 s means the page froze, even if it then answered or left */
+      const beat = () => pg.evaluate(() => ({ last: +sessionStorage.getItem('pt-beat') || 0, max: +sessionStorage.getItem('pt-beatmax') || 0, t0: performance.timeOrigin, now: Date.now() })).catch(() => null);
+      if (H.from) { let hb = await beat(); if (!hb) { await pg.waitForTimeout(1000); await pg.waitForLoadState('domcontentloaded', { timeout: 30000 }).catch(() => {}); hb = await beat(); } /* the page was swapped under the question: ask the new one */
+        const moved = pg.url() !== H.from;
+        const gap = hb && hb.last ? Math.round(Math.max(hb.max, (moved ? hb.t0 : hb.now) - hb.last)) : 0;
+        if (gap > 10000) { problem('freeze', what + ': the page froze for ' + (gap / 1000).toFixed(1) + ' s' + (moved ? ' before the next page opened' : '')); return; } }
+      if (ms < 0) { problem('freeze', what + ': the page stopped answering for 10 s'); return; }
       const long = (await L.longSince(pg, since)).filter(x => x.ms > (budget || FREEZE));
       if (long.length) problem('freeze', what + ': page froze for ' + Math.max(...long.map(x => x.ms)) + ' ms');
       if (long.length && cdp) { try { const { profile } = await cdp.send('Profiler.stop'); console.log('     busiest while frozen: ' + busiest(profile, budget || FREEZE)); await cdp.send('Profiler.start'); } catch (e) {} }
@@ -343,7 +372,9 @@ FLOWS.places = async (H) => {
 };
 
 /* ------------------------------------------------------------------ main */
-(async () => {
+/* tools/playtest-hands-test.js loads this file for hands() alone (a player's hands on small made-up pages, no rig) */
+if (require.main !== module) module.exports = { hands, report };
+else (async () => {
   fs.mkdirSync(OUT, { recursive: true });
   let allow = []; try { allow = fs.readFileSync(path.join(__dirname, 'allow.txt'), 'utf8').split('\n').map(s => s.trim()).filter(s => s && s[0] !== '#'); } catch (e) {}
   let me = opt('--wallet', EVAN); if (WALLETS[me]) me = WALLETS[me];
