@@ -16,7 +16,7 @@ function md5(buf) { return crypto.createHash('md5').update(buf).digest('hex'); }
 function git(rel) { return cp.execSync('git show origin/main:' + rel, { cwd: ROOT }); }
 
 (function source() {
-  ok(md5(rd('js/v2-rules.js')) === md5(git('js/v2-rules.js')), 'js/v2-rules.js matches origin/main (' + md5(rd('js/v2-rules.js')) + ')');
+  ok(md5(rd('js/v2-rules.js')) === require('./lib/rules-pin').pin('js/v2-rules.js'), 'js/v2-rules.js matches the rules pin (' + md5(rd('js/v2-rules.js')) + '; origin/main failed every later rules PR)');
   ok(/loading owners/.test(rd('js/v2.js')), 'js/v2.js waits for owners before an unleash, feed or breed');
   ok(/function noteHealth\(/.test(rd('js/v2-split.js')) && /pack\.stash/.test(rd('js/v2-split.js')), 'js/v2-split.js keeps the unleash health tip and the stash');
   ['js/v2-shop.js', 'js/v2-preselect.js', 'js/v2-places.js', 'js/v2-pet-card.js', 'js/v2-pages.js'].forEach(function (f) {

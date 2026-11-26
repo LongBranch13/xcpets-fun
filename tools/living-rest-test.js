@@ -73,6 +73,7 @@ function run(label, spec) {
   };
   ctx.window = ctx;
   vm.createContext(ctx);
+  vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/v2-own.js'), 'utf8'), ctx, { filename: 'js/v2-own.js' }); /* loaded first on every page */
   vm.runInContext(helper, ctx, { filename: 'living-rest.js' });
   return ctx.xcpLivingFill(me).then(function () {
     const mine = pets.filter(function (p) { return p.owner === me && !p.dead && !p.released && !p.community; });

@@ -1045,8 +1045,9 @@
     for (i = 0; i < (plans || []).length; i++) {
       p = plans[i]; if (!p || typeof p.tag !== 'string') return Promise.resolve(null);
       o = {}; for (k in p) if (Object.prototype.hasOwnProperty.call(p, k) && (typeof p[k] === 'string' || typeof p[k] === 'number' || typeof p[k] === 'boolean')) o[k] = p[k];
-      /* the picked pets travel as one short text (V2Rules.pickWant), so the server checks a discard / spin burn names exactly them (Nov 25 2026) */
-      if (Array.isArray(p.petIds) && window.V2Rules && V2Rules.pickWant && o.want == null) o.want = V2Rules.pickWant(p.petIds);
+      /* the picked pets travel as one short text (V2Rules.pickWant), so the server checks a runs burn names exactly them (Nov 25 2026) */
+      var pk = window.V2Rules && V2Rules.pickedIds ? V2Rules.pickedIds(p) : p.petIds; /* every runs burn (feed, chores, pantry, cemetery runs too) */
+      if (Array.isArray(pk) && window.V2Rules && V2Rules.pickWant && o.want == null) o.want = V2Rules.pickWant(pk);
       plain.push(o);
     }
     if (!plain.length || plain.length > 100) return Promise.resolve(null);

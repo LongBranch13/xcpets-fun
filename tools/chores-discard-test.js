@@ -14,7 +14,7 @@ const A = process.argv.slice(2), opt = k => { const i = A.indexOf(k); return i >
 let fails = 0; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) fails++; };
 const hex = s => Buffer.from(s, 'utf8').toString('hex');
 const ctx = load(), V = ctx.V2Rules, E = ctx.LiveEngine;
-ctx.setInterval = () => 0; vm.runInContext(fs.readFileSync(path.join(ROOT, 'js', 'v2-chores.js'), 'utf8'), ctx, { filename: 'js/v2-chores.js' });
+ctx.setInterval = () => 0; ['v2-own.js', 'v2-chores.js'].forEach(f => vm.runInContext(fs.readFileSync(path.join(ROOT, 'js', f), 'utf8'), ctx, { filename: 'js/' + f })); /* v2-own first, as on the pages */
 const C = ctx.V2Chores; ok(!!(C && C.plan), 'js/v2-chores.js loads (V2Chores.plan)');
 const boot = JSON.parse(fs.readFileSync(path.resolve(opt('--boot') || path.join(ROOT, 'api', 'boot.json')), 'utf8'));
 const rows = boot.rows.slice().sort((a, b) => a.block_index - b.block_index || a.tx_index - b.tx_index), tip = boot.tip || rows[rows.length - 1].block_index, nb = tip + 1;

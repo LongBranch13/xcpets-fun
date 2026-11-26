@@ -17,11 +17,11 @@ ok(md5('js/v2-rules.js') === require('./lib/rules-pin').pin('js/v2-rules.js'), '
 /* run the real onChainDiscarded / inPile / mine (not their source text): a risen zombie's old hd flag does not count (inPile rule) */
 const pileFns = ['function onChainDiscarded(p)', 'function inPile(p, h)', 'function mine(w)'].map(k => { const i = src.indexOf('  ' + k); return i < 0 ? '' : src.slice(i, src.indexOf('\n', i) + 1); }).join('');
 const pileBox = vm.createContext({ ME: 'bc1qme', ZB: p => !!(p && p.zombie && !p.zombie.end), hiddenSet: () => new Set([5]) });
-vm.runInContext(pileFns + 'this.F = { onChainDiscarded, mine };', pileBox);
+vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/v2-own.js'), 'utf8'), pileBox); vm.runInContext(pileFns + 'this.F = { onChainDiscarded, mine };', pileBox); /* v2-own first, as on the pages */
 const PF = pileBox.F || {}, pp = (id, o) => Object.assign({ id, owner: 'bc1qme' }, o || {});
 ok(PF.onChainDiscarded && PF.onChainDiscarded(pp(1, { hd: 'bc1qme' })) && !PF.onChainDiscarded(pp(2, { hd: 'bc1qother' })) && !PF.onChainDiscarded(pp(3)) && !PF.onChainDiscarded(pp(4, { hd: 'bc1qme', zombie: {} })), 'on-chain discard is the pet.hd flag for this wallet');
 ok(PF.mine && PF.mine({ pets: [pp(1, { hd: 'bc1qme' }), pp(2), pp(4, { hd: 'bc1qme', zombie: {} }), pp(5), pp(6, { released: true }), pp(7, { owner: 'x' })] }).map(p => p.id).join() === '2,4', 'My Pets hides an on-chain discard');
-ok(/p\.hungry && !onChainDiscarded\(p\)/.test(src), 'Feed all hungry skips an on-chain discard');
+ok(/p\.hungry && !V2Own\.discarded\(p, ME, dz\)/.test(src), 'Feed all hungry skips a discarded pet (on chain, browser pile or still confirming: V2Own.discarded; behaviour in tools/discard-one-answer-test.js)');
 
 const start = src.indexOf('  function hatchListSettled');
 const end = src.indexOf('  var wspinOn', start);
