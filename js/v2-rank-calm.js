@@ -9,7 +9,7 @@
   if (!d.body || d.body.getAttribute('data-v2page') !== 'ranking') return;
   var MED = ['🥇', '🥈', '🥉'], busy = false;
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return '&#' + c.charCodeAt(0) + ';'; }); }
-  function bar() { var b = $('rkCalm'); if (b) return b; var host = $('rkTabsHost') || $('status'); if (!host) return null;
+  function bar() { var b = $('rkCalm'); if (b) return b; var host = $('status') || $('rkTabsHost'); /* smooth: under the status line (the tabs row above it is in the page from the start) */ if (!host) return null;
     b = d.createElement('div'); b.id = 'rkCalm'; b.className = 'rkcalm';
     b.innerHTML = '<label class="rkc-sp"><span class="rkc-l">Species</span><select id="rkSpSel" aria-label="Species"></select></label>' +
       '<button type="button" class="q" id="rkMeBtn" hidden>📍 <span class="rkc-long">Find </span>me</button>' +

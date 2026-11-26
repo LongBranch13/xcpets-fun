@@ -160,6 +160,13 @@
     else { var i = S.sel.indexOf(id); if (i >= 0) S.sel.splice(i, 1); else S.sel.push(id); }
     lastTap = id; U.save(); U.selUi(); };
   function sum(plans) { return plans.reduce(function (a, p) { return a + (Number(p.amount) || 0); }, 0); }
+  /* smooth-select (Nov 26 2026, play-test robot: Select froze Evan's page): the "Feed all hungry" price on this bar planned a meal for every hungry
+   * pet (40,000+) on every tick of a box. It does not depend on the ticks, so it is planned once per world, tip, hungry list, discards and unconfirmed
+   * burns. Label only: the button still plans fresh when pressed. */
+  var HQ = { w: null, k: null, q: null };
+  function hqKey(w, hungry) { var u = window.V2UI || {}, pt = '', hd = '', dh = ''; try { pt = u.myPendingTags ? u.myPendingTags().join(',') : ''; hd = u.hiddenIds ? u.hiddenIds().join(',') : ''; dh = window.__demo && __demo.hiddenIds ? __demo.hiddenIds().join(',') : ''; } catch (e) { return Math.random(); }
+    var h = 0; for (var i = 0; i < hungry.length; i++) h = (h * 31 + hungry[i].id + (Number(hungry[i].nextMeal) || 0) * 7) % 2147483647;
+    return [w.tip, ME, hungry.length, h, (w.pets || []).length, pt, hd, dh].join('|'); }
   UXB.sel = function () { var w = lastW || U.world(), S = U.S(), alive = U.mine(w).filter(function (p) { return !p.dead; }), shown = U.petList(w).filter(function (p) { return !p.dead; });
     var n = S.sel.length, selS0 = new Set(S.sel), onShown = shown.filter(function (p) { return selS0.has(p.id); }).length, cb = $('selAll');
     cb.checked = shown.length > 0 && onShown === shown.length; cb.indeterminate = onShown > 0 && onShown < shown.length;
@@ -167,7 +174,7 @@
     $('selCount').textContent = fmt(n) + ' of ' + fmt(shown.length) + ' selected';
     /* feed-all-pause (Oct 27 2026): window.XCPETS_FEED_ALL_PAUSED (js/v2.js) = Feed all hungry stays hidden, so skip its label */
     var FAP = window.XCPETS_FEED_ALL_PAUSED === true, FQ = window.V2UI && V2UI.feedSelQueue ? V2UI.feedSelQueue : FAP && window.V2UI && V2UI.feedQueue ? V2UI.feedQueue : V.feedQueue; /* feed-all-unpause: Feed selected label = its list-burn plan */
-    var hungry = alive.filter(function (p) { return p.hungry; }), hq = FAP ? [] : (V.feedRunsOn && window.V2UI && V2UI.feedQueue && V.feedRunsOn(w.tip || 0) ? V2UI.feedQueue(w, ME, hungry.map(function (p) { return p.id; }).filter(function (id) { return !(window.__demo && __demo.hiddenIds && __demo.hiddenIds().indexOf(id) >= 0); })) : V.feedQueue(w, ME, hungry.map(function (p) { return p.id; })));
+    var hungry = alive.filter(function (p) { return p.hungry; }), hqK = hqKey(w, hungry), hq = FAP ? [] : HQ.w === w && HQ.k === hqK ? HQ.q : (HQ = { w: w, k: hqK, q: (V.feedRunsOn && window.V2UI && V2UI.feedQueue && V.feedRunsOn(w.tip || 0) ? V2UI.feedQueue(w, ME, hungry.map(function (p) { return p.id; }).filter(function (id) { return !(window.__demo && __demo.hiddenIds && __demo.hiddenIds().indexOf(id) >= 0); })) : V.feedQueue(w, ME, hungry.map(function (p) { return p.id; }))) }).q;
     if (V.feedRunsOn && V.feedRunsOn(w.tip || 0)) hungry = hq.reduce(function (a, q) { return a.concat(q.petIds || (q.petId != null ? [q.petId] : [])); }, []); /* feed-all-one-burn: count only the pets the burn feeds (Mythics never eat) */
     if (!FAP) $('bFeedHungry').innerHTML = 'Feed all hungry <span class="cost">(' + fmt(hungry.length) + ' pet' + (hungry.length === 1 ? '' : 's') + ' · ' + fmt(sum(hq)) + ' XCPETS · ' + fmt(hq.length) + ' burn' + (hq.length === 1 ? '' : 's') + ')</span>'; if (!FAP) $('bFeedHungry').disabled = !hungry.length;
     var bar = $('selBar'); bar.hidden = !n; document.body.classList.toggle('has-sel', !!n);

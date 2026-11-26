@@ -4,7 +4,7 @@
 @media (max-width:600px) and (orientation:portrait){
   html,body.mfs-play{overflow-x:clip}
   body.mfs-play main{padding-left:0;padding-right:0}
-  body.mfs-play main>section.panel,body.mfs-play #app>section.panel{margin-left:0;margin-right:0;border-radius:0 !important;border-left-width:0 !important;border-right-width:0 !important;box-shadow:none;
+  body.mfs-play main>section.panel,body.mfs-play #mainTop>section.panel,body.mfs-play #app>section.panel{margin-left:0;margin-right:0;border-radius:0 !important;border-left-width:0 !important;border-right-width:0 !important;box-shadow:none;
     padding-left:max(12px,env(safe-area-inset-left));padding-right:max(12px,env(safe-area-inset-right))}
   /* the three game scenes: a full screen each */
   body.mfs-play #arenaPanel,body.mfs-play #invPanel,body.mfs-play #breedPanel{min-height:100vh;min-height:100svh;box-sizing:border-box;

@@ -180,15 +180,27 @@
   function draw(o, t) { var S = o.width; if (!S || !o._img) return; var x = o.getContext('2d'); if (!o._id) o._id = x.createImageData(S, S);
     var p = null; if (!STILL) { var r = o.getBoundingClientRect(); if (ptr && r.width) { var px = (ptr[0] - r.left) / r.width, py = (ptr[1] - r.top) / r.height; if (px > -0.3 && px < 1.3 && py > -0.3 && py < 1.3) p = [clamp(px, 0, 1), clamp(py, 0, 1)]; } if (!p && tilt) p = tilt; }
     render(o._img, o._info, S, STILL ? 1.3 : t, STILL ? false : p, o._id.data); x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, S, S); x.putImageData(o._id, 0, 0); o._dirty = 0; }
-  function tick(now) { raf = 0; if (!live || (typeof document !== 'undefined' && document.hidden)) return; if (now - last < 1000 / FPS) { raf = requestAnimationFrame(tick); return; } last = now; var t = now / 1000, n = 0, any = false;
-    live.forEach(function (c) { var o = c._lkx; if (!o || !c.isConnected) { detach(c); return; } if (!o._vis && !onScreen(o)) return; if (STILL) { if (o._dirty) draw(o, t); return; } if (n < MAX_LIVE || o._dirty) { draw(o, t); n++; any = true; } });
+  /* smooth (Nov 26 2026, play-test: the foil used ~25% CPU on a pet page): a frame budget, like a game keeps decoration off the main thread's
+   * busy time. 24 fps while the pointer or a tilt steers the shine (it follows your hand), 12 fps for the slow automatic shimmer (the light
+   * band takes ~8 s to cross), and never more than ~8% of the page's time: a slow phone simply gets fewer shimmer frames. Same pixels per frame. */
+  var BUDGET = 0.08, cost = 0, steerAt = -1e9;
+  function gap(now) { var g = 1000 / (now - steerAt < 1200 ? FPS : FPS / 2); return Math.max(g, cost / BUDGET); }
+  function tick(now) { raf = 0; if (!live || (typeof document !== 'undefined' && document.hidden)) return; if (now - last < gap(now)) { raf = requestAnimationFrame(tick); return; } last = now; var t = now / 1000, n = 0, any = false, t0 = (root.performance && performance.now()) || now;
+    /* smooth (Nov 26 2026): while the list is scrolling, only overlays that still need their first frame are drawn (the shine pauses for
+     * a moment, like a game pausing decoration during a fast pan), and visibility comes from the IntersectionObserver alone: the old
+     * getBoundingClientRect fallback ran for every attached overlay on every frame (a forced layout each time; ~1.7 s of a 8 s scroll on
+     * a 40,000-pet wallet). */
+    var moving = now - scrolledAt < 180;
+    live.forEach(function (c) { var o = c._lkx; if (!o || !c.isConnected) { detach(c); return; } if (vis ? !o._vis : !onScreen(o)) return; if (STILL || moving) { if (o._dirty) draw(o, t); if (moving) any = true; return; } if (n < MAX_LIVE || o._dirty) { draw(o, t); n++; any = true; } });
+    var spent = ((root.performance && performance.now()) || now) - t0; cost = cost ? cost * 0.8 + spent * 0.2 : spent;
     if (any && !STILL) raf = requestAnimationFrame(tick); }
+  var scrolledAt = 0; if (typeof root.addEventListener === 'function') root.addEventListener('scroll', function () { scrolledAt = (root.performance && performance.now()) || Date.now(); }, { passive: true, capture: true });
   function onScreen(o) { var r = o.getBoundingClientRect(); return r.width > 0 && r.bottom > 0 && r.right > 0 && r.top < (root.innerHeight || 0) && r.left < (root.innerWidth || 0); }
   function kick() { if (!raf && typeof requestAnimationFrame !== 'undefined') raf = requestAnimationFrame(tick); }
   function listen() { if (listening || typeof root.addEventListener !== 'function') return; listening = true;
-    root.addEventListener('pointermove', function (e) { if (e.pointerType === 'touch') return; ptr = [e.clientX, e.clientY]; }, { passive: true });
+    root.addEventListener('pointermove', function (e) { if (e.pointerType === 'touch') return; ptr = [e.clientX, e.clientY]; steerAt = (root.performance && performance.now()) || 0; }, { passive: true });
     document.addEventListener('pointerleave', function () { ptr = null; }, { passive: true });
-    root.addEventListener('deviceorientation', function (e) { if (e.gamma == null) return; tilt = [0.5 + clamp(e.gamma, -30, 30) / 60, 0.5 + clamp((e.beta || 45) - 45, -30, 30) / 60]; }, { passive: true });
+    root.addEventListener('deviceorientation', function (e) { if (e.gamma == null) return; var nt = [0.5 + clamp(e.gamma, -30, 30) / 60, 0.5 + clamp((e.beta || 45) - 45, -30, 30) / 60]; if (!tilt || Math.abs(nt[0] - tilt[0]) + Math.abs(nt[1] - tilt[1]) > 0.01) steerAt = (root.performance && performance.now()) || 0; tilt = nt; }, { passive: true });
     document.addEventListener('visibilitychange', kick); }
   /** bake(frame32, size, t) -> RGBA (size*size*4) still of the realistic effect (token PNGs, GIFs, papers); null when the frame has no looks. */
   function bake(img, size, t) { var info = infoOf(img); if (!info) return null; size = size || 128; var out = new Uint8ClampedArray(size * size * 4); render(img, info, size, t == null ? 1.3 : t, t == null ? [0.42, 0.35] : null, out); return out; }

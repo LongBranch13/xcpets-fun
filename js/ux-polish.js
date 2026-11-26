@@ -9,7 +9,10 @@
   // 4. How to start card (Home + Play), dismissible
   /* first-time-path (Nov 1 2026, owner-approved critique plan item 3): "Start here", 3 steps for a wallet with no pets yet (was "How to start").
    * Hidden once the connected wallet owns a living pet (#nAlive > 0 on Play) or when dismissed (same key as before). Links only: it never signs. */
-  function startCard(anchor, before) { if (!anchor || ls.get('xcpets-uxp-start') === 'x') return; var c = d.createElement('section'); c.className = 'panel uxp-card uxp-start'; c.id = 'uxpStart'; c.setAttribute('aria-label', 'Start here');
+  /* smooth (Nov 26 2026): the Start here card used to show for everyone and vanish 1.5 s later once the pet count arrived (a 408 px jump on
+   * Play). A wallet this device has already seen with pets never gets it again (xcpets-uxp-pets = that wallet). */
+  function hadPets() { var m = ls.get('xcpets-v2-me') || ''; return !!m && ls.get('xcpets-uxp-pets') === m; }
+  function startCard(anchor, before) { if (!anchor || ls.get('xcpets-uxp-start') === 'x' || hadPets()) return; var c = d.createElement('section'); c.className = 'panel uxp-card uxp-start'; c.id = 'uxpStart'; c.setAttribute('aria-label', 'Start here');
     var onPlay = page === 'play.html', feedHref = onPlay ? '#petsPanel' : 'play.html#petsPanel', hatchHref = onPlay ? '#hatchPanel' : 'play.html#hatchPanel';
     c.innerHTML = '<b>👋 Start here</b><ol class="uxp-steps">' +
       '<li><b>Get a wallet.</b> ' + (window.casaTookan || window.webXCP || window.web3xcp ? 'You are in Casa Tookan: tap <b>Connect Casa Tookan</b> at the top and pick your Legacy (1…) address.' : 'On desktop: the <a href="https://chromewebstore.google.com/search/XCP%20Wallet" target="_blank" rel="noopener">XCP Wallet</a> Chrome extension. On your phone: the <b>Casa Tookan</b> app (open xcpets.fun inside it).') + ' Put some XCPETS (from <a href="https://xcp.fun" target="_blank" rel="noopener">xcp.fun</a>) and a little BTC for fees in it.</li>' +
@@ -20,7 +23,7 @@
     c.querySelector('.uxp-x').onclick = function () { ls.set('xcpets-uxp-start', 'x'); c.remove(); };
     if (onPlay) c.querySelectorAll('.uxp-go').forEach(function (a) { a.addEventListener('click', function () { setTimeout(function () { var b = d.getElementById(/feed/i.test(a.textContent) ? 'bFeedHungry' : 'hatchBtn'); if (b && b.focus) try { b.focus({ preventScroll: true }); } catch (e) {} }, 400); }); });
     anchor.parentNode.insertBefore(c, before ? anchor : anchor.nextSibling);
-    var t = setInterval(function () { if (!c.isConnected) return clearInterval(t); var n = d.getElementById('nAlive'), v = n ? parseInt(String(n.textContent).replace(/[^0-9]/g, ''), 10) : NaN; if (v > 0) { c.remove(); clearInterval(t); } }, 1500); }
+    var t = setInterval(function () { if (!c.isConnected) return clearInterval(t); var n = d.getElementById('nAlive'), v = n ? parseInt(String(n.textContent).replace(/[^0-9]/g, ''), 10) : NaN; if (v > 0) { c.remove(); clearInterval(t); var m = ls.get('xcpets-v2-me'); if (m) ls.set('xcpets-uxp-pets', m); } }, 1500); }
   // 6. phone notice next to Connect
   /* casa-connect (Nov 1 2026, owner [pt2571u]): inside Casa Tookan (or any page with a wallet) no 'play on desktop' note; on other phones point to Casa Tookan */
   var walletHere = function () { return !!(window.casaTookan || window.webXCP || window.web3xcp || window.xcpwallet); };
@@ -39,7 +42,7 @@
     var send = W.send; if (send) W.send = function () { return send.apply(W, arguments).then(function (r) { if (r && r.txid) toast('Signed ✓, waiting for the next block (~10 min). <a href="https://mempool.space/tx/' + encodeURIComponent(r.txid) + '" target="_blank" rel="noopener">View tx</a>', 20000); return r; }); }; }
   // 3. Play on phones: compact community section, Connect / Hatch / My Pets near the top
   function playPhone() { var cp = d.getElementById('communityPanel'), main = d.querySelector('main'); if (!cp || !main) return;
-    var q = d.createElement('div'); q.className = 'uxp-quick'; q.innerHTML = '<a class="btn" href="#topBar">Connect</a><a class="btn" href="#hatchPanel">Hatch</a><a class="btn" href="#petsPanel">My Pets</a>'; main.insertBefore(q, main.firstChild);
+    var q = d.createElement('div'); q.className = 'uxp-quick'; q.innerHTML = '<a class="btn" href="#topBar">Connect</a><a class="btn" href="#hatchPanel">Hatch</a><a class="btn" href="#petsPanel">My Pets</a>'; if (!(window.XcpTopStrip && XcpTopStrip.mountMain(q, 40))) main.insertBefore(q, main.firstChild);
     if (!phone()) return; var tb = d.getElementById('topBar'); if (tb) main.insertBefore(tb, cp);
     var wrap = function () { var cs = d.querySelector('#community .cstats'); if (!cs || (cs.parentNode && cs.parentNode.classList.contains('uxp-cdet'))) return; d.querySelectorAll('#community .uxp-cdet').forEach(function (x) { if (!x.querySelector('.cstats')) x.remove(); });
       var det = d.createElement('details'); det.className = 'uxp-cdet small'; det.innerHTML = '<summary>Community pet stats</summary>'; cs.parentNode.insertBefore(det, cs); det.appendChild(cs); };

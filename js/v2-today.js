@@ -72,7 +72,7 @@
     var c = $('todayCard'); if (c) return c;
     var main = d.querySelector('main'); if (!main) return null;
     css(); c = d.createElement('section'); c.id = 'todayCard'; c.className = 'panel'; c.setAttribute('aria-label', 'Today');
-    main.insertBefore(c, main.firstChild); /* first thing on Play once a wallet has pets */
+    if (!(window.XcpTopStrip && XcpTopStrip.mountMain(c, 10))) main.insertBefore(c, main.firstChild); /* first thing on Play once a wallet has pets (smooth: in the reserved top box, js/v2-header.js) */
     c.addEventListener('click', function (e) {
       var t = e.target.closest('[data-td]'); if (!t) return; var k = t.getAttribute('data-td');
       if (k === 'feed') { var fb = $('bFeedHungry'); if (fb) { fb.scrollIntoView({ block: 'center', behavior: 'smooth' }); fb.classList.add('ip-flash'); setTimeout(function () { fb.classList.remove('ip-flash'); }, 1600); } }
@@ -143,7 +143,10 @@
       /* one burn for the whole routine: the existing Daily chores (pet:dc, live since block 974,163); the wallet still signs it */
       (hungry && $('dcBtn') && !$('dcBtn').disabled ? '<button type="button" class="td-chores" data-td="chores">🧹 Do it all in one burn: feed everyone, WAGMI, use your spins</button>' : '');
   }
-  function go() { paint(); setInterval(paint, 2000); }
+  /* smooth (Nov 26 2026): the card used to wait for the 2 s timer, so it landed ~2.3 s after opening Play and pushed the page down. Until the
+   * page has a world it checks every 150 ms (just a null check) and paints the moment one is there, then every 2 s as before. */
+  function hasWorld() { try { var w0 = window.V2Mock && V2Mock.world && V2Mock.world(); return !!(w0 && w0.pets); } catch (e) { return false; } }
+  function go() { paint(); var n = 0; (function soon() { if (hasWorld() || n++ > 100) return; setTimeout(function () { paint(); soon(); }, 150); })(); setInterval(paint, 2000); }
   if (d.readyState === 'loading') d.addEventListener('DOMContentLoaded', go); else go();
   window.V2Today = { paint: paint };
 })();
