@@ -118,6 +118,8 @@ function hands(pg) {
        * close them again and tap once more, up to 3 times, before calling the button blocked (a player would keep closing them too) */
       for (let k = 0; k < 3 && !pressed; k++) { if (!(await H.scene())) break; await H.dismiss(4000); await el.evaluate(n => n.scrollIntoView({ block: 'center', inline: 'center' })).catch(() => {});
         if (await onTop()) { try { await tap({ force: true, timeout: 2500 }); pressed = true; } catch (e3) {} } }
+      /* a scene can also arrive late (the hatch scene plays when a 40,000-pet page notices new eggs, ~30 s in): one more close and tap */
+      if (!pressed) { try { await tap({ timeout: 5000 }); pressed = true; } catch (e4) { if (await H.scene()) { await H.dismiss(4000); await el.evaluate(n => n.scrollIntoView({ block: 'center', inline: 'center' })).catch(() => {}); } } }
       try { if (!pressed) await tap({ timeout: 5000 }); } catch (e) { const by = (e.message.match(/<[^>]+>(?: from <[^>]+> subtree)? intercepts pointer events/g) || []).pop(); await H.shot('blocked');
         const top = await el.evaluate(n => { const r = n.getBoundingClientRect(), t = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); if (!t) return ''; const c = t.closest('[id]'); return (t.tagName + '.' + String(t.className).slice(0, 40) + (c ? ' in #' + c.id : '') + ' "' + (t.innerText || '').replace(/\s+/g, ' ').slice(0, 50) + '"'); }).catch(() => '');
         problem('button-blocked', (why || String(what)) + ': ' + (by ? 'covered by ' + (top || by) : e.message.split('\n')[0])); return false; }
