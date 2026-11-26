@@ -8,7 +8,8 @@
  *   - builds the published world at the block before (what the page paints) and the chain to the boxes' block (what the burn check replays),
  *     serves both with tools/sync-server/server.js and the repo as the site, view-only (nothing can be signed);
  *   - plays it: the check brings the 3 boxes in -> the reveal says 3 Shock Boxes -> Later -> pill -> reload -> the pill is back ->
- *     open it -> See all -> Select all shown -> Discard selected -> Done (pill gone) -> My Pets Select all -> Discard -> Undo ->
+ *     open it -> See all -> (Discard mode) Select all shown, Clear -> (Keep mode, the default since Nov 26 2026) tap 3 pets -> Discard the rest
+ *     (the count adds up, the 3 picked and the protected pets stay) -> Done (pill gone) -> My Pets Select all -> Discard -> Undo ->
  *     Discard pile Restore all -> Last hatch reopens the review.
  * Fails on any page error, a missing step, or a step that blocks the page for more than 1.5 s. */
 const fs = require('fs'), path = require('path'), os = require('os'), cp = require('child_process'), http = require('http'), crypto = require('crypto');
@@ -54,7 +55,7 @@ function build(out, tip) { return new Promise((res, rej) => { if (fs.existsSync(
   await new Promise(r => web.listen(0, '127.0.0.1', r));
   const SYNC = 'http://127.0.0.1:' + sync.address().port, SITE = 'http://127.0.0.1:' + web.address().port;
   const { chromium } = require('playwright'), b = await chromium.launch(), ctx = await b.newContext({ serviceWorkers: 'block', viewport: { width: 1280, height: 900 } }), pg = await ctx.newPage();
-  const errs = [], fails = []; pg.on('pageerror', e => errs.push(e.message)); pg.on('dialog', d => d.accept());
+  const errs = [], fails = []; pg.on('pageerror', e => errs.push(e.message)); const dlg = []; pg.on('dialog', d => { dlg.push(d.message()); d.accept(); });
   await ctx.addInitScript(([s, o]) => { localStorage.setItem('xcpets-sync', s); localStorage.setItem('xcpets-v2-me', o); }, [SYNC, I.owner]);
   const lag = () => pg.evaluate(() => new Promise(r => { const t = performance.now(); requestAnimationFrame(() => setTimeout(() => r(Math.round(performance.now() - t)), 0)); }));
   const check = (c, msg) => { if (!c) { fails.push(msg); console.log('  FAIL', msg); } else console.log('  ok  ', msg); };
@@ -77,9 +78,26 @@ function build(out, tip) { return new Promise((res, rej) => { if (fs.existsSync(
     check(/Last hatch \(3,000\)/.test(await pg.evaluate(() => { const a = document.getElementById('lhJump'); return a && !a.hidden ? a.textContent : ''; })), 'My Pets shows 🥚 Last hatch (3,000)');
     await step('open the pill', async () => { await pg.click('#hatchTray .htgo'); await pg.waitForFunction(() => document.getElementById('packBox').classList.contains('on')); });
     await pg.waitForTimeout(800); await step('See all & sort', () => pg.click('#pkiAll'));
+    check(await pg.evaluate(() => document.getElementById('packBox').classList.contains('pkkeepm')), 'the review opens in Keep mode (tap the pets to keep)');
+    check(await pg.evaluate(() => document.getElementById('packDiscard').disabled), 'Discard the rest waits until a pet is picked');
+    await step('switch to Discard mode', () => pg.click('#packSummary [data-mode="discard"]'));
     await step('Select all shown', () => pg.click('#pkSelAll'));
     const nSel = Number(((await pg.textContent('#packDiscard')).match(/\(([\d,]+)\)/) || [0, '0'])[1].replace(/,/g, '')); check(nSel > 2000, 'Select all shown picks ' + nSel + ' pets');
-    await step('Discard selected', () => pg.click('#packDiscard')); await pg.waitForTimeout(300);
+    await step('Clear selection', () => pg.click('#pkClear'));
+    await step('back to Keep mode', () => pg.click('#packSummary [data-mode="keep"]'));
+    await step('Show Rare', () => pg.click('#packSummary [data-f="2"]')); /* the first pages are Legendaries, which are always kept */
+    const picked = await pg.evaluate(() => Array.from(document.querySelectorAll('#packGrid .pkcard:not(.pkauto)')).slice(0, 3).map(d => { d.click(); return +(/#(\d+)/.exec(d.textContent) || [0, 0])[1]; }));
+    await pg.waitForTimeout(200);
+    const plan = await pg.textContent('#pkPlan'), num = re => Number(((plan.match(re) || [0, '0'])[1]).replace(/,/g, ''));
+    const nK = num(/Keeping ([\d,]+)/), nP = num(/\+ ([\d,]+) always kept/), nG = num(/([\d,]+) will be discarded/), nB = Number(((await pg.textContent('#packDiscard')).match(/rest \(([\d,]+)\)/) || [0, '0'])[1].replace(/,/g, ''));
+    check(picked.length === 3 && nK === 3, 'tapping 3 pets keeps 3 (' + plan.trim() + ')');
+    check(nK + nP + nG === 3000 && nB === nG, 'kept + always kept + discarded = 3,000 and the button says ' + nB);
+    await step('Discard the rest', () => pg.click('#packDiscard')); await pg.waitForTimeout(300);
+    check(new RegExp('discards ' + nG.toLocaleString('en-US') + ' pets').test(dlg[dlg.length - 1] || ''), 'the confirm names the count before anything goes: ' + JSON.stringify((dlg[dlg.length - 1] || '').split('\n')[2]));
+    const hid = await pg.evaluate(() => { let l = []; Object.keys(localStorage).forEach(k => { if (k.indexOf('xcpets-hidden-') === 0) try { l = l.concat(JSON.parse(localStorage.getItem(k))); } catch (e) { } }); return l.map(Number); });
+    check(picked.every(id => hid.indexOf(id) < 0), 'the 3 picked pets are not discarded');
+    check(hid.length >= nG, 'the rest went to the Discard pile (' + hid.length + ')');
+    check(await pg.evaluate(() => document.querySelectorAll('#packGrid .pkcard:not(.picked):not(.pkauto)').length === 0), 'only kept and protected pets are left in the review');
     await step('Done', () => pg.click('#packClose')); await pg.waitForTimeout(1500);
     check(!(await pill()), 'after Done the pill is gone');
     check(await pg.evaluate(() => !Object.keys(localStorage).some(k => k.indexOf('xcpets-v2-unopened-') === 0)), 'nothing is left unopened');
