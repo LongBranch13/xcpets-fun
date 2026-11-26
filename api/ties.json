@@ -1,6 +1,6 @@
 {
- "lastBlock": 977601,
- "count": 495,
+ "lastBlock": 977602,
+ "count": 500,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -5942,6 +5942,66 @@
    "speciesLabel": "Homer Pepe",
    "rarity": "Legendary",
    "stage": "Hatchling"
+  },
+  {
+   "id": 66566,
+   "asset": "A9343266798537984370",
+   "tiedBlock": 977602,
+   "tiedTx": "6d067522aeb6601f58a9481c20c0da005389e2e93fc1b8bd928a65ccafb9da2a",
+   "kind": "deed",
+   "name": "Gemiforu",
+   "species": "bobo",
+   "speciesLabel": "Bobo",
+   "rarity": "Uncommon",
+   "stage": "Mythic"
+  },
+  {
+   "id": 66666,
+   "asset": "A250999796416519181",
+   "tiedBlock": 977602,
+   "tiedTx": "c0b2c2b5adae745cd1f0c8a939dbecc7b5575a520855714f26b93dc3eeb24d9c",
+   "kind": "deed",
+   "name": "Rosoboo",
+   "species": "pepe",
+   "speciesLabel": "Pepe",
+   "rarity": "Common",
+   "stage": "Mythic"
+  },
+  {
+   "id": 66920,
+   "asset": "A3562196037201302623",
+   "tiedBlock": 977602,
+   "tiedTx": "70a92097ad455b6709e3716129416186eb91354e6a22ee844c319bbe12774ab5",
+   "kind": "deed",
+   "name": "Chikoopop",
+   "species": "wojak",
+   "speciesLabel": "Wojak",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 67008,
+   "asset": "A7398434239103404059",
+   "tiedBlock": 977602,
+   "tiedTx": "e41e821669ac5fede01e7469cbe2f03dc50c75abc9fe706e536f637a2fd19be5",
+   "kind": "deed",
+   "name": "Doolofoo",
+   "species": "sarutobi",
+   "speciesLabel": "Sarutobi",
+   "rarity": "Legendary",
+   "stage": "Mythic"
+  },
+  {
+   "id": 74348,
+   "asset": "A474846653341374286",
+   "tiedBlock": 977602,
+   "tiedTx": "4e834b5456858e4c63cd0d8bb6d15138292c9c5ceb0e9796675936244c5087a4",
+   "kind": "deed",
+   "name": "Mameshib",
+   "species": "pepe",
+   "speciesLabel": "Pepe",
+   "rarity": "Rare",
+   "stage": "Mythic"
   }
  ]
 }
