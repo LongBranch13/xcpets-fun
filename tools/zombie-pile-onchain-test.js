@@ -52,15 +52,15 @@ ok(/csac-more/.test(rd('js/v2-cem-sacrifice.js')), 'sheet draws a big pile a pag
 
 /* 3. My Pets zombie card (js/v2.js zDiscarded) */
 const src = rd('js/v2.js'), zd = src.slice(src.indexOf('  function zDiscarded(w)'), src.indexOf('\n', src.indexOf('  function zDiscarded(w)')));
-const c2 = vm.createContext({ ME, V: {}, hiddenIds: () => [], ZB: p => !!(p && p.zombie && !p.zombie.end) });
+const c2 = vm.createContext({ ME, V: {}, V2Own: O, hiddenIds: () => [], ZB: p => !!(p && p.zombie && !p.zombie.end) });
 vm.runInContext(zd + '\nthis.zDiscarded = zDiscarded;', c2);
 const H = c2.zDiscarded(w); ok(H[1] && H[7] && !H[4] && !H[6], 'My Pets zombie card: on-chain discards count as Discarded');
 
 /* 4. the altar (js/v2-cemetery-altar.js) asks V2Own */
-ok(/function discSet\(\) \{ var me = A\.ctx && A\.ctx\.ME; if \(window\.V2Own && V2Own\.discardSet\) return V2Own\.discardSet\(/.test(rd('js/v2-cemetery-altar.js')), 'altar pile = V2Own.discardSet');
+ok(/function discSet\(\) \{ return V2Own\.discardSet\(/.test(rd('js/v2-cemetery-altar.js')), 'altar pile = V2Own.discardSet');
 
 /* 5. no picker reads ONLY the browser pile for zombie / altar offers any more */
-['js/v2-cem-sacrifice.js', 'js/v2-cemetery-altar.js', 'js/v2.js'].forEach(f => { const s = rd(f); ok(/\.hd === me|\.hd === ME|V2Own\.discardSet/.test(s), f + ' looks at on-chain discards'); });
+['js/v2-cem-sacrifice.js', 'js/v2-cemetery-altar.js', 'js/v2.js'].forEach(f => { const s = rd(f); ok(/V2Own\.(discardSet|onChain|discarded)/.test(s), f + ' looks at on-chain discards (through V2Own, the one answer)'); });
 /* 6. feeds signed while a discard burn is still waiting (G Money, 977,469): the feed guard leaves those pets out */
 const H2 = require(path.join(REPO, 'js/v2-habits.js'));
 const pet = { id: 50, owner: ME, hungry: true, nextMeal: 1 };

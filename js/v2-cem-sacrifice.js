@@ -15,15 +15,16 @@
   function myth(p) { return !!(p && (p.mythicCare || p.stage >= 5)); }
   /** candidates(o): living Discarded pets of o.ME the rules accept for this zombie, weakest first. */
   function candidates(o) { var w = o.w, V = o.V, me = o.ME, b = o.b, hid = {}, kept = {}, n = net();
-    ls('xcpets-hidden-' + n + '-' + me).forEach(function (id) { hid[id] = 1; }); ls('xcpets-keep-' + n + '-' + me).forEach(function (id) { kept[id] = 1; });
+    ls('xcpets-keep-' + n + '-' + me).forEach(function (id) { kept[id] = 1; });
     /* Nov 25 2026 (G Money discarded ~17,000 pets on chain and this sheet said "No pets in your Discard pile"): pets discarded ON CHAIN are in the
-     * pile on every device. The rules accept only those (cemOfferWhy 'only a discarded pet can be offered'); the browser list alone was never enough. */
-    (w.pets || []).forEach(function (a) { if (a.owner === me && a.hd === me) hid[a.id] = 1; });
+     * pile on every device. The rules accept only those (cemOfferWhy 'only a discarded pet can be offered'); the browser list alone was never enough.
+     * Nov 26 2026: the pile is V2Own.discardSet (browser list + on-chain), the one answer every screen uses. */
+    hid = V2Own.discardSet(w, me);
     if (!(V.retiredUI && V.retiredUI(w))) (w.pets || []).forEach(function (a) { if (a.skipBy === me) hid[a.id] = 1; });
     return (w.pets || []).filter(function (a) { return a.owner === me && hid[a.id] && !kept[a.id] && !a.dead && !a.released && !(V.isZ && V.isZ(a)) && a.id !== o.z && !(V.cemOfferWhy && V.cemOfferWhy(w, a, me, b)); })
       .sort(function (a, c) { return tierOf(a) - tierOf(c) || (a.stage | 0) - (c.stage | 0) || a.id - c.id; }); }
   /** browserOnly(o): pets only in this browser's Discard pile (not discarded on chain). The rules refuse them, so the sheet says how to fix it. */
-  function browserOnly(o) { var w = o.w, me = o.ME, n = 0; ls('xcpets-hidden-' + net() + '-' + me).forEach(function (id) { var a = w.byId && w.byId[id]; if (a && a.owner === me && a.hd !== me && !a.dead && !a.released && !(a.zombie && !a.zombie.end)) n++; }); return n; }
+  function browserOnly(o) { var w = o.w, me = o.ME, n = 0, set = V2Own.pileIds(me); Object.keys(set).forEach(function (id) { var a = w.byId && w.byId[id]; if (a && V2Own.isLiving(a, me, { zombies: false }) && V2Own.discarded(a, me, { set: set, pend: null }) === 'browser') n++; }); return n; }
   /** plans(o, ids): the fewest burns for these pets (run form or packed id lists), each priced per pet. */
   function plans(o, ids) { var w = o.w, V = o.V, b = o.b, kind = o.kind, z = o.z, s = ids.slice().sort(function (a, c) { return a - c; }), list = [], cur = [];
     var fits = function (g) { var p = V.cemPlan(w, kind, z, g, b); return p && p.tag && p.tag.length <= MAXB ? p : null; };
