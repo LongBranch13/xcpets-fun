@@ -140,9 +140,15 @@
     if (c.width !== 32 || c.height !== 32) { c.width = c.height = 32; }
     var pg = c.getContext('2d'); pg.setTransform(1, 0, 0, 1, 0, 0); pg.clearRect(0, 0, c.width, c.height); pg.putImageData(imgOf(img), 0, 0); if (MYTH_MODE || c._mfx) mythAttach(c, img); if (window.V2Looks && (c._lkx || V2Looks.info(img))) V2Looks.attach(c, img); } /* wiz-black-fix: never throw on a bad frame */
   var animated = new Map(), seen = typeof IntersectionObserver !== 'undefined' ? new IntersectionObserver(function (es) { es.forEach(function (e) { var a = animated.get(e.target); if (!a) return; var was = a.vis; a.vis = e.isIntersecting; if (a.vis && !was) ensureOutline(e.target); }); }) : null;
-  setInterval(function () { if (typeof document !== 'undefined' && document.hidden) return;
-    animated.forEach(function (a, c) { if (!c.isConnected) { animated.delete(c); if (seen) seen.unobserve(c); return; } if (seen && !a.vis) return; a.f = (a.f + 1) % a.fr.length; paint(c, a.fr[a.f]); }); }, 300);
-  function animate(c, fr) { c._fr = fr; c._frStill = false; paint(c, fr[0]); if (fr.length > 1) { var o = animated.get(c); animated.set(c, { fr: fr, f: 0, vis: o ? o.vis : !seen }); if (seen && !o) seen.observe(c); } else if (animated.has(c)) { animated.delete(c); if (seen) seen.unobserve(c); } return c; }
+  /* shared clock (Nov 26 2026, smooth): the 300 ms sprite step runs inside requestAnimationFrame, so every pet flips in the same frame the browser
+   * paints anyway (and the same frame the Mythic outlines draw in), instead of a separate timer that forced its own extra paint between frames. */
+  var animRaf = 0, animT = 0, ANIM_STILL = (function () { try { return !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) { return false; } })(); /* reduced motion: plain timer, no animation frames requested */
+  function animTick() { animRaf = 0; if (typeof document !== 'undefined' && document.hidden) return; if (!animated.size) return;
+    animated.forEach(function (a, c) { if (!c.isConnected) { animated.delete(c); if (seen) seen.unobserve(c); return; } if (seen && !a.vis) return; a.f = (a.f + 1) % a.fr.length; paint(c, a.fr[a.f]); });
+    animKick(); } /* wake for one frame every 300 ms, no frame loop in between */
+  function animKick() { if (animRaf || animT) return; animT = setTimeout(function () { animT = 0; if (ANIM_STILL || typeof requestAnimationFrame === 'undefined') animTick(); else animRaf = requestAnimationFrame(animTick); }, 300); }
+  if (typeof document !== 'undefined' && document.addEventListener) document.addEventListener('visibilitychange', function () { if (!document.hidden) animKick(); });
+  function animate(c, fr) { c._fr = fr; c._frStill = false; paint(c, fr[0]); if (fr.length > 1) { var o = animated.get(c); animated.set(c, { fr: fr, f: 0, vis: o ? o.vis : !seen }); if (seen && !o) seen.observe(c); animKick(); } else if (animated.has(c)) { animated.delete(c); if (seen) seen.unobserve(c); } return c; }
 
   // ---------------------------------------------------------------- v2 face spots (2026-10-14): nose + mouth found on the ACTUAL bare sprite
   /** faceSpots(bareImg, a) -> { ey, ex, nose:{x0,x1,y0,y1}|null, mouth:{x,y,src} }. bareImg = the gear-less render on the magenta key; a = BonusGear.anchors().
@@ -1220,6 +1226,7 @@
     var out = { line: svg('<path fill="#fff" shape-rendering="crispEdges" d="' + line + '"/>'), core: svg('<path fill="none" stroke="#fff" stroke-width="' + S * 0.2 + '" stroke-linecap="round" d="' + core + '"/>') };
     if (Object.keys(mythMasks).length > 300) mythMasks = { _g: mythMasks._g }; mythMasks[k] = out; return out; }
   function mythFrame(c, img, info, force) { var o = c._mfx; if (!o || !info.rims) return; var r = info.rims[(MYTH_FI && MYTH_FI.get(img)) || 0] || info.rims[0]; if (!force && c._mfxR === r.k) return; c._mfxR = r.k;
+    if (o._info) { o._rim = r; o._dirty = 1; if (cvSet) { cvSet.add(o); if (o._pos && !o.classList.contains('mfx-off') && typeof performance !== 'undefined') cvDraw(o, performance.now()); else cvKick(); } return; } /* canvas outline: drawn now (this runs inside the shared sprite frame), or in the next shared frame when not placed yet */
     var U = mythRimUrls(r); o.style.setProperty('--rl', 'url(' + U.line + ')'); o.style.setProperty('--rc', 'url(' + U.core + ')'); }
   function mythFx(fr, keyed, mode) { mode = mode || MYTH_MODE; if (!mode || !MYTH_INFO || !okFrames(fr) || typeof keyed !== 'function') return fr;
     var A, B; try { A = keyed('#ff00fe'); B = keyed('#00ff01'); } catch (e) { return fr; } if (!okFrames(A) || !okFrames(B)) return fr;
@@ -1244,12 +1251,13 @@
     var info = { mode: mode, m: m, bb: bb, key: key };
     return fr.map(function (f) { var g = { width: 32, height: 32, data: f.data }; MYTH_INFO.set(g, info); return g; }); }
   var mythCss = false, mythLive = typeof Set !== 'undefined' ? new Set() : null, mythMasks = {}, mythUid = 0, mythPtr = null, mythTilt = null, mythRaf = 0;
-  var mythVis = typeof IntersectionObserver !== 'undefined' ? new IntersectionObserver(function (es) { es.forEach(function (e) { var o = e.target._mfx; if (o) o.classList.toggle('mfx-off', !e.isIntersecting); if (e.isIntersecting) ensureOutline(e.target); }); }) : null;
+  var mythVis = typeof IntersectionObserver !== 'undefined' ? new IntersectionObserver(function (es) { es.forEach(function (e) { var o = e.target._mfx; if (o) o.classList.toggle('mfx-off', !e.isIntersecting); if (e.isIntersecting) { ensureOutline(e.target); if (o && o._info) cvKick(); } }); }) : null;
   /* goobys-grid-1107: scrolling a card off and back used to leave the electric line off. The lazy pass paints once, the 300ms tick skips off-screen canvases, and a detached overlay is unobserved, so nothing put the line back. When the canvas is on screen again, redraw a missing line and re-apply the mask (a browser can drop an off-screen mask). */
   function ensureOutline(c) { var fr = c && c._fr; if (!fr || !okFrames(fr) || !c.isConnected || !MYTH_MODE || !MYTH_INFO) return; var slot = animated.get(c), img = (slot && fr[slot.f]) || fr[0], info = MYTH_INFO.get(img) || MYTH_INFO.get(fr[0]); if (!info) return;
-    if (!(c._mfx && c._mfx.isConnected && c._mfx.parentNode === c.parentNode)) { paint(c, img); return; } mythFrame(c, img, info, true); mythPlace(c); }
+    if (!(c._mfx && c._mfx.isConnected && c._mfx.parentNode === c.parentNode)) { paint(c, img); return; } mythFrame(c, img, info, true);
+    if (c._mfx._info) { c._mfx._needPlace = 1; cvKick(); return; } /* canvas outline: placed in the shared frame, reads first then writes (no forced layout per card while scrolling) */ mythPlace(c); }
   function mythStyle() { if (mythCss || !document.head) return; mythCss = true; var s = document.createElement('style'); s.id = 'mfx-css';
-    s.textContent = '.mfx{position:absolute;pointer-events:none;overflow:clip}.mfx>*{position:absolute;pointer-events:none}' +
+    s.textContent = '.mfx{position:absolute;pointer-events:none;overflow:clip}.mfx.mfx-cv{overflow:visible;transform-origin:50% 50%;image-rendering:auto}.mfx>*{position:absolute;pointer-events:none}' +
       '.mfx .pm{inset:0;-webkit-mask-size:100% 100%;mask-size:100% 100%;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;overflow:hidden}' +
       '.mfx .holo{inset:0;background:linear-gradient(115deg,#ff3a6e,#ffb13a,#fff36a,#4dff9a,#3ad8ff,#7a6bff,#ff5ad8,#ff3a6e,#ffb13a,#fff36a,#4dff9a);background-size:400% 400%;mix-blend-mode:color-dodge;opacity:.38}' +
       '.mfx .holo2{inset:0;background:repeating-linear-gradient(65deg,rgba(255,255,255,.0) 0 2px,rgba(160,255,255,.35) 3px,rgba(255,160,255,.0) 5px),repeating-linear-gradient(-25deg,rgba(255,255,255,0) 0 3px,rgba(255,255,200,.22) 4px,rgba(255,255,255,0) 6px);mix-blend-mode:overlay;opacity:.8}' +
@@ -1333,7 +1341,99 @@
       s.addEventListener('animationiteration', function (e) { hop(e.currentTarget); }); o.appendChild(s); }
     var N = 16; for (k = 0; k < N; k++) { var b = pts[Math.floor((k + Math.random() * 0.6) / N * pts.length) % pts.length], dx = b[0] - cx, dy = b[1] - cy, dd = Math.sqrt(dx * dx + dy * dy) || 1, f = 4 + Math.random() * 4;
       o.appendChild(el('div', 'e5s', 'left:' + P(b[0]) + ';top:' + P(b[1]) + ';--dx:' + (dx / dd * f / 32 * 100).toFixed(2) + 'cqw;--dy:' + (dy / dd * f / 32 * 100).toFixed(2) + 'cqw;animation-delay:' + (0.05 + Math.random() * 0.25).toFixed(2) + 's')); } }
-  function mythBuild(info) { var o = el('div', 'mfx mfx-' + info.mode), bb = info.bb, U = mythMaskUrls(info), P = function (v) { return (v / 32 * 100).toFixed(2) + '%'; }, uid = ++mythUid, mode = info.mode;
+  /* ---------------------------------------------------------------- Mythic electric outline on ONE canvas (Nov 26 2026, Jake: "still when scrolling it has
+   * a hard time keeping the gifs loaded"). The aura5 look used to be ~40 DOM nodes per Mythic card: six masked layers (two 384 px SVG masks swapped every
+   * 300 ms as the pet bobs), a double drop-shadow filter over animating children (re-rasterised every frame), five SVG arcs rebuilt by innerHTML on every
+   * animation cycle and sixteen spark divs. A screen of Mythics was hundreds of filtered, masked, animating layers, which is what made scrolling stutter.
+   * Same look, same recipe (colours, timings, the per-frame rim the line traces, the arcs that hop to rim pixels, the first-show flash and spark burst),
+   * now painted by one shared clock into one small canvas per Mythic, only while it is on screen, at 30 fps. The CSS keyframes are evaluated here
+   * exactly (steps() and cubic-bezier() per keyframe segment). ?mythic=dom draws the old DOM layers for a side-by-side check. Display only. */
+  var MYTH_DOM = MYTH_URL === 'dom', CVM = 0.14, CV_FPS = 30, cvSet = typeof Set !== 'undefined' ? new Set() : null, cvRaf = 0, cvLast = 0, cvPaths = new Map();
+  function cvBez(x1, y1, x2, y2) { return function (x) { if (x <= 0) return 0; if (x >= 1) return 1; var lo = 0, hi = 1, t = x, i, bx;
+      for (i = 0; i < 24; i++) { t = (lo + hi) / 2; bx = 3 * (1 - t) * (1 - t) * t * x1 + 3 * (1 - t) * t * t * x2 + t * t * t; if (bx < x) lo = t; else hi = t; }
+      return 3 * (1 - t) * (1 - t) * t * y1 + 3 * (1 - t) * t * t * y2 + t * t * t; }; }
+  function cvSteps(n) { return function (x) { return x >= 1 ? 1 : Math.floor(x * n) / n; }; }
+  /* kf: [[offset, value], ...] for one property; ease applies inside each segment (CSS keyframe timing) */
+  function cvKf(kf, p, ease) { if (p <= kf[0][0]) return kf[0][1]; for (var i = 1; i < kf.length; i++) if (p < kf[i][0] || i === kf.length - 1) { var a = kf[i - 1], b = kf[i], u = (p - a[0]) / ((b[0] - a[0]) || 1); u = ease ? ease(Math.max(0, Math.min(1, u))) : u; return a[1] + (b[1] - a[1]) * u; } return kf[kf.length - 1][1]; }
+  var E_FLK = cvSteps(1), E_CRK = cvSteps(3), E_ZAP = cvBez(0.6, 0, 0.4, 1), E_FLASH = cvSteps(6), E_SPK = cvBez(0.2, 0.7, 0.3, 1);
+  var K_FLK = [[0, 0], [0.12, 0.55], [0.16, 0], [0.41, 0.3], [0.44, 0], [0.70, 0.7], [0.73, 0.1], [0.76, 0], [1, 0]];
+  var K_CRK_R = [[0, 0], [0.33, 127], [0.66, 251], [1, 360]], K_CRK_O = [[0, 0.5], [0.33, 0.9], [0.66, 0.35], [1, 0.5]];
+  var K_ZAP_R = [[0, 0], [0.25, 360], [1, 360]], K_ZAP_O = [[0, 0], [0.03, 1], [0.22, 1], [0.25, 0], [1, 0]];
+  var K_FLASH = [[0, 0], [0.15, 1], [0.30, 0.2], [0.45, 0.9], [1, 0]], K_ARC = [[0, 1], [0.08, 0.3], [0.12, 1], [0.24, 0.6], [0.28, 0], [1, 0]];
+  var K_SPK_O = [[0, 0], [0.1, 1], [1, 0]], K_SPK_M = [[0, 0], [0.1, 0.2], [1, 1]], K_SPK_S = [[0, 0.5], [0.1, 1.3], [1, 0.3]];
+  /* the rim as two Path2Ds in 32-grid units: line = every rim pixel as a full square (the old --rl mask), core = the thin thread (the old --rc mask) */
+  function cvPath(r) { var p = cvPaths.get(r.k); if (p) return p; var on = function (x, y) { return x >= 0 && y >= 0 && x < 32 && y < 32 && r[y * 32 + x]; }, line = new Path2D(), core = new Path2D(), x, y;
+    for (y = 0; y < 32; y++) for (x = 0; x < 32; x++) if (on(x, y)) { var x0 = x; while (on(x + 1, y)) x++; line.rect(x0, y, x - x0 + 1, 1); }
+    for (var q = 0; q < 1024; q++) if (r[q]) { x = q & 31; y = q >> 5; var cx = x + 0.5, cy = y + 0.5; core.moveTo(cx, cy); core.lineTo(cx, cy);
+      [[1, 0], [0, 1], [1, 1], [-1, 1]].forEach(function (d) { if (!on(x + d[0], y + d[1])) return; if (d[0] && d[1] && (on(x + d[0], y) || on(x, y + d[1]))) return; core.moveTo(cx, cy); core.lineTo(cx + d[0], cy + d[1]); }); }
+    p = { line: line, core: core }; if (cvPaths.size > 600) cvPaths.clear(); cvPaths.set(r.k, p); return p; }
+  function cvCanvas(info) { var o = document.createElement('canvas'); o.className = 'mfx mfx-' + info.mode + ' mfx-cv'; o.setAttribute('aria-hidden', 'true');
+    o.style.cssText = 'position:absolute;pointer-events:none;background:transparent;border:0;box-shadow:none;outline:0;margin:0;padding:0;border-radius:0;max-width:none;image-rendering:auto'; /* page CSS styles every canvas (card frames, black backs): none of it applies to the overlay */ o._info = info; o._arcs = []; o._spk = [];
+    var r = (info.rims && info.rims[0]) || [], pts = [], cx = (info.bb.x0 + info.bb.x1 + 1) / 2, cy = (info.bb.y0 + info.bb.y1 + 1) / 2, k, p;
+    for (p = 0; p < 1024; p++) if (r[p]) pts.push([(p & 31) + 0.5, (p >> 5) + 0.5]); o._pts = pts;
+    if (pts.length && !MYTH_STILL) {
+      for (k = 0; k < 5; k++) o._arcs.push({ d: 0.9 + Math.random() * 1.4, w: Math.random() * 1.2, it: -1 });
+      for (k = 0; k < 16; k++) { var b = pts[Math.floor((k + Math.random() * 0.6) / 16 * pts.length) % pts.length], dx = b[0] - cx, dy = b[1] - cy, dd = Math.sqrt(dx * dx + dy * dy) || 1, f = 4 + Math.random() * 4;
+        o._spk.push({ x: b[0], y: b[1], dx: dx / dd * f, dy: dy / dd * f, dl: 0.05 + Math.random() * 0.25 }); } }
+    return o; }
+  function cvHop(o, a) { var pts = o._pts, g = pts[Math.random() * pts.length | 0], an = Math.random() * 6.283, L = 5 + Math.random() * 2.5, n = 4 + (Math.random() * 3 | 0), ox = 5 - Math.cos(an) * L / 2, oy = 5 - Math.sin(an) * L / 2, pp = [];
+    for (var k = 0; k <= n; k++) pp.push([ox + Math.cos(an) * L * k / n + (k && k < n ? (Math.random() - 0.5) * 2.4 : 0), oy + Math.sin(an) * L * k / n + (k && k < n ? (Math.random() - 0.5) * 2.4 : 0)]);
+    a.x = g[0]; a.y = g[1]; a.pp = pp; }
+  /* size the canvas to the sprite's box on screen plus a margin for the glow and arcs (CSS scale keeps the layout box = the sprite box) */
+  function cvPlace(o, w) { var dpr = Math.min(2, window.devicePixelRatio || 1), S = Math.max(48, Math.min(256, Math.round(w * (1 + 2 * CVM) * dpr))); if (o.width !== S) { o.width = o.height = S; o._dirty = 1; }
+    o.style.transform = 'scale(' + (1 + 2 * CVM) + ')'; }
+  function cvConic(g, W, a0, stops, rot) { var cx = W / 2; g.save(); if (g.createConicGradient) { var cg = g.createConicGradient(a0 + rot - Math.PI / 2, cx, cx); stops.forEach(function (s) { cg.addColorStop(s[0], s[1]); }); g.fillStyle = cg; g.fillRect(0, 0, W, W); } g.restore(); }
+  var CRK_STOPS = (function () { var s = [], per = 23 / 360, n = Math.ceil(1 / per), i; for (i = 0; i < n; i++) { var b = i * per; [[0, 'rgba(255,255,255,0)'], [9 / 23, 'rgba(255,255,255,0)'], [11 / 23, 'rgba(255,255,255,.95)'], [13 / 23, 'rgba(255,255,255,0)']].forEach(function (q) { var o2 = b + q[0] * per; if (o2 <= 1) s.push([o2, q[1]]); }); } return s; })();
+  var ZAP_STOPS = [[0, 'rgba(255,255,255,0)'], [300 / 360, 'rgba(255,255,255,0)'], [335 / 360, 'rgba(150,235,255,.7)'], [350 / 360, '#fff'], [357 / 360, '#fff'], [1, 'rgba(255,255,255,0)']];
+  function cvDraw(o, now) { var info = o._info, r = o._rim; if (!r || !info) return; var W = o.width, U = W / (1 + 2 * CVM), O = CVM * U, cell = U / 32, cq = U / 100, g = o._g || (o._g = o.getContext('2d', { willReadFrequently: true })), P = cvPath(r); /* software canvas: no GPU layer of its own per Mythic (each one cost a share of every frame's commit) */
+    if (o._t0 == null) o._t0 = now; var t = (now - o._t0) / 1000;
+    /* draw only when something on it changes: most layers are stepped (flicker, crackle, arcs), so most frames are the same picture and a
+     * redrawn canvas costs an upload to the GPU even when its pixels did not change */
+    if (!MYTH_STILL) { var zp0 = (t % 5.3) / 5.3, sig = r.k + '|' + W + '|' + cvKf(K_FLK, (t % 0.9) / 0.9, E_FLK) + '|' + Math.floor((t % 0.45) / 0.45 * 9) + '|' + (zp0 < 0.26 ? Math.round(zp0 * 400) : 'z') + '|' + (t < 1.2 ? Math.round(t * 60) : 'x');
+      o._arcs.forEach(function (a) { var e = t - a.w; sig += e < 0 ? '|-' : '|' + Math.floor(e / a.d) + ':' + cvKf(K_ARC, (e % a.d) / a.d, E_FLK); });
+      if (!o._dirty && sig === o._sig) return; o._sig = sig; }
+    o._dirty = 0;
+    g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, W, W);
+    var grid = function (x) { x.setTransform(cell, 0, 0, cell, O, O); };
+    /* the line: 135deg blue-white gradient through the rim squares, with the .al double glow (drop-shadow .35cqw then .9cqw) */
+    var lg = g.createLinearGradient(0, 0, 32, 32); [[0, '#7fe8ff'], [0.3, '#e8fbff'], [0.55, '#3fc8ff'], [0.8, '#c8f4ff'], [1, '#5ad6ff']].forEach(function (s) { lg.addColorStop(s[0], s[1]); });
+    grid(g); g.fillStyle = lg; g.shadowColor = 'rgba(60,170,255,.55)'; g.shadowBlur = 0.9 * cq * 2; g.fill(P.line); g.shadowColor = 'rgba(140,230,255,.95)'; g.shadowBlur = 0.35 * cq * 2; g.fill(P.line); g.shadowBlur = 0; g.shadowColor = 'transparent';
+    /* white core thread */
+    g.globalAlpha = 0.85; g.strokeStyle = '#fff'; g.lineWidth = 0.2; g.lineCap = 'round'; g.stroke(P.core); g.globalAlpha = 1;
+    if (!MYTH_STILL) {
+      /* flicker (mfxFlk5 .9s steps(1,end), #dff8ff, screen) */
+      var fa = cvKf(K_FLK, (t % 0.9) / 0.9, E_FLK); if (fa > 0) { g.globalCompositeOperation = 'screen'; g.globalAlpha = fa; g.fillStyle = '#dff8ff'; g.fill(P.line); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over'; }
+      /* crackle (mfxCrk5 .45s steps(3,end), repeating conic spokes, screen) and zap sweep (mfxZap5 5.3s), both inside the line only */
+      /* clipped to the line itself (no scratch canvas: copying one canvas into another cost more than everything else here) */
+      var cp = (t % 0.45) / 0.45, zp = (t % 5.3) / 5.3, zo = cvKf(K_ZAP_O, zp, E_ZAP);
+      [[cvKf(K_CRK_R, cp, E_CRK), cvKf(K_CRK_O, cp, E_CRK), CRK_STOPS, 'screen'], [cvKf(K_ZAP_R, zp, E_ZAP), zo, ZAP_STOPS, 'source-over']].forEach(function (L) { if (!(L[1] > 0.01)) return;
+        g.save(); grid(g); g.clip(P.line); g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = L[3]; g.globalAlpha = L[1]; cvConic(g, W, 0, L[2], L[0] * Math.PI / 180); g.restore(); });
+      /* one-time flash when the outline first shows (mfxFlash5 .9s steps(6,end)) */
+      if (t < 0.9) { grid(g); g.globalAlpha = cvKf(K_FLASH, t / 0.9, E_FLASH); g.fillStyle = '#fff'; g.fill(P.line); g.globalAlpha = 1; }
+      /* five jagged arcs that hop to a random rim pixel every cycle (mfxArc5, own duration and delay each), with their blue glow */
+      g.setTransform(1, 0, 0, 1, 0, 0); g.lineJoin = 'bevel'; g.lineCap = 'butt';
+      o._arcs.forEach(function (a) { var e = t - a.w; if (e < 0) return; var it = Math.floor(e / a.d); if (it !== a.it) { a.it = it; cvHop(o, a); } var op = cvKf(K_ARC, (e % a.d) / a.d, E_FLK); if (op <= 0) return;
+        var k = 0.22 * U / 10, bx = O + a.x * cell - 5 * k, by = O + a.y * cell - 5 * k; g.globalAlpha = op;
+        g.beginPath(); a.pp.forEach(function (q, i) { var X = bx + q[0] * k, Y = by + q[1] * k; if (i) g.lineTo(X, Y); else g.moveTo(X, Y); });
+        g.shadowColor = 'rgba(70,180,255,.8)'; g.shadowBlur = 0.9 * cq * 2; g.strokeStyle = '#7fdcff'; g.lineWidth = 0.85 * k; g.stroke();
+        g.shadowColor = '#9feaff'; g.shadowBlur = 0.4 * cq * 2; g.strokeStyle = '#fff'; g.lineWidth = 0.4 * k; g.stroke(); g.shadowBlur = 0; g.shadowColor = 'transparent'; });
+      g.globalAlpha = 1;
+      /* the spark burst on first show (mfxSpk5 .8s cubic-bezier(.2,.7,.3,1), fill both) */
+      if (t < 1.2) o._spk.forEach(function (s) { var e = (t - s.dl) / 0.8; if (e <= 0 || e >= 1) return; var op = cvKf(K_SPK_O, e, E_SPK), m = cvKf(K_SPK_M, e, E_SPK), sc = cvKf(K_SPK_S, e, E_SPK); if (op <= 0) return;
+        var sz = 2.2 * cq * sc, X = O + (s.x + s.dx * m) * cell, Y = O + (s.y + s.dy * m) * cell; g.globalAlpha = op; g.shadowColor = '#7fe2ff'; g.shadowBlur = 0.8 * cq * 2 * sc; g.fillStyle = '#fff';
+        g.fillRect(X - sz / 2 - 0.3 * cq * sc, Y - sz / 2 - 0.3 * cq * sc, sz + 0.6 * cq * sc, sz + 0.6 * cq * sc); g.shadowBlur = 0; g.shadowColor = 'transparent'; });
+      g.globalAlpha = 1; }
+    g.setTransform(1, 0, 0, 1, 0, 0); }
+  /* the one shared clock: every visible Mythic outline is drawn in the same animation frame, nothing runs while the tab is hidden or none is on screen */
+  function cvTick(now) { cvRaf = 0; if (!cvSet || document.hidden) return; var due = now - cvLast >= 1000 / CV_FPS - 2, any = false, moved = [];
+    cvSet.forEach(function (o) { if (!o._needPlace) return; o._needPlace = 0; var c = o._c; if (c && c.isConnected && o._pos !== c.offsetLeft + ',' + c.offsetTop + ',' + c.offsetWidth + ',' + c.offsetHeight) moved.push(c); });
+    moved.forEach(mythPlace);
+    cvSet.forEach(function (o) { if (!o.isConnected) { cvSet.delete(o); return; } if (o.classList.contains('mfx-off') || o.style.display === 'none') return; if (!MYTH_STILL) any = true; if (due || o._dirty) cvDraw(o, now); });
+    if (due) cvLast = now; if (any) cvRaf = requestAnimationFrame(cvTick); }
+  function cvKick() { if (!cvRaf && typeof requestAnimationFrame !== 'undefined') cvRaf = requestAnimationFrame(cvTick); }
+  if (typeof document !== 'undefined' && document.addEventListener) document.addEventListener('visibilitychange', function () { if (!document.hidden) cvKick(); });
+  function mythBuild(info) { if (info.mode === 'aura5' && !MYTH_DOM && cvSet && typeof Path2D !== 'undefined') return cvCanvas(info); /* one canvas, one clock (above) */
+    var o = el('div', 'mfx mfx-' + info.mode), bb = info.bb, U = mythMaskUrls(info), P = function (v) { return (v / 32 * 100).toFixed(2) + '%'; }, uid = ++mythUid, mode = info.mode;
     var mk = function (cls, st) { var e = el('div', 'pm ' + cls, st); e.style.webkitMaskImage = e.style.maskImage = 'url(' + U.pet + ')'; return e; }, pm = [];
     var glit = 'background-image:url(' + mythGlitUrl() + ')';
     if (mode === 'aura5') { var al5 = el('div', 'al'); [['ln e5', 0], ['ln core', 0]].forEach(function (q) { al5.appendChild(el('div', q[0])); }); mythAura5(o, al5, info); o.appendChild(al5); return o; }
@@ -1354,31 +1454,33 @@
         [0, -3.2].forEach(function (dl) { var b = el('b', '', 'animation-delay:' + dl + 's'), i = el('i', '', 'animation-delay:' + (dl - 1.6) + 's'); b.appendChild(i); ob.appendChild(b); }); o.appendChild(ob); }
     if (mode === 'd') { var lh = Math.min(16, hgt + 2); [['l', bb.x0 - 4.6], ['r', bb.x1 + 1.6]].forEach(function (q) { var s = mythLaurel(q[0], uid); s.setAttribute('style', (s.getAttribute('style') || '') + ';position:absolute;left:' + P(q[1]) + ';top:' + P(bb.y1 + 1 - lh) + ';width:' + P(lh / 3) + ';height:' + P(lh) + (q[0] === 'r' ? ';transform:scaleX(-1)' : '')); o.appendChild(s); }); }
     return o; }
-  function mythClipCard(c) { var card = c.closest ? c.closest('.pet.card,.lf-p,.fpc,.ez-c,.pk-key,.dcard,.brv-pet') : null; if (!card) card = c.parentNode; if (!card || !card.style || card === document.body || card === document.documentElement) return;
+  function mythClipCard(c) { var card = c.closest ? c.closest('.pet.card,.lf-p,.fpc,.ez-c,.pk-key,.dcard,.brv-pet') : null; if (!card) card = c.parentNode; if (!card || !card.style || card === document.body || card === document.documentElement || card._mclip) return; card._mclip = 1; /* once per card: getComputedStyle forces a style pass */
     var cs = window.getComputedStyle ? getComputedStyle(card) : null; if (!cs) return; if (cs.position === 'static') card.style.position = 'relative'; if (cs.overflow === 'visible') card.style.overflow = 'clip'; }
   function mythPlace(c) { var o = c._mfx; if (!o) return; mythClipCard(c); var w = c.offsetWidth, h = c.offsetHeight; o.style.display = w ? '' : 'none'; if (!w) return;
     /* rankings-outline-fix 2026-10-28: a canvas inside a static <td>/<th>/<table> gets that cell as its offsetParent, but the absolute overlay's containing block is the
      * nearest POSITIONED ancestor (often the page itself). The line was then pinned to a page coordinate and stayed behind when anything above it moved (banners,
      * fonts, the board re-rendering), drawing over the rows above. Make the cell the overlay's containing block so offsetLeft/offsetTop and the overlay agree. */
     var op = c.offsetParent; if (op && /^(TD|TH|TABLE)$/.test(op.tagName) && window.getComputedStyle && getComputedStyle(op).position === 'static') op.style.position = 'relative';
-    o.style.left = c.offsetLeft + 'px'; o.style.top = c.offsetTop + 'px'; o.style.width = w + 'px'; o.style.height = h + 'px'; o.style.containerType = 'size'; o._pos = c.offsetLeft + ',' + c.offsetTop + ',' + w + ',' + h; try { var cr = c.getBoundingClientRect(), orr = o.getBoundingClientRect(), dx = cr.left - orr.left, dy = cr.top - orr.top; /* sub-pixel exact: the line must sit on the rim pixels */ if (Math.abs(dx) > 0.01) o.style.left = (c.offsetLeft + dx) + 'px'; if (Math.abs(dy) > 0.01) o.style.top = (c.offsetTop + dy) + 'px'; } catch (e) {}
+    o.style.left = c.offsetLeft + 'px'; o.style.top = c.offsetTop + 'px'; o.style.width = w + 'px'; o.style.height = h + 'px'; o.style.containerType = 'size'; o._pos = c.offsetLeft + ',' + c.offsetTop + ',' + w + ',' + h; if (o._info) { cvPlace(o, w); o.style.visibility = ''; } try { var cr = c.getBoundingClientRect(), orr = o.getBoundingClientRect(), dx = cr.left - orr.left, dy = cr.top - orr.top; /* sub-pixel exact: the line must sit on the rim pixels */ if (Math.abs(dx) > 0.01) o.style.left = (c.offsetLeft + dx) + 'px'; if (Math.abs(dy) > 0.01) o.style.top = (c.offsetTop + dy) + 'px'; } catch (e) {}
+    if (o._info) return; /* canvas outline: no child decorations to fit */
     var orb = o.querySelector('.orbit'); if (orb && orb._r == null) orb._r = 1; if (orb) { var r2 = parseFloat(orb.getAttribute('data-r') || 0); } 
     mythFit(); }
   /* decorations (aura ring, orbit stars, laurels) may poke past the screen edge on phones: never let them create a sideways scroll */
   var mythFitRaf = 0; function mythFit() { if (mythFitRaf || typeof requestAnimationFrame === 'undefined') return; mythFitRaf = requestAnimationFrame(function () { mythFitRaf = 0; var W = document.documentElement.clientWidth; if (!W) return;
   if (typeof window !== 'undefined' && window.addEventListener) window.addEventListener('resize', function () { mythFit(); });
-    document.querySelectorAll('.mfx').forEach(function (o) { var r = o.getBoundingClientRect(); if (!r.width) return; var room = Math.floor(Math.min(r.left + scrollX, W - r.right - scrollX) - 2);
+    document.querySelectorAll('.mfx:not(.mfx-cv)').forEach(function (o) { var r = o.getBoundingClientRect(); if (!r.width) return; var room = Math.floor(Math.min(r.left + scrollX, W - r.right - scrollX) - 2);
       /* rankings-outline-fix: small thumbnails (list rows, under 64 px) keep the arcs/sparks tight around the sprite so they never spill into the next row */
       if (r.width < 64) room = Math.min(room, Math.max(2, Math.round(r.width * 0.08)));
       if (room < r.width * 0.3) { o.style.overflow = 'clip'; o.style.overflowClipMargin = Math.max(0, room) + 'px'; } else { o.style.overflow = ''; o.style.overflowClipMargin = ''; } }); }); }
   var mythRO = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(function (es) { es.forEach(function (e) { mythPlace(e.target); }); }) : null;
-  function mythDetach(c) { var o = c._mfx; if (!o) return; if (o.parentNode) o.parentNode.removeChild(o); c._mfx = null; c._mfxKey = null; c._mfxR = null; if (mythRO) mythRO.unobserve(c); if (mythVis) mythVis.unobserve(c); if (mythLive) mythLive.delete(c); }
+  function mythDetach(c) { var o = c._mfx; if (!o) return; if (cvSet) cvSet.delete(o); if (o.parentNode) o.parentNode.removeChild(o); c._mfx = null; c._mfxKey = null; c._mfxR = null; if (mythRO) mythRO.unobserve(c); if (mythVis) mythVis.unobserve(c); if (mythLive) mythLive.delete(c); }
   /* bakes (papers / GIF / token papers) read the same per-frame rim the live electric outline traces */
   if (window.V2Looks && MYTH_INFO) window.V2Looks.myth = function (img) { var i = img && MYTH_INFO.get(img); if (!i || i.mode !== 'aura5' || !i.rims) return null; return { rim: i.rims[(MYTH_FI && MYTH_FI.get(img)) || 0] || i.rims[0], seed: (img.pid || 0) }; };
   function mythAttach(c, img) { if (!MYTH_INFO || !c || c.nodeType !== 1) return; var info = MYTH_INFO.get(img);
-    if (!info) { if (c._mfx) mythDetach(c); return; } if (c._mfxKey === info.key && c._mfx && c._mfx.parentNode === c.parentNode && c._mfx.isConnected) { var o0 = c._mfx; if (o0._pos !== c.offsetLeft + ',' + c.offsetTop + ',' + c.offsetWidth + ',' + c.offsetHeight) mythPlace(c); /* follow layout shifts */ mythFrame(c, img, info); return; }
+    if (!info) { if (c._mfx) mythDetach(c); return; } if (c._mfxKey === info.key && c._mfx && c._mfx.parentNode === c.parentNode && c._mfx.isConnected) { var o0 = c._mfx, nw = Date.now(); if (!o0._info || nw - (o0._chk || 0) > 1000) { o0._chk = nw; if (o0._pos !== c.offsetLeft + ',' + c.offsetTop + ',' + c.offsetWidth + ',' + c.offsetHeight) mythPlace(c); } /* follow layout shifts (canvas outline: checked at most once a second, each check is a forced layout; size changes come from the ResizeObserver) */ mythFrame(c, img, info); return; }
     if (!c.parentNode || typeof document === 'undefined') return; try { mythStyle(); if (c._mfx) mythDetach(c); var o = mythBuild(info); c._mfx = o; c._mfxKey = info.key; o._c = c;
-      c._mfxR = null; c.parentNode.insertBefore(o, c.nextSibling); mythFrame(c, img, info); var ps = window.getComputedStyle ? getComputedStyle(c.offsetParent || c.parentNode) : null; mythPlace(c);
+      c._mfxR = null; c.parentNode.insertBefore(o, c.nextSibling); mythFrame(c, img, info);
+      if (o._info) { o.style.visibility = 'hidden'; o._needPlace = 1; cvKick(); } else mythPlace(c); /* canvas outline: placed (and shown) in the next shared frame, batched with the others */
       if (mythRO) mythRO.observe(c); if (mythVis) mythVis.observe(c); if (mythLive) mythLive.add(c); mythListen(); } catch (e) { if (window.console) console.warn('mythic look failed', e); } }
   function mythTick() { mythRaf = 0; if (!mythLive) return; mythLive.forEach(function (c) { var o = c._mfx; if (!o || !c.isConnected) { mythDetach(c); return; } if (o.classList.contains('mfx-off')) return;
       var r = c.getBoundingClientRect(), fx = null; if (!r.width) return;
@@ -1388,7 +1490,7 @@
       if (fx) { o.classList.add('ptr'); var X = Math.max(-0.2, Math.min(1.2, fx[0])); if (gl) gl.style.transform = 'translateX(' + ((X * 2.6 - 1.15) * 100).toFixed(0) + '%) rotate(12deg)'; if (ho) ho.style.backgroundPosition = (X * 100).toFixed(0) + '% ' + (Math.max(0, Math.min(1, fx[1])) * 100).toFixed(0) + '%'; }
       else if (o.classList.contains('ptr')) { o.classList.remove('ptr'); if (gl) gl.style.transform = ''; if (ho) ho.style.backgroundPosition = ''; } }); }
   var mythListening = false;
-  function mythListen() { if (mythListening || MYTH_STILL || typeof window.addEventListener !== 'function') return; mythListening = true; var q = function () { if (!mythRaf) mythRaf = (window.requestAnimationFrame || setTimeout)(mythTick); };
+  function mythListen() { if (mythListening || MYTH_STILL || (MYTH_MODE === 'aura5' && !MYTH_DOM) || /* aura5 has no pointer/tilt effects: no layout read per scroll frame */ typeof window.addEventListener !== 'function') return; mythListening = true; var q = function () { if (!mythRaf) mythRaf = (window.requestAnimationFrame || setTimeout)(mythTick); };
     window.addEventListener('pointermove', function (e) { if (e.pointerType === 'touch') return; mythPtr = [e.clientX, e.clientY]; q(); }, { passive: true });
     document.addEventListener('pointerleave', function () { mythPtr = null; q(); }, { passive: true });
     window.addEventListener('deviceorientation', function (e) { if (e.gamma == null) return; mythTilt = [0.5 + Math.max(-30, Math.min(30, e.gamma)) / 60, 0.5 + Math.max(-30, Math.min(30, (e.beta || 45) - 45)) / 60]; q(); }, { passive: true });
@@ -2212,6 +2314,6 @@
       if (cur && cur.getAttribute('data-pet') !== idm[1]) { cur.parentNode.removeChild(cur); cur = null; }
       if (!cur) { var q = petById(+idm[1]); if (q) ds.parentNode.insertBefore(shareRow(q), ds.nextSibling); } }
   }
-  function start() { css(); new MutationObserver(inject).observe(document.body, { childList: true, subtree: true }); inject(); }
+  var injQ = 0; function start() { css(); new MutationObserver(function () { if (!injQ) injQ = setTimeout(function () { injQ = 0; inject(); }, 60); }).observe(document.body, { childList: true, subtree: true }); inject(); } /* smooth: at most once per 60 ms, not once per DOM change */
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 })();

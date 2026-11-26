@@ -777,6 +777,9 @@
       withLife(function (ok) { if (!ok || !window.V2LifeAnim) return go(); try { V2LifeAnim.hatch(world(), r1.eggs, go); } catch (e) { go(); } }); return; }
     drawReveal(); open('packBox'); }
   /* share-links: the real hatch review, for a preview (?moment=hatch&pet=ID). Display only. Sabo #1765 is left out. */
+  /* gear reveal preview (Nov 26 2026, layout check): opens the 'N new gear pieces' pop-up with the first n pieces this wallet owns, like a big
+   * batch landing while away. Display only (nothing is stored: the seen list is not touched). Used by tools/layout-check 'gear-reveal-400'. */
+  window.V2GearRevealPreview = function (n) { var w = world(); if (!w || !ME || !$('packBox')) return 0; var r = V.newWins(w, ME, {}), wins = r.wins.slice(0, n || 400); if (!wins.length) return 0; revealQ.push({ kind: 'gear', wins: wins, away: true }); nextReveal(); return wins.length; };
   window.V2RevealPreview = function (ids) { ids = (ids || []).map(Number).filter(function (n) { return n >= 1 && n !== 1765; }); if (!ids.length || !$('packBox')) return; revealQ.push({ kind: 'eggs', eggs: ids }); nextReveal(); };
   /* egg-review-sort 2026-10-24: the sort options and logic now live in js/pet-sort.js (PetSort), shared with Gooby's Hotel mate search. */
   function sortEggs(w, list, k) { return window.PetSort ? PetSort.sort(w, list, k) : list; }
@@ -787,7 +790,7 @@
   function dudGuard(w, p) { var r = []; if (p.art && p.art.tierIndex >= 3) r.push(TIERS[p.art.tierIndex].label); if (p.stage === 5) r.push('Mythic');
     var n = R.worn ? R.worn(w, p.id).length : 0; if (n) r.push('wearing ' + n + ' gear piece' + (n > 1 ? 's' : '')); if (isKept(p.id)) r.push('starred'); return r; }
   var REV_SHOW = [['all', 'All'], ['wx', '🌀 Weird &amp; special'], ['my', 'Mythic'], ['3', 'Legendary'], ['2', 'Rare'], ['1', 'Uncommon'], ['0', 'Common']];
-  function revShows(f, x) { return f === 'all' || !f || (f === 'wx' ? !!revStar(x) : f === 'my' ? x.stage === 5 : f === 'sel' ? !!rev.sel[x.id] : String(x.art.tierIndex) === f); }
+  function revShows(f, x) { return f === 'all' || !f || (f === 'wx' ? !!revStar(x) : f === 'my' ? x.stage === 5 : f === 'sel' ? !!revPick()[x.id] : String(x.art.tierIndex) === f); }
   /* hatch-tray-1124 (owner: 'Id like to see if I hatched any weird pets'). DISPLAY ONLY. 'weird' = a weird hatch (tiny, giant, two-headed, ghost...),
    * 'special' = a Legend egg or a special species (the 1 in 777 egg: Homer, the White Rabbit, FUNTRUMP...). Ordinary species and hybrids are neither. */
   var REV_PLAIN = { pepe: 1, wojak: 1, chud: 1, bobo: 1, mumu: 1, snibby: 1, dodo: 1, kevin: 1, peepo: 1, sarutobi: 1, doge: 1, lenny: 1, chad: 1 };
@@ -817,7 +820,7 @@
   function revHide(ids, msg) { /* one confirm, then the usual free local discard; the review keeps going with what is left */
     var kk = ids.filter(isKept), go = ids.length - kk.length; if (!go) { toast('★ Starred pets can\'t be discarded. Unstar them first.', 6000); return; }
     if (!window.confirm(msg + (kk.length ? '\n\n★ ' + kk.length + ' starred pet' + (kk.length > 1 ? 's stay' : ' stays') + ' (starred pets are never discarded).' : '') + '\n\nThey go to the 🗑️ Discard pile in My Pets. When you close this review you can make it permanent on every device with one tiny burn (1 dander).')) return;
-    hideIds(ids); ids = ids.filter(function (id) { return kk.indexOf(id) < 0; }); /* starred pets stay in the review too */ rev.gone = (rev.gone || 0) + go; rev.eggs = rev.eggs.filter(function (id) { return ids.indexOf(id) < 0; }); ids.forEach(function (id) { delete rev.sel[id]; });
+    hideIds(ids); ids = ids.filter(function (id) { return kk.indexOf(id) < 0; }); /* starred pets stay in the review too */ rev.gone = (rev.gone || 0) + go; rev.eggs = rev.eggs.filter(function (id) { return ids.indexOf(id) < 0; }); ids.forEach(function (id) { delete rev.sel[id]; if (rev.keep) delete rev.keep[id]; });
     if (rev.f !== 'all' && rev.f !== 'sel') { var w = world(); if (!rev.eggs.some(function (id) { var x = w.byId[id]; return x && revShows(rev.f, x) && revSpShows(rev.sp, x); })) rev.f = 'all'; }
     if (rev.sp && rev.sp !== 'all') { var w2 = world(); if (!rev.eggs.some(function (id) { var x = w2.byId[id]; return x && revSpShows(rev.sp, x); })) rev.sp = 'all'; }
     if (rev.eggs.length) drawReveal(); else closeReveal(); }
@@ -838,14 +841,44 @@
     all.forEach(function (x) { if (x.art.tierIndex > top) return; if (isKept(x.id)) sk++; else if (x.stage === 5) my++; else if (R.worn && R.worn(w, x.id).length) gr++; });
     var bits = []; if (sk) bits.push(plural(sk, 'starred pet')); if (gr) bits.push(plural(gr, 'pet') + ' wearing gear'); if (my) bits.push(plural(my, 'Mythic'));
     return bits.length ? 'These stay too: ' + bits.join(', ') : ''; }
-  function revSelectShown(w, shown) { var n = 0, safe = 0; shown.forEach(function (x) { if (dudGuard(w, x).length) { safe++; return; } if (!rev.sel[x.id]) n++; rev.sel[x.id] = 1; });
-    drawReveal(); toast('✓ Selected ' + plural(n, 'more pet') + ' (' + Object.keys(rev.sel).length.toLocaleString('en-US') + ' selected).' + (safe ? ' 🛡️ ' + plural(safe, 'protected pet') + ' left out.' : ''), 5000); }
-  function revToggle(w, x, d) { var on = !rev.sel[x.id];
+  /* keep-pick (Jake Nov 26 2026: 'it would be easier to select what to keep instead of discard'). DISPLAY ONLY until Done, same as before.
+   * Two tap modes in the hatch review, the player's choice remembered in this browser (default Keep):
+   *   ✅ Keep:    tap the pets you want to KEEP (rev.keep); 'Keep N · Discard the rest (M)' discards every other pet of this hatch, on every page and
+   *               behind every filter. Protected pets (Legendary, Mythic, wearing gear, starred: dudGuard) are always kept, as with Keep Rare & Legendary.
+   *   🗑️ Discard: the old way, tap the pets to discard (rev.sel), Discard selected (N).
+   * Both end in the same revHide -> discardIds -> Done -> one pet:hd burn whose plan names the pets (sendBlock's pickSendWhy check), so the
+   * before-signing check is the same for both. A hatch of one pet keeps the old Discard mode. */
+  var REV_MODE_KEY = 'xcpets-v2-revmode';
+  function revModePref() { try { return localStorage.getItem(REV_MODE_KEY) === 'discard' ? 'discard' : 'keep'; } catch (e) { return 'keep'; } }
+  function revMode() { if (!rev || rev.kind !== 'eggs') return 'discard'; if (!rev.mode) rev.mode = revModePref(); return (rev.n0 || rev.eggs.length) > 1 ? rev.mode : 'discard'; }
+  function revPick() { if (!rev) return {}; if (revMode() === 'keep') return rev.keep || (rev.keep = {}); return rev.sel; }
+  /* what 'Discard the rest' would discard right now: every pet of this review that is not picked to keep and not protected */
+  function revRest(w) { var r = { ids: [], kept: 0, prot: 0, why: {}, tiers: [0, 0, 0, 0] }, k = rev.keep || {};
+    rev.eggs.forEach(function (id) { var x = w.byId[id]; if (!x) return; if (k[id]) { r.kept++; return; } var gc = rev._g || (rev._g = {}), g = gc[id] || (gc[id] = revKG(w, x)); if (g.length) { r.prot++; g.forEach(function (q) { q = /^wearing/.test(q) ? 'wearing gear' : q; r.why[q] = (r.why[q] || 0) + 1; }); return; }
+      r.ids.push(id); if (x.art) r.tiers[x.art.tierIndex]++; });
+    return r; }
+  /* in Keep mode a weird or special find is always kept too, so 'Discard the rest' never sweeps a 1 in 777 pet away by accident */
+  function revKG(w, x) { var g = dudGuard(w, x); return revStar(x) ? g.concat([revStar(x) === 'weird' ? 'weird' : 'special']) : g; }
+  function revWhy(r) { return Object.keys(r.why).map(function (q) { return r.why[q].toLocaleString('en-US') + ' ' + q; }).join(', '); }
+  function revSelectShown(w, shown) { var n = 0, safe = 0, pk = revPick(), keep = revMode() === 'keep'; shown.forEach(function (x) { if ((keep ? revKG : dudGuard)(w, x).length) { safe++; return; } if (!pk[x.id]) n++; pk[x.id] = 1; });
+    drawReveal(); toast(keep ? '✅ Keeping ' + plural(n, 'more pet') + ' (' + Object.keys(pk).length.toLocaleString('en-US') + ' picked).' + (safe ? ' 🛡️ ' + plural(safe, 'protected pet') + ' are kept anyway.' : '')
+      : '✓ Selected ' + plural(n, 'more pet') + ' (' + Object.keys(pk).length.toLocaleString('en-US') + ' selected).' + (safe ? ' 🛡️ ' + plural(safe, 'protected pet') + ' left out.' : ''), 5000); }
+  function revToggle(w, x, d) { var pk = revPick(), on = !pk[x.id];
+    if (revMode() === 'keep') { var kg = revKG(w, x); if (kg.length) { toast('🛡️ #' + x.id + ' is always kept (' + kg.join(', ') + '). Nothing to do.', 5000); return; }
+      if (on) pk[x.id] = 1; else delete pk[x.id]; d.classList.toggle('picked', on); d.setAttribute('aria-checked', String(on)); revCount(); return; }
     if (on && isKept(x.id)) { toast('★ #' + x.id + ' is starred, so it can\'t be discarded. Unstar it first.', 6000); return; }
-    if (on) { var gg = dudGuard(w, x); if (gg.length && !window.confirm('Select #' + x.id + ' to discard? It is ' + gg.join(', ') + '.')) return; rev.sel[x.id] = 1; } else delete rev.sel[x.id];
+    if (on) { var gg = dudGuard(w, x); if (gg.length && !window.confirm('Select #' + x.id + ' to discard? It is ' + gg.join(', ') + '.')) return; pk[x.id] = 1; } else delete pk[x.id];
     d.classList.toggle('picked', on); d.setAttribute('aria-checked', String(on)); revCount(); }
-  function revCount() { var n = Object.keys(rev.sel).length, b = $('packDiscard'); if (b) { b.textContent = 'Discard selected (' + n.toLocaleString('en-US') + ')'; b.disabled = !n; }
+  function revCount() { var pk = revPick(), n = Object.keys(pk).length, b = $('packDiscard'), keep = revMode() === 'keep', r = keep ? revRest(world()) : null;
+    if (b) { if (keep) { b.textContent = n ? 'Keep ' + n.toLocaleString('en-US') + ' · Discard the rest (' + r.ids.length.toLocaleString('en-US') + ')' : 'Discard the rest'; b.disabled = !n || !r.ids.length;
+        b.title = n ? 'Discards every other pet of this hatch (all pages and filters). Protected pets stay.' : 'Tap the pets you want to keep first'; }
+      else { b.textContent = 'Discard selected (' + n.toLocaleString('en-US') + ')'; b.disabled = !n; b.title = ''; } b.classList.toggle('pkrest', keep); }
+    var g = $('packGrid'); if (g) g.classList.toggle('pkhaspick', keep && n > 0);
+    var pl = $('pkPlan'); if (pl) pl.innerHTML = keep ? (n ? '✅ Keeping <b>' + n.toLocaleString('en-US') + '</b> you picked' + (r.prot ? ' + <b>' + r.prot.toLocaleString('en-US') + '</b> always kept (' + esc(revWhy(r)) + ')' : '') + ' · 🗑️ <b class="pkgo">' + r.ids.length.toLocaleString('en-US') + '</b> will be discarded'
+        : 'Tap the pets you want to <b>keep</b>. Then <b>Discard the rest</b> clears out every other pet of this hatch.' + (r.prot ? ' 🛡️ ' + r.prot.toLocaleString('en-US') + ' protected pet' + (r.prot === 1 ? ' is' : 's are') + ' always kept.' : '')) : 'Tap a pet to select it for discarding, then Discard selected.';
     var c = $('pkSelN'); if (c) c.textContent = n.toLocaleString('en-US'); var cl = $('pkClear'); if (cl) cl.hidden = !n; }
+  function revSetMode(m) { if (!rev || rev.kind !== 'eggs' || rev.mode === m) return; rev.mode = m; try { localStorage.setItem(REV_MODE_KEY, m); } catch (e) { } if (rev.f === 'sel') rev.f = 'all'; drawReveal();
+    toast(m === 'keep' ? '✅ Tap the pets you want to keep.' : '🗑️ Tap the pets you want to discard.', 3500); }
   /* box-reveal-1124: the box reveal. The first screen of a hatch of 7+ eggs: a big meme headline, the rarity tally counting up,
    * the best finds dealt in like cards (weird and special first), the Shock Box luck line, then 'See all' opens the sort & discard review.
    * Fast (about 1.5 s, tap to skip), one screen on a phone, reduced motion = no animation. Display only: nothing is signed or discarded here. */
@@ -903,9 +936,11 @@
   function revReady(r) { var w = world(), bad = []; r.eggs = r.eggs.filter(function (id) { var x = w.byId[id]; if (x && x.art) return true; if (x) bad.push(id); return false; }); if (bad.length) trayAdd(bad); }
   function drawReveal() { try { drawReveal0(); } catch (e) { if (window.console) console.warn('hatch review', e); var r = rev; if (r && r.kind === 'eggs') { close('packBox'); rev = null; trayAdd(r.eggs); setTimeout(nextReveal, 250); } else throw e; } }
   function drawReveal0() {
+    if (rev) rev._g = null; /* keep-pick: protected-pet answers are cached for one draw (taps reuse them) */
     $('packBox').classList.toggle('pkintro', !!(rev.kind === 'eggs' && rev.intro));
     if (rev.kind === 'eggs' && rev.intro) { var wi = world(); if (rev.eggs.some(function (id) { return wi.byId[id]; })) return drawIntro(wi); rev.intro = false; }
     var w = world(), gear = rev.kind === 'gear', list = gear ? rev.wins : rev.eggs.map(function (id) { return w.byId[id]; }).filter(Boolean), tiers = [0, 0, 0, 0];
+    if (gear) list = list.slice().sort(function (a, b) { return (b.legendary ? 4 : b.tier || 0) - (a.legendary ? 4 : a.tier || 0); }); /* gear best first (Nov 26 2026): a 400-piece batch opens on its Legendaries, not on page after page of Commons. Display order only. */
     if (!gear) list = sortEggs(w, list, rev.sort); /* egg-review-sort 2026-10-24: display order only; rev.sel is keyed by pet id, so ticks survive re-sorting */
     var all = list; list.forEach(function (x) { tiers[gear ? (x.legendary ? 3 : x.tier) : x.art.tierIndex]++; });
     var nMy = gear ? 0 : list.filter(function (x) { return x.stage === 5; }).length;
@@ -915,7 +950,7 @@
       list = spAll.filter(function (x) { return revShows(rev.f, x); }); if (!list.length && rev.f !== 'sel') { rev.f = 'all'; list = spAll; } } /* hatch-review-simple: the Show filter (+ species) */
     var pages = Math.max(1, Math.ceil(list.length / REV_PAGE)); rev.page = Math.min(rev.page, pages - 1);
     $('packTitle').textContent = gear ? '🎁 ' + (list.length === 1 ? 'You got ' + list[0].label : list.length + ' new gear pieces') : ((rev.n0 || all.length) === 1 ? '1 egg hatched' : (rev.n0 || all.length).toLocaleString('en-US') + ' eggs hatched') + (tiers[3] ? ' · ' + tiers[3] + ' Legendary' : '') + (nMy ? ' · ' + nMy + ' Mythic' : '') + (function () { var k = gear ? 0 : all.filter(function (x) { return revStar(x) === 'weird'; }).length; return k ? ' · ' + k + ' Weird' : ''; })();
-    $('packBox').classList.toggle('gearmode', gear); $('packTitle').setAttribute('data-ico', gear ? 'gear' : 'egg'); if ($('packNote')) { $('packNote').hidden = gear; if (!gear) $('packNote').textContent = 'Discarding is free and only in this browser. Undo anytime from 🗑️ Discard pile in My Pets.'; } /* the hide note belongs to the egg review only */
+    $('packBox').classList.toggle('gearmode', gear); $('packBox').classList.toggle('pkkeepm', !gear && revMode() === 'keep'); $('packTitle').setAttribute('data-ico', gear ? 'gear' : 'egg'); if ($('packNote')) { $('packNote').hidden = gear; if (!gear) $('packNote').textContent = hdLive() ? 'Discarded pets leave My Pets right away. When you tap Done, you sign one small burn (1 dander) that makes it permanent on every device. Until then, Undo from 🗑️ Discard pile in My Pets.' : 'Discarding is free and only in this browser. Undo anytime from 🗑️ Discard pile in My Pets.'; } /* keep-pick: Done does send the pet:hd burn (closeReveal -> hdFlush) */ /* the hide note belongs to the egg review only */
     var logBy = {}, info = '', where = { on: 0, bag: 0, comm: 0 };
     if (gear) { (w.log || []).forEach(function (l) { if (l.gid) logBy[l.gid] = l; });
       var srcN = {}, order = [], pets = [], vsIds = [];
@@ -938,9 +973,9 @@
     var pager = pages > 1 ? ' <span class="pager"><button class="q" type="button" id="pkPrev"' + (rev.page ? '' : ' disabled') + '>‹ Prev</button> page ' + (rev.page + 1) + '/' + pages + ' <button class="q" type="button" id="pkNext"' + (rev.page < pages - 1 ? '' : ' disabled') + '>Next ›</button></span>' : '';
     if (gear) $('packSummary').innerHTML = info + '<span class="grtiers">' + tierLine + '</span>' + pager;
     else { /* hatch-review-simple: two equal quick choices, a Show filter by rarity, one Sort, Select all shown / Clear selection, the pager */
-      var kR = revKeepN(w, all, 1), kL = revKeepN(w, all, 2), kA = revKeepN(w, all, 3), many = all.length > 1, spOn = rev.sp !== 'all', cnt = { all: spAll.length, wx: 0, my: 0, sel: 0, 0: 0, 1: 0, 2: 0, 3: 0 };
-      spAll.forEach(function (x) { cnt[x.art.tierIndex]++; if (revStar(x)) cnt.wx++; if (x.stage === 5) cnt.my++; if (rev.sel[x.id]) cnt.sel++; }); /* chip counts = within the chosen species */
-      if (!spOn) cnt.sel = Object.keys(rev.sel).length;
+      var pk = revPick(), keepM = revMode() === 'keep', kR = revKeepN(w, all, 1), kL = revKeepN(w, all, 2), kA = revKeepN(w, all, 3), many = all.length > 1, spOn = rev.sp !== 'all', cnt = { all: spAll.length, wx: 0, my: 0, sel: 0, 0: 0, 1: 0, 2: 0, 3: 0 };
+      spAll.forEach(function (x) { cnt[x.art.tierIndex]++; if (revStar(x)) cnt.wx++; if (x.stage === 5) cnt.my++; if (pk[x.id]) cnt.sel++; }); /* chip counts = within the chosen species */
+      if (!spOn) cnt.sel = Object.keys(pk).length;
       var spC = {}, spK = [], spBase = all.filter(function (x) { return revShows(rev.f, x); }); all.forEach(function (x) { var k = revSp(x); if (spC[k] == null) { spC[k] = 0; spK.push(k); } });
       spBase.forEach(function (x) { spC[revSp(x)]++; }); /* species counts = within the chosen rarity chip */
       spK.sort(function (a, b) { if (a === 'hybrid' || b === 'hybrid') return a === 'hybrid' ? 1 : -1; var x = revSpName(a).toLowerCase(), y = revSpName(b).toLowerCase(); return x < y ? -1 : x > y ? 1 : 0; });
@@ -952,12 +987,14 @@
         '<button type="button" class="btn pkq" id="pkKeepLeg" data-top="2"' + (kL ? '' : ' disabled') + '>Keep Legendary only<small>discards ' + kL.toLocaleString('en-US') + ' Common, Uncommon &amp; Rare</small></button>' +
         '<button type="button" class="btn pkq pkall" id="pkHideAll" data-top="3"' + (kA ? '' : ' disabled') + '>Discard all<small>discards ' + kA.toLocaleString('en-US') + ', Legendary too</small></button>' +
         '<div class="muted small pksafe">🛡️ Legendary pets are never discarded, except by Discard all.' + (function () { var t = revSafeNote(w, all, 3); return t ? ' ' + esc(t.replace(/^These stay too: /, 'Always kept: ')) + '.' : ''; })() + '</div></div>' : ''; /* hide-all-1103: owner wording 'Discard', not 'Hide' */
-      var chips = many ? '<div class="pkshow" role="group" aria-label="Show"><span class="muted">Show</span> ' + REV_SHOW.concat([['sel', '✓ Selected']]).filter(function (f) { return f[0] === 'all' || f[0] === 'sel' || cnt[f[0]] || rev.f === f[0]; }).map(function (f) {
+      var chips = many ? '<div class="pkshow" role="group" aria-label="Show"><span class="muted">Show</span> ' + REV_SHOW.concat([['sel', keepM ? '✅ Keeping' : '✓ Selected']]).filter(function (f) { return f[0] === 'all' || f[0] === 'sel' || cnt[f[0]] || rev.f === f[0]; }).map(function (f) {
         return '<button type="button" class="q pkchip' + (f[0] === '3' || f[0] === 'my' || f[0] === 'wx' ? ' pkgold' : '') + '" data-f="' + f[0] + '" aria-pressed="' + (rev.f === f[0]) + '">' + f[1] + ' <b' + (f[0] === 'sel' ? ' id="pkSelN"' : '') + '>' + cnt[f[0]].toLocaleString('en-US') + '</b></button>'; }).join('') +
         (rev.gone ? '<span class="muted pkgone">' + rev.gone.toLocaleString('en-US') + ' discarded</span>' : '') + '</div>' : '';
       var tools = many ? '<div class="pktools">' + spSel + ' <label class="pksort">Sort <xc-select id="pkSort" aria-label="Sort the pets">' + (window.PetSort ? PetSort.options(rev.sort) : '') + '</xc-select></label>' +
-        ' <button type="button" class="q" id="pkSelAll">Select all shown</button> <button type="button" class="q" id="pkClear"' + (cnt.sel ? '' : ' hidden') + '>Clear selection</button>' + pager + '</div>' +
-        '<div class="muted small pktip">Tap a pet to select it, then Discard selected.</div>' : '';
+        ' <button type="button" class="q" id="pkSelAll">' + (keepM ? 'Keep all shown' : 'Select all shown') + '</button> <button type="button" class="q" id="pkClear"' + (cnt.sel ? '' : ' hidden') + '>' + (keepM ? 'Clear picks' : 'Clear selection') + '</button>' + pager + '</div>' +
+        /* keep-pick: which mode you are in, always in sight, and what Discard the rest will do (filled by revCount) */
+        '<div class="pkmode" role="group" aria-label="What a tap on a pet does"><span>Tap pets to</span><button type="button" class="pkmb pkmk" data-mode="keep" aria-pressed="' + keepM + '">✅ Keep</button><button type="button" class="pkmb pkmd" data-mode="discard" aria-pressed="' + !keepM + '">🗑️ Discard</button></div>' +
+        '<div class="small pktip' + (keepM ? ' pktipk' : '') + '" id="pkPlan" role="status"></div>' : '';
       if (!rev.best) rev.best = revBest(w, all).map(function (x) { return x.id; }); /* hatch-tray-1124: fixed when the review opens, so it doesn't jump around while you discard */
       if (rev.luck == null) rev.luck = revLuck(w, all);
       var bestL = rev.best.map(function (id) { return w.byId[id]; }).filter(function (x) { return x && rev.eggs.indexOf(x.id) >= 0; });
@@ -972,7 +1009,8 @@
       if ($('pkSelAll')) $('pkSelAll').onclick = function () { revSelectShown(w, list); };
       if ($('pkSp')) { $('pkSp').value = rev.sp; $('pkSp').onchange = function () { rev.sp = this.value; rev.page = 0; drawReveal(); var g = $('packGrid'); if (g) g.scrollTop = 0; }; }
       if ($('pkSpX')) $('pkSpX').onclick = function () { rev.sp = 'all'; rev.page = 0; drawReveal(); };
-      if ($('pkClear')) $('pkClear').onclick = function () { rev.sel = {}; if (rev.f === 'sel') rev.f = 'all'; drawReveal(); }; }
+      if ($('pkClear')) $('pkClear').onclick = function () { if (revMode() === 'keep') rev.keep = {}; else rev.sel = {}; if (rev.f === 'sel') rev.f = 'all'; drawReveal(); };
+      $('packSummary').querySelectorAll('[data-mode]').forEach(function (b) { b.onclick = function () { revSetMode(b.dataset.mode); }; }); }
     if ($('pkSort')) $('pkSort').onchange = function () { rev.sort = this.value; rev.page = 0; drawReveal(); };
     if ($('pkPrev')) { $('pkPrev').onclick = function () { rev.page--; drawReveal(); }; $('pkNext').onclick = function () { rev.page++; drawReveal(); }; }
     var grid = $('packGrid'); grid.innerHTML = '';
@@ -981,8 +1019,9 @@
       if (gear) { d.className = 'egg gearwin t' + (x.legendary ? 3 : x.tier) + ' ux-flash ux-t' + (x.legendary ? 3 : x.tier || 0) + (x.legendary ? ' ux-fanfare' : ''); d.title = x._src.long; d.innerHTML = '<span class="ic"></span><div class="gwname"><b>' + esc(x.label) + '</b></div><div>' + esc(x.tierName) + (x.legendary ? ' ★' : '') + ' · ' + esc(x.slotName) + '</div><div class="muted gwsrc">' + esc(x._src.short) + (x._pet != null ? ' · pet #' + x._pet : '') + '</div>' +
           '<div class="gwwhere">' + (x._on === 'c' ? '✓ Worn by ' + esc(commName(w)) + ' (community pet)' : x._on != null ? '✓ Equipped on #' + x._on : '📦 In your stash') + '</div>';
         d.querySelector('.ic').appendChild(V2Render.iconCanvas(x.item, 'gicon')); grid.appendChild(d); if (window.UXB) UXB.revealCard(d, x, w); return; }
-      var gd = dudGuard(w, x), on = !!rev.sel[x.id]; var sk = revStar(x); d.className = 'egg pkcard t' + x.art.tierIndex + (sk ? ' pkstar' : '') + (on ? ' picked' : ''); d.tabIndex = 0; d.setAttribute('role', 'checkbox'); d.setAttribute('aria-checked', String(on)); d.setAttribute('aria-label', 'Select #' + x.id + ' to discard'); d.title = 'Tap to select or unselect';
-      d.innerHTML = '<span class="pkcheck" aria-hidden="true">✓</span><canvas width="32" height="32"></canvas><div>#' + x.id + ' ' + esc(TIERS[x.art.tierIndex].label) + (x.stageName ? ' · ' + esc(V.stageLabelOf ? V.stageLabelOf(x) : x.stageName) : '') + '</div><div class="muted">' + esc(V.petSpeciesLabel ? V.petSpeciesLabel(x) : x.species) + '</div>' + (R.eraChip ? R.eraChip(w, x) : '') + (x.parents && R.bredFrom ? '<div class="small">' + R.bredFrom(w, x, false) + '</div>' : '') + (window.PetScore && PetScore.discardInfo ? PetScore.discardInfo(w, x, V.petSpeciesLabel ? V.petSpeciesLabel(x) : null) : '') + (gd.length ? '<div class="small dudg" title="Protected: never picked for you">🛡️ Protected · ' + esc(gd.join(', ')) + '</div>' : '');
+      var gd = dudGuard(w, x), km = revMode() === 'keep', on = !!revPick()[x.id]; var sk = revStar(x); d.className = 'egg pkcard t' + x.art.tierIndex + (sk ? ' pkstar' : '') + (on ? ' picked' : '') + (km && revKG(w, x).length ? ' pkauto' : ''); d.tabIndex = 0; d.setAttribute('role', 'checkbox'); var kgd = km && revKG(w, x).length; d.setAttribute('aria-checked', String(kgd ? true : on));
+      d.setAttribute('aria-label', km ? (kgd ? '#' + x.id + ' is always kept' : 'Keep #' + x.id) : 'Select #' + x.id + ' to discard'); d.title = km ? (kgd ? 'Always kept (protected)' : 'Tap to keep, tap again to let it go') : 'Tap to select or unselect';
+      d.innerHTML = '<span class="pkcheck" aria-hidden="true">✓</span><canvas width="32" height="32"></canvas><div>#' + x.id + ' ' + esc(TIERS[x.art.tierIndex].label) + (x.stageName ? ' · ' + esc(V.stageLabelOf ? V.stageLabelOf(x) : x.stageName) : '') + '</div><div class="muted">' + esc(V.petSpeciesLabel ? V.petSpeciesLabel(x) : x.species) + '</div>' + (R.eraChip ? R.eraChip(w, x) : '') + (x.parents && R.bredFrom ? '<div class="small">' + R.bredFrom(w, x, false) + '</div>' : '') + (window.PetScore && PetScore.discardInfo ? PetScore.discardInfo(w, x, V.petSpeciesLabel ? V.petSpeciesLabel(x) : null) : '') + (function () { var gk = km ? revKG(w, x) : gd; return gk.length ? '<div class="small dudg" title="Protected: never picked for you">🛡️ ' + (km ? 'Always kept' : 'Protected') + ' · ' + esc(gk.join(', ')) + '</div>' : ''; })();
       grid.appendChild(d); var c = d.querySelector('canvas'), fr = petFrames(x, w); paint(c, fr[0]); R.animate(c, fr);
       d.onclick = function (e) { if (e.target.closest && e.target.closest('a,button,input,select,xc-select')) return; revToggle(w, x, d); };
       d.onkeydown = function (e) { if (e.target === d && (e.key === ' ' || e.key === 'Enter')) { e.preventDefault(); revToggle(w, x, d); } };
@@ -1096,34 +1135,14 @@
       : '<span class="sk-tag sk-w">WAGMI?</span> <b>Say WAGMI once a chain day</b> <span class="sk-joke">and watch your 🔥 streak grow. 1 dander, no feeding needed.</span>';
     setTimeout(function () { var b = $('wagmiBtn'); if (b && !b.disabled) b.onclick = function () { confirmPlans('WAGMI check-in', [{ tag: 'pet:wagmi', amount: 0.00000001 }]); }; }, 0);
     return '<span class="sk-msg">' + msg + '</span>' + btn; }
-  /* wagmi-daily (owner, Oct 22 2026): right after V2Wallet.connect, offer WAGMI once per wallet per chain day if it can be sent (gate open, not said
-   * today, none pending; same sendBlock check as the button). One tap opens the normal confirm (one XCP Wallet window, one-window lock applies).
-   * Dismiss = not again today. localStorage key xcpets-wagmi-offer:<addr> = chain day it was shown. The My Pets WAGMI button stays. */
-  var WAGMI_PLAN = { tag: 'pet:wagmi', amount: 0.00000001 };
-  function wagmiOffer(w) { try {
-    if (!ME || viewOnly() || !w || !w.tip || !V.wagmiOn || !V.wagmiOn(w.tip + 1)) return; var ss = window.sessionStorage, ls = window.localStorage;
-    if (ss.getItem('xcpets-wagmi-connect') !== ME) return; var d = V.day ? V.day(w.tip + 1) : Math.floor((w.tip + 1) / 144), k = 'xcpets-wagmi-offer:' + ME;
-    if (ls.getItem(k) === String(d) || $('wagmiOffer') || sendWhy(WAGMI_PLAN)) return;
-    ls.setItem(k, String(d)); ss.removeItem('xcpets-wagmi-connect');
-    var first = V.wagmiFirst ? V.wagmiFirst(w, d).length : 5, prize = V.wagmiPrizeOn && V.wagmiPrizeOn(w.tip + 1) && first < (V.WAGMI_PRIZE_N || 5);
-    var el = document.createElement('div'); el.id = 'wagmiOffer'; el.className = 'wagmi-offer'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'Say WAGMI today');
-    el.innerHTML = '<b>🚀 gm! Say WAGMI for today?</b><span>One tap keeps your 🔥 streak going (1 dander, plus the network fee).' + (prize ? ' Only ' + first + ' of 5 Day One Degen spots taken today: the first five wallets each get +1 saved Pepe Wheel spin.' : '') + '</span>' +
-      '<div class="wo-btns"><button type="button" class="btn" id="wagmiOfferGo">🚀 Say WAGMI</button><button type="button" class="btn ghost" id="wagmiOfferNo">Not today</button></div>';
-    document.body.appendChild(el);
-    $('wagmiOfferGo').onclick = function () { el.remove(); confirmPlans('WAGMI check-in', [WAGMI_PLAN]); };
-    $('wagmiOfferNo').onclick = function () { el.remove(); };
-  } catch (e) { } }
-  window.addEventListener('xcpets:connected', function () { setTimeout(function () { wagmiOffer(world()); }, 0); });
-  if (!document.getElementById('wagmiOfferCss')) { var woc = document.createElement('style'); woc.id = 'wagmiOfferCss';
-    woc.textContent = '.wagmi-offer{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:60;width:min(440px,calc(100vw - 24px));background:#181327;color:#ece6ff;border:3px solid #ffc93c;border-radius:12px;padding:12px 14px;box-shadow:0 6px 24px #000a;display:flex;flex-direction:column;gap:6px}' +
-      '.wagmi-offer b{font-family:"Press Start 2P",monospace;font-size:11px;color:#ffc93c;line-height:1.5}.wagmi-offer span{font-size:13px;line-height:1.4}.wagmi-offer .wo-btns{display:flex;gap:8px;flex-wrap:wrap}.wagmi-offer .btn{min-height:40px}';
-    document.head.appendChild(woc); }
+  /* wagmi-daily pop-up removed (Jake, Nov 26 2026: "gm! Say WAGMI for today?" floated over the Select / Feed selected bar). WAGMI stays one
+   * tap away in the WAGMI bar at the top of My Pets (#streakBar, wagmiBar above). Floating pop-ups now lift above pinned bars (js/v2-dock.js). */
   var CARDC = new Map(); /* speed2-1101: last grid card per pet id (see mk) */
   function renderPets(w) {
     if (CARDC.size > 4000) CARDC.clear();
     var all = mine(w), alive = all.filter(function (p) { return !p.dead; }), dead = all.filter(function (p) { return p.dead; });
     if (V.streakOf && $('streakBar')) { var stk = ME ? V.streakOf(w, ME, w.tip) : null; /* WAGMI / NGMI daily check-in (login-streak rework, Oct 21 2026) */
-      $('streakBar').style.display = stk ? '' : 'none'; if (stk) $('streakBar').innerHTML = wagmiBar(stk, w);  wagmiOffer(w); }
+      $('streakBar').style.display = stk ? '' : 'none'; if (stk) $('streakBar').innerHTML = wagmiBar(stk, w); }
     var rost = w._roster, partial = !!(rost && !w._full);
     $('nAlive').textContent = partial ? rost.alive : alive.length; $('nDead').textContent = partial ? rost.dead : dead.length; $('petBadge').textContent = partial ? rost.alive : alive.length;
     if (window.V2TokFilter && $('fTok')) { var tc = V2TokFilter.counts(w, petList(alive, dead, false, true));
@@ -2254,7 +2273,12 @@
     var b = $(lastHatchN >= 1000 ? 'zapBtn' : lastHatchN >= 144 ? 'caseBtn' : lastHatchN >= 12 ? 'dozenBtn' : 'hatchBtn'); if (b) { try { b.focus({ preventScroll: true }); } catch (e) { } b.classList.remove('flash'); void b.offsetWidth; b.classList.add('flash'); setTimeout(function () { b.classList.remove('flash'); }, 2400); } }); };
   $('packClose').onclick = closeReveal; $('packSkip').onclick = function () { if (rev && rev.kind === 'eggs') uDel(rev.all || rev.eggs); if (!revealQ.length) packY = null; close('packBox'); rev = null; render(); setTimeout(nextReveal, 250); };
   /* egg-review-sort 2026-10-24: the review's 'Discard all Commons' button is removed (owner); Rarity: low to high puts Commons first. My Pets' own Discard all Commons (delCommonsBox) is unchanged. */
-  $('packDiscard').onclick = function () { if (!rev || rev.kind !== 'eggs') return; var ids = Object.keys(rev.sel).map(Number); if (!ids.length) return toast('Tap a pet to select it first.');
+  $('packDiscard').onclick = function () { if (!rev || rev.kind !== 'eggs') return;
+    if (revMode() === 'keep') { /* keep-pick: discard every pet of this hatch that is not picked to keep and not protected; the confirm names the count and rarities */
+      var kw = world(), r = revRest(kw), nk = Object.keys(rev.keep || {}).length; if (!nk) return toast('Tap the pets you want to keep first.'); if (!r.ids.length) return toast('Nothing left to discard: every other pet is protected.');
+      var tl = [3, 2, 1, 0].filter(function (t) { return r.tiers[t]; }).map(function (t) { return r.tiers[t].toLocaleString('en-US') + ' ' + TIERS[t].label; }).join(', ');
+      return revHide(r.ids, 'Keep ' + plural(nk, 'pet') + ' and discard the rest?\n\n🗑️ This discards ' + plural(r.ids.length, 'pet') + ' from this hatch (' + tl + ').\n\n✅ Kept: ' + nk.toLocaleString('en-US') + ' you picked' + (r.prot ? ' + ' + r.prot.toLocaleString('en-US') + ' always kept (' + revWhy(r) + ')' : '') + '.'); }
+    var ids = Object.keys(rev.sel).map(Number); if (!ids.length) return toast('Tap a pet to select it first.');
     var dw = world(), gd = ids.filter(function (id) { var p = dw.byId[id]; return p && !isKept(id) && dudGuard(dw, p).length; });
     revHide(ids, 'Discard ' + ids.length.toLocaleString('en-US') + ' selected pet' + (ids.length > 1 ? 's' : '') + '?' + (gd.length ? '\n\n🛡️ ' + gd.length + ' of them ' + (gd.length > 1 ? 'are' : 'is') + ' protected (' + (function () { var why = []; gd.forEach(function (id) { dudGuard(dw, dw.byId[id]).forEach(function (r) { r = /^wearing/.test(r) ? 'wearing gear' : r; if (why.indexOf(r) < 0) why.push(r); }); }); return why.join(', '); })() + '): ' + idList(gd) + '.' : '')); };
   $('txClose').onclick = function () { close('txBox'); };

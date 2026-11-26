@@ -29,7 +29,7 @@ function common(src) { let h = fs.readFileSync(path.join(ROOT, src), 'utf8'); h 
   ['block-hashes', 'v2-cached', 'casa-connect', 'doom-gear', 'doom-week'].forEach(n => { const re = new RegExp('<script src="js/' + n + '\\.js\\?v=[^"]*"( defer)?><\\/script>'); if (re.test(h)) h = h.replace(re, ''); });
   sub(/<\/body>/, '<script src="js/practice-ui.js?v=' + b + '" defer></script></body>', '</body>');
   sub(/<nav>[\s\S]*?<\/nav>/, PXNAV, 'nav');
-  sub(/(<\/header><div class="pixdiv" aria-hidden="true"><\/div>)/, '$1\n' + BAR, 'header end');
+  sub(/(<\/header>(?:<script src="js\/v2-header\.js\?v=[^"]*"><\/script>)?<div class="pixdiv" aria-hidden="true"><\/div>)/, '$1\n' + BAR, 'header end');
   return { get: () => h, set: v => { h = v; }, sub, must }; }
 function buildPet() { const c = common('pet.html'), sub = c.sub;
   sub(/<title>[^<]*<\/title>/, '<title>XCPETS: Practice pet (pretend)</title><meta name="robots" content="noindex">', 'title');
@@ -62,7 +62,7 @@ function build(src, title) {
   /* header nav: practice stays on this page; the rest of the site is the real game */
   sub(/<nav>[\s\S]*?<\/nav>/, PXNAV, 'nav');
   /* the PRACTICE bar, right under the header */
-  sub(/(<\/header><div class="pixdiv" aria-hidden="true"><\/div>)/, '$1\n' + BAR, 'header end');
+  sub(/(<\/header>(?:<script src="js\/v2-header\.js\?v=[^"]*"><\/script>)?<div class="pixdiv" aria-hidden="true"><\/div>)/, '$1\n' + BAR, 'header end');
   /* real-chain only panels */
   sub(/<section class="panel compact" id="communityPanel">/, '<section class="panel compact" id="communityPanel" hidden style="display:none">', 'communityPanel');
   sub(/<section class="panel" id="counter">/, '<section class="panel" id="counter" hidden style="display:none">', 'counter');

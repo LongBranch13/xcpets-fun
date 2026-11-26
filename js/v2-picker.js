@@ -27,7 +27,11 @@
     var KC = new Map(), key0 = key; key = function (r) { var v = KC.get(r); if (v === undefined) { v = key0(r); KC.set(r, v); } return v; }; /* lair-perf: each sort key worked out once per record, not per comparison */
     var nmK = function (r) { return String((r.pets[0] || {}).name || '').toLowerCase(); }; if (st.sort === 'name') key = function () { return 0; };
     L.sort(function (a, b) { if (st.sort === 'name') { var na = nmK(a), nb = nmK(b); if (na !== nb) return (st.asc ? -1 : 1) * (na < nb ? -1 : 1); } var ma = st.mineFirst && a.pets.some(function (p) { return p.owner === me; }) ? 0 : 1, mb = st.mineFirst && b.pets.some(function (p) { return p.owner === me; }) ? 0 : 1; return ma - mb || (st.asc ? -1 : 1) * (key(a) - key(b)) || (a.newest || 0) - (b.newest || 0); });
-    var pages = Math.max(1, Math.ceil(L.length / per)); st.page = Math.min(st.page, pages - 1); var view = L.slice(st.page * per, st.page * per + per);
+    var pages = Math.max(1, Math.ceil(L.length / per));
+    /* show the picked pet (Nov 26 2026, Flex Forge: the station opened on a pet that sat on page 3, so the row and the panel below disagreed): the first time a
+     * selection is drawn, jump to the page that holds it. Paging after that is the player's own. */
+    if (opt.selected != null && st.__selFor !== String(opt.selected)) { st.__selFor = String(opt.selected); for (var si = 0; si < L.length; si++) if (String(L[si].key) === String(opt.selected)) { st.page = Math.floor(si / per); break; } }
+    st.page = Math.min(st.page, pages - 1); var view = L.slice(st.page * per, st.page * per + per);
     var chip = function (k, v, on, label) { return '<button type="button" class="pk-chip' + (on ? ' on' : '') + '" data-k="' + k + '" data-v="' + esc(v) + '" aria-pressed="' + (on ? 'true' : 'false') + '">' + label + '</button>'; };
     el.innerHTML = '<div class="pk' + (opt.cls ? ' ' + esc(opt.cls) : '') + '"><div class="pk-top"><input type="search" class="pk-q" placeholder="Name or #ID" aria-label="Search by pet name or #ID" value="' + esc(st.q) + '">' +
       '<xc-select class="pk-sp" aria-label="Species"><option value="">All species</option>' + Object.keys(sp).sort(function (a, b) { return spLabel(a).toLowerCase() < spLabel(b).toLowerCase() ? -1 : 1; }).map(function (s) { return '<option value="' + esc(s) + '"' + (st.sp === s ? ' selected' : '') + '>' + esc(spLabel(s)) + '</option>'; }).join('') + '</xc-select>' +
@@ -47,6 +51,7 @@
     el.querySelectorAll('.pk-key').forEach(function (b) { b.onclick = function () { var r = L.filter(function (x) { return String(x.key) === b.dataset.key; })[0]; if (r && opt.onPick) opt.onPick(r); }; });
     var row = el.querySelector('.pk-keys'), x0 = null; row.addEventListener('touchstart', function (e) { x0 = e.touches[0].clientX; }, { passive: true });
     row.addEventListener('touchend', function (e) { if (x0 == null) return; var dx = e.changedTouches[0].clientX - x0; x0 = null; if (Math.abs(dx) > 40) { st.page = Math.max(0, Math.min(pages - 1, st.page + (dx < 0 ? 1 : -1))); re(); } }, { passive: true });
+    if (opt.after) try { opt.after(el); } catch (e) { } /* e.g. paint pet sprites into the chips (Flex Forge) */
     return { matches: L.length, pages: pages }; }
   /* fix-display-mismatch (Oct 20 2026, display only): the chip number follows the sort (Pet Score / Rarity -> ⭐ score, Power / Newest -> ⚡ power) */
   function stat(w, p, sort) { return (sort === 'score' || sort === 'rarity') && window.PetScore ? '⭐' + score(w, p) : '<span' + ptA(p) + '>⚡' + pow(p) + '</span>'; }
