@@ -26,6 +26,14 @@ const PAGES = {
     '<script>var left=3;function scene(){if(!left--)return;var d=document.createElement("div");d.className="reveal on";d.setAttribute("role","dialog");' +
     'd.style.cssText="position:fixed;inset:0;background:#000;z-index:9";var c=document.createElement("button");c.textContent="Close";' +
     'c.onclick=function(){d.remove();setTimeout(scene,300)};d.appendChild(c);document.body.appendChild(d);}scene();</script></body>',
+  /* Gift several pets on a 40,000-pet page: the tap is handled late and opens the picker over the button (no Close the robot knows) */
+  '/lateSheet.html': '<!doctype html><meta charset="utf-8"><body><button id="go">Open ▸</button><script>var go=document.getElementById("go");' +
+    'go.onclick=function(){var t=Date.now();while(Date.now()-t<3500){}document.title="pressed";var d=document.createElement("div");d.id="gfBox";d.className="reveal gf on";' +
+    'd.style.cssText="position:fixed;inset:0;background:#123;z-index:9";d.textContent="Gift several pets";document.body.appendChild(d);};</script></body>',
+  /* a wobbling button under a wall that never goes away, while the page clicks things itself (el.click, like dismiss() or a scene does):
+   * still blocked. Any click used to count as 'the tap landed', so this passed as pressed. */
+  '/blocked.html': '<!doctype html><meta charset="utf-8"><style>@keyframes w{50%{transform:translateX(6px)}}#go{animation:w .2s infinite}</style><body><button id="go" onclick="document.title=\'pressed\'">Open ▸</button>' +
+    '<div class="wall" style="position:fixed;inset:0;background:#300;z-index:9"></div><script>setInterval(function(){document.body.click()},300)</script></body>',
 };
 const srv = http.createServer((q, r) => { const p = q.url.split('?')[0];
   if (p === '/late.html') return setTimeout(() => { r.writeHead(200, { 'content-type': 'text/html' }); r.end(PAGES['/b.html']); }, 14000);
@@ -44,6 +52,8 @@ const srv = http.createServer((q, r) => { const p = q.url.split('?')[0];
   r = await run('/slownav.html', 'slow page change'); ok(r.pressed && !r.got.some(x => x.kind === 'freeze'), 'a page change that takes 14 s is not a freeze (' + kinds(r) + ')');
   r = await run('/frozenav.html', 'freeze then leave'); ok(r.got.some(x => x.kind === 'freeze'), 'a page that froze 12 s before it left is still a freeze (' + kinds(r) + ')');
   r = await run('/stuck.html', 'freeze in place'); ok(r.got.some(x => x.kind === 'freeze'), 'a page that freezes and never leaves is still a freeze (' + kinds(r) + ')');
+  r = await run('/lateSheet.html', 'late sheet'); ok(r.pressed && r.title === 'pressed' && !r.got.some(x => x.kind === 'button-blocked'), 'a late tap that opens a sheet over its own button is pressed, not blocked (' + kinds(r) + ')');
+  r = await run('/blocked.html', 'blocked button'); ok(!r.pressed && r.title !== 'pressed' && r.got.some(x => x.kind === 'button-blocked'), 'a button under a wall is still blocked, even when the page clicks things itself (' + kinds(r) + ')');
   r = await run('/covered.html', 'covered button'); ok(r.pressed && r.title === 'pressed' && !r.got.length, 'a button under a scene that comes back 3 times is pressed (' + kinds(r) + ')');
 
   await b.close(); srv.close();

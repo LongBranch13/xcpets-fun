@@ -60,6 +60,7 @@ function hands(pg) {
     async open(page) {
       const t0 = Date.now();
       if (WHY) { try { if (!cdp) { cdp = await pg.context().newCDPSession(pg); await cdp.send('Profiler.enable'); await cdp.send('Profiler.setSamplingInterval', { interval: 1000 }); } await cdp.send('Profiler.stop').catch(() => {}); await cdp.send('Profiler.start'); } catch (e) { cdp = null; } }
+      pg.__robotNav = Date.now(); /* the robot's own page change: a script it cuts off mid-load is not the page's fault (see 'pageerror' below) */
       await pg.goto(BASE + '/' + page, { waitUntil: 'domcontentloaded', timeout: 90000 });
       const game = /^(play|fight|breed|rare-room|raid|cemetery|shop|pet)\.html/.test(page);
       if (game && !(await L.worldReady(pg, 180000))) { problem('no-world', page + ': the pets never loaded (3 min)'); return false; }
@@ -104,9 +105,16 @@ function hands(pg) {
        * tap) makes click() time out although the tap went through. A capture listener notes each tap in sessionStorage: a tap that
        * landed, a page that changed, or a page too busy to answer right after the tap counts as pressed (freezes() then judges the wait). */
       const t0tap = Date.now();
-      await pg.evaluate(() => { if (window.__ptTap) return; window.__ptTap = 1; document.addEventListener('click', () => { try { sessionStorage.setItem('pt-tap', String(Date.now())); } catch (e) {} }, true); }).catch(() => {});
+      /* Nov 26 2026: only a real tap (isTrusted: the robot's own finger, never a page's or dismiss()'s el.click()) on THIS button counts.
+       * Any click used to count, so a Close pressed by dismiss() could pass for the button's tap and hide a button that really was blocked. */
+      await el.evaluate(n => { document.querySelectorAll('[data-pt-press]').forEach(x => x.removeAttribute('data-pt-press')); n.setAttribute('data-pt-press', '1'); }).catch(() => {});
+      await pg.evaluate(() => { if (window.__ptTap) return; window.__ptTap = 1; document.addEventListener('click', (e) => { try { if (e.isTrusted && e.target && e.target.closest && e.target.closest('[data-pt-press]')) sessionStorage.setItem('pt-tap', String(Date.now())); } catch (x) {} }, true); }).catch(() => {});
       const landed = async () => { if (pg.url() !== H.from) return true; const v = await Promise.race([pg.evaluate(() => +sessionStorage.getItem('pt-tap') || 0).catch(() => 0), new Promise(r => setTimeout(() => r(-1), 1500))]); return v === -1 || v >= t0tap; };
-      const tap = async (o) => { try { await el.click(o); return true; } catch (e) { if (!/intercepts pointer events/.test(e.message) && await landed()) return true; throw e; } };
+      /* a tap that is reported 'covered' can still have landed earlier: on a 40,000-pet page an earlier tap is handled seconds late and opens
+       * its own sheet over the button (Gift several pets: 'covered by #gfBox', the very picker it opened). Only a recorded real tap on this
+       * button counts then; a busy page alone does not. */
+      const tapped = async () => { const v = await Promise.race([pg.evaluate(() => +sessionStorage.getItem('pt-tap') || 0).catch(() => 0), new Promise(r => setTimeout(() => r(0), 1500))]); return v >= t0tap; };
+      const tap = async (o) => { try { await el.click(o); return true; } catch (e) { if (/intercepts pointer events/.test(e.message) ? await tapped() : await landed()) return true; throw e; } };
       const onTop = () => el.evaluate(n => { const r = n.getBoundingClientRect(), t = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return !!t && (t === n || n.contains(t)); }).catch(() => false);
       try { await tap({ timeout: 2500 }); pressed = true; } catch (e0) { await H.dismiss(2500); await pg.waitForTimeout(400); }
       /* a button that wobbles (the hatch buttons wiggle) never counts as 'stable' to the browser robot, but a finger taps it fine:
@@ -149,6 +157,17 @@ function hands(pg) {
     /* a player's page finishes its background check (the newest blocks + this wallet's pets) within a few seconds of opening */
     async settled() { const t0 = Date.now(); for (let i = 0; i < 30; i++) { if (await pg.evaluate(() => { const S = V2Mock.state(); return !!(S.verified || S.viewChecked || !S.view); }).catch(() => true)) break; await pg.waitForTimeout(2000); }
       const s = (Date.now() - t0) / 1000; if (s > 45) problem('slow-check', 'the page took ' + s.toFixed(0) + ' s to finish checking the newest blocks'); },
+    /* calm(): wait like a player for a big wallet to finish arriving before touching it (Nov 26 2026). On Evan's 40,000-pet wallet My Pets
+     * keeps growing for a while after the first paint (owner pages arrive in batches: 40,190 -> 40,366), and a press in that stretch
+     * measured the loading, not the button (Select 'froze' 1.3 s, Cancel 'lost' pets that had only just arrived). Waits until the list
+     * size holds still for 3 looks in a row and the page ran no long task for 1.5 s (up to 90 s), then closes any scene that came up
+     * meanwhile. A list that never stops changing is reported, so a real loading loop is still caught. */
+    async calm(what) { const t0 = Date.now(); let last = -1, same = 0, n = -1;
+      while (Date.now() - t0 < 90000) { await pg.waitForTimeout(1500);
+        const s = await pg.evaluate(() => { let n = -1; try { n = V2UI.mine(V2Mock.world()).length; } catch (e) {} const L = (window.__pt && window.__pt.long) || [], end = L.length ? Math.max(...L.map(x => x.at + x.ms)) : 0; return { n, quiet: performance.now() - end > 1500 }; }).catch(() => null);
+        if (!s) { same = 0; continue; } n = s.n; same = (s.n === last && s.quiet) ? same + 1 : 0; last = s.n; if (same >= 2) break; }
+      const secs = (Date.now() - t0) / 1000; if (same < 2) problem('never-settles', (what || 'My Pets') + ': the pet list kept changing or the page kept working for 90 s (' + n + ' pets)'); else if (secs > 6) ok((what || 'My Pets') + ': list settled at ' + n + ' pets after ' + secs.toFixed(0) + ' s');
+      if (await H.scene()) await H.dismiss(3000); return n; },
     async sheet() { return pg.evaluate(() => { const c = document.getElementById('confirmBox'); return c && c.classList.contains('on') ? { title: (document.getElementById('cfTitle') || {}).textContent || '', amt: (document.getElementById('cfAmt') || {}).textContent || '', body: (document.getElementById('cfBody') || {}).innerText || '' } : null; }); },
     async openSheets() { return pg.evaluate(() => [...document.querySelectorAll('.reveal.on, [aria-modal=true], [role=dialog]')].filter(e => { const r = e.getBoundingClientRect(); return r.width > 2 && r.height > 2 && getComputedStyle(e).visibility !== 'hidden' && getComputedStyle(e).display !== 'none'; }).map(e => e.id || String(e.className).split(' ')[0])); },
     /* a small floating pill (wallet, new pets) over the page is fine while the page scrolls under it, like a pinned bar (the audit's sticky rule) */
@@ -180,7 +199,7 @@ FLOWS.open = async (H, T) => {
   if (!(await H.open('play.html'))) return;
   const away = await H.pg.evaluate(() => !!document.querySelector('#ipAway, .ip-away, #returnBox.on, .returnov'));
   ok('away card or bell: ' + away);
-  await H.dismiss(8000); await H.settled(); await H.shot('open');
+  await H.dismiss(8000); await H.settled(); await H.calm('before counting'); await H.shot('open');
   const s = await H.pg.evaluate(() => { const w = V2Mock.world(); const t = (id) => ((document.getElementById(id) || {}).textContent || '');
     return { mine: V2UI.mine(w).length, alive: V2UI.mine(w).filter(p => !p.dead).length, sale: !!document.querySelector('.fs-banner, #fsBanner, .firesale, [data-firesale]') || /FIRE SALE/i.test(document.body.innerText.slice(0, 20000)),
       hatch: t('hatchBtn'), dozen: t('dozenBtn'), kase: t('caseBtn'), zap: t('zapBtn'), feed: t('cfeedBtn'), tip: V2Mock.state().tip, wtip: w.tip }; });
@@ -253,7 +272,7 @@ FLOWS.hatch = async (H, T, ctx) => {
 FLOWS.select = async (H) => {
   if (!(await H.open('play.html'))) return;
   await H.dismiss(8000); await H.settled();
-  const n0 = await H.pg.evaluate(() => V2UI.mine(V2Mock.world()).length);
+  const n0 = await H.calm('before Select');
   if (!(await H.press('#mpcSelBtn', 'Select button', { quiet: true })) && !(await H.press(/☑️ Select|^Select$/, 'Select button'))) return;
   if (!(await H.press('#selAll', 'Select all'))) return;
   const sel = await H.pg.evaluate(() => V2UI.S().sel.length);
@@ -274,14 +293,15 @@ FLOWS.select = async (H) => {
   }
   await H.press(/Select none/, 'Select none', { quiet: true });
   const n1 = await H.pg.evaluate(() => V2UI.mine(V2Mock.world()).length);
-  if (n1 !== n0) problem('pets-lost', 'after Cancel My Pets went from ' + n0 + ' to ' + n1); else ok('Cancel kept all ' + n1 + ' pets');
+  /* fewer = lost; more = pets that arrived meanwhile (a block landed, a late owner page), not a loss */
+  if (n1 < n0) problem('pets-lost', 'after Cancel My Pets went from ' + n0 + ' to ' + n1); else ok('Cancel kept all ' + n0 + ' pets' + (n1 > n0 ? ' (' + (n1 - n0) + ' more arrived meanwhile)' : ''));
   const burnt = await H.burns(); if (burnt.length) problem('unexpected-burn', 'a burn was sent without pressing Sign: ' + burnt.map(b => b.tag).join(','));
 };
 
 /* feeding: the one-burn "Do it all" (Daily chores), then Feed selected; the chores burn lands and the referee counts who really ate */
 FLOWS.feed = async (H, T, ctx) => {
   if (!(await H.open('play.html'))) return;
-  await H.dismiss(8000); await H.settled();
+  await H.dismiss(8000); await H.settled(); await H.calm('before feeding');
   let land = null;
   for (const [what, why] of [[/Do it all in one burn|Daily chores/i, 'Do it all in one burn'], [/Feed hungry|Feed all hungry/i, 'Feed the hungry pets']]) {
     if (!(await H.press(what, why, { wait: 2500, quiet: true }))) { ok(why + ': button not offered right now'); continue; }
@@ -335,7 +355,7 @@ FLOWS.grinder = async (H) => {
 /* a pet page opens and its buttons answer */
 FLOWS.petpage = async (H) => {
   if (!(await H.open('play.html'))) return;
-  await H.dismiss(8000);
+  await H.dismiss(8000); await H.calm('before Open');
   if (!(await H.press(/Open ▸/, 'Open a pet', { wait: 2000 }))) return;
   const sheets = await H.openSheets(); if (!sheets.length && !/pet\.html/.test(H.pg.url())) problem('no-sheet', 'Open ▸ on a pet card opened nothing'); else ok('pet page: ' + (sheets.join(',') || H.pg.url()));
   await H.layout('pet page'); await H.shot('pet');
@@ -345,7 +365,7 @@ FLOWS.petpage = async (H) => {
 /* gifts: the picker opens */
 FLOWS.gift = async (H) => {
   if (!(await H.open('play.html'))) return;
-  await H.dismiss(8000);
+  await H.dismiss(8000); await H.calm('before Gift');
   if (!(await H.press('#gfMany', 'Gift several pets', { wait: 2000, quiet: true }))) return ok('gift button not on this screen');
   const sheets = await H.openSheets(); if (!sheets.length) problem('no-sheet', 'Gift several pets opened nothing'); else ok('gift picker: ' + sheets.join(','));
   await H.layout('gift picker'); await H.cancel();
@@ -392,7 +412,18 @@ else (async () => {
       FLOW = name; console.log('\n▶ ' + name + ' (' + size + ')');
       const cx = await L.newContext(browser, size, { me, sync: SYNC, base: BASE, wallet: true });
       const pg = await cx.newPage();
-      pg.on('pageerror', e => problem('script-error', String(e.message || e).slice(0, 160) + ' @ ' + String(e.stack || '').split('\n').slice(1, 30).map(x => x.trim().replace(/\?v=[^:]+/, '').replace(BASE + '/', '')).join(' < ')));
+      /* Nov 26 2026: 'Cannot read properties of undefined (reading 'esc') @ v2-pages.js:9' on one CI run: v2-pages.js ran without
+       * js/v2-render.js. A game script whose download is cut off (ERR_ABORTED: the page is being left or reloaded) lets the scripts after
+       * it run without it. The robot used to ignore cut-off downloads and report only the confusing error that followed. Now every game
+       * script that did not arrive is remembered, and an error right after one names it: when the robot itself was opening the next page
+       * it is noted (the page was going away), otherwise (the page reloaded itself while loading, or a download really failed) it fails. */
+      const cut = []; pg.on('requestfailed', r => { const u = r.url(); if (/\.js(\?|$)/.test(u) && u.startsWith(BASE)) cut.push({ at: Date.now(), u: u.replace(BASE + '/', '').replace(/\?.*$/, ''), why: (r.failure() || {}).errorText || '' }); });
+      pg.on('pageerror', e => { const f = FLOW, z = SIZE, at = Date.now(), msg = String(e.message || e).slice(0, 160) + ' @ ' + String(e.stack || '').split('\n').slice(1, 30).map(x => x.trim().replace(/\?v=[^:]+/, '').replace(BASE + '/', '')).join(' < ');
+        setTimeout(() => { const gone = cut.filter(c => c.at >= at - 8000 && c.at <= at + 500), F0 = FLOW, Z0 = SIZE; FLOW = f; SIZE = z;
+          const robot = pg.__robotNav && Math.abs(pg.__robotNav - at) < 4000 && gone.length && gone.every(c => /ERR_ABORTED/.test(c.why));
+          if (robot) ok('a script error while the robot opened the next page (' + gone.map(c => c.u).join(', ') + ' cut off): ' + msg.slice(0, 100));
+          else problem('script-error', msg + (gone.length ? ' (after ' + gone.map(c => c.u + ' ' + c.why).join(', ') + ')' : ''));
+          FLOW = F0; SIZE = Z0; }, 1500); });
       pg.on('crash', () => problem('crash', 'the tab crashed'));
       /* a game script that never arrived explains the 'X is not defined' that follows it */
       pg.on('requestfailed', r => { const u = r.url(), why = (r.failure() || {}).errorText || ''; if (/\.js(\?|$)/.test(u) && u.startsWith(BASE) && !/ERR_ABORTED/.test(why)) problem('script-load-failed', u.replace(BASE + '/', '') + ' did not load (' + why + ')'); });
@@ -406,6 +437,7 @@ else (async () => {
       if (ctx.mined.length && T.tip < ctx.mined[ctx.mined.length - 1]) { T = ctx.T && ctx.T.tip === ctx.mined[ctx.mined.length - 1] ? ctx.T : await truth(me); }
     }
   }
+  await new Promise(r => setTimeout(r, 1800)); /* a script error is judged 1.5 s after it happens (see 'pageerror') */
   await browser.close();
   const keyOf = r => [r.flow, r.size, r.kind, r.detail].join(' | ');
   const fresh = report.filter(r => !allow.some(a => keyOf(r).includes(a)));
