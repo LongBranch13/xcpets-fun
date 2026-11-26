@@ -108,7 +108,10 @@ if (rwPlan) { const R = w._rw[OWNER_TX], set = new Set(R.gids.concat((w._rw[GMON
   rwPick = PK; rr.worn += r2.worn;
   ok(moved.every(g => g.on == null || rwPick.indexOf(g.on) >= 0 || (w.items[g.gid].on === g.on && rr.skipped > 0)) && moved.every(g => g.bag == null), 're-wear: every noted piece is now on a picked pet or in the stash (none left in a bag)');
   ok(moved.filter(g => g.on != null && rwPick.indexOf(g.on) >= 0).length === rr.worn && rr.worn > 0, 're-wear: ' + rr.worn + ' worn over both burns on ' + rwPick.length + ' picked pets');
-  ok(Object.keys(w.items).length + WS === Object.keys(w2.items).length && Object.keys(w.items).every(k => w.items[k].owner === w2.items[k].owner), 're-wear: no piece created, destroyed or moved to another wallet');
+  /* compare with the same blocks played WITHOUT the re-wear burns: the chain's own events in those blocks (a quest coming home, a gear roll) make pieces too,
+   * and which ones depends on where the boot file's tip is, so counting against the tip world broke when a real quest landed at tip+3 (Nov 26 2026) */
+  const rwTx = new Set([rwr, rw2, rwg].concat(rwgm).map(t => t.tx_hash)), w0 = play(extra.filter(t => !rwTx.has(t.tx_hash)), G + 6), k0 = Object.keys(w0.items), k2 = Object.keys(w2.items);
+  ok(k0.length === k2.length && k0.every(k => w2.items[k] && w2.items[k].owner === w0.items[k].owner) && Object.keys(w.items).every(k => w.items[k].owner === w2.items[k].owner), 're-wear: no piece created, destroyed or moved to another wallet (' + k2.length + ' pieces, same as without the re-wear burns)');
   ok(Object.keys(w.items).filter(k => !set.has(k) && w.items[k].on !== w2.items[k].on).every(k => w2.items[k].on == null && (rwPick.indexOf(w.items[k].on) >= 0 && w.items[k].owner === OWNER || gmFed.indexOf(w.items[k].on) >= 0 && w.items[k].owner === GMONEY) || w.items[k].owner === W), 're-wear: other pieces touched only when a better noted piece took their slot on a picked pet');
   const wornBy = {}; Object.keys(w2.items).forEach(k => { const g = w2.items[k]; if (g.on != null && rwPick.indexOf(g.on) >= 0) { const key = g.on + ':' + g.slot; wornBy[key] = (wornBy[key] || 0) + 1; } });
   ok(Object.values(wornBy).every(n => n === 1), 're-wear: one piece per slot on every picked pet');
