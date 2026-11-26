@@ -50,7 +50,7 @@
   function full(c) { return !c.w._view || c.w._full; } /* pet:pp counts places in the full list of your pets: wait until every page is in */
   function paint() { var c = ctx(), box = $('pantryCard'); var sp = d.querySelector('[data-split]'); if (!c || (c.gate == null && !PREVIEW) || window.XcpPractice || (sp && sp.getAttribute('data-split') !== 'play')) { /* Play page only: the place pages share the template */ if (box) box.style.display = 'none'; return; }
     var host = $('todayCard') || d.querySelector('main'); if (!host) return; css();
-    if (!box) { box = d.createElement('section'); box.id = 'pantryCard'; box.setAttribute('aria-label', 'Pantry'); if (host.id === 'todayCard') host.parentNode.insertBefore(box, host.nextSibling); else host.insertBefore(box, host.firstChild); }
+    if (!box) { box = d.createElement('section'); box.id = 'pantryCard'; box.setAttribute('aria-label', 'Pantry'); if (window.XcpTopStrip && XcpTopStrip.mountMain(box, 20)) { /* smooth: reserved top box, right under Today */ } else if (host.id === 'todayCard') host.parentNode.insertBefore(box, host.nextSibling); else host.insertBefore(box, host.firstChild); }
     box.style.display = ''; var I = info(c), key = [c.nb, c.me, I.bal, I.ids.length, I.daily, st.open, st.shelf, st.add.size, st.del.size, st.amount, full(c)].join('|');
     if (key === st.seen && box.firstChild) return; st.seen = key;
     var h = '<h3>🥫 Pantry: prepaid meals</h3><div class="pp-line">' + line(c, I) + (c.live || PREVIEW ? '<button type="button" class="pp-open" data-pp="open">' + (st.open ? 'Close' : 'Open the pantry') + '</button>' : '') + '</div>';

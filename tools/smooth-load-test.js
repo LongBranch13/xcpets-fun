@@ -49,4 +49,33 @@ ok(!badHdr.length, 'v2-header.js runs right after </header>, not deferred' + (ba
 /* the bars that sit above the page go into the one reserved strip (js/v2-header.js XcpTopStrip) */
 ['js/v2-status.js', 'js/v2-halving.js', 'js/v2-datalag.js', 'js/v2-split.js', 'js/v2-chain.js', 'js/season-bar.js', 'js/v2-firesale.js'].forEach(f =>
   ok(/XcpTopStrip\.mount\(/.test(fs.readFileSync(path.join(ROOT, f), 'utf8')), f + ' mounts its bar in the top strip'));
+/* round 2: the cards late scripts put at the top of the page go into one box that is already in the page (#mainTop, first thing in <main>) */
+const noTop = pages.filter(p => { const s = fs.readFileSync(path.join(ROOT, p), 'utf8'); return /<main\b/.test(s) && !/<main\b[^>]*><div id="mainTop"><\/div>/.test(s); });
+ok(!noTop.length, 'every page with <main> starts it with the reserved top box' + (noTop.length ? ' (missing: ' + noTop.join(', ') + ')' : ''));
+[['js/v2-today.js', 'Today card'], ['js/v2-pantry.js', 'Pantry'], ['js/doom-week.js', 'Doom sign'], ['js/ux-polish.js', 'quick links'], ['js/v2-tutorial.js', 'tutorial row'], ['js/v2-places.js', 'Town bar']].forEach(([f, what]) =>
+  ok(/XcpTopStrip\.mountMain\(/.test(fs.readFileSync(path.join(ROOT, f), 'utf8')), what + ' (' + f + ') goes into the reserved top box'));
+ok(/XcpTopStrip\.mount\(/.test(fs.readFileSync(path.join(ROOT, 'js/casa-connect.js'), 'utf8')), 'the Connect bar goes into the top strip');
+/* mountMain keeps the order and replaces last visit's spacer in place: run the real header code on a tiny DOM stub */
+{ const kids = []; const mk = (id) => { const e = { id, attrs: {}, parentNode: null, getAttribute(k) { return this.attrs[k] == null ? null : this.attrs[k]; }, setAttribute(k, v) { this.attrs[k] = String(v); }, getBoundingClientRect: () => ({ height: 10, top: 0, bottom: 10 }) }; return e; };
+  const top = mk('mainTop'); top.isConnected = true;
+  Object.defineProperty(top, 'firstElementChild', { get: () => kids[0] || null });
+  const nextOf = (el) => { const i = kids.indexOf(el); return i >= 0 ? kids[i + 1] || null : null; };
+  top.insertBefore = (el, before) => { const i = kids.indexOf(el); if (i >= 0) kids.splice(i, 1); const j = before ? kids.indexOf(before) : -1; if (j >= 0) kids.splice(j, 0, el); else kids.push(el); el.parentNode = top; };
+  top.replaceChild = (el, old) => { const j = kids.indexOf(old); kids[j] = el; el.parentNode = top; old.parentNode = null; };
+  const proto = { get nextElementSibling() { return nextOf(this); } };
+  const store = { 'xcpets-maintop:play': JSON.stringify([[10, 845], [20, 171]]) };
+  const document = { readyState: 'complete', documentElement: {}, head: { appendChild() {} }, querySelector: (q) => q === 'main' ? { insertBefore() {} } : null, getElementById: (id) => id === 'mainTop' ? top : null,
+    createElement: () => Object.assign(Object.create(proto), mk('x'), { style: {} }), addEventListener() {} };
+  const win = { document, location: { pathname: '/play.html' }, localStorage: { getItem: k => store[k] || null, setItem: (k, v) => { store[k] = v; }, removeItem() {} }, addEventListener() {}, setTimeout: () => 0, getComputedStyle: () => ({ marginBottom: '0' }) };
+  win.window = win; win.self = win;
+  vm.createContext(win);
+  try { vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/v2-header.js'), 'utf8'), win); } catch (e) { }
+  const T = win.XcpTopStrip;
+  if (!T || !T.mountMain) ok(false, 'XcpTopStrip.mountMain is exported by js/v2-header.js');
+  else { const pantry = Object.assign(Object.create(proto), mk('pantryCard')); T.mountMain(pantry, 20);
+    const ghostsFirst = kids.map(k => k.id === 'pantryCard' ? 'P' : k.attrs['data-mt']).join(',');
+    const today = Object.assign(Object.create(proto), mk('todayCard')); T.mountMain(today, 10);
+    const sign = Object.assign(Object.create(proto), mk('sign')); T.mountMain(sign, 30);
+    ok(ghostsFirst === '10,P', 'the Pantry replaces its own spacer and the Today spacer stays above it (' + ghostsFirst + ')');
+    ok(kids.map(k => k.id).join(',') === 'todayCard,pantryCard,sign', 'cards land in their fixed order, Today in its spacer (' + kids.map(k => k.id).join(',') + ')'); } }
 console.log(pass + ' passed, ' + fail + ' failed'); process.exit(fail ? 1 : 0);

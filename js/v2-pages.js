@@ -701,7 +701,10 @@
     if (!(id >= 1)) { var mineP = w.pets.filter(function (p) { return p.owner === ME && !p.released; }); id = mineP.length ? mineP[0].id : 1; history.replaceState(null, '', 'pet.html?id=' + id); }
     var p = w.byId[id];
     if (!p) {
-      if (window.V2Split && V2Split.ensurePet && !pet.loading) { pet.loading = 1; $('title').textContent = 'Loading pet #' + id + '…'; V2Split.ensurePet(id).then(function () { pet.loading = 0; pet(); }, function () { pet.loading = 0; }); return; }
+      /* smooth (Nov 26 2026): ask the server once per id. A pet it does not have (or #1765, which ensurePet leaves out) resolved null and pet() asked
+       * again at once, forever, in promise callbacks: the tab froze for good (pet.html?id=1765 never answered). */
+      pet.tried = pet.tried || {};
+      if (window.V2Split && V2Split.ensurePet && !pet.loading && !pet.tried[id]) { pet.loading = 1; pet.tried[id] = 1; $('title').textContent = 'Loading pet #' + id + '…'; V2Split.ensurePet(id).then(function () { pet.loading = 0; pet(); }, function () { pet.loading = 0; pet(); }); return; }
       $('title').textContent = 'Pet #' + id + ' does not exist (yet).'; return; }
     if (p.parents && window.V2Split && V2Split.ensurePet && !pet.fams) {
       var miss = p.parents.filter(function (pid) { return !w.byId[pid]; });

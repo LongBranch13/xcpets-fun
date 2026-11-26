@@ -45,3 +45,7 @@ body.rkc .wf5{padding:8px 10px}body.rkc .wf5 .small{display:block;margin:2px 0}b
 /* no visible scrollbars on swipe rows (Jake Nov 23 2026); they still swipe */
 #rkSpecies .rksp,#rkTabsHost .rktabs,.cemv2bar .cv2-quick{scrollbar-width:none}
 #rkSpecies .rksp::-webkit-scrollbar,#rkTabsHost .rktabs::-webkit-scrollbar,.cemv2bar .cv2-quick::-webkit-scrollbar{display:none}
+/* smooth (Nov 26 2026): the tabs row is in the page from the start (ranking.html), so it keeps its height while the boards load instead of
+ * appearing above the toolbar and pushing everything down */
+body.rkc #rkTabsHost:empty{min-height:40px;margin:4px 0 8px}
+@media (max-width:600px){body.rkc #rkTabsHost:empty{min-height:46px}}

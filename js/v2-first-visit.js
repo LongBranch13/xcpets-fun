@@ -110,7 +110,7 @@
     card.querySelector('.fv-tut').addEventListener('click', function () { set(KEY, '1'); });
     card.querySelector('.fv-conn').onclick = connect;
     card.querySelector('.fv-peek').onclick = peek;
-    main.insertBefore(card, main.firstChild);
+    if (!(window.XcpTopStrip && XcpTopStrip.mountMain(card, 0))) main.insertBefore(card, main.firstChild);
     var cv = card.querySelector('.fv-stage'); try { if (!w.PetCore || !w.PetCore.characterPet) throw 0; stage(cv); card.classList.add('fv-has-stage'); } catch (e) { cv.remove(); }
     html.classList.add('fv-on'); if (!walletIn()) html.classList.add('fv-nowal');
     /* a wallet attached late (Casa Tookan) brings its top Connect bar back; a connected wallet ends the welcome */

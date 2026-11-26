@@ -707,7 +707,16 @@
         mine: V2Own.living(W, ME), sellable: function (p) { return sellable(p); } }; },
     card: card, paint: function () { paint(); }, buy: function (n) { buy(n); }, cancel: function (n) { cancel(n); }, sellPick: function () { sellPick(); }, pressPick: function () { pressPick(); }, press: function (id) { fresh(function () { var p = W && W.byId[id]; if (p) viaChain(p, function () { press(p); }); }); }, pressable: function (p) { return pressable(p); }, sell: function (id) { fresh(function () { var p = W && W.byId[id]; if (p) viaChain(p, function () { sellPrice(p, 'XCPETS', 100); }); }); },
     tab: function (t) { TAB = t; try { history.replaceState(null, '', '#' + t); } catch (x) { } render(); var r = $('shop'); if (r && r.scrollIntoView) r.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, toast: toast, lines: LINES };
+  /* smooth (Nov 26 2026, Jake: "I want everything to be smooth"): Spam City had no in-page repaint, so when the fresh world replaced the saved
+   * copy a second after opening, the whole page reloaded (blink, scroll lost). Now the shelves take the fresh world in place: a view world
+   * keeps the order book it already has (applyBook), a full replay brings its own listings and book. Wallet steps still read the newest
+   * blocks first (fresh()) and v2-wallet's checks run against the fresh world, so nothing about what can be signed changes. */
+  function onWorld() { var M = window.V2Mock, v = M && M.world && M.world(); if (!v || PREVIEW) return;
+    if (v._view) { if (!LAST_BOOK) return; W = v; applyBook(LAST_BOOK); }
+    else { var S = M.state(); W = v; TIP = v.tip || TIP; if (S.dex && S.dex.orders) BOOK = S.dex.orders; }
+    redraw(); }
   function start() { if (!PREVIEW && window.xcpLivingRest) window.xcpLivingRest(); var root = $('shop'); if (root && !PREVIEW) root.innerHTML = '<p class="sh-hint">Reading the order book…</p>';
+    if (!PREVIEW && window.V2Mock && V2Mock.onFresh) V2Mock.onFresh(onWorld);
     load().then(function () { render(); luke(); setInterval(luke, 9000); window.V2Sales.scene.ready = true; try { document.dispatchEvent(new CustomEvent('v2sales:ready')); } catch (x) { } }, function (e) { if (root) root.innerHTML = '<p class="sh-warn">Could not read the order book: ' + esc(e.message || e) + '</p>'; }); }
   window.V2Sales.start = start; window.V2Sales.sample = sample; window.V2Sales._sellPrice = function (id, a, s) { sellPrice(W.byId[id], a || 'XCPETS', s || 100); }; window.V2Sales._buy = buy; window.V2Sales._press = function (id) { press(W.byId[id]); }; window.V2Sales._pressDone = function (id) { pressDone(W.byId[id], 'A1234567890123456789'); }; window.V2Sales._pressPick = pressPick; window.V2Sales._tab = function (t) { TAB = t; render(); }; window.V2Sales._tie = function (id) { var p = W.byId[id]; tieAndList(p, pend(id) || { asset: 'A1234567890123456789' }, 'XCPETS', 100e8); };
   if (PREVIEW) start();

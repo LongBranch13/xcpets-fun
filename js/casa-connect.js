@@ -32,7 +32,8 @@
     bar.innerHTML = '<button type="button" class="btn" id="ccBtn">Connect wallet</button><p class="small cc-t" id="ccMsg" role="status" aria-live="polite"></p>';
     btn = bar.querySelector('#ccBtn'); msg = bar.querySelector('#ccMsg'); btn.onclick = function () { connect(true); };
     var h = d.querySelector('header.nav'), after = h && h.nextElementSibling && /pixdiv/.test(h.nextElementSibling.className || '') ? h.nextElementSibling : h;
-    if (after && after.parentNode) after.parentNode.insertBefore(bar, after.nextSibling); else d.body.insertBefore(bar, d.body.firstChild);
+    if (window.XcpTopStrip && XcpTopStrip.mount(bar)) { /* smooth: the reserved top strip (js/v2-header.js), not a new row above the page */ }
+    else if (after && after.parentNode) after.parentNode.insertBefore(bar, after.nextSibling); else d.body.insertBefore(bar, d.body.firstChild);
     d.body.classList.add('cc-has');
   }
   function say(html, cls) { if (!msg) return; msg.className = 'small cc-t' + (cls ? ' ' + cls : ''); msg.innerHTML = html || ''; }
@@ -55,11 +56,15 @@
     ['wconnect', 'xcpConnect'].forEach(function (id) { var b = d.getElementById(id); if (!b || b._v2 || a) return;
       if (/^(Connect wallet|Connect XCP Wallet|Connect Casa Tookan)$/.test(b.textContent.trim()) && (anyProv() || inCasa())) b.textContent = 'Connect ' + L;
       if (!b.onclick) b.onclick = function () { connect(true); }; });
-    if (!anyProv() && Date.now() - t0 >= POLL_FOR && msg && !msg.innerHTML) {
+    /* smooth (Nov 26 2026): the hint used to appear 8 s after opening (after the wallet poll), growing the bar and pushing every page down.
+     * A device that had no wallet last time shows it from the start; a wallet turning up clears it as before. */
+    var noW = false; try { noW = localStorage.getItem('xcpets-cc-nowallet') === '1'; } catch (e) { }
+    if (!anyProv() && (Date.now() - t0 >= POLL_FOR || (noW && !inCasa())) && msg && !msg.innerHTML) {
+      try { if (Date.now() - t0 >= POLL_FOR) localStorage.setItem('xcpets-cc-nowallet', '1'); } catch (e) { }
       if (inCasa()) say('Casa Tookan has not attached its wallet to this page. Unlock your casa, fully close and reopen Casa Tookan, then open XCPETS from <b>Browse \u203a Apps</b> (or type xcpets.fun/play.html).', 'cc-hint');
       else if (phone()) say('No wallet here? ' + openLink() + ' to play on your phone' + (planOk() ? ', or <a href="#" class="cc-plan" data-xh-start="1">pick burns here and sign them on your computer</a>.' : '.'), 'cc-hint');
     }
-    if (anyProv() && msg && /cc-hint/.test(msg.className)) say('');
+    if (anyProv() && msg && /cc-hint/.test(msg.className)) { say(''); try { localStorage.removeItem('xcpets-cc-nowallet'); } catch (e) { } }
   }
   function connect(user) {
     if (busy) return; build();

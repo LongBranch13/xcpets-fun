@@ -125,7 +125,7 @@
       bar.id = 'townBar'; bar.className = 'townbar'; bar.setAttribute('aria-label', 'Where you are');
       bar.innerHTML = '<a class="tb-town" href="index.html#places">🏘️ Town</a><span aria-hidden="true">›</span><b>' + here.ico + ' ' + esc(here.name) + '</b>' +
         (here.stations ? '<span class="tb-st">' + here.stations.map(function (s) { var on = s[2].indexOf('#') < 0 && s[2] === file; return '<a href="' + s[2] + '"' + (on ? ' aria-current="page"' : '') + '>' + s[0] + ' ' + esc(s[1]) + '</a>'; }).join('') + '</span>' : '');
-      m.insertBefore(bar, m.firstChild); }
+      if (!(window.XcpTopStrip && XcpTopStrip.mountMain(bar, 1))) m.insertBefore(bar, m.firstChild); } /* smooth: first in the reserved top box (js/v2-header.js) */
     /* merge-pages-1123: the one Practice switch (Town bar on a place, the Hatch panel on Play, the PRACTICE bar on practice pages) */
     if (!document.getElementById('pxSwitch')) { var sw = practiceSwitch(file);
       if (sw) { var px = document.getElementById('pxBar'), tb = document.getElementById('townBar'), hh = document.getElementById('hatchHubName');
