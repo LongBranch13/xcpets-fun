@@ -2275,6 +2275,9 @@
     if (freshT) { clearTimeout(freshT); freshT = 0; }
     var wait = partial ? freshAt + 4000 - Date.now() : 0;
     if (wait > 0) { freshT = setTimeout(freshRender, wait); return; }
+    /* Nov 25 2026 (robot, 40,000-pet wallet: breed/fight/raid froze ~1 s): a partial repaint ran inside the same task as the owner-page
+     * batch that set the world, so the two costs added up into one freeze. Paint it in its own task; the complete world still paints at once. */
+    if (partial) { freshAt = Date.now(); freshT = setTimeout(function () { freshT = 0; render(); }, 0); return; }
     freshAt = Date.now(); render(); }
   if (M.onFresh) M.onFresh(freshRender); /* boot-from-cache: repaint when the fresh world replaces the saved one */
   /* new confirmed burns (e.g. your roll result) every 60 s. smooth-perf (2026-10-19): skipped while the tab is hidden (no background API calls or
