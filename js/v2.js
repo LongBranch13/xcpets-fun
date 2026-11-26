@@ -47,6 +47,11 @@
   /* least rare Discarded pet, not ripe, lowest id. One meal refills hunger, so the default is a single cheap Discarded pet, named on the button. */
   function zDefaultMeal(L, H) { var best = null, bk = Infinity, any = false; L.forEach(function (a) { if (H[a.id]) any = true; }); if (!any) return null;
     L.forEach(function (a) { if (!H[a.id]) return; var key = ((a.tier | 0) * 2 + (a.neglected ? 1 : 0)) * 1e12 + a.id; if (key < bk) { bk = key; best = a; } }); return best; }
+  /* Nov 26 2026 (G Money: "won't let me feed my zombie even after I discarded pets"): a zombie eats only pets discarded ON CHAIN. Pets hidden
+   * only in this browser's Discard pile (never burned, or added back with pet:hu) look discarded but the rules refuse them, so the empty list
+   * says so and offers the one burn that makes them permanent (the same path as every discard button). */
+  function zBrowserOnly(w) { var o = []; if (!ME || !w) return o; var set = V2Own.pileIds(ME); Object.keys(set).forEach(function (id) { var a = w.byId && w.byId[id]; if (a && V2Own.isLiving(a, ME, { zombies: false }) && V2Own.discarded(a, ME, { set: set }) === 'browser') o.push(a.id); }); return o; }
+  function zPermHtml(w) { var bo = zBrowserOnly(w); if (!bo.length) return ''; return '<br><b>' + fmt(bo.length) + ' pet' + (bo.length === 1 ? ' is' : 's are') + ' in your Discard pile only in this browser</b>, not discarded on chain, so a zombie can\'t eat ' + (bo.length === 1 ? 'it' : 'them') + ' yet. <button type="button" class="btn zb-mkperm">Make ' + (bo.length === 1 ? 'it' : 'them') + ' permanent (1 dander per burn)</button> Once that burn confirms (about one block), they show here.'; }
   function zFeedHtml(p, w) { if (!ZB(p) || !ME || p.owner !== ME || !V.cemOn || !V.cemCost) return ''; var b = (S.tip || 0) + 1; if (!V.cemOn(b)) return ''; zPickCss();
     var pend = zPendIds(['zfeed', 'rpl']), mine = zPendMeals(p.id), all = zMeals(w, ME, b).filter(function (a) { return a.id !== p.id && pend.indexOf(a.id) < 0 && !zPledgedAny(w, a.id); });
     var L = all.filter(function (a) { return !isKept(a.id); }), kept = all.length - L.length, H = zDiscarded(w), D = L.filter(function (a) { return H[a.id]; }), cost = V.cemCost(w, 'zmeal', b), v = V.cemView(w, p, b) || {};
@@ -55,7 +60,7 @@
     var help = 'A zombie eats <b>pets</b>, not XCPETS meals. Every pet you tick is <b>eaten for good</b>. The fee is ' + fmt(cost) + ' XCPETS <b>per burn</b>, and one burn eats as many pets as fit in it (pets with close ids pack best). Any meal refills hunger to full. Each row shows the <b>power</b> that pet alone would add.' + zCapNote(p) + (gate ? ' <b>Only Discarded pets</b> can be offered (🗑️ Discard in My Pets). Tokenized pets can\'t be offered.' : '') + (kept ? ' ★ Starred pets are never listed (' + fmt(kept) + ').' : '') + ' Pets offered at a seance are Sacrificed. A meal is different: the zombie eats the pet.';
     var note = meal ? 'One Discarded pet is ticked: the least rare one. A meal refills hunger. Each row says what that meal does.' : (D.length ? 'Tick a Discarded pet. A meal refills hunger.' : 'No Discarded pets to feed yet. Discard pets in My Pets first.');
     if (cap) note += ' This zombie is at its power cap, so meals add no power. They still refill hunger.';
-    var empty = gate ? 'No Discarded pets it can eat. Discard pets in My Pets (🗑️, free) first. Tokenized pets can\'t be offered.' : 'No pets it can eat. Discard pets in My Pets (🗑️, free) and they show first here.';
+    var empty = (gate ? 'No Discarded pets it can eat. Discard pets in My Pets (🗑️) first. Tokenized pets can\'t be offered.' : 'No pets it can eat. Discard pets in My Pets (🗑️) and they show first here.') + zPermHtml(w);
     return '<div class="zb-feed zb-pk zb-step" data-zf="' + p.id + '" data-pk="feed">' + pn +
       '<h3 class="zb-h">Feed discarded pets ' + zQ(help) + '</h3>' +
       '<p class="small zb-stepnote">' + note + '</p>' +
@@ -180,7 +185,7 @@
       res +
       '<details class="zb-pickbox"><summary class="small">😇 Pledge pets &amp; gear <span class="muted">(' + ri.points + (ri.bonus ? ' + ' + ri.bonus + ' Halloween' : '') + ' of ' + MIN + ' points · ' + Math.round(ri.chance * 100) + '% chance)</span></summary>' +
       '<p class="small zb-stepnote">Tick pets or gear. They are used up when you try the Resurrection.</p>' +
-      zSortBar('rpl', D.length, L.length > D.length) + zList({ items: L, w: w, H: H, valOf: zRpPts, unit: '✨', empty: (V.cemTokenOfferOn && V.cemTokenOfferOn((S.tip || 0) + 1) ? 'No Discarded pets you can pledge. Discard pets in My Pets (🗑️) first. Tokenized pets can\'t be offered.' : 'No pets you can pledge.') }, true) +
+      zSortBar('rpl', D.length, L.length > D.length) + zList({ items: L, w: w, H: H, valOf: zRpPts, unit: '✨', empty: (V.cemTokenOfferOn && V.cemTokenOfferOn((S.tip || 0) + 1) ? 'No Discarded pets you can pledge. Discard pets in My Pets (🗑️) first. Tokenized pets can\'t be offered.' : 'No pets you can pledge.') + zPermHtml(w) }, true) +
       (G.length ? '<details class="zb-gear"><summary class="small">🛡️ Your gear (' + fmt(G.length) + ')</summary>' + gr + '</details>' : '') +
       '<div class="small zb-sum"></div>' +
       '<p class="small zb-noact zb-need">Tick a pet or a gear piece to pledge it.</p>' +
@@ -343,6 +348,7 @@
   if (typeof document !== 'undefined') document.addEventListener('click', function (e) {
     var qb = e.target && e.target.closest && e.target.closest('.zb-qbtn');
     if (qb) { e.preventDefault(); e.stopPropagation(); var box = qb.nextElementSibling; if (!box || !box.classList || !box.classList.contains('zb-help')) box = qb.parentNode && qb.parentNode.nextElementSibling; if (box && box.classList && box.classList.contains('zb-help')) { var open = box.hidden; box.hidden = !open; qb.setAttribute('aria-expanded', open ? 'true' : 'false'); } return; }
+    var mp = e.target && e.target.closest && e.target.closest('.zb-mkperm'); if (mp) { e.preventDefault(); e.stopPropagation(); var ids = zBrowserOnly(world()); if (ids.length) chainDiscardIds(ids, false); return; }
     var bt = e.target && e.target.closest && e.target.closest('.mg-unlbtn'); if (!bt) return; e.stopPropagation(); e.preventDefault(); if (!bt.disabled) mgUnlDialog(+bt.dataset.z);
   }, true);
   try { var mgc = document.createElement('style'); mgc.textContent = '.mg-dlg-wrap{position:fixed;inset:0;background:rgba(0,0,0,.66);z-index:9999;display:flex;align-items:center;justify-content:center;padding:12px}.mg-dlg{background:#1a0c0c;border:2px solid #b3261e;border-radius:10px;max-width:520px;width:100%;padding:14px;color:#f6e7e5;box-shadow:0 0 24px rgba(179,38,30,.5)}.mg-dlg h3{margin:0 0 6px;color:#ff8a80}.mg-dlg canvas{width:48px;height:48px;image-rendering:pixelated}.mg-dlg-btns{display:flex;gap:8px;justify-content:flex-end;margin-top:10px}.mg-dlg .btn.mg-red{background:#b3261e;border-color:#7a1c1c;color:#fff}.mg-dlg .btn.mg-red:disabled{opacity:.45}'; (document.head || document.documentElement).appendChild(mgc); } catch (e) {}
@@ -1321,7 +1327,7 @@
     hb.querySelectorAll('button[data-dsa]').forEach(function (b) { b.onclick = function () { var a = b.dataset.dsa; if (a === 'dir') { DS.flip = !DS.flip; return render(); } if (a === 'more') { DS.n += 120; return render(); } if (a === 'none') { DS.sel = {}; return render(); }
       var ids = a === 'all' ? gone.map(function (p) { return p.id; }) : Object.keys(DS.sel).map(Number); if (!ids.length) return;
       var nc = ids.filter(function (id) { return onChainDiscarded(w.byId[id]); }).length;
-      if (ids.length > 1 && !window.confirm('Restore ' + (a === 'all' ? 'all ' : '') + ids.length + ' pets from the Discard pile to My Pets?\n\n' + (nc ? nc + ' of them ' + (nc === 1 ? 'was' : 'were') + ' discarded on chain: you sign one tiny Add back burn (1 dander) for ' + (nc === 1 ? 'it' : 'them') + '. ' : '') + (nc < ids.length ? (ids.length - nc) + ' only hidden in this browser come back free, no burn.' : ''))) return; DS.sel = {}; pileRestore(ids); }; });
+      if (ids.length > 1 && !window.confirm('Restore ' + (a === 'all' ? 'all ' : '') + ids.length + ' pets from the Discard pile to My Pets?\n\n' + (nc ? nc + ' of them ' + (nc === 1 ? 'was' : 'were') + ' discarded on chain: this undoes those permanent discards on every device (an Add back burn, 1 dander) for ' + (nc === 1 ? 'it' : 'them') + '. ' : '') + (nc < ids.length ? (ids.length - nc) + ' only hidden in this browser come back free, no burn.' : ''))) return; DS.sel = {}; pileRestore(ids); }; });
     hb.querySelectorAll('.dcard').forEach(function (d) { var p = w.byId[d.dataset.did]; if (p) R.lazy(d.querySelector('canvas'), function () { return petFrames(p, w); }); });
     return hb; }
   /* pileRestore (Nov 25 2026, Evan): Restore in the pile undoes BOTH kinds of discard. Browser-only pets come back at once (free); pets
@@ -1352,26 +1358,49 @@
     if (!hdSettleThen.t) hdSettleThen.t = setInterval(function () { if (!hdWait) { clearInterval(hdSettleThen.t); hdSettleThen.t = null; return; }
       if (Date.now() > hdWait.until) { hdWait = null; return; } if (!hatchListSettled(world())) return pull(); var job = hdWait; hdWait = null; chainDiscardIds(job.ids, job.restore); }, 3000);
     return true; }
+  function hdConfirming() { return myPendingTags().some(function (g) { return /^pet:h[du]:/.test(g); }); }
+  function hdWaitNote() { return '⏳ Your last discard burn is still confirming. Bitcoin needs about one block (~10 min) before the next discard burn can be checked by your wallet. The pets stay in your Discard pile; tap "Make my browser discards permanent" after the next block. Nothing was sent or lost.'; }
   function chainDiscardIds(ids, restore) { var w = world(), b = (S.tip || 0) + 1; if (!V.hdOn(b)) return toast('On-chain discard opens at block ' + fmt(V.ACTIVATE_ONCHAIN_DISCARD_BLOCK) + '. Until then, Discard only hides pets in this browser.');
+    /* Nov 26 2026 (Jake: 2,000 of 2,002 picked pets were already discarded, the sheet offered 2 tiny burns and a wall of text): every discard
+     * button comes here, so the one discard answer (V2Own.discarded) drops pets already discarded on chain or named by a discard burn still
+     * confirming, before anything is counted or offered. */
+    var skip = { chain: 0, pending: 0 };
+    if (!restore) { ids = (ids || []).filter(function (id) { var p = w && w.byId[id], d = p ? V2Own.discarded(p, ME, { set: null }) : null; if (d) { skip[d]++; return false; } return true; });
+      if (!ids.length) return toast(skip.chain ? 'Those pets are already discarded on chain. Nothing to burn.' : 'Your discard burn for those pets is still confirming. Nothing more to burn.', 7000); }
+    /* ...and while an earlier discard burn is still confirming, the wallet can't check a burn that spends its change (XCP Wallet: 'Couldn't verify
+     * asset status, input status unknown'), so wait for the next block instead of opening a sheet the wallet will block. The pets stay hidden
+     * here and the 'Make my browser discards permanent' button offers them again. */
+    if (hdConfirming()) return toast(hdWaitNote(), 12000);
     if (hdSettleThen(ids, restore)) return;
     /* Nov 24 2026 (one safety check): a permanent discard is what feeds the Meat Grinder, so special pets get the same sheet as a sacrifice first */
     if (!restore && !chainDiscardIds._ok && window.V2SacGuard) return V2SacGuard.check({ w: w, ids: ids, me: ME, verb: 'discard them permanently',
       lead: 'You\'re about to discard these pets permanently, on every device. Pets discarded on chain can go in the Meat Grinder, where they are gone for good.',
       onGo: function (go) { if (!go.length) return; chainDiscardIds._ok = true; try { chainDiscardIds(go, false); } finally { chainDiscardIds._ok = false; } } });
     var plan = V.hdPlan(w, ME, ids, b, { restore: !!restore }); if (!plan || !plan.ok) return toast((plan && plan.why) || 'No exact burn for that selection.');
+    /* Nov 26 2026 (G Money signed pet:hu:ALL at block 977,587: 15,971 discards undone at once, so his zombies had nothing to eat, after he was told
+     * to add back 68 pets): adding back many pets undoes permanent discards, so every add-back of 50+ pets (pile Restore all, the My Pets
+     * 'Add back' button, a selection) asks once, with the count and what it means, before the sheet opens. */
+    var nBack = restore ? plan.plans.reduce(function (a, q) { return a + ((q.petIds && q.petIds.length) || 0); }, 0) : 0;
+    if (nBack >= 50 && typeof window !== 'undefined' && window.confirm && !window.confirm('Add back ' + fmt(nBack) + ' pets?\n\nThis undoes ' + fmt(nBack) + ' permanent discards on every device. They all come back to My Pets and need feeding again, and zombies and the Meat Grinder can no longer use them.\n\nIf you only meant a few pets, press Cancel and tick just those pets in the Discard pile.')) return;
     var n = plan.plans.reduce(function (a, q) { return a + ((q.petIds && q.petIds.length) || 0); }, 0);
     var title = (restore ? 'Add ' + fmt(n) + ' pets back to My Pets' : 'Discard ' + fmt(n) + ' pet' + (n === 1 ? '' : 's') + ' permanently (every device)');
-    if (!plan.one) title = 'This selection does not fit in one 34-byte burn. ' + plan.plans.length + ' exact burns, 1 dander each. ' + (plan.why || '');
-    else title += plan.why ? ' · ' + plan.why : ''; /* burn-click-menu: the cost (1 burn, 1 dander + Bitcoin fee) is already in the sheet's amount line, not repeated in the title */
+    /* Nov 26 2026: plain title (the sheet said 'does not fit in one 34-byte burn' twice and listed every left-out pet). One line on the burns,
+     * one count of what was left out and why; the per-pet list stays out of the heading. */
+    if (!plan.one) title += ' · ' + plan.plans.length + ' burns, 1 dander each (too many pets to name in one burn)';
+    var why = {}; (plan.left || []).forEach(function (x) { why[x.why] = (why[x.why] || 0) + 1; });
+    if (skip.chain) why['already discarded on chain'] = (why['already discarded on chain'] || 0) + skip.chain;
+    if (skip.pending) why['discard burn still confirming'] = (why['discard burn still confirming'] || 0) + skip.pending;
+    var wk = Object.keys(why); if (wk.length) title += ' · left out: ' + wk.map(function (k) { return fmt(why[k]) + ' ' + k; }).join(', ');
+    /* burn-click-menu: the cost (1 burn, 1 dander + Bitcoin fee) is already in the sheet's amount line, not repeated in the title */
     confirmPlans(title, plan.plans, restore ? function () { noteHuSent(plan.plans.reduce(function (a, q) { return a.concat(q.petIds || []); }, [])); } : null); }
   function chainDiscardBar(w) { if (!ME || !V.hdPlan || !V.hdOn) return null; var b = (S.tip || 0) + 1, on = V.hdOn(b);
-    var hid = hiddenIds().map(Number).filter(function (id) { var p = w.byId[id]; return p && V2Own.isLiving(p, ME, { zombies: false }) && !isKept(id); });
+    var hid = hiddenIds().map(Number).filter(function (id) { var p = w.byId[id]; return p && V2Own.isLiving(p, ME, { zombies: false }) && !isKept(id) && !V2Own.discarded(p, ME, { set: null }); }); /* browser-only: not already on chain or confirming (Nov 26 2026) */
     var chain = (w.pets || []).filter(function (p) { return p.owner === ME && onChainDiscarded(p) && !p.dead && !p.released; }); /* inPile rule: an old flag on a risen zombie does not count */
     if (!hid.length && !chain.length) return null;
     var el = document.createElement('div'); el.className = 'small hdbar'; el.id = 'hdBar';
     el.innerHTML = '<p class="muted">' + (on ? 'On-chain discard is 1 dander for the burn, however many pets it names. If they do not fit one tag, you will see the smallest number of exact burns before anything is sent. The game does not sign the burn.' : 'On-chain discard opens at block ' + fmt(V.ACTIVATE_ONCHAIN_DISCARD_BLOCK) + '. Until then, Discard only hides pets in this browser.') + '</p>' +
       (hid.length ? '<button type="button" class="btn" id="hdMigrate">Make my browser discards permanent (' + fmt(hid.length) + ')</button> ' : '') +
-      (on && chain.length ? '<button type="button" class="q" id="hdBack">Add discarded pets back (' + fmt(chain.length) + ')</button>' : '');
+      (on && chain.length ? '<button type="button" class="q" id="hdBack">Undo ALL on-chain discards (' + fmt(chain.length) + ')</button>' : '');
     var m = el.querySelector('#hdMigrate'); if (m) m.onclick = function () { chainDiscardIds(hid, false); };
     var bk = el.querySelector('#hdBack'); if (bk) bk.onclick = function () { chainDiscardIds(chain.map(function (p) { return p.id; }), true); };
     return el; }
@@ -1785,7 +1814,14 @@
   /* chores-resume-1110: Continue / Dismiss are not onclick on the toast node. The away sheet (and the Rare Room queue)
    * copy the toast's HTML and drop those handlers. js/v2-intuitive.js listens on the document, so the same links work
    * in the toast and in the copied sheet. Both call these. */
-  function resumeGo() { if (window.XcpMaint && XcpMaint.on()) return XcpMaint.stop(); var o = loadResume(); if (!o || !o.plans || !o.plans.length) return false; confirmPlans('Continue: ' + (o.title || 'burns'), o.plans); return true; }
+  function resumeGo() { if (window.XcpMaint && XcpMaint.on()) return XcpMaint.stop(); var o = loadResume(); if (!o || !o.plans || !o.plans.length) return false;
+    /* Nov 26 2026 (Jake, the 🔔 Continue re-offered a saved discard burn): a saved pet:hd / pet:hu tag names pets by place at the block it was
+     * built for. Rebuild it from the pets it named instead, through the same path as every discard button (skips pets already discarded or
+     * confirming, waits while the last discard burn confirms). */
+    if (o.plans.every(function (q) { return /^pet:h[du]:/.test((q && q.tag) || '') && q.petIds && q.petIds.length; })) {
+      var ids = [].concat.apply([], o.plans.map(function (q) { return q.petIds; })), back = /^pet:hu:/.test(o.plans[0].tag);
+      if (hdConfirming()) { toast(hdWaitNote(), 12000); return true; } saveResume(null, null); chainDiscardIds(ids, back); return true; }
+    confirmPlans('Continue: ' + (o.title || 'burns'), o.plans); return true; }
   function resumeDrop() { saveResume(null, null); return true; }
   function resumePending() { var o = loadResume(); return !!(o && o.plans && o.plans.length); }
   /* X / Skip all close the sheet and drop its copied HTML. The saved run is still there, so show a live Continue toast once the hold is off. Dismiss is the only action that forgets it. */
