@@ -46,3 +46,8 @@ html.hd3 .hd-panel .xc-sm{border:1px solid rgba(255,255,255,.35)!important;borde
 }
 html.hd3 .hd-panel button.hd-item.hd-sound{display:none!important}
 @media (max-width:600px){html.hd3 body .hd-panel button.hd-item.hd-sound{display:flex!important}}
+/* top strip (Nov 26 2026, smooth load): the status bars share one slot under the header that keeps last visit's height (js/v2-header.js) */
+#topStrip{display:block}
+#topStrip>.ts-in{display:flex;flex-direction:column}
+#topStrip #splitViewBar{order:0}#topStrip #dataLagBar{order:1}#topStrip #halvingRibbon{order:2}#topStrip #statusLine{order:3}
+#topStrip #v2stale{order:-2}#topStrip #v2upd{order:-1}#topStrip #fireSale{order:1}#topStrip #seasonBar{order:2}

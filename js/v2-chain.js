@@ -448,7 +448,7 @@
   /* site-fast-reread (2026-10-24): the status bar is a slim strip at the top of the page (in the flow, never fixed), so it can't cover buttons
    * at the bottom of a phone screen. The background re-read retries on its own (RETRY_MS) before it shows Retry. */
   function staleBar(t, retry) { try { var b = document.getElementById('v2stale'); if (!b) { b = document.createElement('div'); b.id = 'v2stale'; b.setAttribute('role', 'status');
-      b.style.cssText = 'background:#1d1b2e;color:#fff;border-bottom:2px solid #ffc93c;padding:4px 10px;font-size:12px;line-height:1.5;text-align:center'; document.body.insertBefore(b, document.body.firstChild); }
+      b.style.cssText = 'background:#1d1b2e;color:#fff;border-bottom:2px solid #ffc93c;padding:4px 10px;font-size:12px;line-height:1.5;text-align:center'; if (!(window.XcpTopStrip && XcpTopStrip.mount(b))) document.body.insertBefore(b, document.body.firstChild); /* smooth load: the reserved strip under the header */ }
       b.textContent = t + ' '; if (retry === 'none') return; var k = document.createElement('button'); k.type = 'button'; k.className = 'v2stale-btn'; k.textContent = retry ? 'Retry' : 'Refresh'; k.style.cssText = 'margin:0 0 0 6px;padding:0 8px;font:inherit;font-weight:700;font-size:11px;line-height:1.6;color:#1a1020;background:#ffc93c;border:0;border-radius:6px;cursor:pointer;vertical-align:baseline';
       k.onclick = function () { if (retry) { b.textContent = 'Checking the chain…'; revalidate(0); } else location.reload(); }; b.appendChild(k); } catch (e) {} }
   function sigOf() { return S.rows.length + '|' + JSON.stringify(S.dex || null).length; }
@@ -530,7 +530,7 @@
   function updBar(on) { try { var b = document.getElementById('v2upd'); if (!on) { if (b) b.remove(); return; } if (b || !document.body) return; b = document.createElement('div'); b.id = 'v2upd'; b.setAttribute('role', 'status');
     b.style.cssText = 'background:#1d1b2e;color:#ffc93c;padding:2px 10px;font-size:11px;line-height:1.5;text-align:center';
     b.textContent = '⟳ Updating to the latest block… (showing your last saved copy' + (S.provisionalTip ? ', block ' + fmtN(S.provisionalTip) : '') + '; burns wait until it is done)';
-    var s0 = document.getElementById('v2stale'); document.body.insertBefore(b, s0 ? s0.nextSibling : document.body.firstChild); } catch (e) {} }
+    var s0 = document.getElementById('v2stale'); if (!(window.XcpTopStrip && XcpTopStrip.mount(b))) document.body.insertBefore(b, s0 ? s0.nextSibling : document.body.firstChild); } catch (e) {} }
   /* pages with an in-page repaint (js/v2.js: play, fight, breed, raid, rare room) register it with onFresh; the others reload in place once the
    * fresh world is stored (it then boots from the exact cache in about a second, scroll kept), unless the visitor is typing / in a dialog / in a
    * burn, or one auto reload already ran in the last 2 minutes: then the usual 'Newer game data is ready' Refresh bar shows instead. */
@@ -542,7 +542,16 @@
     (function go() { if (storedKey === idbKeyStored || Date.now() - t0 > 4000) { if (busy()) return staleBar('Your pets are updated to block ' + fmtN(S.tip) + '.', false); try { location.reload(); } catch (e) {} return; } setTimeout(go, 100); })(); }
   function repaint() { try { window.dispatchEvent(new Event('xcpets-world-fresh')); } catch (e) {}
     if (freshHooks.length) { freshHooks.forEach(function (fn) { try { fn(); } catch (e) { try { console.warn('[v2] repaint', e); } catch (x) {} } }); return; }
+    if (quietFresh()) return;
     softReload(); }
+  /* smooth (Nov 26 2026, Jake: "you see the regular site then a glitch happens"): 9 pages reloaded themselves 1 to 4 s after opening on a first
+   * visit (the whole page blinked and was drawn again) because the fresh world replaced the saved copy and they have no in-page repaint.
+   * The pet page redraws in place (the xcpets-world-fresh event above + its own redraw); Home and the read-only catalog pages (Cold Storage
+   * archive, Pantheon, Petdex, hybrids, tokens, inscriptions) keep what they show when the copy they painted was at most 36 blocks (~6 h)
+   * behind, which changes nothing they list. Older copies still reload. Display only: burns still wait for the verified read (S.verified). */
+  var QUIET = { front: 1, pet: 2, archive: 1, pantheon: 1, petdex: 1, hybrids: 1, tokens: 1, inscriptions: 1 };
+  function quietFresh() { try { var q = QUIET[document.body && document.body.getAttribute('data-v2page')]; if (!q) return false; if (q === 2) return true;
+      var gap = (S.tip || 0) - (S.provisionalTip || S.tip || 0); return gap >= 0 && gap <= 36; } catch (e) { return false; } }
   function armFresh() { if (armed) return; armed = true; updBar(true);
     /* a background re-read still running may bring newer burns: wait for it (and the replay it starts) so the page repaints once */
     var settle = function () { return waitWorld().then(function () { if (!reval || atTip()) return; return reval.then(settle, settle); }); };

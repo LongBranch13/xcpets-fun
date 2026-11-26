@@ -73,12 +73,21 @@ const say = text => tg('sendMessage', { text: clean(text), disable_web_page_prev
 const ART_OUT = opt('--art-out'), NO_ART = has('--no-art');
 /* Drawing GIFs is slow; past this point in a run, posts go out as text so the run finishes well inside the workflow's 15 minutes. */
 const T_START = Date.now(), ART_BUDGET_MS = 7 * 60e3;
+/* formBody(fields, field, file, name): a multipart body built by hand. Not FormData (Nov 26 2026): FormData turns every \n in a
+   text field into \r\n, so each line break before a custom-emoji entity shifted its offset by one and Telegram refused the
+   caption ("entity ... ends in a middle of a UTF-16 symbol"): the Legendary Mix picture fell back to plain text. */
+function formBody(fields, field, file, name) {
+  const b = '----xcpets' + Date.now().toString(36) + Math.random().toString(36).slice(2), parts = [];
+  for (const k of Object.keys(fields)) parts.push(Buffer.from('--' + b + '\r\nContent-Disposition: form-data; name="' + k + '"\r\n\r\n' + String(fields[k]) + '\r\n', 'utf8'));
+  parts.push(Buffer.from('--' + b + '\r\nContent-Disposition: form-data; name="' + field + '"; filename="' + String(name).replace(/["\r\n]/g, '') + '"\r\nContent-Type: application/octet-stream\r\n\r\n', 'utf8'), Buffer.from(file), Buffer.from('\r\n--' + b + '--\r\n', 'utf8'));
+  return { body: Buffer.concat(parts), type: 'multipart/form-data; boundary=' + b };
+}
 async function tgFile(method, field, file, name, caption) {
   const ce = emo(caption); caption = ce.text;
   if (DRY || !TOKEN || !CHAT) { if (ART_OUT) { fs.mkdirSync(ART_OUT, { recursive: true }); const f = path.join(ART_OUT, String(++tgFile.n).padStart(2, '0') + '-' + name); fs.writeFileSync(f, file); console.log('--- ' + method + ' ' + f); } else console.log('--- ' + method + ' (' + file.length + ' bytes)'); console.log(caption); return true; }
   for (let i = 0; i < 3; i++) {
-    const fd = new FormData(); fd.append('chat_id', CHAT); fd.append('caption', caption); if (ce.entities) fd.append('caption_entities', JSON.stringify(ce.entities)); fd.append(field, new Blob([file]), name);
-    let r; try { r = await fetch('https://api.telegram.org/bot' + TOKEN + '/' + method, { method: 'POST', body: fd, signal: AbortSignal.timeout(120e3) }); }
+    const fb = formBody(Object.assign({ chat_id: CHAT, caption }, ce.entities ? { caption_entities: JSON.stringify(ce.entities) } : {}), field, file, name);
+    let r; try { r = await fetch('https://api.telegram.org/bot' + TOKEN + '/' + method, { method: 'POST', headers: { 'content-type': fb.type }, body: fb.body, signal: AbortSignal.timeout(120e3) }); }
     catch (e) { console.log('telegram ' + method + ' no answer (' + (e && (e.name || e.message)) + '): it may have posted, so no text copy and no retry'); return true; }
     if (r.ok) return true;
     const j = await r.json().catch(() => ({}));
@@ -296,4 +305,4 @@ async function main() {
   console.log('posted ' + posts.length + ' (block ' + from + ' -> ' + tip + ')');
 }
 if (require.main === module) main().catch(e => { console.error(e); process.exit(1); });
-else module.exports = { collect, replay, motelRoundup, capSmall }; /* for tools/hatchbot-quiet-test.js */
+else module.exports = { collect, replay, motelRoundup, capSmall, formBody, emo }; /* for tools/hatchbot-quiet-test.js */

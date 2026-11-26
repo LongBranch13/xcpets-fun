@@ -464,11 +464,11 @@
     ['neglect', function (s) { return s.neglected > 0; }, '<b>Careful!</b> A pet is neglected (3+ days unfed). Feed it soon: after 7 days it dies.'],
     ['mythic', function (s) { return s.stage >= 5; }, '<b>MYTHIC!</b> Your other pets now reach Mythic at just ' + fmt(N.mythicLine) + ' care.']
   ];
-  var SHEETS = '.reveal.on, .mgr-bg, .ca-ov, .la-ov, .qa-ov, .cp-bg, .csac-bg, .dz-modal, .eggpop, .mg-dlg-wrap, .sg-bg, .wspin, .xcs-ov, .cs-ov.on, .sh-ov, .ip-sheet:not([hidden]), .pk-modal, .sh-modal.on, .ftg-ov, #xhOv'; /* every sheet and full-screen pop-up (same list as css/screens.css 1) */
+  var SHEETS = '.reveal.on:not(#inReqBox), .mgr-bg, .ca-ov, .la-ov, .qa-ov, .cp-bg, .csac-bg, .dz-modal, .eggpop:not(#eggPop), .mg-dlg-wrap, .sg-bg, .wspin, .xcs-ov, .cs-ov.on, .sh-ov, .ip-sheet:not([hidden]), .pk-modal, .sh-modal.on, .ftg-ov, #xhOv'; /* every sheet and full-screen pop-up (same list as css/screens.css 1) */
   var lastKey = '', tipOpen = false;
   function playTick() {
     /* pet-flow-smoother: no coach tips while the hatch review (#packBox) is open; they wait until it closes (lastKey is not touched, so the next tick retries) */
-    if (document.querySelector(SHEETS)) return; /* screens (Nov 25 2026): not over ANY open sheet (it covered Sign & burn's fee buttons); css/screens.css also hides an already-open tip while a sheet is up */
+    if (document.querySelector(SHEETS) || (!/(^| )(lair-calm|ip-hold)( |$)/.test(document.documentElement.className) && document.querySelector('#inReqBox.on, #eggPop'))) return; /* screens (Nov 25 2026): not over ANY open sheet (it covered Sign & burn's fee buttons); css/screens.css also hides an already-open tip while a sheet is up */
     if (!window.V2UI || !V2UI.world) return; var w; try { w = V2UI.world(); } catch (e) { return; } if (!w || !w.pets) return;
     var me = V2UI.ME || null; if (!me) return; var s = stats(w, me); s.me = me; s.tip = w.tip || 0; s.grad = graduated(); s.spin = (w.streakSpin && w.streakSpin[me]) || null; var key = JSON.stringify(s); if (key === lastKey) return; lastKey = key;
     questsPanel(s);
