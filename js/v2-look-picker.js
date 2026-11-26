@@ -29,7 +29,9 @@
       '.lp-card canvas{width:96px;height:96px;image-rendering:pixelated;background:#0b0816}.lp-card b{color:#ffd166}.lp-card small{color:#9fe8ff}.lp-card.on{border-color:#ffd166}.lp-card.chg{outline:2px dashed #7CFF6B;outline-offset:1px}.lp-card.no{opacity:.55}' +
       '.lp-tg{font-size:12px;padding:4px 10px;border:2px solid #000;background:#2b2350;color:#ffd166;cursor:pointer}.lp-card.on .lp-tg{background:#ffd166;color:#140f24}.lp-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px}' +
       '.lp-list{margin:6px 0 0;padding:0;list-style:none}.lp-list li{position:relative;display:flex;gap:8px;align-items:center;padding:4px 0;border-bottom:1px solid #2b2350;font-size:13px}.lp-list canvas{width:40px;height:40px;image-rendering:pixelated;background:#0b0816;flex:0 0 40px}' +
-      '.lp-mv{display:inline-flex;flex-wrap:wrap;gap:4px;align-items:center;margin-top:3px}.lp-mv select{max-width:170px;font-size:12px;background:#1b1530;color:#eee;border:2px solid #4b3f7a}.lp-tg[disabled]{opacity:.5;cursor:not-allowed}.lp-note{font-size:12px;color:#9fe8ff;margin:6px 0}@media (max-width:520px){.lp-grid{grid-template-columns:repeat(2,1fr)}.lp-card canvas{width:80px;height:80px}}';
+      '.lp-mv{display:inline-flex;flex-wrap:wrap;gap:4px;align-items:center;margin-top:3px}.lp-mv select{max-width:170px;font-size:12px;background:#1b1530;color:#eee;border:2px solid #4b3f7a}.lp-tg[disabled]{opacity:.5;cursor:not-allowed}.lp-note{font-size:12px;color:#9fe8ff;margin:6px 0}@media (max-width:520px){.lp-grid{grid-template-columns:repeat(2,1fr)}.lp-card canvas{width:80px;height:80px}}' +
+      '.lp-pkspr{display:block;width:44px;height:44px;margin:0 auto 2px;image-rendering:pixelated}.lp-card .lp-st{color:#9fe8ff}' +
+      '.lp-link{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;margin:0}.lp-link .lp-lk-t{flex:1 1 220px}.lp-link .lp-lk-go{white-space:nowrap}';
     /* collectible card feel: each look is a little trading card (foil frame, holo sheen when on); the confirm window is a card being sealed */
     s.textContent += '.lp-card{border-radius:8px;border:3px solid #6d5bd0;background:linear-gradient(160deg,#2a1f4d,#151027 60%,#22193f);box-shadow:3px 3px 0 #000,inset 0 0 0 2px #0b0816}' +
       '.lp-card canvas{border:2px solid #ffd166;border-radius:4px;background:radial-gradient(circle,#2b2350,#0b0816)}.lp-card.on{border-color:#ffd166;background:linear-gradient(135deg,#3a2a10,#1b1530 40%,#24304f 70%,#3a2a10)}' +
@@ -75,10 +77,10 @@
     var h = '<div class="lp" id="' + (opt.id || '') + '"><h3>🃏 ' + esc(NAMES.panel) + ' · card #' + p.id + ' ' + esc(p.name || '') + '</h3>' + (gateText(w) ? '<p class="lp-note">' + esc(gateText(w)) + '</p>' : '') + mirror +
       (owned.length ? '<div class="lp-grid">' + owned.map(function (L, i) { var on = want(L), cap = L.kind === 'flame' ? (L.cap ? ' · up to ' + L.cap + ' pet' + (L.cap === 1 ? '' : 's') : '') : L.n > 1 ? ' · one pet each' : '';
         var hint = !on || isOn(L) ? '' : L.kind === 'flame' ? (L.cap && L.on.length >= L.cap ? (L.cap === 1 ? 'moves here from #' + L.on[0] : 'already on ' + L.cap + ' pets; take it off one first') : '') : (L.on.length >= L.n ? 'moves here from #' + L.on[0] : '');
-        return '<div class="lp-card' + (on ? ' on' : '') + (on !== isOn(L) ? ' chg' : '') + '"><canvas width="32" height="32" data-i="' + i + '"></canvas><b>' + esc(L.name) + '</b><small>' + KIND[L.kind] + copies(L) + cap + '</small><small>Now ' + esc(where(L)) + '</small>' +
+        return '<div class="lp-card' + (on ? ' on' : '') + (on !== isOn(L) ? ' chg' : '') + '"><canvas width="32" height="32" data-i="' + i + '"></canvas><b title="' + esc(KIND[L.kind] + copies(L) + cap) + '">' + esc(L.name) + '</b><small class="lp-st">' + (isOn(L) ? '✓ On this pet' : L.on.length ? 'On #' + L.on[0] + (L.on.length > 1 ? ' +' + (L.on.length - 1) : '') : 'Free to use') + '</small>' + /* one plain status line (Nov 26 2026); kind and limits sit in the name's hover */
           (hint ? '<small style="color:#7CFF6B">' + esc(hint) + '</small>' : '') + '<button type="button" class="lp-tg" data-code="' + L.code + '" aria-pressed="' + on + '">' + (on ? NAMES.off : NAMES.wear) + '</button></div>'; }).join('') + '</div>'
         : '<p class="lp-note">Your closet is empty. Burn for flame looks, go questing, or earn looks with your pets to decorate this card.</p>') +
-      '<div class="lp-bar"><button type="button" class="btn" data-send' + (ops.length && V.lookPickOn(tip(w) + 1) ? '' : ' disabled') + '>' + (opt.id === 'lpStation' ? '✨ ' + esc(NAMES.send) + ': ' : 'Send ') + ops.length + ' card change' + (ops.length === 1 ? '' : 's') + (ops.length ? ' (' + V.lookPlans(p.id, ops).length + ' burn' + (V.lookPlans(p.id, ops).length === 1 ? '' : 's') + ')' : '') + '</button>' +
+      '<div class="lp-bar"><button type="button" class="btn" data-send' + (ops.length && V.lookPickOn(tip(w) + 1) ? '' : ' disabled') + '>' + (!ops.length ? '✨ Try a look on first' : (opt.id === 'lpStation' ? '✨ ' + esc(NAMES.send) + ': ' : 'Send ') + ops.length + ' card change' + (ops.length === 1 ? '' : 's')) + (ops.length ? ' (' + V.lookPlans(p.id, ops).length + ' burn' + (V.lookPlans(p.id, ops).length === 1 ? '' : 's') + ')' : '') + '</button>' +
       (ops.length ? '<button type="button" class="q" data-reset>' + NAMES.undo + '</button>' : '') + '<span class="small muted">One look per spot on each pet (head, back, skin, foil, aura): forging a new one on takes off the old one in that spot.</span></div></div>';
     el.innerHTML = h;
     var big = el.querySelector('canvas.lp-big'); if (big) { try { var R = window.V2Render, fr = R.petFrames(p, w, { looks: owned.filter(want).map(lookFx), noHunger: true }); R.paint(big, fr[0]); } catch (e) { } }
@@ -127,12 +129,20 @@
     for (i = 0; i < live.length; i++) { p = live[i]; c = counts[p.id] || 0; s = PS && PS.of ? ((PS.of(w, p) || {}).score || 0) : 0;
       if (c > bn || (c === bn && s > bs) || (c === bn && s === bs && p.id < best.id)) { best = p; bn = c; bs = s; } }
     return best.id; }
+  /* flexLink (Nov 26 2026, Jake: the Flex Forge "shouldn't be on the pet pages"): the pet page keeps one small row that says which looks this pet
+   * wears and opens the Rare Room's Flex door on this pet. Forging itself happens only in the Rare Room. */
+  function flexLink(el, w, p, ME) { var V = window.V2Rules; css(); var owned = grouped(V, w, ME), on = owned.filter(function (L) { return L.on.indexOf(p.id) >= 0; });
+    el.innerHTML = '<div class="lp lp-link" id="looks"><span class="lp-lk-t">🃏 <b>' + esc(NAMES.feature) + '</b> · ' + (on.length ? 'wearing ' + on.map(function (L) { return esc(L.name); }).join(', ') : owned.length ? 'no looks on this card yet' : 'decorate this card with looks you earn') + '</span>' +
+      '<a class="btn lp-lk-go" href="rare-room.html#flex-' + p.id + '">Flex this pet →</a></div>'; }
   /* Rare Room Looks station: pick one of your pets (shared picker + sort menu), then the panel for it */
   function station(el, w, ME) { css(); if (!el.__st) el.__st = { pid: 0 }; var S = el.__st, live = V2Own.living(w, ME);
     if (!S.pid && live[0]) S.pid = startPet(w, live); /* start on the pet already wearing the most looks, then the best Pet Score */
+    /* flex-from-pet (Nov 26 2026, Jake: the Forge "shouldn't be on the pet pages"): a pet page's "Flex this pet" opens rare-room.html#flex-ID on that pet */
+    var hm = /^#flex-(\d+)$/.exec(location.hash || ''); if (hm && S.hash !== hm[0]) { S.hash = hm[0]; var hp = w.byId[+hm[1]]; if (hp && live.indexOf(hp) >= 0) S.pid = hp.id; }
     el.innerHTML = '<h2 class="sec" data-ico="gear">🃏 ' + esc(NAMES.station) + '</h2><p class="small muted">Pick a pet, then decorate its card with any look you own. All its changes go out together (up to 6 changes per burn).</p><div id="lpPick"></div><div id="lpBody"></div>';
     if (window.V2Picker) V2Picker.mount($('lpPick'), { id: 'looks', w: w, me: ME, noWho: true, dir: true, sorts: ['score', 'rarity', 'power', 'newest'], selected: S.pid,
-      records: function () { return live.map(function (p) { return { key: p.id, pets: [p], newest: p.hatchBlock || p.id, html: V2Picker.petChip(w) }; }); },
+      records: function () { var chip = V2Picker.petChip(w); return live.map(function (p) { return { key: p.id, pets: [p], newest: p.hatchBlock || p.id, html: function (r, so) { return '<canvas class="lp-pkspr" width="32" height="32" data-spr="' + r.key + '" aria-hidden="true"></canvas>' + chip(r, so); } }; }); },
+      after: function (box) { box.querySelectorAll('canvas[data-spr]').forEach(function (c) { var q = w.byId[+c.getAttribute('data-spr')]; if (q) previewSoon(c, w, q, null); }); }, /* pick a pet by its picture, not its number */
       onPick: function (r) { S.pid = r.key; station(el, w, ME); } });
     var p = w.byId[S.pid]; if (p) panel($('lpBody'), w, p, ME, { id: 'lpStation' }); else $('lpBody').innerHTML = '<p class="lp-note">No living pets to dress up in this wallet.</p>'; }
   var keys = {}, olMemo = { w: null, me: null, tip: null, s: '' };
@@ -142,7 +152,7 @@
     var k = [w.tip, ME, w.lookCopies ? Object.keys(w.lookCopies).length : 0, !!window.V2Looks, ownedSig(V, w, ME)].join('|'), page = document.body.getAttribute('data-split'), id = Number(new URLSearchParams(location.search).get('id'));
     if (/pet\.html/.test(location.pathname) && id) { var p = w.byId[id], anchor = $('questCard') || $('starveWarn') || $('facts'), el = $('lookPanel');
       if (!p || !ME || p.owner !== ME || p.dead || p.released) { if (el) el.remove(); }
-      else if (anchor && keys.pet !== k + id) { keys.pet = k + id; if (!el) { el = document.createElement('section'); el.id = 'lookPanel'; el.className = 'panel'; anchor.parentNode.insertBefore(el, anchor.nextSibling); } panel(el, w, p, ME, { id: 'looks' }); } }
+      else if (anchor && keys.pet !== k + id) { keys.pet = k + id; if (!el) { el = document.createElement('section'); el.id = 'lookPanel'; el.className = 'panel'; anchor.parentNode.insertBefore(el, anchor.nextSibling); } flexLink(el, w, p, ME); } }
     /* mypets-calm (owner Nov 23 2026: Flex Forge "never worked very intuitively or belonged here"): the My Flex list is no longer drawn under My Pets;
      * looks are put on and taken off in The Rare Room's Flex Forge Station (My Pets ⚙️ More links there). The old list code stays for MYFLEX_ON_PLAY = true. */
     var oldMl = $('myLooks'); if (oldMl && page === 'play' && !window.MYFLEX_ON_PLAY) oldMl.remove();

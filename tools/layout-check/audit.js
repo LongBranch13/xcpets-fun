@@ -98,6 +98,14 @@
     if (r.top >= vb - 4 || r.bottom <= vt + 4) add('sheet-button-out-of-view', el, 'the sheet\'s button sits at ' + Math.round(r.top) + 'px, the sheet shows ' + Math.round(vt) + '..' + Math.round(vb) + 'px');
   });
 
+  /* 2b. squashed cards (Nov 26 2026, Jake's "401 new gear pieces" pop-up showed empty outlines): a grid that has to fit a fixed height
+   * shrinks its rows, and a card with overflow:hidden has no minimum height, so its picture and words vanish. The text check below
+   * misses it (the card's own text sits in children), so look at every grid item: clipped by more than a few pixels = squashed. */
+  Array.prototype.forEach.call((top || document.body).querySelectorAll('*'), function (el) {
+    var par = el.parentElement; if (!par || !/grid/.test(getComputedStyle(par).display) || !shown(el)) return;
+    var cs = getComputedStyle(el); if (!/(hidden|clip)/.test(cs.overflowY) || el.clientHeight <= 0 || !(el.innerText || '').trim()) return;
+    if (el.scrollHeight > el.clientHeight + 8) add('card-squashed', el, 'card ' + el.scrollHeight + 'px tall squeezed into ' + el.clientHeight + 'px (its picture and words are cut off)');
+  });
   /* 3. text: cut off inside a box, or a title wrapping into a wall of big lines */
   var textEls = (top || document.body).querySelectorAll('h1,h2,h3,h4,p,div,span,b,strong,button,a,label,li,td,small,em');
   Array.prototype.forEach.call(textEls, function (el) {

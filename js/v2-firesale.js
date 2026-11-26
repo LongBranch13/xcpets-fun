@@ -23,7 +23,7 @@
       osc = ctx.createOscillator(); gain = ctx.createGain(); gain.gain.value = 0.04; osc.type = 'square'; osc.connect(gain); gain.connect(ctx.destination);
       var t = ctx.currentTime; for (var i = 0; i < 600; i++) { osc.frequency.setValueAtTime(i % 2 ? 660 : 880, t + i * 0.5); } osc.start(); } catch (e) { } }
   function build() { el = document.createElement('div'); el.id = 'fireSale'; el.className = 'firesale' + (rm ? ' fs-still' : ''); el.setAttribute('role', 'status');
-    var nav = document.querySelector('nav, .nav, header'); if (nav && nav.parentNode) nav.parentNode.insertBefore(el, nav.nextSibling); else document.body.insertBefore(el, document.body.firstChild);
+    var nav = document.querySelector('nav, .nav, header'); if (window.XcpTopStrip && XcpTopStrip.mount(el)) { } /* smooth load: the reserved strip */ else if (nav && nav.parentNode) nav.parentNode.insertBefore(el, nav.nextSibling); else document.body.insertBefore(el, document.body.firstChild);
     el.addEventListener('click', function (e) { var b = e.target.closest && e.target.closest('#fsSiren'); if (!b) return; var on = !sirenOn(); try { localStorage.setItem(SK, on ? 'on' : 'off'); } catch (er) { } b.textContent = on ? '🔊 Siren on' : '🔈 Siren off'; b.setAttribute('aria-pressed', String(on)); siren(on && !!el.dataset.live); }); }
   function drawPets(w) { if (pets || !R() || !R().animate || !R().petFrames) return; var cvs = el.querySelectorAll('.fs-pet'); if (!cvs.length) return; pets = true;
     var list = (w.pets || []).filter(function (p) { return !p.dead && !p.released && !p.community && p.stage >= 1; }).slice(-40);

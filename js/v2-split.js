@@ -1151,7 +1151,7 @@
       bar.id = 'splitViewBar';
       bar.setAttribute('role', 'status');
       bar.style.cssText = 'background:#1d1b2e;color:#d7ffe4;padding:6px 10px;font-size:12px;line-height:1.5;text-align:center';
-      document.body.insertBefore(bar, document.body.firstChild);
+      if (!(window.XcpTopStrip && XcpTopStrip.mount(bar))) document.body.insertBefore(bar, document.body.firstChild); /* smooth load: the reserved strip under the header */
     }
     var behind = last && last.tip && view && view.tip ? last.tip - view.tip : 0;
     var lag = behind > 0 ? ' <span class="muted">(' + behind + ' block' + (behind === 1 ? '' : 's') + ' behind the tip)</span>' : '';

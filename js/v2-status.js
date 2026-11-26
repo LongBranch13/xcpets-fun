@@ -23,7 +23,7 @@
   function line() {
     var el = d.getElementById('statusLine'); if (el) return el;
     css(); el = d.createElement('div'); el.id = 'statusLine'; el.setAttribute('role', 'status'); el.setAttribute('aria-live', 'polite');
-    var nav = d.querySelector('header.nav, header, nav'); if (nav && nav.parentNode) nav.parentNode.insertBefore(el, nav.nextSibling); else d.body.insertBefore(el, d.body.firstChild);
+    var nav = d.querySelector('header.nav, header, nav'); if (window.XcpTopStrip && XcpTopStrip.mount(el)) { } /* smooth load: the reserved strip under the header */ else if (nav && nav.parentNode) nav.parentNode.insertBefore(el, nav.nextSibling); else d.body.insertBefore(el, d.body.firstChild);
     return el;
   }
   function loadIssue() {

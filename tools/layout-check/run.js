@@ -31,6 +31,8 @@ const pages = opt('--pages', '') ? opt('--pages').split(',') : ALL;
 const SCENES = {
   'hatch-review-1000': `(() => { const w = V2Mock.world(), me = localStorage.getItem('xcpets-v2-me'); const mine = w.pets.filter(p => p.owner === me && !p.dead), ids = mine.concat(w.pets.filter(p => p.owner !== me && !p.dead && p.stage >= 1)).slice(0, 1000).map(p => p.id); /* 1,000 eggs: a big Shock Box */
      if (!window.V2RevealPreview || ids.length < 5) return false; V2RevealPreview(ids); return true; })()`,
+  /* Nov 26 2026: Jake's 401-piece gear pop-up drew empty outlines (squashed grid rows); audit.js 'card-squashed' catches it here */
+  'gear-reveal-400': `(() => { if (!window.V2GearRevealPreview) return false; return V2GearRevealPreview(400) > 0; })()`,
   'burn-sheet-long': `(() => { if (!window.V2UI || !V2UI.confirmPlans) return false; const w = V2Mock.world(), me = localStorage.getItem('xcpets-v2-me');
      const ids = w.pets.filter(p => p.owner === me && !p.dead).slice(0, 40).map(p => p.id); if (!ids.length) return false;
      V2UI.confirmPlans('Discard ' + ids.length + ' pets forever (permanent, on-chain): they leave My Pets and cannot come back', ids.map(id => ({ tag: 'pet:hd:' + id })));
@@ -39,7 +41,7 @@ const SCENES = {
      const p = w.pets.filter(p => p.owner === me && !p.dead && p.stage >= 3).sort((a, b) => String(b.name || '').length - String(a.name || '').length)[0]; if (!p) return false; V2UI.detail(p.id); return true; })()`,
 };
 SCENES.grinder = `(() => { if (!window.V2Grinder) return false; V2Grinder.open(); return true; })()`;
-const SCENES_FOR = { 'play.html': ['hatch-review-1000', 'burn-sheet-long', 'pet-page', 'grinder'] };
+const SCENES_FOR = { 'play.html': ['hatch-review-1000', 'gear-reveal-400', 'burn-sheet-long', 'pet-page', 'grinder'] };
 function chromium() { for (const p of [process.env.PW, 'playwright', 'playwright-core']) { if (!p) continue; try { return require(p).chromium; } catch (e) {} } throw new Error('playwright not found'); }
 const INIT = (o) => {
   try {

@@ -286,11 +286,12 @@
     var feral = tips.pause ? spanFeral : !!((opt.hunger && opt.hunger.feral) || p.feral);
     if (!feral) return '';
     var why = fix.why, cost = V.mgPlan(w, p.id, b).amount, nEat = (mv.edible || []).length;
+    if (why && /no Mythic it could eat/.test(why) && V.mgSafeOn && V.mgSafeOn(b)) { var mm = mgMenu(w, me, b); if (mm.length) { why = null; nEat = 0; } } /* mg-safe-ticks: every Mythic ticked safe; the pop-up lets you untick one */
     var said = why || 'it can be unleashed';
     if (tips.pause && fix.crumble != null && !why && typeof V.span === 'function') said += '. Dust at block ' + fix.crumble + ' (' + Math.max(0, dustN - V.span(b, fed | 0)) + ' blocks left)';
     var more = 'The game said: ' + es(said) + '. Unleash spends ' + nf(cost) + ' XCPETS. Six blocks later the zombie eats one eligible Mythic at random. A Mythic has to be held 30 days. It can\'t be a 1 of 1, an edition, a community pet, listed, or tokenized.';
     if (why) return '<div class="mg-unl zb-quiet" data-mgu="' + p.id + '"><p class="zb-noact">' + es(unleashPlain(why)) + ' ' + uq(more) + '</p></div>';
-    return '<div class="mg-unl" data-mgu="' + p.id + '"><button type="button" class="btn mg-red mg-unlbtn" data-z="' + p.id + '">🩸 Unleash · ' + nf(cost) + ' XCPETS</button> ' + uq('Starving: unleash it and it eats ONE of your ' + nf(nEat) + ' Mythic' + (nEat === 1 ? '' : 's') + ' that can be eaten, picked at random 6 blocks later. ' + more) + '</div>';
+    return '<div class="mg-unl" data-mgu="' + p.id + '"><button type="button" class="btn mg-red mg-unlbtn" data-z="' + p.id + '">🩸 Unleash · ' + nf(cost) + ' XCPETS</button> ' + uq((nEat ? 'Starving: unleash it and it eats ONE of your ' + nf(nEat) + ' Mythic' + (nEat === 1 ? '' : 's') + ' that can be eaten, picked at random 6 blocks later. ' : 'Every Mythic of yours is ticked 🛡️ Safe: open Unleash and untick the ones it may eat. ') + more) + '</div>';
   }
   function mgUnlHtml(p, w, mv) {
     if (!ME || !p || p.owner !== ME || !V.mgPlan) return '';
@@ -299,24 +300,45 @@
     var hunger = window.V2Zombies && V2Zombies.hunger ? V2Zombies.hunger(p, w) : null;
     return unleashCard(V, S, w, p, ME, { pending: typeof myPendingTags === 'function' ? myPendingTags() : [], hunger: hunger, ask: unleashAsk, fresh: unleashFresh });
   }
+  /* mg-safe-ticks (owner Nov 26 2026, Jake: "tick the ones you dont want eaten. people have a lot"): from V.mgSafeGate() the Unleash pop-up lists
+   * every Mythic of yours that could be on the menu, each with a 🛡️ Safe tick. Ticked = kept safe (on chain, pet:ms), unticked = on the menu
+   * (pet:mu takes an old mark off). The safe-tick burns go first in the same confirm sheet, then the unleash. At least one Mythic must stay on
+   * the menu. mgMenu(w, me, b) = [{ id, safe }] for Mythics that are edible now or held back only by your own safe mark. */
+  function mgMenu(w, me, b) { if (!V.mgEdibleWhy || !me) return []; var out = [];
+    w.pets.forEach(function (p) { if (p.owner !== me || !(p.stage === 5 || p.mythicCare || p.ascended)) return; var y = V.mgEdibleWhy(w, p, me, b); if (!y) out.push({ id: p.id, safe: false }); else if (y === 'kept safe by you') out.push({ id: p.id, safe: true }); });
+    return out.sort(function (a, c) { return a.id - c.id; }); }
+  function mgSafeTags(pre, ids) { var out = [], cur = []; ids.slice().sort(function (a, c) { return a - c; }).forEach(function (id) { var nx = cur.concat([id]), tag = pre + ':' + nx.map(function (x) { return x.toString(32).toUpperCase(); }).join('.'); if (tag.length > 34 && cur.length) { out.push(cur); cur = [id]; } else cur = nx; }); if (cur.length) out.push(cur);
+    return out.map(function (g) { return { tag: pre + ':' + g.map(function (x) { return x.toString(32).toUpperCase(); }).join('.'), amount: 0.00000001, petIds: g, petId: g[0], label: (pre === 'pet:ms' ? '🛡️ Keep safe ' : 'Back on the menu ') + g.length + ' Mythic' + (g.length > 1 ? 's' : '') }; }); }
   function mgUnlDialog(z) {
     if (window.V2Split && V2Split.ownersReady && !V2Split.ownersKnown()) { toast('loading owners'); V2Split.ownersReady().then(function () { mgUnlDialog(z); }); return; }
-    var w = world(), b = unleashEvalBlock(w) || ((S.tip || 0) + 1), Z = w.byId[z], mv = V.mgView ? V.mgView(w, Z, b) : null; if (!Z || !mv || !mv.edible || !mv.edible.length) return toast(mv && mv.unleashWhy ? 'Can\'t unleash: ' + mv.unleashWhy : 'No Mythic of yours can be eaten.');
+    /* mg-safe-ticks: a big wallet's pets arrive page by page; the menu (and the safe ticks) must list EVERY Mythic, or one you never saw could be eaten */
+    if (!hatchListSettled(world())) { var pg0 = world() && world()._pages; if (pg0 && window.V2Split && V2Split.more) try { V2Split.more(Math.min(200, Math.max(1, (pg0.pages || 1) - (pg0.got || 1)))); } catch (e) { }
+      if (!mgUnlDialog.wait) { toast('⏳ Loading all your Mythics first, so the Unleash list shows every one of them…', 9000); mgUnlDialog.wait = Date.now(); }
+      if (Date.now() - mgUnlDialog.wait < 10 * 60e3) setTimeout(function () { mgUnlDialog(z); }, 2000); else { mgUnlDialog.wait = 0; toast('Your pets did not finish loading, so Unleash did not open. Nothing was sent. Reload and try again.', 15000); } return; }
+    mgUnlDialog.wait = 0;
+    var w = world(), b = unleashEvalBlock(w) || ((S.tip || 0) + 1), Z = w.byId[z], mv = V.mgView ? V.mgView(w, Z, b) : null, safeOn = !!(V.mgSafeOn && V.mgSafeOn(b)), menu = safeOn ? mgMenu(w, ME, b) : []; if (safeOn && Z && mv && menu.length && !(mv.edible || []).length) mv.edible = menu.map(function (x) { return x.id; }); if (!Z || !mv || !mv.edible || !mv.edible.length) return toast(mv && mv.unleashWhy ? 'Can\'t unleash: ' + mv.unleashWhy : 'No Mythic of yours can be eaten.');
     var nm = Z.name || ('#' + z), old = document.getElementById('mgDlg'); if (old) old.remove(); var d = document.createElement('div'); d.id = 'mgDlg'; d.className = 'mg-dlg-wrap';
     d.innerHTML = '<div class="mg-dlg" role="dialog" aria-modal="true" aria-labelledby="mgDlgT"><h3 id="mgDlgT">🩸 Unleash ' + esc(nm) + ' #' + z + '</h3>' +
       /* honest-mg-copy (Nov 25 2026): this line used to promise another raise after a failed roll. The rules give ONE
        * Resurrection try, and a miss turns the Mythic to dust for good. Three players were told otherwise and lost theirs. */
       '<p class="mg-dlg-warn">Your zombie ' + esc(nm) + ' will EAT ONE of these Mythics, picked at random. The eaten Mythic dies and leaves a violet grave. You raise that grave and get <b>one</b> Resurrection roll: win and it is a Mythic God, lose and it turns to dust and is gone forever.</p>' +
-      '<div class="mg-dlg-list">' + mv.edible.map(function (id) { var q = w.byId[id]; return '<div class="mg-ed"><canvas width="32" height="32" data-id="' + id + '"></canvas><span>' + esc((q && q.name) || '#' + id) + '</span><span class="muted">#' + id + '</span></div>'; }).join('') + '</div>' +
-      '<p class="small">The meal comes 6 blocks after the burn confirms, picked by that block\'s hash from the Mythics above that can still be eaten then. 1-of-1, edition, community, listed and tokenized Mythics, the owner\'s pets #1, #2 and #13, and Mythics held under 30 days, are never on the menu. If ' + esc(nm) + ' is hunted, leaves your wallet or crumbles first, nothing is eaten. One unleash per wallet every 30 days.</p>' +
+      (safeOn ? '<style>#mgDlg .mg-ed.mg-safe{outline:2px solid #3ddc84;border-radius:6px;background:#0f2a1a}#mgDlg .mg-ed.mg-safe canvas{opacity:.75}</style><p class="small mg-menu-h"><b>Tick 🛡️ Safe on every Mythic you want to keep.</b> It eats one of the unticked ones. Safe ticks stay until you untick them. <span class="mg-cnt"></span></p><div class="mg-dlg-btns" style="justify-content:flex-start"><button type="button" class="btn ghost mg-allsafe">🛡️ Tick all</button> <button type="button" class="btn ghost mg-nosafe">Untick all</button></div><div class="mg-dlg-list mg-menu" style="max-height:260px">' + menu.map(function (x) { var q = w.byId[x.id]; return '<label class="mg-ed' + (x.safe ? ' mg-safe' : '') + '" style="cursor:pointer"><canvas width="32" height="32" data-id="' + x.id + '"></canvas><span>' + esc((q && q.name) || '#' + x.id) + '</span><span class="muted">#' + x.id + '</span><span><input type="checkbox" class="mg-sf" data-id="' + x.id + '"' + (x.safe ? ' checked' : '') + '> 🛡️</span></label>'; }).join('') + '</div>' : '<div class="mg-dlg-list">' + mv.edible.map(function (id) { var q = w.byId[id]; return '<div class="mg-ed"><canvas width="32" height="32" data-id="' + id + '"></canvas><span>' + esc((q && q.name) || '#' + id) + '</span><span class="muted">#' + id + '</span></div>'; }).join('') + '</div>') +
+      '<p class="small">The meal comes 6 blocks after the burn confirms, picked by that block\'s hash from the Mythics above that can still be eaten then. 1-of-1, edition, community, listed and tokenized Mythics, the owner\'s pets #1, #2 and #13, and Mythics held under 30 days, are never on the menu. If ' + esc(nm) + (safeOn ? ' leaves your wallet or crumbles first' : ' is hunted, leaves your wallet or crumbles first') + ', nothing is eaten.' + (safeOn ? ' Kept-safe (🛡️) Mythics are never eaten.' : ' One unleash per wallet every 30 days.') + '</p>' +
       '<label class="small">Type <b>' + esc(nm) + '</b> to unleash it <input type="text" class="mg-name" autocomplete="off" spellcheck="false"></label>' +
       '<div class="mg-dlg-btns"><button type="button" class="btn ghost mg-no">Cancel</button> <button type="button" class="btn mg-red mg-yes" disabled>🩸 Unleash · ' + fmt(V.mgPlan(w, z, b).amount) + ' XCPETS</button></div></div>';
     document.body.appendChild(d); var inp = d.querySelector('.mg-name'), yes = d.querySelector('.mg-yes');
     d.querySelectorAll('canvas[data-id]').forEach(function (c) { var q = w.byId[+c.dataset.id]; try { if (q) R.paint(c, R.petFrames(q, w)[0]); } catch (e) {} });
-    inp.addEventListener('input', function () { yes.disabled = inp.value.trim().toLowerCase() !== String(nm).trim().toLowerCase(); });
+    var was = {}; menu.forEach(function (x) { was[x.id] = x.safe; });
+    function ticks() { var add = [], del = [], on = 0; d.querySelectorAll('.mg-sf').forEach(function (c) { var id = +c.dataset.id; c.closest('.mg-ed').classList.toggle('mg-safe', c.checked); if (c.checked && !was[id]) add.push(id); if (!c.checked && was[id]) del.push(id); if (!c.checked) on++; }); return { add: add, del: del, on: on }; }
+    function okNow() { var T = safeOn ? ticks() : null, named = inp.value.trim().toLowerCase() === String(nm).trim().toLowerCase();
+      if (T) { var nb = mgSafeTags('pet:ms', T.add).length + mgSafeTags('pet:mu', T.del).length, c = d.querySelector('.mg-cnt'); if (c) c.textContent = T.on ? 'On the menu: ' + fmt(T.on) + ' · kept safe: ' + fmt(menu.length - T.on) + (nb ? ' · saving your ticks adds ' + nb + ' tiny burn' + (nb > 1 ? 's' : '') + ' (1 dander each + network fee)' : '') : '⚠️ Every Mythic is ticked safe: untick at least one, or it has nothing to eat.'; }
+      yes.disabled = !named || !!(T && !T.on); }
+    d.querySelectorAll('.mg-sf').forEach(function (c) { c.addEventListener('change', okNow); });
+    if (d.querySelector('.mg-allsafe')) { d.querySelector('.mg-allsafe').onclick = function () { d.querySelectorAll('.mg-sf').forEach(function (c) { c.checked = true; }); okNow(); }; d.querySelector('.mg-nosafe').onclick = function () { d.querySelectorAll('.mg-sf').forEach(function (c) { c.checked = false; }); okNow(); }; }
+    inp.addEventListener('input', okNow); okNow();
     inp.addEventListener('keydown', function (e) { e.stopPropagation(); if (e.key === 'Escape') d.remove(); });
     d.querySelector('.mg-no').onclick = function () { d.remove(); }; d.addEventListener('click', function (e) { if (e.target === d) d.remove(); });
-    yes.onclick = function () { if (yes.disabled) return; d.remove(); var P = V.mgPlan(world(), z, unleashEvalBlock(world()) || b); confirmPlans('🩸 Unleash ' + esc(nm) + ' #' + z + ' · it eats ONE of your ' + mv.edible.length + ' Mythic' + (mv.edible.length === 1 ? '' : 's') + ' at random, 6 blocks after this burn', [{ tag: P.tag, amount: P.amount, petId: z, label: 'unleash' }]); };
+    yes.onclick = function () { if (yes.disabled) return; var T = safeOn ? ticks() : { add: [], del: [], on: mv.edible.length }; d.remove(); var P = V.mgPlan(world(), z, unleashEvalBlock(world()) || b); var pre = mgSafeTags('pet:ms', T.add).concat(mgSafeTags('pet:mu', T.del)); confirmPlans('🩸 Unleash ' + esc(nm) + ' #' + z + ' · it eats ONE of your ' + T.on + ' Mythic' + (T.on === 1 ? '' : 's') + ' at random, 6 blocks after this burn' + (pre.length ? ' (first ' + pre.length + ' tiny burn' + (pre.length > 1 ? 's save' : ' saves') + ' your 🛡️ Safe ticks)' : ''), pre.concat([{ tag: P.tag, amount: P.amount, petId: z, label: 'unleash' }])); };
     setTimeout(function () { try { inp.focus(); } catch (e) {} }, 0); }
   if (typeof document !== 'undefined') document.addEventListener('click', function (e) {
     var qb = e.target && e.target.closest && e.target.closest('.zb-qbtn');
@@ -755,6 +777,9 @@
       withLife(function (ok) { if (!ok || !window.V2LifeAnim) return go(); try { V2LifeAnim.hatch(world(), r1.eggs, go); } catch (e) { go(); } }); return; }
     drawReveal(); open('packBox'); }
   /* share-links: the real hatch review, for a preview (?moment=hatch&pet=ID). Display only. Sabo #1765 is left out. */
+  /* gear reveal preview (Nov 26 2026, layout check): opens the 'N new gear pieces' pop-up with the first n pieces this wallet owns, like a big
+   * batch landing while away. Display only (nothing is stored: the seen list is not touched). Used by tools/layout-check 'gear-reveal-400'. */
+  window.V2GearRevealPreview = function (n) { var w = world(); if (!w || !ME || !$('packBox')) return 0; var r = V.newWins(w, ME, {}), wins = r.wins.slice(0, n || 400); if (!wins.length) return 0; revealQ.push({ kind: 'gear', wins: wins, away: true }); nextReveal(); return wins.length; };
   window.V2RevealPreview = function (ids) { ids = (ids || []).map(Number).filter(function (n) { return n >= 1 && n !== 1765; }); if (!ids.length || !$('packBox')) return; revealQ.push({ kind: 'eggs', eggs: ids }); nextReveal(); };
   /* egg-review-sort 2026-10-24: the sort options and logic now live in js/pet-sort.js (PetSort), shared with Gooby's Hotel mate search. */
   function sortEggs(w, list, k) { return window.PetSort ? PetSort.sort(w, list, k) : list; }
@@ -915,6 +940,7 @@
     $('packBox').classList.toggle('pkintro', !!(rev.kind === 'eggs' && rev.intro));
     if (rev.kind === 'eggs' && rev.intro) { var wi = world(); if (rev.eggs.some(function (id) { return wi.byId[id]; })) return drawIntro(wi); rev.intro = false; }
     var w = world(), gear = rev.kind === 'gear', list = gear ? rev.wins : rev.eggs.map(function (id) { return w.byId[id]; }).filter(Boolean), tiers = [0, 0, 0, 0];
+    if (gear) list = list.slice().sort(function (a, b) { return (b.legendary ? 4 : b.tier || 0) - (a.legendary ? 4 : a.tier || 0); }); /* gear best first (Nov 26 2026): a 400-piece batch opens on its Legendaries, not on page after page of Commons. Display order only. */
     if (!gear) list = sortEggs(w, list, rev.sort); /* egg-review-sort 2026-10-24: display order only; rev.sel is keyed by pet id, so ticks survive re-sorting */
     var all = list; list.forEach(function (x) { tiers[gear ? (x.legendary ? 3 : x.tier) : x.art.tierIndex]++; });
     var nMy = gear ? 0 : list.filter(function (x) { return x.stage === 5; }).length;
@@ -1109,34 +1135,14 @@
       : '<span class="sk-tag sk-w">WAGMI?</span> <b>Say WAGMI once a chain day</b> <span class="sk-joke">and watch your 🔥 streak grow. 1 dander, no feeding needed.</span>';
     setTimeout(function () { var b = $('wagmiBtn'); if (b && !b.disabled) b.onclick = function () { confirmPlans('WAGMI check-in', [{ tag: 'pet:wagmi', amount: 0.00000001 }]); }; }, 0);
     return '<span class="sk-msg">' + msg + '</span>' + btn; }
-  /* wagmi-daily (owner, Oct 22 2026): right after V2Wallet.connect, offer WAGMI once per wallet per chain day if it can be sent (gate open, not said
-   * today, none pending; same sendBlock check as the button). One tap opens the normal confirm (one XCP Wallet window, one-window lock applies).
-   * Dismiss = not again today. localStorage key xcpets-wagmi-offer:<addr> = chain day it was shown. The My Pets WAGMI button stays. */
-  var WAGMI_PLAN = { tag: 'pet:wagmi', amount: 0.00000001 };
-  function wagmiOffer(w) { try {
-    if (!ME || viewOnly() || !w || !w.tip || !V.wagmiOn || !V.wagmiOn(w.tip + 1)) return; var ss = window.sessionStorage, ls = window.localStorage;
-    if (ss.getItem('xcpets-wagmi-connect') !== ME) return; var d = V.day ? V.day(w.tip + 1) : Math.floor((w.tip + 1) / 144), k = 'xcpets-wagmi-offer:' + ME;
-    if (ls.getItem(k) === String(d) || $('wagmiOffer') || sendWhy(WAGMI_PLAN)) return;
-    ls.setItem(k, String(d)); ss.removeItem('xcpets-wagmi-connect');
-    var first = V.wagmiFirst ? V.wagmiFirst(w, d).length : 5, prize = V.wagmiPrizeOn && V.wagmiPrizeOn(w.tip + 1) && first < (V.WAGMI_PRIZE_N || 5);
-    var el = document.createElement('div'); el.id = 'wagmiOffer'; el.className = 'wagmi-offer'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'Say WAGMI today');
-    el.innerHTML = '<b>🚀 gm! Say WAGMI for today?</b><span>One tap keeps your 🔥 streak going (1 dander, plus the network fee).' + (prize ? ' Only ' + first + ' of 5 Day One Degen spots taken today: the first five wallets each get +1 saved Pepe Wheel spin.' : '') + '</span>' +
-      '<div class="wo-btns"><button type="button" class="btn" id="wagmiOfferGo">🚀 Say WAGMI</button><button type="button" class="btn ghost" id="wagmiOfferNo">Not today</button></div>';
-    document.body.appendChild(el);
-    $('wagmiOfferGo').onclick = function () { el.remove(); confirmPlans('WAGMI check-in', [WAGMI_PLAN]); };
-    $('wagmiOfferNo').onclick = function () { el.remove(); };
-  } catch (e) { } }
-  window.addEventListener('xcpets:connected', function () { setTimeout(function () { wagmiOffer(world()); }, 0); });
-  if (!document.getElementById('wagmiOfferCss')) { var woc = document.createElement('style'); woc.id = 'wagmiOfferCss';
-    woc.textContent = '.wagmi-offer{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:60;width:min(440px,calc(100vw - 24px));background:#181327;color:#ece6ff;border:3px solid #ffc93c;border-radius:12px;padding:12px 14px;box-shadow:0 6px 24px #000a;display:flex;flex-direction:column;gap:6px}' +
-      '.wagmi-offer b{font-family:"Press Start 2P",monospace;font-size:11px;color:#ffc93c;line-height:1.5}.wagmi-offer span{font-size:13px;line-height:1.4}.wagmi-offer .wo-btns{display:flex;gap:8px;flex-wrap:wrap}.wagmi-offer .btn{min-height:40px}';
-    document.head.appendChild(woc); }
+  /* wagmi-daily pop-up removed (Jake, Nov 26 2026: "gm! Say WAGMI for today?" floated over the Select / Feed selected bar). WAGMI stays one
+   * tap away in the WAGMI bar at the top of My Pets (#streakBar, wagmiBar above). Floating pop-ups now lift above pinned bars (js/v2-dock.js). */
   var CARDC = new Map(); /* speed2-1101: last grid card per pet id (see mk) */
   function renderPets(w) {
     if (CARDC.size > 4000) CARDC.clear();
     var all = mine(w), alive = all.filter(function (p) { return !p.dead; }), dead = all.filter(function (p) { return p.dead; });
     if (V.streakOf && $('streakBar')) { var stk = ME ? V.streakOf(w, ME, w.tip) : null; /* WAGMI / NGMI daily check-in (login-streak rework, Oct 21 2026) */
-      $('streakBar').style.display = stk ? '' : 'none'; if (stk) $('streakBar').innerHTML = wagmiBar(stk, w);  wagmiOffer(w); }
+      $('streakBar').style.display = stk ? '' : 'none'; if (stk) $('streakBar').innerHTML = wagmiBar(stk, w); }
     var rost = w._roster, partial = !!(rost && !w._full);
     $('nAlive').textContent = partial ? rost.alive : alive.length; $('nDead').textContent = partial ? rost.dead : dead.length; $('petBadge').textContent = partial ? rost.alive : alive.length;
     if (window.V2TokFilter && $('fTok')) { var tc = V2TokFilter.counts(w, petList(alive, dead, false, true));
