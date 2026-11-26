@@ -75,7 +75,7 @@
     B.bulk = bulk; B.count = el('span', { 'class': 'mpc-count', id: 'mpcCount' }); bulk.insertBefore(B.count, bulk.firstChild);
     B.done = el('button', { type: 'button', 'class': 'q', id: 'mpcDone', title: 'Stop selecting and untick every pet' }, '✕ Done'); bulk.appendChild(B.done);
     B.more.onclick = function () { var open = B.drawer.hidden; B.drawer.hidden = !open; B.more.setAttribute('aria-expanded', String(open)); };
-    B.sel.onclick = function () { if (d.body.classList.contains('selmode') || selN()) { done(); return; } $('selMode').click(); sync(); };
+    B.sel.onclick = function () { if (d.body.classList.contains('selmode') || selN()) { done(); return; } d.body.classList.add('mpc-inview'); /* you tapped Select inside My Pets */ $('selMode').click(); sync(); };
     B.done.onclick = done;
     $('nfProxy').onclick = function () { var b = $('nfOnly'); if (b) b.click(); setTimeout(sync, 50); };
     $('zbProxy').onclick = function () { d.body.classList.toggle('mpc-zb'); sync(); };
@@ -83,7 +83,10 @@
   function done() { if (selN() && $('selNone')) $('selNone').click(); if (d.body.classList.contains('selmode')) $('selMode').click(); setTimeout(sync, 0); }
   /* move a late element once it exists; scripts find them by id, so they keep working wherever they sit */
   function adopt(id, into, before) { var e = typeof id === 'string' ? $(id) : id; if (!e || !into || e.parentNode === into) return; if (before && before.parentNode === into) into.insertBefore(e, before); else into.appendChild(e); }
-  function sync() { if (!B.head) return; var n = selN(), on = d.body.classList.contains('selmode');
+  /* Nov 26 2026 (Jake: "this feed bar is stuck"): the selection bar pins only while My Pets is on screen (any part of it above the bar's spot) */
+  function inView() { var P = $('petsPanel'), r = P && P.getBoundingClientRect(), on = !!r && r.height > 0 && r.bottom > 0 && r.top < (window.innerHeight || 800) - 140;
+    if (d.body.classList.contains('mpc-inview') !== on) d.body.classList.toggle('mpc-inview', on); return on; }
+  function sync() { if (!B.head) return; inView(); var n = selN(), on = d.body.classList.contains('selmode');
     adopt('mptStat', B.head); adopt('dcRow', B.head);
     adopt('fRarRow', B.rar); adopt('fShowingSlot', B.rar);
     var show = $('mpcShow'), care = $('mpcCare'), nf = $('nfProxy');
@@ -111,8 +114,9 @@
     /* Nov 26 2026 (Jake: "this feed bar is stuck"): the selection bar was pinned to the screen whenever a pet was ticked, so it followed
      * you down Play to the Grinder, the Pantry and over their burn sheets. It now pins only while My Pets is on screen (class mpc-inview);
      * scroll back to My Pets and it is there again, with your ticks kept. */
-    var panel = $('petsPanel'); if (panel && window.IntersectionObserver) new IntersectionObserver(function (es) { es.forEach(function (e) { d.body.classList.toggle('mpc-inview', e.isIntersecting); }); }, { rootMargin: '0px 0px -140px 0px' }).observe(panel);
-    else d.body.classList.add('mpc-inview');
+    /* Measured on scroll/resize (one rect per frame), on every sync, and right when Select is tapped, so the bar is there the moment you
+     * start selecting (an IntersectionObserver answers a frame late, and the play-test robot found Select all missing right after Select). */
+    var vq = 0; window.addEventListener('scroll', function () { if (!vq) { vq = 1; requestAnimationFrame(function () { vq = 0; inView(); }); } }, { passive: true }); window.addEventListener('resize', inView);
     setInterval(sync, 2000); sync(); return true; }
   window.V2MyPetsCalm = { init: init, sync: sync };
   var tries = 0; (function poll() { if (!init() && tries++ < 600) setTimeout(poll, 200); })();

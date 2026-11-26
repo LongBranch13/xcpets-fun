@@ -49,8 +49,9 @@ for (const [k, f] of found) ok(LIFT.has(k) || EXEMPT[k], k + ' (' + f + ') is li
 for (const k of LIFT) ok(found.has(k), 'rule 7 entry ' + k + ' still exists in the code');
 
 /* 2 · bars and pills hide while a sheet is open */
-const r1 = screens.split('/* 2 ·')[0];
-for (const k of [...LIFT, '#bulkRow']) if (!SHEET_OK[k]) ok(new RegExp('\\) ' + k.replace(/[.#]/g, '\\$&') + '[,{]').test(r1), k + ' hides while a sheet is open (rule 1)');
+const r1 = screens.split('/* 2 ·')[0], hid = /body:has\(#inReqBox\.on, #eggPop\) :is\(([^)]*)\)/.exec(r1), HIDE = new Set(hid ? hid[1].split(',').map(x => x.trim()) : []);
+ok(/html:not\(\.lair-calm\):not\(\.ip-hold\) body:has\(#inReqBox\.on, #eggPop\)/.test(r1) && /\.reveal\.on:not\(#inReqBox\)/.test(r1), 'a sheet kept open but hidden (Rare Room calm mode, return-visit hold) does not hide the bar (play-test robot, Nov 26 2026)');
+for (const k of [...LIFT, '#bulkRow']) if (!SHEET_OK[k]) ok(HIDE.has(k), k + ' hides while a sheet is open (rule 1)');
 
 /* 3 · v2-dock.js measures the bar */
 function run(bar) {
@@ -73,7 +74,7 @@ ok(r.props['--dock-h'] === '0px', 'a hidden bar lifts nothing');
 /* 4 · the selection bar pins only while My Pets is on screen ("this feed bar is stuck", Nov 26 2026) */
 const calm = rd('js/v2-mypets-calm.js');
 ok(!/'body\.selmode #petsPanel #bulkRow|,body\.mpc-sel #petsPanel #bulkRow/.test(calm) && /body\.mpc-inview\.selmode #petsPanel #bulkRow/.test(calm), 'the selection bar pins only with body.mpc-inview');
-ok(/IntersectionObserver[\s\S]{0,200}mpc-inview/.test(calm), 'mpc-inview follows whether My Pets is on screen');
+ok(/function inView\(\)[\s\S]{0,300}mpc-inview/.test(calm) && /addEventListener\('scroll'/.test(calm), 'mpc-inview follows whether My Pets is on screen (scroll, resize, every sync)');
 
 /* 5 · the WAGMI pop-up is gone; the WAGMI button stays */
 const v2 = rd('js/v2.js');
