@@ -1,6 +1,6 @@
 {
- "lastBlock": 977614,
- "count": 531,
+ "lastBlock": 977620,
+ "count": 532,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -6374,6 +6374,18 @@
    "speciesLabel": "Chad",
    "rarity": "Rare",
    "stage": "Elder"
+  },
+  {
+   "id": 154188,
+   "asset": "A7802995769271118551",
+   "tiedBlock": 977618,
+   "tiedTx": "c4ca0b77010b8b17754d8a8176f338edb5cdc88af4b32601bd411fe745a7d152",
+   "kind": "deed",
+   "name": "Fonamoo",
+   "species": "hyb3:kek:snibby:funtrump",
+   "speciesLabel": "Keknibtrump (hybrid)",
+   "rarity": "Rare",
+   "stage": "Mythic"
   }
  ]
 }
