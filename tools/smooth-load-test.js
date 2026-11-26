@@ -88,7 +88,8 @@ ok(/XcpTopStrip\.mount\(/.test(fs.readFileSync(path.join(ROOT, 'js/casa-connect.
   const V2UI = { ME: 'me', world: () => world, S: () => ({ tip: 100 }), hiddenIds: () => [], pendingFeedIds: () => ({ hd: {} }), myPendingTags: () => pend.slice(),
     sendWhy: () => { whys++; return ''; }, toast() {}, render() {}, confirmPlans: (t, p) => { confirmed = p; } };
   const V2Rules = { dailyChoresGate: () => 1, frEats: (p) => p.hungry, dailyChoresPlan: () => { plans++; return { plans: [{ tag: 'pet:dc:0', amount: 1, petIds: [1, 2] }], parts: { feed: 2 }, oldBurns: 3 }; } };
-  const win = { V2UI, V2Rules, location: { search: '' }, localStorage: { getItem: () => null, setItem() {} }, setInterval: () => 0, setTimeout: (f) => { idleQ.push(f); return 0; },
+  const V2Own = { discarded: (p, me, o) => (p.hd === me || (o && o.set && o.set.has(p.id)) || (o && o.pend && o.pend[p.id])) ? 'x' : null };
+  const win = { V2UI, V2Rules, V2Own, location: { search: '' }, localStorage: { getItem: () => null, setItem() {} }, setInterval: () => 0, setTimeout: (f) => { idleQ.push(f); return 0; },
     requestIdleCallback: (f) => { idleQ.push(f); return 0; }, matchMedia: () => ({ matches: false }), console,
     document: { getElementById: (id) => els[id] || null, createElement: () => el('dcRow'), head: { appendChild() {} }, body: { appendChild() {} } } };
   win.window = win; vm.createContext(win);
