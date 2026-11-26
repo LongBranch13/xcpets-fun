@@ -22,7 +22,7 @@
   var ST = { door: null, pet: null, slot: 'head', find: '', ups: null, upsKey: null, upsBusy: 0, more: false };
 
   /* ---- doors */
-  function fromHash() { var h = (location.hash || '').slice(1); if (h === 'spin' || h === 'closet' || h === 'flex') return h; if (/^rare-room-\d+$/.test(h)) return 'spin'; if (h === 'lookStation') return 'flex'; if (h === 'dressing-room') return 'closet'; return null; }
+  function fromHash() { var h = (location.hash || '').slice(1); if (h === 'spin' || h === 'closet' || h === 'flex') return h; if (/^rare-room-\d+$/.test(h)) return 'spin'; if (h === 'lookStation' || /^flex-\d+$/.test(h)) return 'flex'; if (h === 'dressing-room') return 'closet'; return null; }
   function setDoor(k, push) { if (!k) return; ST.door = k; lsSet(k); var b = d.body; DOORS.forEach(function (x) { b.classList.toggle('rrd-' + x[0], x[0] === k); });
     var nav = $('rrDoors'); if (nav) nav.querySelectorAll('[data-door]').forEach(function (a) { var y = a.getAttribute('data-door') === k; a.classList.toggle('on', y); a.setAttribute('aria-selected', String(y)); });
     if (push) try { history.replaceState(history.state, '', '#' + k); } catch (e) { }

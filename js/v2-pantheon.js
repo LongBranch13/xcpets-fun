@@ -37,7 +37,66 @@
     var f = { M: seat.name || ('#' + seat.petId), SP: spName(seat), Z: (Z && Z.name) || ('#' + seat.eatenBy), T: G.seatTitle(seat.n), N: ORD[seat.n - 1] || ('#' + seat.n), FX: fxWords(seat.n), EB: fmt(seat.eatenAt + 6), RB: fmt(seat.block) };
     return T.map(function (vars, i) { var k = parseInt(h.substr(i * 2, 2), 16) % vars.length; return vars[k].replace(/\{(\w+)\}/g, function (m, x) { return f[x] != null ? f[x] : m; }); }); }
   function spName(s) { try { if (s && typeof s === 'object') return V.petSpeciesLabel ? V.petSpeciesLabel(s) : V.speciesLabel(s.species); return V.speciesLabel ? V.speciesLabel(s) : s; } catch (e) { return s && typeof s === 'object' ? s.species : s; } } /* a pet object: its shown name (cross pets) */
-  var SEEN_KEY = 'xcpets-pn-seen', CAP_MS = 8000, LINE_MS = 420;
+  /* ---------- HOMER'S NEW SONGS (Nov 26 2026, Jake: "his stories", "new songs for fallen gods and their replacements") ----------
+   * Same method as the books: owner-style line templates, facts filled in, each line's variant picked from a hash of the event, so every
+   * visitor (and HatchBot) reads the same words. Nothing mocks a player; the joke is always on Homer (donuts) or on fate.
+   *   prologue(w)          the invocation before the books: empty thrones, Mythics eaten so far, how many fell at the gate
+   *   lament(meal, w)      "The Lament of X": a Mythic that walked the whole road and turned to dust at the Pantheon door
+   *   fallSong(B, w)       "The Fall of X": a seated God beaten in a seat battle (stays a God, Fallen, no seat)
+   *   usurpSong(B, w)      "The Usurper": the God who took the seat
+   *   coda(key)            Homer's own aside after a song
+   * A seat battle record B is { n, seat, winner, loser, block, tx } (winner = the new holder's pet id, loser = the Fallen God's), read from
+   * w.cem.mg.battles. That table arrives with the seat battle rules; until then the page has no battle songs (?demo=1 shows examples). */
+  function pick(h, i, vars) { return vars[parseInt(h.substr((i * 2) % 60, 2), 16) % vars.length]; }
+  function fill(s, f) { return s.replace(/\{(\w+)\}/g, function (m, x) { return f[x] != null ? f[x] : m; }); }
+  function sing(seed, rows, f) { var h = sha(seed); return rows.map(function (vars, i) { return fill(pick(h, i, vars), f); }); }
+  function pname(w, id) { var p = w && w.byId && w.byId[id]; return (p && p.name) || ('#' + id); }
+  function psp(w, id) { var p = w && w.byId && w.byId[id]; var n = p ? spName(p) : null; return n || 'pet'; }
+  function pct(n) { return (Number(n) / 100).toFixed(2) + '%'; }
+  var LAMENT = [
+    ['Weep, O Muse, for {M} the {SP}, who walked the whole road and fell,', 'Sing low, O Muse, of {M}, who climbed from the grave and was lost,', 'Hush now, frogs of the swamp, and hear how {M} the {SP} was lost,'],
+    ['eaten by {Z} at block {EB}, and laid in a violet tomb,', 'swallowed by the starving {Z}, and laid in the violet stone,', 'taken by {Z} in the dark, and laid where the violet candles burn,'],
+    ['raised by its keeper\'s gifts, a zombie with stars in its seams,', 'brought back up by offerings, grey and star-traced and grim,', 'called up from the earth again, a Mythic zombie, silent and pale,'],
+    ['it knocked once at the door of the gods. The die fell at {ROLL}; it needed under {NEED};', 'one roll at the Pantheon door: the chain said {ROLL}, and it needed under {NEED};', 'the block hash cast the die at {ROLL}, where under {NEED} would have won;'],
+    ['and the door stayed shut, and {M} blew away as dust on the wind.', 'and the gate did not open, and the Mythic was dust before dawn.', 'and the gods said no, and {M} went the way of all dust.'],
+    ['No seat bears its name, so this song will be its throne.', 'Remember {M}, the brave. The road is cruel, and the road is one try.', 'Pour one out for {M}. Homer will sing it for as long as the chain runs.']];
+  var LAMENT_NOROLL = ['it knocked once at the door of the gods, and the block hash answered no;', 'one roll at the Pantheon door, and the chain would not let it in;'];
+  var FALL = [
+    ['Sing, O Muse, of the day the clouds cracked over Seat {R},', 'Hear, frogs of the swamp, how the thunder broke above the {N} throne,', 'Tell me, Muse, of the fall of {L} the {LSP}, the {T},'],
+    ['where {L} the {LSP} had sat, the {T}, proud in its {PAL} light,', 'where {L} had sat in glory, the {T}, robed in {PAL} light,', 'who had sat on the {N} throne and thought that the clouds were its own,'],
+    ['till {W} came up the steps, a God with no seat, and knocked.', 'till a seatless God, {W} the {WSP}, climbed the stair and called it out,', 'till {W} burned on the chain and named Seat {R} for a fight.'],
+    ['A throne must answer the call: no God may hide on a seat.', 'There is no saying no in the Pantheon: the seat itself must fight.', '{L} did not choose the battle; the battle came to the seat.'],
+    ['Six blocks they glared; then the hash of block {FB} called the blows,', 'Six blocks of silence, then block {FB} gave its hash, and the blows began,', 'The chain counted six; at block {FB} the gods began to strike,'],
+    ['and {L} fell, and its halo cracked like an egg on a stone.', 'and {L} went down, and the {PAL} light left its throne.', 'and the last blow landed, and {L} slid from the {N} seat.'],
+    ['Still a God, still deathless, but Fallen, with no seat to its name,', 'It lives, for a God cannot die, but it is Fallen now, seatless and grey,', 'Fallen, not finished: it keeps every power a God can keep,'],
+    ['it walks the low clouds below the thrones, and dreams of a rematch.', 'and it watches Seat {R} from below, and it sharpens its claws.', 'and the Pantheon has not heard the last of {L}. Not by a long way.']];
+  var USURP = [
+    ['Now sing of {W} the {WSP}, the Usurper, the new {T},', 'And now, O Muse, sing of {W}, who would not wait its turn,', 'Sing of {W} the {WSP}, who came with no seat and left with a throne,'],
+    ['who rose from the grave as a God when all twenty-one thrones were full,', 'who climbed out of the violet grave and found every throne already taken,', 'a God born too late for an empty seat, and too proud to stand,'],
+    ['and burned on the chain, and pointed, and said: "That one. Seat {R}."', 'and did not sit on the steps; it burned, and called out Seat {R},', 'and chose the {N} throne, and burned, and knocked on the door of {L},'],
+    ['at block {FB} it struck {L} from the throne before the eyes of the swamp,', 'and the hash of block {FB} was kind, and {L} fell before it,', 'and at block {FB} the blows fell its way, and the throne of {L} was empty, then not,'],
+    ['and the {PAL} light poured down on the new {T}, and the halo knew its name.', 'and the {N} seat glowed {PAL} again around a brand new {T}.', 'and it sat, the {T}, and the clouds were warm, and the {PAL} light was its own.'],
+    ['Long may it sit. (Not too long. Somebody is already burning.)', 'Every throne is borrowed. Today this one is borrowed by {W}.', 'Hail {W}, the {T}, until the next God comes knocking.']];
+  var CODA = ['(Homer Pepe bows, drops his donut, and the frogs croak for more.)', '(Homer Pepe wipes a tear. "Wait a mintue... that was beautiful.")', '(Homer Pepe strums once more, and the swamp goes wild.)', '(Homer Pepe takes a bite of donut between verses. Nobody says anything.)', '(Homer Pepe bows so low his collar touches the boards.)'];
+  function coda(key) { return pick(sha('XCPETS:coda:' + key), 0, CODA); }
+  function lament(meal, w) { var E = w && w.byId && w.byId[meal.mythic], end = E && (E.zPast || []).filter(function (z) { return z && z.end && z.end.kind === 'dust'; }).pop(), e = end && end.end;
+    var rows = LAMENT.slice(); if (!e || e.roll == null || e.need == null) rows[3] = LAMENT_NOROLL;
+    return sing('XCPETS:lament:' + meal.mythic + ':' + meal.block, rows, { M: pname(w, meal.mythic), SP: psp(w, meal.mythic), Z: pname(w, meal.zombie), EB: fmt(meal.block), ROLL: e ? pct(e.roll) : '', NEED: e ? pct(e.need) : '' }); }
+  function battleFacts(B, w) { var G = MGd(), L = G.seatLook(B.seat); return { W: pname(w, B.winner), WSP: psp(w, B.winner), L: pname(w, B.loser), LSP: psp(w, B.loser), R: G.ROMAN[B.seat - 1], N: ORD[B.seat - 1] || ('#' + B.seat), T: G.seatTitle(B.seat), PAL: L.pal, FB: fmt(B.block) }; }
+  function fallSong(B, w) { return sing('XCPETS:fall:' + B.seat + ':' + B.block + ':' + (B.tx || ''), FALL, battleFacts(B, w)); }
+  function usurpSong(B, w) { return sing('XCPETS:usurp:' + B.seat + ':' + B.block + ':' + (B.tx || ''), USURP, battleFacts(B, w)); }
+  /** dusted(w): the Mythic meals whose Mythic later turned to dust at the Pantheon door (oldest first). Needs the full Mythic God table. */
+  function dusted(w) { var M = w && w.cem && w.cem.mg; if (!M || (w.cem && w.cem._slim)) return []; return (M.meals || []).filter(function (m) { var E = w.byId && w.byId[m.mythic];
+    return E && !E.mythicGod && (E.graveState === 'dust' || (E.zPast || []).some(function (z) { return z && z.end && z.end.kind === 'dust'; })); }); }
+  function battlesOf(w) { var M = w && w.cem && w.cem.mg; return (M && M.battles) || []; }
+  function prologue(w, seats, ready) { var M = w && w.cem && w.cem.mg, k = ready && M ? (M.meals || []).length : null, d = ready ? dusted(w).length : null, s = (seats || []).length, out = [];
+    out.push(s ? 'Sing, O Muse, of the twenty-one thrones on the clouds, and the Gods who climbed to them.' : 'Sing, O Muse, of the twenty-one thrones that stand on the clouds, every one of them empty.');
+    out.push(s ? s + ' of the thrones ' + (s === 1 ? 'has its God' : 'have their Gods') + '; ' + (21 - s) + ' still wait under the moon.' : 'No Mythic has yet come home from the grave to sit among the Gods.');
+    if (k != null) out.push(k ? k + ' Mythic' + (k === 1 ? ' was' : 's were') + ' eaten by starving zombies, and ' + (d ? d + ' of them turned to dust at the gate.' : 'none has turned to dust at the gate.') : 'No zombie has yet been unleashed on a Mythic.');
+    out.push(s < 21 ? 'Who will be next? The ' + MGd().seatTitle(s + 1) + ' waits for a name.' : 'Every throne is full. Now a new God must fight for a seat.');
+    out.push('Homer tunes his lyre. Homer eats a donut. Homer waits.');
+    return out; }
+  var SEEN_KEY = 'xcpets-pn-seen', CAP_MS = 8000, LINE_MS = 420, SING_MS = 680;
   function readSeen() { try { var o = JSON.parse(localStorage.getItem(SEEN_KEY) || '{}'); if (!o || typeof o !== 'object' || Array.isArray(o)) return {}; return o; } catch (e) { return {}; } }
   function writeSeen(o) { try { localStorage.setItem(SEEN_KEY, JSON.stringify(o)); } catch (e) {} }
   /* a seat is new when this browser has not stored that seat's tx yet (every visitor, not only the keeper) */
@@ -60,17 +119,24 @@
     '#odyssey,.pn-seat,.pn-books li{scroll-margin-top:calc(var(--navh, 72px) + 10px)}' +
     '@keyframes pnPulse{0%,100%{box-shadow:0 0 10px #7f6be088;border-color:#c9b27a}50%{box-shadow:0 0 28px #f3dfa0,0 0 8px #fff6c8;border-color:#f3dfa0}}' +
     '.pn-seat.pn-new{animation:pnPulse .9s ease-in-out 4;border-color:#f3dfa0}.pn-seat.pn-focus{outline:2px solid #f3dfa0;outline-offset:3px}' +
-    '.pn-scroll li.pn-line{opacity:0}.pn-scroll li.pn-line.on{opacity:1;transition:opacity .4s ease}' +
+    '.pn-scroll .pn-line{opacity:0}.pn-scroll .pn-line.on{opacity:1;transition:opacity .4s ease}' +
     '.pn-bard.pn-sing canvas{box-shadow:0 0 16px #f3dfa0}.pn-hold{font-style:italic}' +
+    '.pn-bard canvas.pn-stage{width:240px;height:136px;max-width:100%;border:3px solid #0b0820;box-shadow:3px 3px 0 #0b0820;background:#120c22}.pn-bard-cap{margin-top:4px}.pn-bard .sfx-tog{font-size:14px;padding:2px 6px;margin-left:4px;cursor:pointer}' +
+    '.pn-songs{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:4px 22px;margin-top:8px}.pn-songs h3{margin:10px 0 4px}.pn-books a.on{color:#f3dfa0;font-weight:700}.pn-books li.pn-none{list-style:none;margin-left:-18px;color:#8e89b0;font-style:italic;font-size:13px}' +
+    '.pn-coda{font-style:italic;color:#6b5330;margin:8px 0 0}.pn-scroll{position:relative}.pn-scroll::before,.pn-scroll::after{content:"";position:absolute;left:-6px;right:-6px;height:8px;border-radius:5px;background:linear-gradient(#a8742c,#6b4416);box-shadow:0 1px 0 #3b2b17}.pn-scroll::before{top:-4px}.pn-scroll::after{bottom:-4px}' +
+    '.pn-scroll.pn-k-lament{background:#dfe3ea;box-shadow:inset 0 0 30px #9aa3b5;color:#2a3040}.pn-scroll.pn-k-lament h3{color:#2a3040}.pn-scroll.pn-k-fall{background:#f0d6cc;box-shadow:inset 0 0 30px #c48a7a}.pn-scroll.pn-k-usurp{background:#f6e7b0;box-shadow:inset 0 0 34px #d9b24a}' +
+    '@keyframes pnUnroll{from{clip-path:inset(0 0 100% 0)}to{clip-path:inset(0 0 0 0)}}.pn-scroll.pn-unroll{animation:pnUnroll .7s ease-out}' +
     '.pn-x{background:#1b1f2e;color:#f3dfa0;border:2px solid #f3dfa0;border-radius:8px;padding:8px 16px;font:inherit;font-weight:700;cursor:pointer}' +
     '.pn-x:focus{outline:3px solid #fff;outline-offset:2px}.pn-verse-skip{background:#3b2b17;color:#f1e6c8;border-color:#3b2b17;margin-top:8px}' +
     '.pn-live{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0}' +
-    '@media (prefers-reduced-motion: reduce){.pn-scroll li.pn-line{opacity:1;transition:none}.pn-seat.pn-new{animation:none;border-color:#f3dfa0;box-shadow:0 0 0 2px #f3dfa0,0 0 16px #f3dfa0}}';
+    '@media (prefers-reduced-motion: reduce){.pn-scroll.pn-unroll{animation:none}.pn-scroll .pn-line{opacity:1;transition:none}.pn-seat.pn-new{animation:none;border-color:#f3dfa0;box-shadow:0 0 0 2px #f3dfa0,0 0 16px #f3dfa0}}';
     document.head.appendChild(st); }
   /* ?demo=1: example seats from real living pets, so the page can be previewed before the gate (never saved, never sent) */
   function demoSeats(w, k) { var L = w.pets.filter(function (p) { return !p.dead && !p.released && !p.community && p.stage >= 3 && p.art; }).slice(0, 400), out = [];
     for (var i = 0; i < k && L.length; i++) { var p = L[(i * 37 + 11) % L.length], z = L[(i * 53 + 5) % L.length]; out.push({ n: i + 1, petId: p.id, name: p.name || null, species: p.species, block: 975000 + i * 911, tx: 'demo' + i, owner: p.owner, eatenBy: z.id, eatenAt: 974000 + i * 911, demo: true }); }
     return out; }
+  /* ?demo=1: one example seat battle between two example seats, so Homer's battle songs can be previewed (never on the chain) */
+  function demoBattles(seats) { if (!seats || seats.length < 8) return []; return [{ n: 1, seat: 3, winner: seats[7].petId, loser: seats[2].petId, block: 978123, tx: 'demob1', demo: true }]; }
   function godPet(seat, w) { var p = w.byId[seat.petId]; if (!p) return null; if (!seat.demo) return p; return Object.assign(Object.create(Object.getPrototypeOf(p)), p, { mythicGod: { seat: seat.n, block: seat.block }, zombie: null, dead: false, stage: 5 }); }
   function page(ctx) { var w = ctx.w, R = ctx.R, sa = ctx.shortAddr || function (a) { return String(a).slice(0, 8) + '…'; }, root = document.getElementById('pantheon'), G = MGd(); if (!root || !G) return; css();
     var P = V.mgPantheon(w), demo = /[?&]demo=1\b/.test(location.search) && !P.seats.length, seats = demo ? demoSeats(w, 10) : P.seats, b = (w.tip || 0) + 1, on = V.mgOn ? V.mgOn(b) : false;
@@ -86,24 +152,56 @@
         '<div class="pn-who"><a href="pet.html?id=' + s.petId + '">' + esc(s.name || ('#' + s.petId)) + '</a> · ' + esc(spName(s)) + ' · #' + s.petId + '</div><div class="pn-meta">seated at block ' + fmt(s.block) + ' · <a href="#book-' + n + '">Odyssey, Book ' + G.ROMAN[n - 1] + '</a></div>' +
         '<div class="pn-meta" title="' + esc(s.owner) + '">keeper ' + esc(sa(s.owner)) + (ctx.ME && s.owner === ctx.ME ? ' (you)' : '') + '</div>' + chips + '</div>';
       else h += '<div class="pn-seat" id="seat-' + n + '"><div class="pn-num">Seat ' + G.ROMAN[n - 1] + '</div><div class="pn-plinth">' + G.ROMAN[n - 1] + '</div><div class="pn-title">' + esc(G.seatTitle(n)) + '</div><div class="pn-who">awaiting its god</div>' + chips + '</div>'; }
-    h += '</div><h2 id="odyssey" class="meme sec">📜 The Pantheon Odyssey</h2><p class="pn-sub">Sung by Homer Pepe, community pet #5. Each time a Mythic God takes its seat, a new book of the Odyssey is added: the zombie that ate it, its rise from the grave, and its resurrection.</p>';
-    if (!seats.length) h += '<p class="small muted">No book yet: the first Mythic God has not taken its seat.</p>';
-    else { h += '<div class="pn-ody"><div class="pn-bard"><canvas width="32" height="32" id="pnBard" role="img" aria-label="Homer Pepe"></canvas><br>Homer Pepe, the bard</div><div class="pn-scroll" id="pnScroll"></div></div>' +
-      '<h3>Books so far</h3><ol class="pn-books">' + seats.map(function (s) { return '<li id="book-' + s.n + '"><a data-book="' + s.n + '"><b>Book ' + G.ROMAN[s.n - 1] + '</b>: ' + esc(G.seatTitle(s.n)) + '</a> · ' + esc(s.name || ('#' + s.petId)) + '</li>'; }).join('') + '</ol>'; }
+    var ready = demo || !(w.cem && w.cem._slim), battles = demo ? demoBattles(seats) : battlesOf(w), laments = ready ? dusted(w) : [];
+    var SONGS = {}, ORDER = [];
+    function addSong(key, o) { SONGS[key] = o; ORDER.push(key); }
+    addSong('prologue', { title: 'Prologue: ' + (seats.length ? 'The Thrones' : 'The Empty Thrones'), kind: 'prologue', lines: function () { return prologue(w, seats, ready); } });
+    seats.forEach(function (s) { addSong('book-' + s.n, { title: 'Book ' + G.ROMAN[s.n - 1] + ': The ' + G.seatTitle(s.n), kind: 'rise', seat: s, lines: function () { return verse(s, w); } }); });
+    battles.forEach(function (B, i) { var k = B.n || (i + 1);
+      addSong('fall-' + k, { title: 'The Fall of ' + pname(w, B.loser) + ' (Seat ' + G.ROMAN[B.seat - 1] + ')', kind: 'fall', lines: function () { return fallSong(B, w); } });
+      addSong('usurp-' + k, { title: 'The Usurper: ' + pname(w, B.winner) + ', ' + G.seatTitle(B.seat), kind: 'usurp', lines: function () { return usurpSong(B, w); } }); });
+    laments.forEach(function (m) { addSong('lament-' + m.mythic, { title: 'The Lament of ' + pname(w, m.mythic), kind: 'lament', lines: function () { return lament(m, w); } }); });
+    function li(key, label) { return '<li id="song-' + key + '"><a data-song="' + key + '">' + label + '</a></li>'; }
+    h += '</div><h2 id="odyssey" class="meme sec">📜 The Pantheon Odyssey</h2><p class="pn-sub">Sung by Homer Pepe, community pet #5, on his golden lyre. A new book for every Mythic God that takes a seat, a song for every God that falls from one and for the God who takes its place, and a lament for every Mythic that turned to dust at the gate. Tap a song and Homer sings it.</p>' +
+      '<div class="pn-ody"><div class="pn-bard"><canvas width="120" height="68" id="pnBard" class="pn-stage" role="img" aria-label="Homer Pepe on his stage with a golden lyre"></canvas><div class="pn-bard-cap">Homer Pepe, the bard ' + (window.V2Sfx && V2Sfx.toggle ? V2Sfx.toggle('pn-snd') : '') + '</div></div><div class="pn-scroll" id="pnScroll"></div></div>' +
+      '<div class="pn-songs"><div><h3>📖 Books of the seats</h3><ol class="pn-books">' + li('prologue', '<b>Prologue</b>: ' + esc(SONGS.prologue.title.replace(/^Prologue: /, ''))) +
+      (seats.length ? seats.map(function (s) { return '<li id="book-' + s.n + '"><a data-song="book-' + s.n + '"><b>Book ' + G.ROMAN[s.n - 1] + '</b>: ' + esc(G.seatTitle(s.n)) + '</a> · ' + esc(s.name || ('#' + s.petId)) + '</li>'; }).join('') : '<li class="pn-none">No book yet: the first Mythic God has not taken its seat.</li>') + '</ol></div>' +
+      '<div><h3>⚔️ Songs of the seat battles</h3><ol class="pn-books">' + (battles.length ? battles.map(function (B, i) { var k = B.n || (i + 1); return li('fall-' + k, '💔 ' + esc(SONGS['fall-' + k].title)) + li('usurp-' + k, '👑 ' + esc(SONGS['usurp-' + k].title)); }).join('') : '<li class="pn-none">When all 21 thrones are full, a new God can fight a seated God for its throne. Homer will sing of the God that falls and the God that takes its place.</li>') + '</ol></div>' +
+      '<div><h3>🕯️ Laments</h3><ol class="pn-books">' + (laments.length ? laments.map(function (m) { return li('lament-' + m.mythic, esc(SONGS['lament-' + m.mythic].title)); }).join('') : '<li class="pn-none">' + (ready ? 'No Mythic has turned to dust at the gate.' : 'Reading the graves from the chain…') + '</li>') + '</ol></div></div>';
     root.innerHTML = h;
     try { if (window.V2PantheonScene) V2PantheonScene.set({ w: w, seats: seats.map(function (s) { return { n: s.n, petId: s.petId, name: s.name, pet: godPet(s, w) }; }) }); } catch (e) { } /* living-scenes: the thrones at the top */
-    var rev = 0, locked = false;
-    function book(n) { var s = seats[n - 1], box = document.getElementById('pnScroll'); if (!s || !box) return; rev++;
-      box.innerHTML = '<h3>Book ' + G.ROMAN[n - 1] + ': The ' + esc(G.seatTitle(n)) + '</h3><ol>' + verse(s, w).map(function (l) { return '<li>' + esc(l) + '</li>'; }).join('') + '</ol>'; }
+    var rev = 0, locked = false, cur = null, stage = null;
+    try { stage = window.V2HomerStage ? V2HomerStage.mount(document.getElementById('pnBard')) : null; } catch (e) { stage = null; }
+    if (!stage) { var bc = document.getElementById('pnBard'); try { if (window.HomerSprite) { bc.width = 32; bc.height = 32; R.animate(bc, HomerSprite.frames(4, [27, 31, 46])); } } catch (e) {} }
+    function mark2(key) { root.querySelectorAll('[data-song]').forEach(function (a) { a.classList.toggle('on', a.dataset.song === key); }); }
+    function scrollHtml(S, lines, cls) { return '<h3>' + esc(S.title) + '</h3><ol id="pnLines">' + lines.map(function (l) { return '<li' + (cls ? ' class="' + cls + '"' : '') + '>' + esc(l) + '</li>'; }).join('') + '</ol>'; }
+    /** show(key): the song at once, with a button that asks Homer to sing it */
+    function show(key) { var S = SONGS[key], box = document.getElementById('pnScroll'); if (!S || !box) return; rev++; cur = key; if (stage) { stage.sing(false); stage.mood(S.kind); }
+      box.className = 'pn-scroll pn-k-' + S.kind; box.innerHTML = scrollHtml(S, S.lines()) + '<p class="pn-coda">' + esc(coda(key)) + '</p><p><button type="button" class="pn-x pn-sing-btn" id="pnSingBtn">🎵 Homer, sing it</button></p>';
+      var sb = document.getElementById('pnSingBtn'); if (sb) sb.addEventListener('click', function () { singSong(key); }); mark2(key); }
+    function book(n) { if (SONGS['book-' + n]) show('book-' + n); }
+    /** singSong(key, done): the scroll unrolls and Homer sings the song line by line, one lyre pluck per line, then his aside */
+    function singSong(key, done) { var S = SONGS[key], box = document.getElementById('pnScroll'); if (!S || !box) { if (done) done(); return; }
+      var lines = S.lines(), my = ++rev, bard = document.querySelector('.pn-bard'); cur = key; if (bard) bard.classList.add('pn-sing'); if (stage) { stage.mood(S.kind); stage.sing(true); }
+      box.className = 'pn-scroll pn-k-' + S.kind + (reduced() ? '' : ' pn-unroll'); box.innerHTML = scrollHtml(S, lines, 'pn-line') + '<p class="pn-coda pn-line">' + esc(coda(key)) + '</p>' +
+        (reduced() ? '' : '<p><button type="button" class="pn-x pn-verse-skip" id="pnVerseSkip">Show the whole song</button></p>'); mark2(key);
+      var lis = box.querySelectorAll('.pn-line'), i = 0, timer = null, stopped = false;
+      function end() { if (bard) bard.classList.remove('pn-sing'); if (stage && rev === my) stage.sing(false); }
+      function later() { setTimeout(function () { end(); if (rev === my && done) done(); }, reduced() ? 0 : 700); }
+      function showAll() { if (stopped) return; if (rev !== my) { locked = false; return; } stopped = true; clearTimeout(timer);
+        for (var k = 0; k < lis.length; k++) lis[k].classList.add('on'); var b = document.getElementById('pnVerseSkip'); if (b) b.remove(); later(); }
+      var skip = document.getElementById('pnVerseSkip'); if (skip) skip.addEventListener('click', showAll);
+      if (reduced()) { showAll(); return; }
+      (function step() { if (stopped) return; if (rev !== my) { locked = false; end(); return; } if (i >= lis.length) { showAll(); return; } lis[i].classList.add('on'); if (stage && i < lines.length) stage.pluck(i); i++; timer = setTimeout(step, i === 1 ? 900 : SING_MS); })(); }
     function goHash(ref) { if (!ref) return; if (ref.kind === 'book') { if (seats[ref.n - 1]) book(ref.n); var od = document.getElementById('odyssey'); if (od) od.scrollIntoView({ behavior: reduced() ? 'auto' : 'smooth', block: 'start' }); return; }
       var el = document.getElementById('seat-' + ref.n); if (!el) return; el.classList.add('pn-focus'); try { el.setAttribute('tabindex', '-1'); el.focus({ preventScroll: true }); } catch (e) {}
       el.scrollIntoView({ behavior: reduced() ? 'auto' : 'smooth', block: 'center' }); }
-    if (seats.length) { var queued = {}; queue.forEach(function (s) { queued[s.n] = 1; });
-      if (href0 && href0.kind === 'book' && seats[href0.n - 1] && !queued[href0.n]) book(href0.n);
-      else if (!queued[seats[seats.length - 1].n]) book(seats.length);
-      else { var box0 = document.getElementById('pnScroll'); if (box0) box0.innerHTML = '<h3 class="pn-hold">The next book</h3><p class="pn-hold">Homer Pepe is about to sing a new book of the Pantheon Odyssey.</p>'; }
-      root.querySelectorAll('[data-book]').forEach(function (a) { a.addEventListener('click', function () { book(+a.dataset.book); var od = document.getElementById('odyssey'); if (od) od.scrollIntoView({ behavior: reduced() ? 'auto' : 'smooth', block: 'start' }); }); });
-      var bc = document.getElementById('pnBard'); try { if (window.HomerSprite) R.animate(bc, HomerSprite.frames(4, [27, 31, 46])); } catch (e) {} }
+    root.querySelectorAll('[data-song]').forEach(function (a) { a.setAttribute('href', '#odyssey'); a.addEventListener('click', function (e) { e.preventDefault(); if (locked) return; singSong(a.dataset.song); var od = document.getElementById('odyssey'); if (od) od.scrollIntoView({ behavior: reduced() ? 'auto' : 'smooth', block: 'start' }); }); });
+    var queued = {}; queue.forEach(function (s) { queued[s.n] = 1; });
+    if (href0 && href0.kind === 'book' && seats[href0.n - 1] && !queued[href0.n]) book(href0.n);
+    else if (!seats.length) show('prologue');
+    else if (!queued[seats[seats.length - 1].n]) book(seats.length);
+    else { var box0 = document.getElementById('pnScroll'); if (box0) box0.innerHTML = '<h3 class="pn-hold">The next book</h3><p class="pn-hold">Homer Pepe is about to sing a new book of the Pantheon Odyssey.</p>'; }
     root.querySelectorAll('canvas[data-seat]').forEach(function (c) { var s = seats[+c.dataset.seat - 1], p = s && godPet(s, w); if (!p) return; try { var fr = R.petFrames(p, w); R.animate(c, fr); } catch (e) { if (window.console) console.warn('pantheon seat', e); } });
     window.addEventListener('hashchange', function () { if (!locked) goHash(hashRef()); });
     if (!queue.length) { setTimeout(function () { if (!locked) goHash(hashRef()); }, 120); return; }
@@ -125,18 +223,8 @@
       var word = reduced() ? 'Close' : 'Skip'; btn.textContent = word; btn.setAttribute('aria-label', word + ' the seat ceremony');
       btn.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); try { if (handle && handle.end) handle.end(); } catch (e3) {} finish(); });
       ov.appendChild(btn); try { btn.focus({ preventScroll: true }); } catch (e4) { try { btn.focus(); } catch (e5) {} } }
-    function reveal(seat, done) { var s = seat, box = document.getElementById('pnScroll'); if (!s || !box) { if (done) done(); return; }
-      var lines = verse(s, w), my = ++rev, bard = document.querySelector('.pn-bard'); if (bard) bard.classList.add('pn-sing');
-      box.innerHTML = '<h3>Book ' + G.ROMAN[s.n - 1] + ': The ' + esc(G.seatTitle(s.n)) + '</h3><ol id="pnLines">' + lines.map(function (l) { return '<li class="pn-line">' + esc(l) + '</li>'; }).join('') + '</ol>' +
-        (reduced() ? '' : '<p><button type="button" class="pn-x pn-verse-skip" id="pnVerseSkip">Show the whole book</button></p>');
-      var lis = box.querySelectorAll('.pn-line'), i = 0, timer = null, stopped = false;
-      function later() { setTimeout(function () { if (rev === my && done) done(); }, reduced() ? 0 : 700); }
-      function showAll() { if (stopped) return; if (rev !== my) { locked = false; return; } stopped = true; clearTimeout(timer);
-        for (var k = 0; k < lis.length; k++) lis[k].classList.add('on'); var b = document.getElementById('pnVerseSkip'); if (b) b.remove(); later(); }
-      var skip = document.getElementById('pnVerseSkip'); if (skip) skip.addEventListener('click', showAll);
-      var od = document.getElementById('odyssey'); if (od) od.scrollIntoView({ behavior: reduced() ? 'auto' : 'smooth', block: 'start' });
-      if (reduced()) { showAll(); return; }
-      (function step() { if (stopped) return; if (rev !== my) { locked = false; return; } if (i >= lis.length) { showAll(); return; } lis[i].classList.add('on'); i++; timer = setTimeout(step, LINE_MS); })(); }
+    function reveal(seat, done) { if (!seat || !SONGS['book-' + seat.n]) { if (done) done(); return; }
+      var od = document.getElementById('odyssey'); if (od) od.scrollIntoView({ behavior: reduced() ? 'auto' : 'smooth', block: 'start' }); singSong('book-' + seat.n, done); }
     function glowAndVerse(seat, done) { var el = document.getElementById('seat-' + seat.n);
       if (el) { el.classList.add('pn-new'); el.scrollIntoView({ behavior: reduced() ? 'auto' : 'smooth', block: 'center' }); }
       say((seat.name || ('#' + seat.petId)) + ' took Seat ' + G.ROMAN[seat.n - 1] + ' of XXI. Homer Pepe is singing the new book.');
@@ -146,5 +234,5 @@
       function after() { glowAndVerse(seat, next); } if (animOk) playRise(ev, after); else after(); } next(); }
     function arm() { if (document.prerendering) { document.addEventListener('prerenderingchange', arm, { once: true }); return; } locked = true; whenAnims().then(function (ok) { run(queue, ok); }); }
     arm(); }
-  window.V2Pantheon = { page: page, verse: verse, T: T, seenKey: SEEN_KEY, freshSeats: freshSeats, ceremonyQueue: ceremonyQueue, CAP_MS: CAP_MS };
+  window.V2Pantheon = { page: page, verse: verse, T: T, prologue: prologue, lament: lament, fallSong: fallSong, usurpSong: usurpSong, coda: coda, dusted: dusted, LAMENT: LAMENT, FALL: FALL, USURP: USURP, CODA: CODA, seenKey: SEEN_KEY, freshSeats: freshSeats, ceremonyQueue: ceremonyQueue, CAP_MS: CAP_MS };
 })();
