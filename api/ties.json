@@ -1,5 +1,5 @@
 {
- "lastBlock": 977717,
+ "lastBlock": 977720,
  "count": 534,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
@@ -5869,7 +5869,7 @@
    "species": "hyb3:wizard:djpepe:nakamoto",
    "speciesLabel": "Widjmoto (hybrid)",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 205414,
@@ -5881,7 +5881,7 @@
    "species": "snibby",
    "speciesLabel": "Star-Lord Pigeon",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 205415,
@@ -5893,7 +5893,7 @@
    "species": "hyb3:snibby:doge:djpepe",
    "speciesLabel": "Snigope (hybrid)",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 205416,
@@ -5905,7 +5905,7 @@
    "species": "hyb3:kek:lenny:nakamoto",
    "speciesLabel": "Keklenmoto (hybrid)",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 205417,
@@ -5917,7 +5917,7 @@
    "species": "hyb3:wizard:snibby:kek",
    "speciesLabel": "Winibkek (hybrid)",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 212446,
@@ -5929,7 +5929,7 @@
    "species": "hyb:nakamoto:kek",
    "speciesLabel": "Nakek (hybrid)",
    "rarity": "Legendary",
-   "stage": "Juvenile"
+   "stage": "Adult"
   },
   {
    "id": 223100,
