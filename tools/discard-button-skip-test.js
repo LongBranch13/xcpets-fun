@@ -10,10 +10,12 @@
  *  4. the "Make my browser discards permanent (N)" count is browser-only pets;
  *  5. while a discard burn is still confirming no new discard sheet opens (XCP Wallet blocks a burn on its unconfirmed change: 'Couldn't verify
  *     asset status'), and the bell's Continue rebuilds a saved discard run from its pets instead of re-sending the saved tag;
- *  6. the zombie card names pets discarded only in this browser (a zombie eats only on-chain discards) and offers Make permanent.
+ *  6. the zombie card names pets discarded only in this browser (a zombie eats only on-chain discards) and offers Make permanent;
+ *  7. adding back 50+ pets (G Money signed pet:hu:ALL for 15,971) asks once, with the count, before the sheet.
  *  5. while a discard burn is still confirming no new discard sheet opens (XCP Wallet blocks a burn on its unconfirmed change: 'Couldn't verify
  *     asset status'), and the bell's Continue rebuilds a saved discard run from its pets instead of re-sending the saved tag;
- *  6. the zombie card names pets discarded only in this browser (a zombie eats only on-chain discards) and offers Make permanent.
+ *  6. the zombie card names pets discarded only in this browser (a zombie eats only on-chain discards) and offers Make permanent;
+ *  7. adding back 50+ pets (G Money signed pet:hu:ALL for 15,971) asks once, with the count, before the sheet.
  *   node tools/discard-button-skip-test.js */
 'use strict';
 const fs = require('fs'), path = require('path'), vm = require('vm');
@@ -63,6 +65,16 @@ const bo = ctx.zbo(w), zh = ctx.zperm(w);
 ok(bo.join() === '2001,2002', 'zombie card: browser-only pets = the 2 never burned (not the 2,000 on chain, not the 1 confirming): ' + bo.join());
 ok(/2 pets are in your Discard pile only in this browser/.test(zh) && /zb-mkperm/.test(zh), 'zombie card says so and has the Make permanent button');
 ok(fs.readFileSync(path.join(REPO, 'js', 'v2.js'), 'utf8').indexOf("closest('.zb-mkperm')") > 0, 'the button is wired to the discard path');
+/* 7 (G Money's pet:hu:ALL): adding back 50+ pets asks once with the count; Cancel opens no sheet */
+let asks = [], answer = false; ctx.window.confirm = m => { asks.push(m); return answer; };
+const V0 = V.hdPlan; V.hdPlan = (w, me, ids, b, o) => ({ ok: true, one: true, plans: [{ tag: 'pet:hu:ALL', amount: 1e-8, petIds: ids.slice() }], left: [] });
+pendTags = []; sheet = null; ctx.cd(pets.slice(0, 2000).map(p => p.id), true);
+ok(asks.length === 1 && /Add back 2,000 pets\?/.test(asks[0]) && /undoes 2,000 permanent discards/.test(asks[0]) && !sheet, 'add back 2,000: asks once with the count, Cancel = no sheet');
+answer = true; asks = []; ctx.cd(pets.slice(0, 2000).map(p => p.id), true);
+ok(asks.length === 1 && sheet && /^Add 2,000 pets back/.test(sheet.t), 'add back 2,000 after Yes: the sheet opens');
+asks = []; sheet = null; ctx.cd([1, 2, 3], true);
+ok(!asks.length && sheet, 'add back 3 pets: no extra question');
+V.hdPlan = V0; delete ctx.window.confirm;
 /* 5: a discard burn still confirming */
 pendTags = ['pet:hd:M5:OOENA1HTB1KB1IA1H31IOF']; asked = null; sheet = null; toasts = [];
 ctx.cd([2001, 2002], false);

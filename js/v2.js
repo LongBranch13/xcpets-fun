@@ -1323,7 +1323,7 @@
     hb.querySelectorAll('button[data-dsa]').forEach(function (b) { b.onclick = function () { var a = b.dataset.dsa; if (a === 'dir') { DS.flip = !DS.flip; return render(); } if (a === 'more') { DS.n += 120; return render(); } if (a === 'none') { DS.sel = {}; return render(); }
       var ids = a === 'all' ? gone.map(function (p) { return p.id; }) : Object.keys(DS.sel).map(Number); if (!ids.length) return;
       var nc = ids.filter(function (id) { return onChainDiscarded(w.byId[id]); }).length;
-      if (ids.length > 1 && !window.confirm('Restore ' + (a === 'all' ? 'all ' : '') + ids.length + ' pets from the Discard pile to My Pets?\n\n' + (nc ? nc + ' of them ' + (nc === 1 ? 'was' : 'were') + ' discarded on chain: you sign one tiny Add back burn (1 dander) for ' + (nc === 1 ? 'it' : 'them') + '. ' : '') + (nc < ids.length ? (ids.length - nc) + ' only hidden in this browser come back free, no burn.' : ''))) return; DS.sel = {}; pileRestore(ids); }; });
+      if (ids.length > 1 && !window.confirm('Restore ' + (a === 'all' ? 'all ' : '') + ids.length + ' pets from the Discard pile to My Pets?\n\n' + (nc ? nc + ' of them ' + (nc === 1 ? 'was' : 'were') + ' discarded on chain: this undoes those permanent discards on every device (an Add back burn, 1 dander) for ' + (nc === 1 ? 'it' : 'them') + '. ' : '') + (nc < ids.length ? (ids.length - nc) + ' only hidden in this browser come back free, no burn.' : ''))) return; DS.sel = {}; pileRestore(ids); }; });
     hb.querySelectorAll('.dcard').forEach(function (d) { var p = w.byId[d.dataset.did]; if (p) R.lazy(d.querySelector('canvas'), function () { return petFrames(p, w); }); });
     return hb; }
   /* pileRestore (Nov 25 2026, Evan): Restore in the pile undoes BOTH kinds of discard. Browser-only pets come back at once (free); pets
@@ -1373,6 +1373,11 @@
       lead: 'You\'re about to discard these pets permanently, on every device. Pets discarded on chain can go in the Meat Grinder, where they are gone for good.',
       onGo: function (go) { if (!go.length) return; chainDiscardIds._ok = true; try { chainDiscardIds(go, false); } finally { chainDiscardIds._ok = false; } } });
     var plan = V.hdPlan(w, ME, ids, b, { restore: !!restore }); if (!plan || !plan.ok) return toast((plan && plan.why) || 'No exact burn for that selection.');
+    /* Nov 26 2026 (G Money signed pet:hu:ALL at block 977,587: 15,971 discards undone at once, so his zombies had nothing to eat, after he was told
+     * to add back 68 pets): adding back many pets undoes permanent discards, so every add-back of 50+ pets (pile Restore all, the My Pets
+     * 'Add back' button, a selection) asks once, with the count and what it means, before the sheet opens. */
+    var nBack = restore ? plan.plans.reduce(function (a, q) { return a + ((q.petIds && q.petIds.length) || 0); }, 0) : 0;
+    if (nBack >= 50 && typeof window !== 'undefined' && window.confirm && !window.confirm('Add back ' + fmt(nBack) + ' pets?\n\nThis undoes ' + fmt(nBack) + ' permanent discards on every device. They all come back to My Pets and need feeding again, and zombies and the Meat Grinder can no longer use them.\n\nIf you only meant a few pets, press Cancel and tick just those pets in the Discard pile.')) return;
     var n = plan.plans.reduce(function (a, q) { return a + ((q.petIds && q.petIds.length) || 0); }, 0);
     var title = (restore ? 'Add ' + fmt(n) + ' pets back to My Pets' : 'Discard ' + fmt(n) + ' pet' + (n === 1 ? '' : 's') + ' permanently (every device)');
     /* Nov 26 2026: plain title (the sheet said 'does not fit in one 34-byte burn' twice and listed every left-out pet). One line on the burns,
@@ -1391,7 +1396,7 @@
     var el = document.createElement('div'); el.className = 'small hdbar'; el.id = 'hdBar';
     el.innerHTML = '<p class="muted">' + (on ? 'On-chain discard is 1 dander for the burn, however many pets it names. If they do not fit one tag, you will see the smallest number of exact burns before anything is sent. The game does not sign the burn.' : 'On-chain discard opens at block ' + fmt(V.ACTIVATE_ONCHAIN_DISCARD_BLOCK) + '. Until then, Discard only hides pets in this browser.') + '</p>' +
       (hid.length ? '<button type="button" class="btn" id="hdMigrate">Make my browser discards permanent (' + fmt(hid.length) + ')</button> ' : '') +
-      (on && chain.length ? '<button type="button" class="q" id="hdBack">Add discarded pets back (' + fmt(chain.length) + ')</button>' : '');
+      (on && chain.length ? '<button type="button" class="q" id="hdBack">Undo ALL on-chain discards (' + fmt(chain.length) + ')</button>' : '');
     var m = el.querySelector('#hdMigrate'); if (m) m.onclick = function () { chainDiscardIds(hid, false); };
     var bk = el.querySelector('#hdBack'); if (bk) bk.onclick = function () { chainDiscardIds(chain.map(function (p) { return p.id; }), true); };
     return el; }
