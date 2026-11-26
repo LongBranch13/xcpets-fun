@@ -75,7 +75,7 @@
     if (!btcQuote || !supplyLeft) { hideCount(); return; }
     if (!countEl) {
       countEl = el('aside', 'dw-count');
-      var main = document.querySelector('main'); if (main) main.insertBefore(countEl, main.firstChild); else document.body.appendChild(countEl);
+      var main = document.querySelector('main'); if (window.XcpTopStrip && XcpTopStrip.mountMain(countEl, 25)) { /* smooth: reserved top box (js/v2-header.js) */ } else if (main) main.insertBefore(countEl, main.firstChild); else document.body.appendChild(countEl);
     }
     countEl.setAttribute('aria-label', '1 BTC in dollars and XCPETS left');
     countEl.innerHTML = '<b class="dw-joke">' + counterHtml(btcQuote.usd, supplyLeft.tokens, drops) + '</b>';
@@ -257,13 +257,14 @@
     return '<img src="img/doom/doom-flag.png" alt="" width="32" height="32" class="dw-sflag"><span class="dw-stext"><b>' + t[0] + '</b><i>' + t[1] + '</i></span>' +
       '<i class="dw-pchart dw-schart"></i><i class="dw-parrow dw-sarrow"></i>';
   }
-  function paintSign() {
-    if (!on || document.querySelector('.dw-sign-page')) return;
+  function paintSign(early) {
+    if (!(on || early) || document.querySelector('.dw-sign-page')) return;
     var f = pageFile(); if (/practice/i.test(f)) return;
     var t = SIGNS[f] || SIGNS[''], m = document.querySelector('main'); if (!m) return;
     var box = el('div', 'dw-sign-page'); box.setAttribute('role', 'img'); box.setAttribute('aria-label', t[0] + ': ' + t[1]); box.innerHTML = signHtml(t);
     var bar = document.getElementById('townBar');
-    if (bar && bar.parentNode) bar.insertAdjacentElement('afterend', box);
+    if (window.XcpTopStrip && XcpTopStrip.mountMain(box, 30)) { /* smooth: the sign fills the reserved top box (after the Town bar) instead of pushing the page down */ }
+    else if (bar && bar.parentNode) bar.insertAdjacentElement('afterend', box);
     else if (countEl && countEl.parentNode === m) countEl.insertAdjacentElement('afterend', box);
     else m.insertBefore(box, m.firstChild);
   }
@@ -297,5 +298,9 @@
       return V.readBurns(rows || []).some(function (r) { return r && r.source === addr && r.block_index >= START && r.block_index < END && (at == null || r.block_index <= at); });
     }
   };
+  /* smooth (Nov 26 2026): the sign used to appear after the page had painted (DOMContentLoaded), pushing it down by a row. This file now
+   * loads from <head> (js/boot-look.js), so it puts the sign in the moment the page's top box (#mainTop) is parsed, before the first paint. */
+  if (document.readyState === 'loading' && window.MutationObserver) { var emo = new MutationObserver(function () { if (!document.getElementById('mainTop')) return; emo.disconnect(); try { if (wanted()) paintSign(true); } catch (e) { } });
+    emo.observe(document.documentElement, { childList: true, subtree: true }); document.addEventListener('DOMContentLoaded', function () { emo.disconnect(); }); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 })();

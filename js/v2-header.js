@@ -84,7 +84,50 @@
     return stripIn;
   }
   function mount(el) { var t = topStrip(); if (!t) return false; if (el.parentNode !== t) t.appendChild(el); return true; }
-  w.XcpTopStrip = { mount: mount };
+  /* main top (Nov 26 2026, smooth load, round 2): the cards that late scripts put at the very top of the page body (Play's Today card, the
+   * Pantry, the Town bar, the Doom sign, the phone quick links, the tutorial row) arrived one by one between 0.3 s and 2.4 s, each pushing the
+   * whole page down (Play on a phone: layout shift 0.9, most of it the 845 px Today card landing at 2.3 s). Every page now has an empty
+   * <div id="mainTop"> as the first thing in <main>; the cards go into it in a fixed order (data-mt), and it starts with last visit's layout.
+   * Display only. XcpTopStrip.mountMain(el, order) returns false where the page has no <main> (callers keep their old place). */
+  var MKEY = 'xcpets-maintop:' + page().replace(/\.html$/, ''), mt = null, ghosts = {}, plan = null;
+  try { plan = JSON.parse(ls(MKEY) || 'null'); if (!plan || !plan.length || plan.length > 20) plan = null; } catch (e) { plan = null; }
+  /* last visit's slots ([order, px] each) become empty spacers the moment #mainTop is parsed (before the first paint); each real card replaces
+   * its own spacer in place, so a late card (Today at ~2 s) no longer pushes the cards under it either. Spacers left after 20 s go. */
+  function ghost(t) { if (!plan) return; plan.forEach(function (x) { var o = +x[0] || 0, h = Math.round(+x[1] || 0); if (!(h > 0 && h < 2000) || ghosts[o]) return; for (var c = t.firstElementChild; c; c = c.nextElementSibling) { if (+(c.getAttribute('data-mt') || 0) === o) return; }
+      var g = d.createElement('div'); g.className = 'mt-ghost'; g.setAttribute('aria-hidden', 'true'); g.setAttribute('data-mt', String(o)); g.style.height = h + 'px'; ghosts[o] = g; place(t, g, o); });
+    plan = null; setTimeout(function () { Object.keys(ghosts).forEach(function (k) { var g = ghosts[k]; if (g && g.parentNode) g.parentNode.removeChild(g); }); ghosts = {}; }, 20000); }
+  if (plan && w.MutationObserver) { var mo = new MutationObserver(function () { var t = d.getElementById('mainTop'); if (t) { mo.disconnect(); mainTop(); } }); mo.observe(d.documentElement, { childList: true, subtree: true });
+    d.addEventListener('DOMContentLoaded', function () { mo.disconnect(); }); }
+  function place(t, el, o) { var before = null; for (var c = t.firstElementChild; c; c = c.nextElementSibling) { if (c !== el && +(c.getAttribute('data-mt') || 0) > o) { before = c; break; } }
+    if (el.parentNode !== t || el.nextElementSibling !== before) t.insertBefore(el, before); }
+  function slots() { var out = [], kids = []; for (var c = mt.firstElementChild; c; c = c.nextElementSibling) { if (c.className !== 'mt-ghost' && c.getBoundingClientRect().height) kids.push(c); }
+    kids.forEach(function (c, i) { var r = c.getBoundingClientRect(), nx = kids[i + 1], h = nx ? nx.getBoundingClientRect().top - r.top : r.height + (parseFloat(getComputedStyle(c).marginBottom) || 0); out.push([+(c.getAttribute('data-mt') || 0), Math.round(h)]); });
+    return out; }
+  function mainTop() { if (mt && mt.isConnected) return mt; var m = d.querySelector('main'); if (!m) return null;
+    mt = d.getElementById('mainTop'); if (!mt) { mt = d.createElement('div'); mt.id = 'mainTop'; m.insertBefore(mt, m.firstChild); }
+    ghost(mt);
+    var save = function () { if (!mt.isConnected) return; try { var s2 = slots(); if (s2.length) localStorage.setItem(MKEY, JSON.stringify(s2)); else localStorage.removeItem(MKEY); } catch (e) { } };
+    d.addEventListener('visibilitychange', function () { if (d.hidden) save(); }); w.addEventListener('pagehide', save);
+    return mt; }
+  function mountMain(el, order) { var t = mainTop(); if (!t) return false; var o = +order || 0; el.setAttribute('data-mt', String(o));
+    var g = ghosts[o]; if (g) { delete ghosts[o]; if (g.parentNode === t) { t.replaceChild(el, g); return true; } }
+    place(t, el, o); return true; }
+  /* keep height (Nov 26 2026, smooth load): a page part that is filled late (the Petdex grid, the Rankings board) starts at last visit's
+   * height, so the footer and everything under it do not jump when it fills. Mark it data-keep-h in the page. The reserve goes away the
+   * moment the real content reaches it (checked when the part changes), or after 15 s. Display only. */
+  var KKEY = 'xcpets-keeph:' + page().replace(/\.html$/, ''), kRes = null, kPlan = null;
+  try { kPlan = JSON.parse(ls(KKEY) || 'null'); } catch (e) { kPlan = null; }
+  if (kPlan && typeof kPlan === 'object') { var css = Object.keys(kPlan).filter(function (id) { return /^[\w-]+$/.test(id) && kPlan[id] > 0 && kPlan[id] < 20000; }).map(function (id) { return '#' + id + '{min-height:' + Math.round(kPlan[id]) + 'px}'; }).join('');
+    if (css) { kRes = d.createElement('style'); kRes.id = 'keepHRes'; kRes.textContent = css; (d.head || d.documentElement).appendChild(kRes); setTimeout(kDrop, 15000); } }
+  function kDrop() { if (kRes && kRes.parentNode) kRes.parentNode.removeChild(kRes); kRes = null; }
+  function kFill(el) { var top = el.getBoundingClientRect().top, b = 0; for (var c = el.firstElementChild; c; c = c.nextElementSibling) { var r = c.getBoundingClientRect(); if (r.height) b = Math.max(b, r.bottom - top); } return b; }
+  function kWatch() { var els = d.querySelectorAll('[data-keep-h][id]'); if (!els.length) return;
+    if (kRes && w.MutationObserver) { var q = 0, chk = function () { q = 0; if (!kRes) return; for (var i = 0; i < els.length; i++) { var h = kPlan && kPlan[els[i].id]; if (h && kFill(els[i]) < h - 1) return; } kDrop(); mo2.disconnect(); };
+      var mo2 = new MutationObserver(function () { if (!q) q = setTimeout(chk, 120); }); for (var i = 0; i < els.length; i++) mo2.observe(els[i], { childList: true, subtree: true }); }
+    var save = function () { var o = {}; for (var i = 0; i < els.length; i++) { var h = Math.round(kFill(els[i])); if (h > 0) o[els[i].id] = h; } try { localStorage.setItem(KKEY, JSON.stringify(o)); } catch (e) { } };
+    d.addEventListener('visibilitychange', function () { if (d.hidden) save(); }); w.addEventListener('pagehide', save); }
+  var kGo = function () { try { kWatch(); } catch (e) { } }; if (d.readyState === 'loading') d.addEventListener('DOMContentLoaded', kGo); else kGo();
+  w.XcpTopStrip = { mount: mount, mountMain: mountMain };
 
   /* late arrivals: the Simple-menu switch (js/v2-simple.js), the glossary / receipt icons (#ipTools) and the sound button (#xc-music) */
   var busy = false;

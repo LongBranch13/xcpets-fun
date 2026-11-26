@@ -429,7 +429,7 @@
     if (/\/index\.html$/.test(path) || /\/$/.test(path)) return; /* home already has one New here? button */
     var m = document.querySelector('main'); if (!m || document.getElementById('tutEntry') || !/(^|\/)play\.html$/.test(path)) return;
     var g = graduated(), a = el('a', g ? 'q tut-entry small' : 'btn tut-entry', g ? '🎓 Tutorial' : '🎓 Big Beautiful Tutorial'); a.id = 'tutEntry'; a.href = 'tutorial.html';
-    var w = el('div', 'tut-entry-row' + (g ? ' grad' : '')); w.appendChild(a); if (!g) w.appendChild(el('span', 'muted small', 'New here? Learn the game in a few minutes.')); m.insertBefore(w, m.firstChild);
+    var w = el('div', 'tut-entry-row' + (g ? ' grad' : '')); w.appendChild(a); if (!g) w.appendChild(el('span', 'muted small', 'New here? Learn the game in a few minutes.')); if (!(window.XcpTopStrip && XcpTopStrip.mountMain(w, 50))) m.insertBefore(w, m.firstChild);
   }
   function graduated() { var d = jget(DONE); return CH.every(function (x) { return d[x.id]; }); }
   function frameOf(best) { for (var i = 0; i < FRAMES.length; i++) if (best >= FRAMES[i][0]) return FRAMES[i]; return null; }

@@ -10,19 +10,20 @@
 (function () {
   'use strict';
   var DOOM = true; /* Doom 2 (owner Nov 23 2026: "On until I say stop"); doom-week.js still keeps its START block */
-  var d = document, root = d.documentElement, me = d.currentScript, ver = (me && /[?&]v=([\w.-]+)/.exec(me.src) || [])[1] || '';
+  var d = document, root = d.documentElement;
   function flag(k) { var m = new RegExp('[?&]' + k + '=([01])\\b').exec(location.search); return m ? m[1] : null; }
   var practice = /practice/i.test(location.pathname || ''), df = flag('doom');
   var doom = !practice && df !== '0' && (df === '1' || DOOM);
-  var q = ver ? '?v=' + ver : '';
+  /* the Doom files carry their own tokens (bumped with the files; this file's token is bumped after them) */
+  var DW_CSS = 'css/doom-week.css?v=0982146202', DW_JS = 'js/doom-week.js?v=b868d3db08';
   if (doom) {
     root.classList.add('dw');
     /* document.write while <head> is still being parsed = a parser-inserted stylesheet: the browser holds the first paint until it is
      * loaded, exactly like the page's own CSS. appendChild would NOT block the paint (that is the flash we are removing). */
-    var css = '<link rel="stylesheet" id="dwCss" href="css/doom-week.css' + q + '">';
-    try { if (d.readyState === 'loading') d.write(css); else throw 0; } catch (e) { var l = d.createElement('link'); l.rel = 'stylesheet'; l.id = 'dwCss'; l.href = 'css/doom-week.css' + q; d.head.appendChild(l); }
+    var css = '<link rel="stylesheet" id="dwCss" href="' + DW_CSS + '">';
+    try { if (d.readyState === 'loading') d.write(css); else throw 0; } catch (e) { var l = d.createElement('link'); l.rel = 'stylesheet'; l.id = 'dwCss'; l.href = DW_CSS; d.head.appendChild(l); }
     /* the Doom script (candles, signs, showcase art): fetched now, runs as soon as the page is parsed */
-    var s = d.createElement('script'); s.src = 'js/doom-week.js' + q; s.async = true; (d.head || root).appendChild(s);
+    var s = d.createElement('script'); s.src = DW_JS; s.async = true; (d.head || root).appendChild(s);
   }
   window.XcpBootLook = { doom: doom, DOOM: DOOM, practice: practice };
 })();

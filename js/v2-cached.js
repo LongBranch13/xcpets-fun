@@ -32,7 +32,7 @@
     p.parentNode.insertBefore(sk, p.nextSibling); var mine = p.textContent, host = p.parentNode;
     function drop() { if (sk.parentNode) sk.parentNode.removeChild(sk); p._xc = function () {}; }
     p._xc = function () { if (META && META.blockHeight && p.isConnected && p.textContent === mine) { mine = 'Saved game feed, as of block ' + fmt(META.blockHeight) + '. Reading the latest burns…'; p.textContent = mine; } };
-    p._xc(); watch(host, function () { if (!p.isConnected || p.textContent !== mine) drop(); }); setTimeout(drop, 90000); }); }
+    p._xc(); watch(host, function () { if (!p.isConnected) return drop(); if (p.textContent === mine) return; if (/…\s*$/.test(p.textContent)) mine = p.textContent; else drop(); }); /* smooth: a new 'loading…' line keeps the rows (Rankings: 'Getting the boards…' used to drop them and the page shrank, then grew) */ setTimeout(drop, 90000); }); }
   function tagFor(host, vid) { var t = d.getElementById('xcAsOf-' + vid); if (t) return t; var h = d.getElementById(host); if (!h) return null;
     t = d.createElement('span'); t.id = 'xcAsOf-' + vid; t.className = 'xc-asof'; t.setAttribute('aria-live', 'polite');
     if (host === vid) h.parentNode.insertBefore(t, h.nextSibling); else h.appendChild(t); return t; }

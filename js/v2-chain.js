@@ -548,8 +548,8 @@
    * visit (the whole page blinked and was drawn again) because the fresh world replaced the saved copy and they have no in-page repaint.
    * The pet page redraws in place (the xcpets-world-fresh event above + its own redraw); Home and the read-only catalog pages (Cold Storage
    * archive, Pantheon, Petdex, hybrids, tokens, inscriptions) keep what they show when the copy they painted was at most 36 blocks (~6 h)
-   * behind, which changes nothing they list. Older copies still reload. Display only: burns still wait for the verified read (S.verified). */
-  var QUIET = { front: 1, pet: 2, archive: 1, pantheon: 1, petdex: 1, hybrids: 1, tokens: 1, inscriptions: 1 };
+   * behind, which changes nothing they list. Older copies still reload. Ranking repaints through its own onFresh hook; if the fresh world lands before that hook is set, it keeps the boards (its 60 s poll follows). Display only: burns still wait for the verified read (S.verified). */
+  var QUIET = { front: 1, pet: 2, ranking: 1, archive: 1, pantheon: 1, petdex: 1, hybrids: 1, tokens: 1, inscriptions: 1 };
   function quietFresh() { try { var q = QUIET[document.body && document.body.getAttribute('data-v2page')]; if (!q) return false; if (q === 2) return true;
       var gap = (S.tip || 0) - (S.provisionalTip || S.tip || 0); return gap >= 0 && gap <= 36; } catch (e) { return false; } }
   function armFresh() { if (armed) return; armed = true; updBar(true);
