@@ -58,10 +58,11 @@ function run(bar) {
   const props = {}, cls = new Set(), cbs = [];
   const root = { clientHeight: 800, style: { setProperty: (k, v) => { props[k] = v; } }, classList: { toggle: (c, on) => { if (on) cls.add(c); else cls.delete(c); } } };
   const doc = { readyState: 'complete', documentElement: root, body: {}, querySelectorAll: () => bar ? [bar] : [], addEventListener() {} };
-  const win = { document: doc, innerHeight: 800, getComputedStyle: e => e.cs, requestAnimationFrame: f => cbs.push(f), addEventListener() {},
+  const on = {};
+  const win = { document: doc, innerHeight: 800, getComputedStyle: e => e.cs, requestAnimationFrame: f => cbs.push(f), addEventListener(k, f) { on[k] = f; },
     ResizeObserver: function () { this.observe = () => {}; }, MutationObserver: function () { this.observe = () => {}; } };
   win.window = win; vm.runInNewContext(rd('js/v2-dock.js'), win);
-  return { props, cls, win };
+  return { props, cls, win, on, doc };
 }
 const bar = { cs: { position: 'fixed', display: 'flex', visibility: 'visible' }, getBoundingClientRect: () => ({ top: 640, bottom: 790, height: 150 }) };
 let r = run(bar); ok(r.props['--dock-h'] === '160px' && r.cls.has('docked'), 'a bar pinned 10px above the bottom, 150px tall, lifts floaters by 160px (got ' + r.props['--dock-h'] + ')');
@@ -70,6 +71,18 @@ r = run({ cs: { position: 'static', display: 'flex', visibility: 'visible' }, ge
 ok(r.props['--dock-h'] === '0px', 'the bar back in the page (not pinned, My Pets scrolled away) lifts nothing');
 r = run({ cs: { position: 'fixed', display: 'none', visibility: 'visible' }, getBoundingClientRect: () => ({ top: 0, bottom: 0, height: 0 }) });
 ok(r.props['--dock-h'] === '0px', 'a hidden bar lifts nothing');
+
+/* 3b · XcpDock.busy: pop-ups that open on their own wait while the player is touching the page (box reveal swallowed "Open", Nov 26 2026) */
+r = run(null);
+ok(typeof r.win.XcpDock.busy === 'function' && r.win.XcpDock.busy() === false, 'not busy before the player touches anything');
+r.on.pointerdown(); ok(r.win.XcpDock.busy() === true, 'busy right after a tap');
+ok(!r.on.scroll, 'a scroll the page makes on its own does not count as the player');
+r = run(null); r.doc.body = { classList: { contains: c => c === 'selmode' } }; ok(r.win.XcpDock.busy() === true, 'busy while picking pets (select mode)');
+const v2s = rd('js/v2.js');
+ok(/function nextReveal\(\)[\s\S]{0,600}!revealQ\[0\]\.tray && playerBusy\(\)/.test(v2s), 'the box reveal waits while the player is busy (a tapped pill / Last hatch opens at once)');
+ok(/function nextAnim\(\)[\s\S]{0,400}playerBusy\(\)/.test(v2s), 'fight / breed / cemetery replays wait while the player is busy');
+for (const f of ['js/v2-groyper-arrival.js', 'js/v2-kek-arrival.js', 'js/v2-rabbit-arrival.js'])
+  ok(/XcpDock\.busy\(\)/.test(rd(f)), f + ' waits while the player is busy');
 
 /* 4 · the selection bar pins only while My Pets is on screen ("this feed bar is stuck", Nov 26 2026) */
 const calm = rd('js/v2-mypets-calm.js');

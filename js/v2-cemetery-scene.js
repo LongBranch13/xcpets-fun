@@ -30,15 +30,7 @@
       if ((pg.n || 0) > 0 && (pg.n || 0) <= cap) return got >= (pg.pages || 1);
       return got >= Math.min(screen, pg.pages || 1);
     }
-    function discIds(me) {
-      var net = (window.LiveEngine && LiveEngine.CFG && LiveEngine.CFG.network) || 'mainnet';
-      var raw;
-      try { raw = JSON.parse(localStorage.getItem('xcpets-hidden-' + net + '-' + (me || '')) || '[]'); } catch (e) { return []; }
-      if (!raw || !raw.forEach) return [];
-      var out = [], seen = {};
-      raw.forEach(function (id) { id = +id; if (id > 0 && !seen[id]) { seen[id] = 1; out.push(id); } });
-      return out;
-    }
+    function discIds(me) { return V2Own.pileOrder(me); } /* this browser's Discard pile, in its order (V2Own: the one reader of that list) */
     function discardMiss(me) {
       var w = world(), by = (w && w.byId) || {}, ids = discIds(me), miss = [], i;
       for (i = 0; i < ids.length; i++) if (!by[ids[i]]) miss.push(ids[i]);

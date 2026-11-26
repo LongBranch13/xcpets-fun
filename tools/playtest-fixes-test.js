@@ -22,7 +22,7 @@ ok(g.plans.length === 1 && g.plans[0].tag === 'pet:feed:1' && g.skipped.indexOf(
 const ctx = { self: {} }; vm.createContext(ctx); vm.runInContext(rd('js/v2-own.js'), ctx);
 const O = ctx.self.V2Own;
 ok(O.canEat(Object.assign({}, base), me) && !O.canEat(Object.assign({}, base, { hd: me }), me) && !O.canEat(Object.assign({}, base, { zombie: {} }), me) && !O.canEat(Object.assign({}, base, { dead: true }), me), 'V2Own.canEat leaves out discarded, zombie and dead pets');
-ok(/p\.hd === u\.ME/.test(rd('js/v2-chores.js')), 'Daily chores leaves out pets discarded on chain (it charged 294,249 XCPETS for 146 real meals)');
+ok(/V2Own\.discarded\(p, u\.ME, dz\)/.test(rd('js/v2-chores.js')), 'Daily chores leaves out pets discarded on chain, via the one discard answer (it charged 294,249 XCPETS for 146 real meals; behaviour: tools/discard-one-answer-test.js, chores-discard-test.js)');
 ok(/V2Own\.canEat/.test(rd('js/v2-today.js')) && /V2Own\.canEat/.test(rd('js/v2-mypets-top.js')), 'the hungry counts (Today, My Pets) use V2Own.canEat');
 
 /* 3. drawing a pet with no art (fast pages carry other players' pets without it) never throws */
@@ -41,7 +41,7 @@ ok(/self\._arts\[p\.id\]/.test(rd('js/v2-verify-worker.js')), 'the check worker 
 ok(/function revNeedsArt\(\)/.test(rd('js/v2.js')) && /if \(revNeedsArt\(\)\) return; rev = revealQ\.shift\(\)/.test(rd('js/v2.js')), 'the box reveal asks for missing egg art before it opens');
 
 /* 5. replays wait for open sheets; the wallet pill steps aside while selecting */
-ok(/sheetOpen\(\)\) return setTimeout\(nextAnim/.test(rd('js/v2.js')), 'a queued replay waits while a sheet (Sign & burn...) is open');
+ok(/sheetOpen\(\)[^;]{0,40}\) return setTimeout\(nextAnim/.test(rd('js/v2.js')), 'a queued replay waits while a sheet (Sign & burn...) is open');
 ok(/body\.mpc-inview\.mpc-sel #xwPill\{display:none!important\}/.test(rd('js/v2-mypets-calm.js')), 'the wallet pill hides while the selection bar is pinned (it covered Discard selected)');
 
 ok(/if \(keepBusy\)/.test(rd('js/v2-split.js')) && /var e = keepQ\[nm\]; if \(!e\) return next\(\)/.test(rd('js/v2-split.js')), 'only one saved-shard flush runs at a time (see tools/split-keep-test.js)');
