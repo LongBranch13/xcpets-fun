@@ -257,8 +257,11 @@ FLOWS.hatch = async (H, T, ctx) => {
   const secs = Math.round((Date.now() - t0) / 1000);
   if (seen < want) problem('result-never-shows', 'hatched ' + want + ' eggs; after the block landed the page still showed ' + Math.max(0, seen) + ' of them after ' + secs + ' s on the page (no reload)');
   else ok(want + ' new eggs showed up ' + secs + ' s after the block' + (pop ? ' (' + pop + ')' : ''));
-  if (!pop) { const why = await H.pg.evaluate(() => ({ open: [...document.querySelectorAll('.reveal.on, .la-ov, .tut-tip')].map(e => e.id || e.className), tray: (document.querySelector('#hatchTray') || {}).innerText || '', held: window.V2Held ? V2Held.list() : null })).catch(() => ({}));
-    problem('no-reveal', 'no hatch reveal pop-up or pill appeared for the new eggs (' + JSON.stringify(why).slice(0, 200) + ')'); }
+  if (!pop) { const why = await H.pg.evaluate(() => ({ open: [...document.querySelectorAll('.reveal.on, .la-ov, .tut-tip')].map(e => e.id || e.className), tray: (document.querySelector('#hatchTray') || {}).innerText || '', held: window.V2Held ? V2Held.list() : null, why: window.V2Held && V2Held.why ? V2Held.why() : null })).catch(() => ({}));
+    problem('no-reveal', 'no hatch reveal pop-up or pill appeared for the new eggs (' + JSON.stringify(why).slice(0, 900) + ')');
+    /* late or never? keep watching a minute more and say which */
+    let late = null; for (let i = 0; i < 12 && !late; i++) { await H.pg.waitForTimeout(5000); late = await H.pg.evaluate(src => newReveal(src), trayBefore).catch(() => null); if (late) ok('the reveal came late: ' + late + ' ' + (secs + 5 * (i + 1)) + ' s after the block'); }
+    if (!late) { const w2 = await H.pg.evaluate(() => window.V2Held && V2Held.why ? V2Held.why() : null).catch(() => null); ok('still no reveal a minute later: ' + JSON.stringify(w2).slice(0, 900)); } }
   await H.shot('landed');
   /* and after a reload */
   await H.pg.reload({ waitUntil: 'domcontentloaded' }); await L.worldReady(H.pg, 180000);
@@ -383,7 +386,10 @@ FLOWS.places = async (H) => {
     if (!(await H.open(page))) continue;
     await H.dismiss(8000);
     const s = await H.pg.evaluate(() => ({ text: document.body.innerText.length, words: document.body.innerText.slice(0, 40000) }));
-    if (s.text < 400 || !want.test(s.words)) problem('empty-page', page + ' shows almost nothing (' + s.text + ' characters)'); else ok(page + ' content ok (' + ((Date.now() - t0) / 1000).toFixed(1) + ' s)');
+    if (s.text < 400 || !want.test(s.words)) { problem('empty-page', page + ' shows almost nothing (' + s.text + ' characters: ' + JSON.stringify(s.words.slice(0, 300)) + ')');
+      /* late or never? look again for 30 s and say which */
+      let n = 0, t1 = Date.now(); for (let i = 0; i < 15; i++) { await H.pg.waitForTimeout(2000); const s2 = await H.pg.evaluate(() => ({ text: document.body.innerText.length, words: document.body.innerText.slice(0, 40000) })).catch(() => null); if (s2 && s2.text >= 400 && want.test(s2.words)) { n = s2.text; break; } }
+      ok(n ? page + ' filled in late: ' + n + ' characters ' + ((Date.now() - t1) / 1000).toFixed(0) + ' s after the first look' : page + ' still empty 30 s later'); } else ok(page + ' content ok (' + ((Date.now() - t0) / 1000).toFixed(1) + ' s)');
     await H.freezes(0, page + ' load', FREEZE_LOAD);
   }
   /* Pantheon on fast pages used to be empty */

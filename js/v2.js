@@ -2111,7 +2111,11 @@
   window.V2Held = { count: function () { return heldA.length + (heldR ? revealQ.length : 0); },
     list: function () { return (heldR ? revealQ.map(function (r) { return r.kind === 'gear' ? '🎁 ' + r.wins.length + ' new gear piece' + (r.wins.length > 1 ? 's' : '') : '🥚 ' + r.eggs.length + ' egg' + (r.eggs.length > 1 ? 's' : '') + ' hatched'; }) : []).concat(heldA.map(function (a) { return a.label; })); },
     run: function () { askAt = Date.now(); released = true; heldR = false; var a = heldA; heldA = []; a.forEach(function (x) { queueAnim(x.fn); }); nextReveal(); awayPing(); },
-    skip: function () { released = true; heldR = false; heldA = []; revealQ.length = 0; awayPing(); } };
+    skip: function () { released = true; heldR = false; heldA = []; revealQ.length = 0; awayPing(); },
+    /* read-only: why a hatch/gear reveal is not on screen (the play-test robot prints it when a reveal never shows) */
+    why: function () { var w = world(), pg = w && w._pages; return { q: revealQ.map(function (r) { return r.kind + ':' + (r.eggs || r.wins || []).length + (r.away ? ':away' : '') + (r.tray ? ':tray' : ''); }), rev: rev ? rev.kind : null, wspin: wspinOn,
+      pack: $('packBox').classList.contains('on'), other: otherUp(), busy: playerBusy(), pick: picking(), life: !!(window.V2LifeAnim && V2LifeAnim.busy && V2LifeAnim.busy()), hold: holding(), heldR: heldR,
+      settled: hatchListSettled(w), defer: hDefer0 ? Date.now() - hDefer0 : 0, sessTip: hSessTip, hatchTip: hatchTip, tip: w && w.tip, pending: !!(w && w.pending), pages: pg ? pg.got + '/' + pg.pages : null }; } };
   function queueAnim(fn, label) { if (holding()) { heldA.push({ fn: fn, label: label || '▶ Replay' }); awayPing(); return; } animQ.push(fn); if (!animM.el && animQ.length === 1) setTimeout(nextAnim, 600); }
   function nextAnim() { if (animM.el || !animQ.length) return; if ((window.V2CemAnim && V2CemAnim.busy()) || (window.V2LifeAnim && V2LifeAnim.busy())) return; /* a cemetery animation is on screen; it calls V2AnimDone when it ends */ if ($('packBox').classList.contains('on') || sheetOpen() || playerBusy()) return setTimeout(nextAnim, 1500); animQ.shift()(); } /* Nov 26 2026: and while the player is tapping or scrolling (js/v2-dock.js busy) */
   /* playtest (Nov 25 2026): a fight replay used to pop up in front of the Sign & burn sheet (or any other open sheet) a few seconds after the
