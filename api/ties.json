@@ -1,5 +1,5 @@
 {
- "lastBlock": 977743,
+ "lastBlock": 977744,
  "count": 553,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
@@ -6253,7 +6253,7 @@
    "species": "hyb3:snibby:dodo:kek",
    "speciesLabel": "Snidokek (hybrid)",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 210460,
@@ -6265,7 +6265,7 @@
    "species": "kevin",
    "speciesLabel": "KEVIN",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 210492,
@@ -6277,7 +6277,7 @@
    "species": "snibby",
    "speciesLabel": "Snibby",
    "rarity": "Rare",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 210884,
@@ -6289,7 +6289,7 @@
    "species": "sarutobi",
    "speciesLabel": "Sarutobi",
    "rarity": "Rare",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 210959,
@@ -6301,7 +6301,7 @@
    "species": "homer",
    "speciesLabel": "Homer Pepe",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 211046,
@@ -6313,7 +6313,7 @@
    "species": "homer",
    "speciesLabel": "Homer Pepe",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 211111,
@@ -6325,7 +6325,7 @@
    "species": "bobo",
    "speciesLabel": "Bobo",
    "rarity": "Rare",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 211161,
@@ -6337,7 +6337,7 @@
    "species": "dodo",
    "speciesLabel": "Dodo",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 211213,
@@ -6349,7 +6349,7 @@
    "species": "sarutobi",
    "speciesLabel": "Sarutobi",
    "rarity": "Rare",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 211399,
@@ -6361,7 +6361,7 @@
    "species": "dodo",
    "speciesLabel": "Dodo",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 211430,
@@ -6373,7 +6373,7 @@
    "species": "chad",
    "speciesLabel": "Chad",
    "rarity": "Rare",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 154188,
@@ -6553,7 +6553,7 @@
    "species": "chud",
    "speciesLabel": "Chud",
    "rarity": "Legendary",
-   "stage": "Juvenile"
+   "stage": "Adult"
   },
   {
    "id": 269625,
@@ -6565,7 +6565,7 @@
    "species": "wojak",
    "speciesLabel": "Wojak",
    "rarity": "Legendary",
-   "stage": "Juvenile"
+   "stage": "Adult"
   },
   {
    "id": 269626,
@@ -6577,7 +6577,7 @@
    "species": "hyb:chud:dodo",
    "speciesLabel": "Chudo (hybrid)",
    "rarity": "Legendary",
-   "stage": "Juvenile"
+   "stage": "Adult"
   },
   {
    "id": 269627,
@@ -6589,7 +6589,7 @@
    "species": "hyb:dodo:snibby",
    "speciesLabel": "Dosnib (hybrid)",
    "rarity": "Legendary",
-   "stage": "Juvenile"
+   "stage": "Adult"
   },
   {
    "id": 269628,
@@ -6601,7 +6601,7 @@
    "species": "hyb:dodo:snibby",
    "speciesLabel": "Dosnib (hybrid)",
    "rarity": "Legendary",
-   "stage": "Juvenile"
+   "stage": "Adult"
   },
   {
    "id": 269629,
@@ -6613,7 +6613,7 @@
    "species": "sarutobi",
    "speciesLabel": "Sarutobi",
    "rarity": "Rare",
-   "stage": "Hatchling"
+   "stage": "Juvenile"
   },
   {
    "id": 269630,
@@ -6625,7 +6625,7 @@
    "species": "hyb:kevin:doge",
    "speciesLabel": "Kege (hybrid)",
    "rarity": "Legendary",
-   "stage": "Hatchling"
+   "stage": "Juvenile"
   },
   {
    "id": 271637,
@@ -6637,7 +6637,7 @@
    "species": "kek",
    "speciesLabel": "Lord Kek",
    "rarity": "Rare",
-   "stage": "Hatchling"
+   "stage": "Juvenile"
   }
  ]
 }
