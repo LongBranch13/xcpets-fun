@@ -23,13 +23,22 @@ ok(P('pet:dc:3:00:' + '1'.repeat(22)).action === 'chores' && P('pet:dc:3:00:' + 
 ok(P('pet:dc:3:00:00').action === 'invalid', 'parse: a take run of 0 is invalid (same as pet:fr)');
 /* live world */
 const boot = JSON.parse(fs.readFileSync(path.resolve(opt('--boot') || path.join(ROOT, 'api', 'boot.json')), 'utf8'));
-const rows = boot.rows.slice().sort((a, b) => a.block_index - b.block_index || a.tx_index - b.tx_index), tip = boot.tip || rows[rows.length - 1].block_index, nb = tip + 1;
+const rows0 = boot.rows.slice().sort((a, b) => a.block_index - b.block_index || a.tx_index - b.tx_index), tip0 = boot.tip || rows0[rows0.length - 1].block_index;
+/* fixtures age: the test plans at the tip for block tip+1 and checks tip+1..tip+3 as one chain day. When a chain day starts inside that window,
+ * pets fed earlier today turn hungry at the roll, after the plan was made, and "nothing left to do" fails (Nov 27 2026, tip 977,740 = the last
+ * block of day 6784). Start from the newest tip whose next three blocks share its chain day (at most 3 blocks back). */
+let tipD = tip0; while (V.day(tipD) !== V.day(tipD + 3)) tipD--;
+const rows = rows0.filter(r => r.block_index <= tipD), tip = tipD, nb = tip + 1;
+if (tip !== tip0) console.log('  tip ' + tip0 + ' is at a chain-day roll: testing from ' + tip);
 const hashes = Object.assign({}, ctx.XCPETS_BLOCK_HASHES || {}, boot.hashes || {}); [nb, nb + 1, nb + 2].forEach(b => { if (!hashes[b]) hashes[b] = crypto.createHash('sha256').update('fake-block-' + b).digest('hex'); });
 const opts = t => ({ tip: t, live: E && E.RealCore, dex: boot.dex }); let txi = rows[rows.length - 1].tx_index + 1;
 const mk = (b, src, amt, tag, seed) => ({ tx_index: txi++, tx_hash: crypto.createHash('sha256').update('dc-test:' + (seed || tag) + ':' + b + ':' + txi).digest('hex'), block_index: b, source: src, asset: 'XCPETS', quantity: Math.round(amt * 1e8), tag: hex(tag), status: 'valid' });
 const G = V.dailyChoresGate(); ok(G === null ? (!V.choresOn(nb) && !V.choresOn(9e9)) : (Number.isInteger(G) && G > tip - 50000 && V.choresOn(G) && !V.choresOn(G - 1)), 'gate in the code: ACTIVATE_DAILY_CHORES_BLOCK = ' + G + (G === null ? ' (rule off at every block)' : ' (on from that block, off before)'));
-V._setDailyChoresActivation(null); /* sections 1-2 check the gate-off behaviour (every block before the gate) */
+/* the checkpoint replays the chain with the gate in the code: nulling (or moving) a live gate before this replay drops every real pet:dc
+ * burn since go-live, so pets those burns kept fed look alive or hungry when they are not (Nov 27 2026). The gate-off and gate-on sections
+ * switch the gate for the test burns only: they fork from this checkpoint, so only blocks after the tip see the switch. */
 const w = V.replay(rows, hashes, [], Object.assign(opts(tip), { _forkSave: true }));
+V._setDailyChoresActivation(null); /* sections 1-2 check the gate-off behaviour (every block before the gate) */
 const play = (extra, t) => V.replay(rows.concat(extra), hashes, [], Object.assign(opts(t), { _forkUse: tip }));
 const owners = {}; w.pets.forEach(p => { if (!p.community && !p.dead && !p.released && p.owner) (owners[p.owner] = owners[p.owner] || []).push(p); });
 ok(V.dailyChoresPlan(w, Object.keys(owners)[0], nb) === null, 'gate off: the planner offers nothing');

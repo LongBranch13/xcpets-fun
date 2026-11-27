@@ -33,7 +33,8 @@ ok(!!me && spare[me] > 50, 'test wallet ' + (me || '').slice(0, 10) + '… has '
 /* 1 */
 ok(V.parseTag('pet:gearup').action === 'gearup' && V.parseTag('pet:gearup:12:34').ids.join() === '12,34' && V.parseTag('pet:gearup:1:2:3:4').action === 'invalid', 'parseTag: pet:gearup[:ID x3]');
 ok(V.parseTag('pet:smash:R').top === 2 && V.parseTag('pet:smash:X').action === 'invalid' && V.parseTag('pet:fuse').action === 'fuse' && V.parseTag('pet:dustroll:7').petId === 7, 'parseTag: smash / fuse / dustroll');
-const gate0 = V.forgeGate(); ok(gate0 === null || gate0 > tip, 'gate is off or ahead of the feed tip (' + gate0 + ')');
+/* the forge went live at its gate (977,675, Nov 26 2026): the gate in the code is a block number or still off; the gate-off check below sets it off itself */
+const gate0 = V.forgeGate(); ok(gate0 === null || Number.isInteger(gate0), 'gate in the code: ' + (gate0 === null ? 'off' : gate0 + (gate0 <= tip ? ' (live, feed tip ' + tip + ')' : ' (ahead of the feed tip ' + tip + ')')));
 V._setGearForge(null);
 const wOff = run([row(me, 'pet:smash:L', nb)], nb);
 ok(last(wOff).kind === 'rejected' && /unknown pet: tag/.test(last(wOff).msg) && mine(wOff, me).length === mine(w0, me).length, 'gate off: pet:smash is an unknown tag, nothing melts');
