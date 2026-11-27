@@ -229,11 +229,11 @@
     var p = w.byId && w.byId[o.petId];
     if (!p || p.owner !== o.owner || p.dead || p.released) return true;
     var worn = V.wornOf ? V.wornOf(w, p.id) || [] : [];
-    if (o.gid == null) { var cur = null; for (var i = 0; i < worn.length; i++) if (worn[i].slot === o.slot) { cur = worn[i]; break; } if (cur) cur.on = null; return true; }
+    if (o.gid == null) { var cur = null; for (var i = 0; i < worn.length; i++) if (worn[i].slot === o.slot) { cur = worn[i]; break; } if (cur) cur.on = null; if (w.__ixDrop) w.__ixDrop(); return true; }
     var g = w.items && w.items[o.gid];
     if (!g || g.owner !== o.owner || g.grave != null) return true;
     worn.slice().forEach(function (x) { if (x.slot === g.slot) x.on = null; });
-    g.on = p.id; return true;
+    g.on = p.id; if (w.__ixDrop) w.__ixDrop(); return true;
   }
   function applyAppended(w, prevJson, ops) {
     var prev; try { prev = JSON.parse(prevJson || '[]'); } catch (e) { return false; }
@@ -735,7 +735,17 @@
   var viewPaint = 0;
   /* one merge step (js/v2-merge.js): every view world keeps the pets the page already had (a pet never leaves the real world), except the
    * wallet's own living pets, which come only from its owner pages. Display only. */
-  function setViewWorld(w) { if (!S.view || !w) return; if (window.V2Merge && lastW && lastW !== w) { try { V2Merge.carry(lastW, w, ME); } catch (eM) {} } lastW = w; lastOps = JSON.stringify(S.ops || []); clearTimeout(viewPaint); viewPaint = setTimeout(repaint, 200); }
+  /* gear index for view worlds (Nov 27 2026, Rare Room froze 5-6 s). A view world is built from owner pages, not by replay, so it has no rules
+   * gear index (w.__ix) and every V2Rules.wornOf / ownedCounts scanned all of w.items: one Rare Room paint made ~10k scans. Pages add and move
+   * gear on view worlds with plain writes (hangGear, V2Merge.carry, applyLocalEquip), so a lasting index would go stale. This one is rebuilt
+   * from w.items on first use and thrown away when the current task ends (or by w.__ixDrop after a write), so it always matches a scan:
+   * same pets, same order (w.items key order), same counts. Display only: the rules never build view worlds. */
+  function viewIx(w) { if (!w || typeof w !== 'object' || Object.getOwnPropertyDescriptor(w, '__ix')) return; var X = null, drop = function () { X = null; };
+    Object.defineProperty(w, '__ixDrop', { value: drop, configurable: true, enumerable: false, writable: true });
+    Object.defineProperty(w, '__ix', { configurable: true, enumerable: false, get: function () { if (X) return X; var on = new Map(), own = new Map(), seq = new Map(), n = 0, it = w.items || {}, ks = Object.keys(it), i, g, a, m;
+      for (i = 0; i < ks.length; i++) { g = it[ks[i]]; if (!g || typeof g !== 'object') continue; seq.set(g, n++); a = on.get(g.on); if (!a) { a = []; on.set(g.on, a); } a.push(g); m = own.get(g.owner); if (!m) { m = {}; own.set(g.owner, m); } m[g.item] = (m[g.item] || 0) + 1; }
+      X = { on: on, own: own, seq: seq, n: n, view: 1 }; (typeof queueMicrotask === 'function' ? queueMicrotask : function (f) { Promise.resolve().then(f); })(drop); return X; } }); }
+  function setViewWorld(w) { if (!S.view || !w) return; viewIx(w); if (window.V2Merge && lastW && lastW !== w) { try { V2Merge.carry(lastW, w, ME); } catch (eM) {} } lastW = w; lastOps = JSON.stringify(S.ops || []); clearTimeout(viewPaint); viewPaint = setTimeout(repaint, 200); }
   watchWallet();
   /* ready(): the page's world is up (Nov 25 2026). The tickers (Fire Sale banner, halving ribbon, saved spins, data lag) waited for 'no #v2boot
    * and some burn rows', but a fast (published-world) load keeps an empty #v2boot and has no rows, so on fast pages they never ran: no Fire Sale

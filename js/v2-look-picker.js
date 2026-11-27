@@ -84,7 +84,8 @@
       (ops.length ? '<button type="button" class="q" data-reset>' + NAMES.undo + '</button>' : '') + '<span class="small muted">One look per spot on each pet (head, back, skin, foil, aura): forging a new one on takes off the old one in that spot.</span></div></div>';
     el.innerHTML = h;
     var big = el.querySelector('canvas.lp-big'); if (big) { try { var R = window.V2Render, fr = R.petFrames(p, w, { looks: owned.filter(want).map(lookFx), noHunger: true }); R.paint(big, fr[0]); } catch (e) { } }
-    el.querySelectorAll('canvas[data-i]').forEach(function (c) { preview(c, w, p, lookFx(owned[+c.dataset.i])); });
+    /* card previews through the same few-at-a-time queue as My Looks (Nov 27 2026: drawn in one go they froze the Rare Room 1-2 s) */
+    el.querySelectorAll('canvas[data-i]').forEach(function (c) { previewSoon(c, w, p, lookFx(owned[+c.dataset.i])); });
     el.querySelectorAll('.lp-tg').forEach(function (b) { b.onclick = function () { var L = owned.filter(function (x) { return x.code === b.dataset.code; })[0]; st.want[L.code] = !want(L); panel(el, w, p, ME, opt); }; });
     var r = el.querySelector('[data-reset]'); if (r) r.onclick = function () { st.want = {}; panel(el, w, p, ME, opt); };
     el.querySelector('[data-send]').onclick = function () { send(p.id, ops, function (ok) { if (ok) { st.want = {}; } }); };
