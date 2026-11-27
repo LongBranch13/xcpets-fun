@@ -182,7 +182,7 @@ function hands(pg) {
      * its own signature aura (FUNTRUMP gold shine, Homer donut...) must carry no electric outline on top (owner: one aura per pet). */
     async auras(where, opts) { opts = opts || {};
       const got = await pg.evaluate(() => { const out = { n: 0, bad: [], sig: [], rims: [] };
-        document.querySelectorAll('canvas.mfx-cv').forEach(o => { const c = o._c; if (!c || !c.isConnected || o.style.display === 'none' || o.style.visibility === 'hidden') return; const cr = c.getBoundingClientRect(), orr = o.getBoundingClientRect();
+        document.querySelectorAll('canvas.mfx-cv').forEach(o => { const c = o._c; if (!c || !c.isConnected || o.style.display === 'none' || o.style.visibility === 'hidden') return; const a0 = c.style.animation; c.style.animation = 'none'; const cr = c.getBoundingClientRect(), orr = o.getBoundingClientRect(); c.style.animation = a0; /* measured between breaths: the pet-tap breathing scales the sprite 1% */
           if (!cr.width || cr.bottom < 0 || cr.top > innerHeight || cr.right < 0 || cr.left > innerWidth) return; out.n++;
           const dx = (orr.left + orr.width / 2) - (cr.left + cr.width / 2), dy = (orr.top + orr.height / 2) - (cr.top + cr.height / 2), k = orr.width / cr.width;
           if (Math.abs(dx) > 1.5 || Math.abs(dy) > 1.5 || Math.abs(k - 1.28) > 0.02) out.bad.push('off by ' + dx.toFixed(1) + ',' + dy.toFixed(1) + ' px, size x' + k.toFixed(2) + ' (sprite ' + Math.round(cr.width) + ' px)');
@@ -194,10 +194,14 @@ function hands(pg) {
       got.bad.slice(0, 3).forEach(b => problem('aura', where + ': a Mythic outline is not on its pet: ' + b));
       if (got.sig.length) problem('aura', where + ': two auras on one pet (signature aura + electric outline): ' + got.sig.slice(0, 5).join(', '));
       /* the pixels: wait for the first flash to pass, then most rim pixels must be electric (blue-white), not the bare gold rim the line should cover */
-      if (got.rims.length) { await pg.waitForTimeout(1200); const png = await pg.screenshot().catch(() => null);
+      /* the sprite bobs a pixel between frames and the outline follows it: read the rims again right before the screenshot, and count a rim pixel
+       * as covered when it or the pixel one row above / below reads electric (the bug moved the line 4+ rows) */
+      if (got.rims.length) { await pg.waitForTimeout(1200); got.rims = await pg.evaluate(() => { const out = []; document.querySelectorAll('canvas.mfx-cv').forEach(o => { const c = o._c; if (out.length >= 3 || !c || !c.isConnected || !o._rim || o.style.display === 'none' || o.style.visibility === 'hidden') return; const cr = c.getBoundingClientRect();
+          if (cr.width < 96 || cr.top < 0 || cr.bottom > innerHeight || cr.left < 0 || cr.right > innerWidth) return; const pts = []; for (let q = 0; q < 1024; q++) if (o._rim[q]) pts.push([cr.left + ((q & 31) + 0.5) * cr.width / 32, cr.top + ((q >> 5) + 0.5) * cr.height / 32, cr.height / 32]); out.push(pts); }); return out; }).catch(() => got.rims);
+        const png = await pg.screenshot().catch(() => null);
         const fr = png ? await pg.evaluate(async ([b64, rims]) => { const im = new Image(); im.src = 'data:image/png;base64,' + b64; await im.decode(); const cv = document.createElement('canvas'); cv.width = im.width; cv.height = im.height;
           const g = cv.getContext('2d'); g.drawImage(im, 0, 0); const d = g.getImageData(0, 0, im.width, im.height).data, sc = im.width / innerWidth;
-          return rims.map(pts => { let el = 0; pts.forEach(([x, y]) => { const j = (Math.round(y * sc) * im.width + Math.round(x * sc)) * 4, r = d[j], gg = d[j + 1], b = d[j + 2]; if (b >= 170 && b + 20 >= r && gg >= 150) el++; }); return pts.length ? el / pts.length : 1; }); }, [png.toString('base64'), got.rims]).catch(() => []) : [];
+          return rims.map(pts => { let el = 0; const hit = (x, y) => { const j = (Math.round(y * sc) * im.width + Math.round(x * sc)) * 4, r = d[j], gg = d[j + 1], b = d[j + 2]; return b >= 170 && b + 20 >= r && gg >= 150; }; pts.forEach(([x, y, cell]) => { if (hit(x, y) || hit(x, y - (cell || 0)) || hit(x, y + (cell || 0))) el++; }); return pts.length ? el / pts.length : 1; }); }, [png.toString('base64'), got.rims]).catch(() => []) : [];
         fr.forEach((f, i) => { if (f < 0.6) problem('aura', where + ': Mythic outline ' + (i + 1) + ' covers only ' + Math.round(f * 100) + '% of its gold rim (the line is not on the pet)'); }); }
       if (got.n && !opts.quiet) ok(where + ': ' + got.n + ' Mythic outline(s) on their pets'); return got.n; },
     async burns() { return L.burns(pg); },
