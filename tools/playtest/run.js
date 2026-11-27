@@ -407,6 +407,11 @@ FLOWS.petpage = async (H) => {
 FLOWS.aura = async (H) => {
   if (!(await H.open('play.html'))) return;
   await H.dismiss(8000);
+  /* measure a still page: once the burn check is ready, the page takes in the pets that changed since the published world (after the feed flow
+   * that is every pet that ate, ~40,000 on Evan's wallet, Nov 27 2026) and redraws My Pets. Outlines read in the middle of that redraw were
+   * reported as off their pets. Wait for the check, then for the list to settle. */
+  for (let i = 0; i < 24; i++) { if (await H.pg.evaluate(() => !!(V2Mock.state().verified || V2Mock.state().viewChecked)).catch(() => false)) break; await H.pg.waitForTimeout(5000); }
+  await H.calm('before auras');
   const pick = await H.pg.evaluate(() => { const w = V2Mock.world(), S = window.MythSig, ok = p => p && p.stage === 5 && !p.dead && !p.released && p.art && !(p.art.rareHatch);
     const all = (w.pets || []).filter(ok); return { plain: (all.find(p => !(S && S.kind(p))) || {}).id, sig: (all.find(p => S && S.kind(p)) || {}).id }; }).catch(() => ({}));
   /* My Pets: scroll the list once, checking the outlines on screen as they come in */
