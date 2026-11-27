@@ -1,6 +1,6 @@
 {
- "lastBlock": 977795,
- "count": 557,
+ "lastBlock": 977797,
+ "count": 559,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -6684,6 +6684,30 @@
    "name": "Chishapop",
    "species": "mumu",
    "speciesLabel": "Mumu",
+   "rarity": "Legendary",
+   "stage": "Juvenile"
+  },
+  {
+   "id": 275648,
+   "asset": "A746836773074304349",
+   "tiedBlock": 977796,
+   "tiedTx": "fc08e1c1a379763722298e33933ef7a2602905b3dd3de92b702bffd86ab9b1e9",
+   "kind": "deed",
+   "name": "Donenib",
+   "species": "hyb:snibby:mumu",
+   "speciesLabel": "Snimu (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Juvenile"
+  },
+  {
+   "id": 275649,
+   "asset": "A16375225912186169402",
+   "tiedBlock": 977796,
+   "tiedTx": "cdb5005bc716309525b0402611bf94fa9040a416f6114ae68bd02d6351299e37",
+   "kind": "deed",
+   "name": "Rutachuki",
+   "species": "hyb:kevin:homer",
+   "speciesLabel": "Kemer (hybrid)",
    "rarity": "Legendary",
    "stage": "Juvenile"
   }
