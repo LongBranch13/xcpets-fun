@@ -1,6 +1,6 @@
 {
- "lastBlock": 977813,
- "count": 559,
+ "lastBlock": 977815,
+ "count": 560,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -5497,7 +5497,7 @@
    "species": "hyb3:dodo:djpepe:viking",
    "speciesLabel": "Dodjking (hybrid)",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 8540,
@@ -6710,6 +6710,18 @@
    "speciesLabel": "Kemer (hybrid)",
    "rarity": "Legendary",
    "stage": "Juvenile"
+  },
+  {
+   "id": 218453,
+   "asset": "A5555155551555515555",
+   "tiedBlock": 977815,
+   "tiedTx": "8e93a8fd21450c0e488b16a52d0ce9d241fd274782a5458c0d789cce25af1d04",
+   "kind": "deed",
+   "name": "Tijotatot",
+   "species": "hyb:bobo:viking",
+   "speciesLabel": "Boking (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Adult"
   }
  ]
 }
