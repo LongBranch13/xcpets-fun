@@ -1246,6 +1246,15 @@
      * that landed on other pets were hidden everywhere: not in My Pets, not in the pile, and the feed check said 'discarded'. The pile is now
      * inPile's whole answer: this browser's list plus this wallet's living on-chain discards (⛓ chip, Restore signs the Add back burn). */
     var hs = hiddenSet(), gone = V2Own.pileList(w, ME, hs, !!cem); /* a risen zombie is never in the pile (inPile) */ /* one read of the discard list: parsing it once per owned pet froze My Pets when the pile held thousands */
+    /* Nov 27 2026 (G Money: "the 3 Homers ... now I can't find those"): My Pets leaves out every pet in the Discard pile, so a search for a
+     * discarded pet (a name, a species, a #id) said nothing at all while the pet sat among 14,952 others in the pile. A search now says how many
+     * more pets match in the Discard pile, with one tap to see them there (the pile opens with the same search). Display only. */
+    var fq = !cem && $('fSearch') ? String($('fSearch').value || '').trim() : '', XF = fq && window.UXB ? UXB.filters() : null;
+    if (fq && gone.length) { var pm = gone.filter(function (p) { return XF ? XF.keep(p) : false; }).length;
+      if (pm) { var ph = document.createElement('div'); ph.className = 'row small pilehint'; ph.id = 'pileHint'; ph.style.cssText = 'gap:8px;align-items:center;margin:0 0 8px;width:100%;grid-column:1/-1;flex-wrap:wrap';
+        ph.innerHTML = '<span>🗑️ <b>' + fmt(pm) + ' more pet' + (pm === 1 ? '' : 's') + '</b> match' + (pm === 1 ? 'es' : '') + ' in your Discard pile.</span> <button type="button" class="q" id="pileHintGo">Show ' + (pm === 1 ? 'it' : 'them') + ' in the Discard pile</button>';
+        ph.querySelector('button').onclick = function (e) { e.stopPropagation(); pileShow(fq); };
+        var em = box.querySelector(':scope > p.muted'); if (em && !list.length) { em.textContent = 'No pets in My Pets match this search.'; box.insertBefore(ph, em.nextSibling); } else box.insertBefore(ph, box.firstChild); } }
     if (gone.length) box.appendChild(discardedBox(gone, w));
     if (!cem && V.hdPlan) { var hdBar = chainDiscardBar(w); if (hdBar) box.appendChild(hdBar); }
     if (!cem) { pileLink(gone.length); lastHatchLink(w); } /* discard-pile jump link; unopened-1125: the last hatch, always one tap away */
@@ -1338,6 +1347,8 @@
     if (local.length) restoreLocal(local);
     if (chain.length) { if (!(V.hdOn && V.hdOn((S.tip || 0) + 1))) return toast('These pets were discarded on chain. Add back opens again at block ' + fmt(V.ACTIVATE_ONCHAIN_DISCARD_BLOCK) + '.'); chainDiscardIds(chain, true); } }
   /* 'Discard pile (N)' jump link next to the bulk discard buttons: opens + scrolls to the pile */
+  /* pileShow(q): open the Discard pile with its search set to q (and every other pile filter cleared), so the pets that match are on top. */
+  function pileShow(q) { DS.q = String(q || ''); DS.sp = 'all'; DS.tier = 'all'; DS.birth = ''; DS.n = 120; DS.open = true; render(); var d2 = document.querySelector('#discardPile details'); if (d2) { d2.open = true; d2.scrollIntoView({ block: 'start' }); } }
   function openPile() { DS.open = true; var d = document.querySelector('#discardPile .dgrid'); if (d) { var det = d.closest('details'); if (det) det.open = true; d.scrollIntoView({ block: 'start' }); return; } render(); var d2 = document.querySelector('#discardPile details'); if (d2) d2.scrollIntoView({ block: 'start' }); }
   /* On-chain discard. The game never signs: this only fills the same confirm sheet as every other burn.
    * One burn is 1 dander. If the pets do not fit one 34-byte tag, the sheet says so and lists the exact burns. */
@@ -1558,7 +1569,19 @@
       if (hit || !on) return; if (n < 8) return setTimeout(function () { aim(n + 1); }, 500);
       toast(p.owner !== ME ? '#' + p.id + ' is not in your wallet, so you can\'t unleash it.' : '#' + p.id + ' can\'t be unleashed right now: it has to be your feral zombie, not fed by a Mythic, and you can unleash once every 30 days. The pop-up shows its state.', 12000); })(0);
     return true; }
-  function actRoute() { if (cemRoute()) return true; if (giftRoute()) return true; if (unleashRoute()) return true; var m = /^#act-(feed|roll|froll|oroll)-(\d+)(-pet)?$/.exec(location.hash); if (!m) return false;
+  /* Nov 27 2026 (G Money's 3 Homers): the pet page of a pet in your Discard pile offers '↩️ Add back' (play.html#act-back-ID) and 'Open my
+   * Discard pile' (play.html#pile-ID, the pile opened and searched for that pet). Add back is the pile's own Restore (pileRestore): free for a
+   * browser-only discard, one 1-dander Add back burn (pet:hu) through the confirm sheet for an on-chain one. Nothing is sent from here. */
+  function backRoute() { var m = /^#act-back-(\d+)$/.exec(location.hash), k = !m && /^#pile-(\d+)$/.exec(location.hash); if (!m && !k) return false; var id = (m || k)[1], w = world(), p = w && w.byId[id];
+    if (!routeReady() || !p) return routeWait(backRoute, (m ? 'Add back' : 'the Discard pile') + ' for #' + id, id); backRoute.wait = null;
+    history.replaceState(null, '', location.pathname + location.search);
+    if (!ME || p.owner !== ME || p.dead || p.released) { toast('Only the owner of a living pet can do that. Connect the wallet that owns #' + p.id + '.'); return true; }
+    var d = V2Own.discarded(p, ME);
+    if (k) { pileShow('#' + p.id); return true; }
+    if (!d) { toast('#' + p.id + ' is not in your Discard pile: it is already in My Pets.'); return true; }
+    if (d === 'pending') { toast('Your discard burn for #' + p.id + ' is still confirming. Add it back once it confirms (about 10 minutes).', 9000); return true; }
+    pileRestore([p.id]); return true; }
+  function actRoute() { if (cemRoute()) return true; if (giftRoute()) return true; if (unleashRoute()) return true; if (backRoute()) return true; var m = /^#act-(feed|roll|froll|oroll)-(\d+)(-pet)?$/.exec(location.hash); if (!m) return false;
     var w = world(), p = w && w.byId[m[2]], a = m[1]; if (!routeReady() || !p) return routeWait(actRoute, ({ feed: 'Feed', roll: 'Gear roll', froll: 'Free roll', oroll: 'Overflow roll' })[a] + ' for #' + m[2], m[2]); actRoute.wait = null; /* card-actions-fast: wait for the page's world, not burn rows */
     history.replaceState(null, '', location.pathname + location.search); var back = !!m[3] && a === 'feed', bounce = function () { if (back) setTimeout(function () { petBackGo(p.id); }, 3500); return true; };
     if (!ME || p.owner !== ME || p.dead || p.released) { toast('Only the owner of a living pet can do that. Connect the wallet that owns #' + p.id + '.'); return true; } /* stays on Play: the wallet connect is here */
