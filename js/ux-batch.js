@@ -116,11 +116,11 @@
       if (q) { if (/^\d+$/.test(q)) return Number(p.id) === parseInt(q, 10); return String(p.name || '').toLowerCase().indexOf(q) >= 0 || spL(p).toLowerCase().indexOf(q) >= 0; } return true; } }; };
   function bindControls() {
     $('fSort').value = F.sort; $('fTier').value = F.tier; $('fMin').value = String(F.min); $('fOrigin').value = F.origin; $('fSearch').value = F.q; $('fHide').value = '-1'; if ($('fSpecies')) $('fSpecies').value = F.sp || 'all';
-    function upd() { F.sort = $('fSort').value; F.tier = $('fTier').value; F.min = Number($('fMin').value) || 0; F.origin = $('fOrigin').value; F.q = $('fSearch').value; if ($('fSpecies')) F.sp = $('fSpecies').value; saveF(); U.render(); }
+    function upd() { F.sort = $('fSort').value; F.tier = $('fTier').value; F.min = Number($('fMin').value) || 0; F.origin = $('fOrigin').value; F.q = $('fSearch').value; if ($('fSpecies')) F.sp = $('fSpecies').value; saveF(); (U.renderList || U.render)(); } /* filters only change the list: no full page render */
     ['fSort', 'fTier', 'fMin', 'fOrigin', 'fSpecies'].forEach(function (id) { $(id).onchange = upd; });
     var t; $('fSearch').oninput = function () { clearTimeout(t); t = setTimeout(upd, 200); }; if (window.V2PetSearch && V2PetSearch.bindPaste) V2PetSearch.bindPaste($('fSearch'));
     if ($('fSearch') && $('fSearch').placeholder.indexOf('paste') < 0) $('fSearch').placeholder = 'Find: name, species, weird, or paste pet #s';
-    $('fDir').onclick = function () { F.flip = !F.flip; saveF(); U.render(); };
+    $('fDir').onclick = function () { F.flip = !F.flip; saveF(); (U.renderList || U.render)(); };
     $('fReset').onclick = function (e) { e.preventDefault(); F = { q: '', sort: 'num', flip: false, min: 0, tier: 'all', origin: 'all', sp: 'all', sps: [] }; saveF(); bindControls(); U.render(); };
     $('ctlToggle').onclick = function () { var o = $('ctlRow').classList.toggle('open'); this.setAttribute('aria-expanded', String(o)); };
   }
