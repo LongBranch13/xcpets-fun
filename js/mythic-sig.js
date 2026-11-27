@@ -1,7 +1,8 @@
 /* MYTHIC SIGNATURES (branch funtrump-shine-1102, owner Nov 2 2026 [pt2692u]; deployed Nov 2 2026 after owner OK 10:52 PM CT). Display only: no rule, stat or replay change.
  * Every 1 of 1 / former community pet (and every Mythic FUNTRUMP / Nakamoto) gets its own 8-bit Mythic effect, drawn on the pet's own 32x32 frames:
  * the pet's pixels stay on top (effects live on the background, behind the pet), except the FUNTRUMP gold sweep which brightens the pet itself.
- * Never the fire aura, the grant flame crown or the edition gold frame. The electric outline (aura5) keeps drawing on top as today.
+ * Never the fire aura, the grant flame crown or the edition gold frame. One aura per pet (owner Nov 27 2026: 'pets with special aura dont need 2 auras
+ * overlapping'): a signature pet gets no electric outline (aura5) on top; its frames carry no Mythic outline info, so cards, papers and GIFs skip it too.
  * Switch: on by default; ?sig=off turns it off for that page view. */
 (function (root) {
   var N = 32, NF = 8;
@@ -104,7 +105,7 @@
     R.petFrames = function (p, w, extra) { var fr = base(p, w, extra), k = kind(p); if (!k) return fr; var key = p.id + '|' + k + '|' + (fr && fr.length) + '|' + (p.art && p.art.bgColor);
       var hit = cache.get(fr); if (hit) return hit;
       try { var kfm = {}, kf = function (bg) { return kfm[bg] || (kfm[bg] = raw(Object.assign({}, p, { mutation: null, shows: null, art: Object.assign({}, p.art, { background: 'solid', bgColor: bg, pattern: 'none' }) }), w, Object.assign({}, extra || {}, { noHunger: true }))); }; /* each backdrop drawn once: apply and mythFx ask for the same two (a Mythic hybrid's drawing is ~0.4 s each) */
-        var out = apply(fr, kf('#ff00fe'), kf('#00ff01'), k); if (R.mythFx) { var o2 = R.mythFx(out, function (bg) { var z = kf(bg); return out.map(function (_, i) { return z[i % z.length]; }); }); out = o2 || out; }
+        var out = apply(fr, kf('#ff00fe'), kf('#00ff01'), k); /* one aura per pet (owner Nov 27 2026): the signature IS this pet's Mythic aura, no electric outline on top */
         cache.set(fr, out); return out; } catch (e) { return fr; } }; }
   root.MythSig = { kind: kind, apply: apply, masks: masks, FX: FX, NF: NF, hook: hook };
   if (root.V2Render) hook(); else if (root.addEventListener) root.addEventListener('DOMContentLoaded', hook);

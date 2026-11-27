@@ -25,6 +25,9 @@ Nov 25 2026 and runs in CI as a job that reports but never blocks), `--shots` (s
 - **select**: Select all, Discard selected, Cancel. Nothing may be burned and no pet lost.
 - **feed**: Daily chores / Feed hungry. Mines the burns and checks the referee says every pet it paid for actually ate.
 - **grinder**, **petpage**, **gift**, **places** (every page loads, buttons reachable, Pantheon draws).
+- **aura** (and the pet page): every Mythic electric outline on screen sits on its own pet (same centre, 1.28x box) and, from a
+  screenshot, covers its gold rim pixels; a pet with its own signature aura (FUNTRUMP, Homer...) has no electric outline on top.
+  Added Nov 27 2026 after the outline sat 14% down-right of every Mythic for a day and nothing noticed.
 
 Every step fails on: a freeze over 1 s (2 s while a page first loads), a script error, a pop-up that never opens, a button covered by something else,
 a price that differs from the rules, a result that never shows.

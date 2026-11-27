@@ -178,6 +178,37 @@ function hands(pg) {
     async cancel() { await pg.keyboard.press('Escape').catch(() => {}); await pg.waitForTimeout(300); const s = await H.sheet(); if (s) await pg.click('#cfNo', { timeout: 2000 }).catch(() => {}); await pg.waitForTimeout(300);
       await pg.evaluate(() => { document.querySelectorAll('.reveal.on').forEach(e => e.classList.remove('on')); }).catch(() => {}); },
     async shot(name) { if (SHOTS || name === 'blocked') await pg.screenshot({ path: path.join(OUT, FLOW + '-' + SIZE + '-' + name + '.png') }).catch(() => {}); },
+    /* auras(where) (Nov 27 2026, "mythic aura glitched out. How do you not see that?"): every Mythic electric outline on screen must sit on its own
+     * sprite. Two looks: geometry (the outline's box is the sprite's box grown 1.28x about the SAME centre; it was pushed 14% down-right for a day
+     * and nothing noticed) and pixels (a screenshot: the gold rim pixels under the line must read electric blue-white, not bare gold). A pet with
+     * its own signature aura (FUNTRUMP gold shine, Homer donut...) must carry no electric outline on top (owner: one aura per pet). */
+    async auras(where, opts) { opts = opts || {};
+      const got = await pg.evaluate(() => { const out = { n: 0, bad: [], sig: [], rims: [] };
+        document.querySelectorAll('canvas.mfx-cv').forEach(o => { const c = o._c; if (!c || !c.isConnected || o.style.display === 'none' || o.style.visibility === 'hidden') return; const a0 = c.style.animation; c.style.animation = 'none'; const cr = c.getBoundingClientRect(), orr = o.getBoundingClientRect(); c.style.animation = a0; /* measured between breaths: the pet-tap breathing scales the sprite 1% */
+          if (!cr.width || cr.bottom < 0 || cr.top > innerHeight || cr.right < 0 || cr.left > innerWidth) return; out.n++;
+          const dx = (orr.left + orr.width / 2) - (cr.left + cr.width / 2), dy = (orr.top + orr.height / 2) - (cr.top + cr.height / 2), k = orr.width / cr.width;
+          if (Math.abs(dx) > 1.5 || Math.abs(dy) > 1.5 || Math.abs(k - 1.28) > 0.02) out.bad.push('off by ' + dx.toFixed(1) + ',' + dy.toFixed(1) + ' px, size x' + k.toFixed(2) + ' (sprite ' + Math.round(cr.width) + ' px)');
+          if (out.rims.length < 3 && o._rim && cr.width >= 96 && cr.top >= 0 && cr.bottom <= innerHeight && cr.left >= 0 && cr.right <= innerWidth) { const pts = []; for (let q = 0; q < 1024; q++) if (o._rim[q]) pts.push([cr.left + ((q & 31) + 0.5) * cr.width / 32, cr.top + ((q >> 5) + 0.5) * cr.height / 32]); out.rims.push(pts); } });
+        try { const w = V2Mock.world(), S = window.MythSig; if (S) document.querySelectorAll('canvas').forEach(c => { if (!c._mfx || !c._mfx.isConnected) return; const id = +(c.closest('[data-id],[data-pid]') || {}).dataset?.id || +(c.closest('[data-pid]') || {}).dataset?.pid || 0; const p = id && (w.byId ? w.byId[id] : (w.pets || []).find(x => x.id === id)); if (p && S.kind(p)) out.sig.push('#' + id); });
+          if (S && /pet\.html/.test(location.pathname)) { const id = +new URLSearchParams(location.search).get('id'), p = id && (w.byId ? w.byId[id] : (w.pets || []).find(x => x.id === id)); if (p && S.kind(p) && document.querySelector('canvas.mfx-cv')) out.sig.push('#' + id + ' (pet page)'); } } catch (e) {}
+        return out; }).catch(() => null);
+      if (!got) return;
+      got.bad.slice(0, 3).forEach(b => problem('aura', where + ': a Mythic outline is not on its pet: ' + b));
+      if (got.sig.length) problem('aura', where + ': two auras on one pet (signature aura + electric outline): ' + got.sig.slice(0, 5).join(', '));
+      /* the pixels: wait for the first flash to pass, then most rim pixels must be electric (blue-white), not the bare gold rim the line should cover */
+      /* the sprite bobs a pixel between frames and the outline follows it: read the rims again right before the screenshot, and count a rim pixel
+       * as covered when it or the pixel one row above / below reads electric (the bug moved the line 4+ rows) */
+      if (got.rims.length) { await pg.waitForTimeout(1200); got.rims = await pg.evaluate(() => { const out = []; document.querySelectorAll('canvas.mfx-cv').forEach(o => { const c = o._c; if (out.length >= 3 || !c || !c.isConnected || !o._rim || o.style.display === 'none' || o.style.visibility === 'hidden') return; const cr = c.getBoundingClientRect();
+          if (cr.width < 96 || cr.top < 0 || cr.bottom > innerHeight || cr.left < 0 || cr.right > innerWidth) return; const pts = []; for (let q = 0; q < 1024; q++) if (o._rim[q]) pts.push([cr.left + ((q & 31) + 0.5) * cr.width / 32, cr.top + ((q >> 5) + 0.5) * cr.height / 32, cr.height / 32, cr.width * 0.14]); out.push(pts); }); return out; }).catch(() => got.rims);
+        const png = await pg.screenshot().catch(() => null);
+        const fr = png ? await pg.evaluate(async ([b64, rims]) => { const im = new Image(); im.src = 'data:image/png;base64,' + b64; await im.decode(); const cv = document.createElement('canvas'); cv.width = im.width; cv.height = im.height;
+          const g = cv.getContext('2d'); g.drawImage(im, 0, 0); const d = g.getImageData(0, 0, im.width, im.height).data, sc = im.width / innerWidth;
+          return rims.map(pts => { let el = 0; const hit = (x, y) => { const j = (Math.round(y * sc) * im.width + Math.round(x * sc)) * 4, r = d[j], gg = d[j + 1], b = d[j + 2]; return b >= 170 && b + 20 >= r && gg >= 150; }; let off = 0; pts.forEach(([x, y, cell, sh]) => { if (hit(x, y) || hit(x, y - (cell || 0)) || hit(x, y + (cell || 0))) el++; if (sh && hit(x + sh, y + sh)) off++; });
+            return pts.length ? [el / pts.length, off / pts.length] : [1, 0]; }); }, [png.toString('base64'), got.rims]).catch(() => []) : [];
+        /* relative, not a fixed bar: the rim pixels must read electric more often than the same pixels moved 14% down-right (where the Nov 26 bug drew
+         * the line). Software rendering on CI dims parts of the glow, so a right outline can read 39%; a misplaced one reads 0-22% on the rim and more off it. */
+        fr.forEach(([f, g], i) => { if (f < 0.25 || f <= g) problem('aura', where + ': Mythic outline ' + (i + 1) + ' covers only ' + Math.round(f * 100) + '% of its gold rim (' + Math.round(g * 100) + '% 14% down-right of it): the line is not on the pet'); }); }
+      if (got.n && !opts.quiet) ok(where + ': ' + got.n + ' Mythic outline(s) on their pets'); return got.n; },
     async burns() { return L.burns(pg); },
     async sign(why) { const t = await now(pg); await L.clearBurns(pg); if (!(await H.press('#cfYes', why + ': Sign & burn', { wait: 1500 }))) return []; let b = [];
       for (let i = 0; i < 20; i++) { b = await H.burns(); const done = await pg.evaluate(() => /sent from|✓/.test((document.getElementById('pgt') || {}).textContent || '')); if (done) break; await pg.waitForTimeout(500); }
@@ -367,7 +398,27 @@ FLOWS.petpage = async (H) => {
   if (!(await H.press(/Open ▸/, 'Open a pet', { wait: 2000 }))) return;
   const sheets = await H.openSheets(); if (!sheets.length && !/pet\.html/.test(H.pg.url())) problem('no-sheet', 'Open ▸ on a pet card opened nothing'); else ok('pet page: ' + (sheets.join(',') || H.pg.url()));
   await H.layout('pet page'); await H.shot('pet');
+  await H.auras('pet page', { quiet: true });
   await H.cancel();
+};
+
+/* Mythic auras (Nov 27 2026): a plain Mythic's electric outline sits on its gold rim (pet page and My Pets cards), and a signature
+ * pet (FUNTRUMP, Homer, Lord Kek...) shows only its own aura. Pets are picked from the world, so the check outlives any one pet. */
+FLOWS.aura = async (H) => {
+  if (!(await H.open('play.html'))) return;
+  await H.dismiss(8000);
+  const pick = await H.pg.evaluate(() => { const w = V2Mock.world(), S = window.MythSig, ok = p => p && p.stage === 5 && !p.dead && !p.released && p.art && !(p.art.rareHatch);
+    const all = (w.pets || []).filter(ok); return { plain: (all.find(p => !(S && S.kind(p))) || {}).id, sig: (all.find(p => S && S.kind(p)) || {}).id }; }).catch(() => ({}));
+  /* My Pets: scroll the list once, checking the outlines on screen as they come in */
+  let seen = 0; for (let i = 0; i < 6; i++) { seen += (await H.auras('My Pets', { quiet: true })) || 0; await H.pg.mouse.wheel(0, 700); await H.pg.waitForTimeout(700); }
+  ok('My Pets: ' + seen + ' Mythic outline(s) looked at');
+  for (const [k, id] of [['plain Mythic', pick.plain], ['signature Mythic', pick.sig]]) {
+    if (!id) { ok('no ' + k + ' alive in this world'); continue; }
+    if (!(await H.open('pet.html?id=' + id))) continue; await H.dismiss(6000); await H.pg.waitForTimeout(2500);
+    const n = await H.auras(k + ' #' + id + ' pet page', { quiet: true });
+    if (k === 'plain Mythic' && !n) problem('aura', k + ' #' + id + ': the pet page drew no Mythic outline'); else ok(k + ' #' + id + ': ' + (n ? n + ' outline(s) on the pet' : 'its own aura only'));
+    await H.shot('aura-' + id);
+  }
 };
 
 /* gifts: the picker opens */
