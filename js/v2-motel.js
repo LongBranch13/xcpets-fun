@@ -42,7 +42,10 @@
   /* REDESIGN (owner 8:23 PM CT): no road/car; landscaping; guests WALK in. Real pet sprites from V2Render.petFrames (32x32), drawn 16x16. */
   var PETL = ['gm. Room for two?', 'One key pls.', 'Cash. No receipt.', 'Just a nap. Swear.'];
   var SPR = {};
-  function spr(p, sil) { var k = p.id + (sil ? 's' : ''); if (SPR[k]) return SPR[k]; var out = [];
+  /* one new sprite per frame (Nov 27 2026): a hybrid's first drawing takes 40-500 ms, and the scene built every guest, lounger and room
+   * pet in its first frame, so breed.html froze 2-3 s on load. A pet not built yet is skipped for that frame and appears a frame later. */
+  var SPRN = 0;
+  function spr(p, sil) { var k = p.id + (sil ? 's' : ''); if (SPR[k]) return SPR[k]; if (SPRN++ > 0) return []; var out = [];
     try { var fr = window.V2Render.petFrames(p, S.w); fr.forEach(function (f) { var c = document.createElement('canvas'); c.width = c.height = 32; window.V2Render.paint(c, f); var g0 = c.getContext('2d'), id = g0.getImageData(0, 0, c.width, c.height), d = id.data, r0 = d[0], g1 = d[1], b0 = d[2]; /* key out the sprite's backdrop (corner colour) */
       for (var q = 0; q < d.length; q += 4) if (Math.abs(d[q] - r0) + Math.abs(d[q + 1] - g1) + Math.abs(d[q + 2] - b0) < 12) d[q + 3] = 0; g0.putImageData(id, 0, 0);
       if (sil) { var g = c.getContext('2d'); g.globalCompositeOperation = 'source-in'; g.fillStyle = sil; g.fillRect(0, 0, c.width, c.height); } out.push(c); }); } catch (e) { out = []; }
@@ -153,7 +156,7 @@
     if (D) return 'Gene pool: ' + S.od.sp.map(function (q) { return q[0] + ' ' + (q[1] === 100 ? '100' : q[1].toFixed(1)) + '%'; }).join(', ') + '. Golden duck = hybrid.';
     if (L.length) return L.length + (L.length === 1 ? ' guest is' : ' guests are') + ' resting. Next back: #' + L[0].p.id + ' in ' + L[0].left + ' blocks.' + (window.V2Rules && V2Rules.dipOn && V2Rules.dipOn(((S.w && S.w.tip) || 0) + 1) ? ' A dip halves the wait (DIP in My cooldowns).' : '');
     return 'The pool. Pick two guests and the gene pool fills up.'; }
-  function draw(t) { var x = S.x; if (!x) return; if (window.V2Sharp) V2Sharp.begin(x, S.k); else x.imageSmoothingEnabled = false; /* scene-sharp: logical units at k x */ var rm = reduced();
+  function draw(t) { var x = S.x; if (!x) return; SPRN = 0; if (window.V2Sharp) V2Sharp.begin(x, S.k); else x.imageSmoothingEnabled = false; /* scene-sharp: logical units at k x */ var rm = reduced();
     px(x, '#0b0a1f', 0, 0, W, H); for (var i = 0; i < 40; i++) px(x, (i * 7 + Math.floor(t / 600)) % 11 ? '#c9c9ff' : '#555', (i * 53) % W, (i * 29) % 60, 1, 1); px(x, '#f5efc0', 286, 10, 10, 10); px(x, '#0b0a1f', 290, 9, 8, 9); /* stars + moon */
     /* ground: grass, sidewalk path to the office, walkway */ px(x, '#14301f', 0, 140, W, H - 140); for (var g = 0; g < 60; g++) px(x, '#1f4a2c', (g * 37) % W, 146 + (g * 13) % (H - 148), 1, 2);
     px(x, '#8d8a99', OD - 9, 140, 18, H - 140); for (var sy = 146; sy < H; sy += 8) px(x, '#6f6c7d', OD - 9, sy, 18, 1); px(x, '#a9a6b6', 100, 120, 220, 20); px(x, '#7f7c8c', 100, 139, 220, 1);
@@ -204,7 +207,7 @@
     if (talk) bubble(x, talk[0], talk[1], talk[2]); var gl = gline || S.bubble || G.line(); G.say(gl); bubble(x, gl, 104, 46, 156, 124);
     if (S.party && !rm) party(x, t);
     if (window.V2MotelReqs) V2MotelReqs.drawNote(x, t); /* tonight bundle: Gooby holds up a '1 waiting' note when breed requests wait at the desk */
-    if (!rm && placeOn()) S.raf = requestAnimationFrame(frame); else S.raf = 0; }
+    if (!rm && placeOn()) S.raf = requestAnimationFrame(frame); else { S.raf = 0; if (SPRN > 1 && placeOn()) setTimeout(function () { if (!S.raf && S.x) draw(performance.now()); }, 30); } /* still motion: keep drawing until every sprite is built */ }
   /* speed2-1101: the scene redraws at most ~20 fps, and not at all while it is off screen or the tab is hidden (it used to redraw every frame, ~15% of a core).
    * places-perf: once it is off screen or the tab is hidden the loop STOPS (Spam City already cancels its scene). The old loop kept scheduling frames forever. */
   var FRAME_MS = 50, motelVis = true, motelObs = null;
