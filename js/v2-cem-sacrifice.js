@@ -55,7 +55,7 @@
   function close() { var el = document.getElementById('cemSac'); if (el) el.remove(); document.removeEventListener('keydown', onKey); }
   function onKey(e) { if (e.key === 'Escape') close(); }
   function open(o) { close(); css(); var w = o.w, V = o.V, R = o.R, Z = w.byId && w.byId[o.z]; if (!Z) return; var halo = o.kind === 'rpl', C = V.CEM || {}, P = C.POINTS || [1, 3, 10, 33];
-    var L = candidates(o), bo = browserOnly(o), sel = {}, confirm = false, nm = esc(Z.name || '#' + Z.id), res = V.cemResInfo ? V.cemResInfo(w, Z, o.b) : { points: 0, min: C.RES_MIN || 25 }, min = res.min || C.RES_MIN || 25;
+    var L = candidates(o), bo = browserOnly(o), sel = o.sel || {}, confirm = false, nm = esc(Z.name || '#' + Z.id), res = V.cemResInfo ? V.cemResInfo(w, Z, o.b) : { points: 0, min: C.RES_MIN || 25 }, min = res.min || C.RES_MIN || 25;
     var per = V.cemCost(w, halo ? 'rpl' : 'zmeal', o.b);
     var bg = document.createElement('div'); bg.className = 'csac-bg'; bg.id = 'cemSac'; bg.addEventListener('click', function (e) { if (e.target === bg) close(); });
     var intro = halo ? 'Every pet you sacrifice adds <b>halo points</b>: Common ' + P[0] + ', Uncommon ' + P[1] + ', Rare ' + P[2] + ', Legendary ' + P[3] + '. ' + nm + ' has <b>' + res.points + ' of ' + min + '</b>. The pets are used up when the Resurrection is tried, win or lose.'
@@ -78,6 +78,22 @@
       if (shown < L.length) { var mb = document.createElement('button'); mb.type = 'button'; mb.className = 'csac-more'; mb.textContent = 'Show ' + fmt(Math.min(PAGE, L.length - shown)) + ' more (' + fmt(L.length - shown) + ' left)'; list.appendChild(mb); }
       if (bg.querySelectorAll) bg.querySelectorAll('.csac-t').forEach(function (t) { t.setAttribute('aria-pressed', sel[+t.getAttribute('data-id')] ? 'true' : 'false'); }); }
     more();
+    /* Nov 27 2026 (G Money: "I discarded some pets by burning but they don't show up in the cemetery"). A big wallet's pets arrive page by page
+     * (G Money: 679 owner pages). The cemetery's Feed / halo buttons opened this sheet at once with the pets loaded SO FAR, and it never grew:
+     * on a local copy, a tap a few seconds after load listed 1,500 of his 14,952 Discarded pets; an earlier tap can list none ("No pets in your
+     * Discard pile"). While pages are still loading the sheet now says so and adds the Discarded pets that arrive. Display only. */
+    function loadState() { var cw = (window.V2Mock && V2Mock.world && V2Mock.world()) || o.w, pg = cw && cw._pages; return { w: cw, on: !!(pg && !cw._full && (pg.got || 1) < (pg.pages || 1)), got: pg ? (pg.got || 1) : 0, pages: pg ? pg.pages || 0 : 0 }; }
+    var t0 = Date.now(), seen = {}; L.forEach(function (p) { seen[p.id] = 1; });
+    function refreshMore() { if (!list) return; var mb = list.querySelector('.csac-more'); if (shown >= L.length) { if (mb) mb.remove(); return; }
+      if (!mb) { mb = document.createElement('button'); mb.type = 'button'; mb.className = 'csac-more'; list.appendChild(mb); } mb.textContent = 'Show ' + fmt(Math.min(PAGE, L.length - shown)) + ' more (' + fmt(L.length - shown) + ' left)'; }
+    function note(ls) { var el = bg.querySelector('.csac-load'); if (!ls.on) { if (el) el.remove(); return; }
+      if (!el) { el = document.createElement('p'); el.className = 'csac-p csac-load'; el.setAttribute('role', 'status'); var at = bg.querySelector('.csac-q') || bg.querySelector('.csac-e') || bg.querySelector('.csac-f'); at.parentNode.insertBefore(el, at); }
+      el.textContent = '⏳ Still loading your pets (' + fmt(ls.got) + ' of ' + fmt(ls.pages) + ' pages). More Discarded pets show up here as they load.'; }
+    function poll() { if (document.getElementById('cemSac') !== bg) return; var ls = loadState(); if (ls.w && ls.w !== w) { w = ls.w; o.w = ls.w; }
+      var add = candidates(o).filter(function (p) { return !seen[p.id]; });
+      if (add.length) { if (!L.length) { o.sel = sel; return open(o); } add.forEach(function (p) { seen[p.id] = 1; L.push(p); }); refreshMore(); }
+      note(ls); if (ls.on && Date.now() - t0 < 600000) setTimeout(poll, 2500); else note({ on: false }); }
+    var ls0 = loadState(); note(ls0); if (ls0.on) { if (window.xcpLivingRest) { try { window.xcpLivingRest(); } catch (e) { } } setTimeout(poll, 2500); }
     function ids() { return Object.keys(sel).map(Number); }
     function sum() { var I = ids(), n = I.length, go = bg.querySelector('#csacGo'), s = bg.querySelector('#csacSum'); confirm = false; go.classList.remove('warn');
       bg.querySelectorAll('.csac-t').forEach(function (t) { t.setAttribute('aria-pressed', sel[+t.getAttribute('data-id')] ? 'true' : 'false'); });

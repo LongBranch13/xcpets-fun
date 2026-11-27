@@ -32,7 +32,8 @@ let EMO = null; /* species -> custom_emoji_id when this chat shows HatchBot's cu
 async function loadEmoji() {
   if (EMO || DRY || !TOKEN || !CHAT) return; EMO = {};
   try {
-    const get = async (m, b) => (await (await fetch('https://api.telegram.org/bot' + TOKEN + '/' + m, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(b), signal: AbortSignal.timeout(20e3) })).json());
+    const get1 = async (m, b) => (await (await fetch('https://api.telegram.org/bot' + TOKEN + '/' + m, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(b), signal: AbortSignal.timeout(20e3) })).json()); /* reads only, so a failed one is simply asked again (Nov 27 2026: one network blip turned the pixel emoji off for a whole series) */
+    const get = async (m, b) => { for (let i = 0; ; i++) { try { return await get1(m, b); } catch (e) { if (i >= 2) throw e; await new Promise(r => setTimeout(r, 4000 * (i + 1))); } } };
     const me = await get('getMe', {}), name = 'xcpets_emoji_by_' + (me.result && me.result.username);
     let on = false; try { on = JSON.parse(fs.readFileSync(path.join(__dirname, 'auto-config.json'), 'utf8')).custom_emoji === true; } catch (e) {}
     if (!on) { const c = await get('getChat', { chat_id: CHAT }); on = !!(c.ok && c.result.custom_emoji_sticker_set_name === name); }
@@ -40,7 +41,7 @@ async function loadEmoji() {
     const set = await get('getStickerSet', { name });
     if (set.ok) PACK_ALL.forEach((p, i) => { const st = set.result.stickers[i]; if (p.look === 'no' && st && st.custom_emoji_id) EMO[p.species] = st.custom_emoji_id; });
     console.log('XCPETS custom emoji on for ' + Object.keys(EMO).length + ' species');
-  } catch (e) { console.log('custom emoji check failed: ' + (e && e.message)); }
+  } catch (e) { console.log('custom emoji check failed: ' + (e && e.message) + (e && e.cause ? ' ' + (e.cause.code || e.cause.message) : '')); }
 }
 /** emo(text): {pepe} tokens -> { text, entities } (custom emoji where allowed, the plain emoji otherwise). */
 function emo(text) {
@@ -54,12 +55,30 @@ const petEmoji = sp => (PACK_BY[sp] ? ' {' + sp + '}' : '');
 
 /* ---------------------------------------------------------------- Telegram */
 function clean(t) { return String(t).replace(/\b(bc1|tb1)[a-z0-9]{8,}\b/gi, 'a player').replace(/\b[13][a-km-zA-HJ-NP-Z1-9]{25,34}\b/g, 'a player'); }
+/* Telegram calls that never got an answer (Nov 27 2026: update 1/4 of nov27-whats-new was lost). Node's fetch throws a TypeError
+   ("fetch failed") with the reason in e.cause. When the connection was never made (DNS, refused, connect timeout, unreachable)
+   Telegram never saw the request, so it is safe to wait and send again. Anything else (a reset or timeout after the upload)
+   may have posted, so it is not resent (no double posts), but it is counted as a failure so the run goes red and a person checks. */
+const NOT_SENT = /^(ENOTFOUND|EAI_AGAIN|ECONNREFUSED|ENETUNREACH|EHOSTUNREACH|UND_ERR_CONNECT_TIMEOUT|UND_ERR_DNS)$/;
+function neverSent(e) { const c = e && e.cause; return !!(c && (NOT_SENT.test(c.code || '') || (c.errors || []).some(x => NOT_SENT.test(x && x.code || '')))); }
+function whyNot(e) { const c = e && e.cause; return (e && (e.name || e.message)) + (c ? ' ' + (c.code || c.message || '') : ''); }
+let UNSURE = 0; /* posts that may or may not have landed: the run ends red so someone looks in the group */
+/** tgFetch(method, opts): the fetch, with up to 4 resends when the request never left. Returns the response, or null when it is unknown whether it posted. */
+async function tgFetch(method, mk) {
+  for (let i = 0; ; i++) {
+    try { return await fetch('https://api.telegram.org/bot' + TOKEN + '/' + method, mk()); }
+    catch (e) {
+      if (neverSent(e) && i < 4) { console.log('telegram ' + method + ' not sent (' + whyNot(e) + '): trying again in ' + (5 * (i + 1)) + ' s'); await new Promise(r => setTimeout(r, 5000 * (i + 1))); continue; }
+      UNSURE++; console.log('::warning::telegram ' + method + ' no answer (' + whyNot(e) + '): it may have posted, so it is not sent again. Check the group.'); return null;
+    }
+  }
+}
 async function tg(method, body) {
   if (body.text) { const e = emo(body.text); body = Object.assign({}, body, { text: e.text }, e.entities ? { entities: e.entities } : {}); }
   if (DRY || !TOKEN || !CHAT) { console.log('--- ' + method + (DRY ? ' (dry)' : ' (no token/chat)') + '\n' + (body.text || body.caption || '')); return true; }
   for (let i = 0; i < 3; i++) {
-    let r; try { r = await fetch('https://api.telegram.org/bot' + TOKEN + '/' + method, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(Object.assign({ chat_id: CHAT }, body)), signal: AbortSignal.timeout(60e3) }); }
-    catch (e) { console.log('telegram ' + method + ' no answer (' + (e && (e.name || e.message)) + '): it may have posted, so it is not sent again'); return true; }
+    const r = await tgFetch(method, () => ({ method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(Object.assign({ chat_id: CHAT }, body)), signal: AbortSignal.timeout(60e3) }));
+    if (!r) return 'unsure';
     if (r.ok) return true;
     const j = await r.json().catch(() => ({}));
     if (r.status === 429 && j.parameters && j.parameters.retry_after) { await new Promise(res => setTimeout(res, (j.parameters.retry_after + 1) * 1000)); continue; }
@@ -87,8 +106,8 @@ async function tgFile(method, field, file, name, caption) {
   if (DRY || !TOKEN || !CHAT) { if (ART_OUT) { fs.mkdirSync(ART_OUT, { recursive: true }); const f = path.join(ART_OUT, String(++tgFile.n).padStart(2, '0') + '-' + name); fs.writeFileSync(f, file); console.log('--- ' + method + ' ' + f); } else console.log('--- ' + method + ' (' + file.length + ' bytes)'); console.log(caption); return true; }
   for (let i = 0; i < 3; i++) {
     const fb = formBody(Object.assign({ chat_id: CHAT, caption }, ce.entities ? { caption_entities: JSON.stringify(ce.entities) } : {}), field, file, name);
-    let r; try { r = await fetch('https://api.telegram.org/bot' + TOKEN + '/' + method, { method: 'POST', headers: { 'content-type': fb.type }, body: fb.body, signal: AbortSignal.timeout(120e3) }); }
-    catch (e) { console.log('telegram ' + method + ' no answer (' + (e && (e.name || e.message)) + '): it may have posted, so no text copy and no retry'); return true; }
+    const r = await tgFetch(method, () => ({ method: 'POST', headers: { 'content-type': fb.type }, body: fb.body, signal: AbortSignal.timeout(120e3) }));
+    if (!r) return 'unsure';
     if (r.ok) return true;
     const j = await r.json().catch(() => ({}));
     if (r.status === 429 && j.parameters && j.parameters.retry_after) { await new Promise(res => setTimeout(res, (j.parameters.retry_after + 1) * 1000)); continue; }
@@ -266,9 +285,10 @@ async function main() {
     if (!posts.length) throw new Error('no posts in ' + f);
     if (!DRY && posts.some(x => /\{[A-Z_]+\}/.test(x.text))) throw new Error('unfilled placeholder in ' + f + ' (e.g. {OPEN}): fill it in before posting');
     const needArt = !NO_ART && posts.some(x => x.art), R = needArt ? replay() : null; let bad = 0;
-    for (const x of posts) { const ok = await post({ key: 'update', text: x.text, art: x.art || null }, R && R.ctx, R && R.w); if (!ok && !DRY) bad++; await new Promise(r => setTimeout(r, 2500)); }
-    process.exit(bad ? 1 : 0); }
-  if (opt('--post') != null) { const t = opt('--post').trim(); if (!t) throw new Error('empty update'); const ok = await tg('sendMessage', { text: '📣 XCPETS update\n\n' + t, disable_web_page_preview: true }); process.exit(ok ? 0 : 1); }
+    for (const [i, x] of posts.entries()) { const u0 = UNSURE, ok = await post({ key: 'update', text: x.text, art: x.art || null }, R && R.ctx, R && R.w); if (!ok && !DRY) bad++;
+      console.log('post ' + (i + 1) + '/' + posts.length + ': ' + (!ok ? 'FAILED' : UNSURE > u0 ? 'UNSURE (check the group)' : 'sent')); await new Promise(r => setTimeout(r, 2500)); }
+    process.exit(bad || UNSURE ? 1 : 0); }
+  if (opt('--post') != null) { const t = opt('--post').trim(); if (!t) throw new Error('empty update'); const ok = await tg('sendMessage', { text: '📣 XCPETS update\n\n' + t, disable_web_page_preview: true }); process.exit(ok && !UNSURE ? 0 : 1); }
   if (!STATE) throw new Error('--state FILE is required');
   const st = fs.existsSync(STATE) ? JSON.parse(fs.readFileSync(STATE, 'utf8')) : null, first = !st, S = st || { v: 1, posted: [] };
   const t0 = Date.now(), { V, w, tip, ctx } = replay(); console.log('replayed to block ' + tip + ' in ' + ((Date.now() - t0) / 1000).toFixed(0) + ' s');
@@ -305,4 +325,4 @@ async function main() {
   console.log('posted ' + posts.length + ' (block ' + from + ' -> ' + tip + ')');
 }
 if (require.main === module) main().catch(e => { console.error(e); process.exit(1); });
-else module.exports = { collect, replay, motelRoundup, capSmall, formBody, emo }; /* for tools/hatchbot-quiet-test.js */
+else module.exports = { collect, replay, motelRoundup, capSmall, formBody, emo, tg, tgFile, unsure: () => UNSURE }; /* for tools/hatchbot-quiet-test.js, hatchbot-caption-test.js, hatchbot-send-retry-test.js */

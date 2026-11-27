@@ -62,7 +62,9 @@ function hands(pg) {
       if (WHY) { try { if (!cdp) { cdp = await pg.context().newCDPSession(pg); await cdp.send('Profiler.enable'); await cdp.send('Profiler.setSamplingInterval', { interval: 1000 }); } await cdp.send('Profiler.stop').catch(() => {}); await cdp.send('Profiler.start'); } catch (e) { cdp = null; } }
       pg.__robotNav = Date.now(); /* the robot's own page change: a script it cuts off mid-load is not the page's fault (see 'pageerror' below) */
       await pg.goto(BASE + '/' + page, { waitUntil: 'domcontentloaded', timeout: 90000 });
-      const game = /^(play|fight|breed|rare-room|raid|cemetery|shop|pet)\.html/.test(page);
+      /* petdex.html paints once the wallet's pets are in (js/v2-petdex.js waits for them): on a 40,000-pet wallet a busy runner took longer than
+       * the 2 s + pop-up wait and the robot read the empty frame (Nov 27 2026, '542 characters') */
+      const game = /^(play|fight|breed|rare-room|raid|cemetery|shop|pet|petdex)\.html/.test(page);
       if (game && !(await L.worldReady(pg, 180000))) { problem('no-world', page + ': the pets never loaded (3 min)'); return false; }
       await pg.waitForTimeout(game ? 3500 : 2000);
       const s = (Date.now() - t0) / 1000; if (s > 30) problem('slow-load', page + ' took ' + s.toFixed(0) + ' s to show pets'); else ok(page + ' loaded in ' + s.toFixed(1) + ' s');
@@ -249,7 +251,6 @@ FLOWS.open = async (H, T) => {
 FLOWS.hatch = async (H, T, ctx) => {
   if (!(await H.open('play.html'))) return;
   await H.dismiss(8000);
-  const before = await H.pg.evaluate(() => V2UI.mine(V2Mock.world()).filter(p => !p.dead).length);
   const got = [];
   for (const [btn, tag, want] of [['#hatchBtn', 'pet:hatch', T.costs.hatch], ['#dozenBtn', 'pet:hatch12', T.costs.hatch12]]) {
     if (!(await H.press(btn, 'hatch ' + tag))) continue;
@@ -276,24 +277,31 @@ FLOWS.hatch = async (H, T, ctx) => {
   const t0 = Date.now(); let seen = 0, pop = null;
   for (let i = 0; i < 36; i++) { /* a player waits ~3 minutes on the page */
     await H.pg.waitForTimeout(5000);
-    const s = await H.pg.evaluate((tb) => ({ n: V2UI.mine(V2Mock.world()).filter(p => !p.dead).length, pop: newReveal(tb) }), trayBefore).catch(() => ({ n: 0, pop: null }));
-    seen = s.n - before; if (s.pop) pop = s.pop;
+    /* count the eggs of THIS block (hatchBlock = the mined block), not 'my pets now minus before': a 40,000-pet wallet's list can still be
+     * growing when 'before' is read (Nov 27 2026, CI: +163 at 5 s while the eggs came at 31-37 s), which ended the wait early */
+    const s = await H.pg.evaluate(([tb, b]) => ({ n: V2UI.mine(V2Mock.world()).filter(p => !p.dead && p.hatchBlock === b).length, pop: newReveal(tb) }), [trayBefore, blk.tip]).catch(() => ({ n: 0, pop: null }));
+    seen = s.n; if (s.pop) pop = s.pop;
+    if (process.env.PLAYTEST_TRACE) console.log('     t+' + Math.round((Date.now() - t0) / 1000) + ' s: ' + s.n + ' eggs, ' + JSON.stringify(await H.pg.evaluate(() => window.V2Held && V2Held.why ? V2Held.why() : null).catch(() => null)));
     if (seen >= want) break;
   }
   /* the eggs crack open first (a few seconds of animation), then the box reveal opens */
-  for (let i = 0; i < 12 && seen >= want && !pop; i++) { await H.pg.waitForTimeout(2500); pop = await H.pg.evaluate(newRevealSrc => newReveal(newRevealSrc), trayBefore).catch(() => null); }
+  for (let i = 0; i < 12 && seen >= want && !pop; i++) { await H.pg.waitForTimeout(2500); pop = await H.pg.evaluate(newRevealSrc => newReveal(newRevealSrc), trayBefore).catch(() => null);
+    if (process.env.PLAYTEST_TRACE) console.log('     t+' + Math.round((Date.now() - t0) / 1000) + ' s: ' + JSON.stringify(await H.pg.evaluate(() => window.V2Held && V2Held.why ? V2Held.why() : null).catch(() => null))); }
   const secs = Math.round((Date.now() - t0) / 1000);
   if (seen < want) problem('result-never-shows', 'hatched ' + want + ' eggs; after the block landed the page still showed ' + Math.max(0, seen) + ' of them after ' + secs + ' s on the page (no reload)');
   else ok(want + ' new eggs showed up ' + secs + ' s after the block' + (pop ? ' (' + pop + ')' : ''));
-  if (!pop) { const why = await H.pg.evaluate(() => ({ open: [...document.querySelectorAll('.reveal.on, .la-ov, .tut-tip')].map(e => e.id || e.className), tray: (document.querySelector('#hatchTray') || {}).innerText || '', held: window.V2Held ? V2Held.list() : null })).catch(() => ({}));
-    problem('no-reveal', 'no hatch reveal pop-up or pill appeared for the new eggs (' + JSON.stringify(why).slice(0, 200) + ')'); }
+  if (!pop) { const why = await H.pg.evaluate(() => ({ open: [...document.querySelectorAll('.reveal.on, .la-ov, .tut-tip')].map(e => e.id || e.className), tray: (document.querySelector('#hatchTray') || {}).innerText || '', held: window.V2Held ? V2Held.list() : null, why: window.V2Held && V2Held.why ? V2Held.why() : null })).catch(() => ({}));
+    problem('no-reveal', 'no hatch reveal pop-up or pill appeared for the new eggs (' + JSON.stringify(why).slice(0, 900) + ')');
+    /* late or never? keep watching a minute more and say which */
+    let late = null; for (let i = 0; i < 12 && !late; i++) { await H.pg.waitForTimeout(5000); late = await H.pg.evaluate(src => newReveal(src), trayBefore).catch(() => null); if (late) ok('the reveal came late: ' + late + ' ' + (secs + 5 * (i + 1)) + ' s after the block'); }
+    if (!late) { const w2 = await H.pg.evaluate(() => window.V2Held && V2Held.why ? V2Held.why() : null).catch(() => null); ok('still no reveal a minute later: ' + JSON.stringify(w2).slice(0, 900)); } }
   await H.shot('landed');
   /* and after a reload */
   await H.pg.reload({ waitUntil: 'domcontentloaded' }); await L.worldReady(H.pg, 180000);
   let n2 = 0; const t1 = Date.now();
-  for (let i = 0; i < 24; i++) { await H.pg.waitForTimeout(5000); n2 = await H.pg.evaluate(() => V2UI.mine(V2Mock.world()).filter(p => !p.dead).length); if (n2 - before >= want) break; }
+  for (let i = 0; i < 24; i++) { await H.pg.waitForTimeout(5000); n2 = await H.pg.evaluate((b) => V2UI.mine(V2Mock.world()).filter(p => !p.dead && p.hatchBlock === b).length, blk.tip); if (n2 >= want) break; }
   ok('after reload: ' + Math.round((Date.now() - t1) / 1000) + ' s to settle');
-  if (n2 - before < want) problem('result-never-shows', 'even after a reload the page shows ' + (n2 - before) + ' of the ' + want + ' new eggs'); else ok('after a reload: all ' + want + ' new eggs listed');
+  if (n2 < want) problem('result-never-shows', 'even after a reload the page shows ' + n2 + ' of the ' + want + ' new eggs'); else ok('after a reload: all ' + want + ' new eggs listed');
 };
 
 /* Select all -> Discard selected -> Cancel: no freeze at thousands of pets, nothing lost */
@@ -431,7 +439,10 @@ FLOWS.places = async (H) => {
     if (!(await H.open(page))) continue;
     await H.dismiss(8000);
     const s = await H.pg.evaluate(() => ({ text: document.body.innerText.length, words: document.body.innerText.slice(0, 40000) }));
-    if (s.text < 400 || !want.test(s.words)) problem('empty-page', page + ' shows almost nothing (' + s.text + ' characters)'); else ok(page + ' content ok (' + ((Date.now() - t0) / 1000).toFixed(1) + ' s)');
+    if (s.text < 400 || !want.test(s.words)) { problem('empty-page', page + ' shows almost nothing (' + s.text + ' characters: ' + JSON.stringify(s.words.slice(0, 300)) + ')');
+      /* late or never? look again for 30 s and say which */
+      let n = 0, t1 = Date.now(); for (let i = 0; i < 15; i++) { await H.pg.waitForTimeout(2000); const s2 = await H.pg.evaluate(() => ({ text: document.body.innerText.length, words: document.body.innerText.slice(0, 40000) })).catch(() => null); if (s2 && s2.text >= 400 && want.test(s2.words)) { n = s2.text; break; } }
+      ok(n ? page + ' filled in late: ' + n + ' characters ' + ((Date.now() - t1) / 1000).toFixed(0) + ' s after the first look' : page + ' still empty 30 s later'); } else ok(page + ' content ok (' + ((Date.now() - t0) / 1000).toFixed(1) + ' s)');
     await H.freezes(0, page + ' load', FREEZE_LOAD);
   }
   /* Pantheon on fast pages used to be empty */

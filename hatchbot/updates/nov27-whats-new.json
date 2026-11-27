@@ -1,0 +1,41 @@
+{
+  "_note": "Update series for the XCPETS Telegram group (Nov 27 2026): everything players feel that went live since nov24-whats-new (posted Nov 24 05:42 UTC, run 45335141450). Covers PRs 236-322 (Gear Forge 310, Pantheon seat battles 314, Mythic safe ticks 309, box reveal Keep mode 301/281, on-chain Discard pile 295, trait badges 308, before-signing checks 286-291, smooth pages 302/312/313/296/320, WAGMI pop-up gone 299, Cloudflare world copy 268/271, raid ATTACK 236). Not 323 (unmerged). Aspie stays a mystery. Posted only when the owner says go: Actions > hatchbot > Run workflow > update: nov27-whats-new.",
+  "posts": [
+    {
+      "art": {
+        "kind": "banner",
+        "top": "GEAR FORGE",
+        "bottom": "YOUR GEAR WORKS NOW",
+        "color": "orange"
+      },
+      "text": "📣 XCPETS UPDATE 1/4: the GEAR FORGE is open 🔨{chad}\n\nGot a mountain of gear just sitting in your closet doing NOTHING? Not anymore.\n\n⚡ Gear up for real: one burn puts your best spare pieces on your pets ON-CHAIN, strongest pets first. It counts in fights now. A pet never gets a worse piece than it already wears.\n💥 Smash: melt spare junk into Gear Dust (Common 1, Uncommon 3, Rare 9, Legendary 27). One copy of every piece is always kept.\n🧪 Fuse: 3 copies of a piece become 1 piece one rarity UP.\n🎲 Dust roll: 100 Dust = a free gear roll for any pet.\n\nEach one is a tiny 1-dander burn. Your pets have been fighting naked. Fix that 😤\n\n📍 xcpets.fun → Rare Room → Closet → Gear Forge"
+    },
+    {
+      "art": {
+        "kind": "banner",
+        "top": "THRONE WAR",
+        "bottom": "21 SEATS. FIGHT.",
+        "color": "gold"
+      },
+      "text": "📣 XCPETS UPDATE 2/4: the Pantheon is now a WAR 👑⚔️\n\n🏛️ All 21 seats full? Rise anyway. Your new God just has no seat... yet.\n⚔️ Hit Challenge on any throne. The fight happens right away, in the same block. Win and you SIT, and the old God falls 💔 Only the seat is on the line: no gear lost. One challenge per God per day.\n🎶 Homer got a stage and a lyre, and he sings every fall and every usurper. Get yourself a song.\n\n🛡️ Unleash got kinder too: tick the Mythics you DON'T want eaten and the zombie never touches them.\n🧟 A zombie waiting for its meal can't be hunted anymore.\n⏰ The 30-day waits on Unleash and Mythic God are GONE.\n\nThe gods are seated. Go take a chair {homer}"
+    },
+    {
+      "art": {
+        "kind": "banner",
+        "top": "KEEP THE GOOD ONES",
+        "bottom": "TAP TAP DONE",
+        "color": "green"
+      },
+      "text": "📣 XCPETS UPDATE 3/4: opening boxes is way better 📦{pepe}\n\n✅ Box reveal now starts in KEEP mode: tap the pets you love, hit Keep, the rest go to the Discard pile. Legendaries, Mythics, geared, starred and weird finds are always kept, so no 1-in-777 gets swept by accident.\n⚡ 3 Shock Boxes at once? Every box gets its own reveal. Miss a pop-up and it comes back as a little pill.\n🗑️ Your Discard pile now shows EVERY pet you discarded on chain, and Restore brings one back.\n🏷️ Special pets wear badges up top: 👑 Legendary Mix, twins, throwbacks, mutations. Tap one to see why it's special.\n🧬 Cross pets show their mixed name (Star-Lord Pigeon, not Snibby).\n\nGo check your old hatches. You might own something rare and not know it 👀"
+    },
+    {
+      "art": {
+        "kind": "banner",
+        "top": "SMOOTH BRAIN",
+        "bottom": "NO MORE FREEZES",
+        "color": "purple"
+      },
+      "text": "📣 XCPETS UPDATE 4/4: smoother, safer, no more burning for nothing 🧈{doge}\n\n🛑 Before you sign, the game now checks EVERY feed, discard and pick burn. If it would do nothing, it won't let you send it. Your XCPETS are safe.\n🔥 Fire Sale burns that land up to 6 blocks late still get the sale price.\n🍽️ \"Do it all in one burn\" on feeding really opens Sign now.\n🧊 Rare Room, breeding, fights and raids no longer freeze, even on giant wallets.\n🧈 Pages stop jumping around, and pop-ups wait while you're tapping.\n👋 The \"Say WAGMI\" pop-up is gone.\n☁️ If the game server ever goes down, pages still load from a backup copy.\n⚔️ Every raid ATTACK button really attacks.\n🏆 Rankings \"This week\" is back.\n\nBug? Type /bug to HatchBot. We fix fast 🛠️\nxcpets.fun"
+    }
+  ]
+}

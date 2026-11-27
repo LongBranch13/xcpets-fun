@@ -675,7 +675,8 @@
     Object.keys(o.t).forEach(function (tx) { if (tx === '!') { (o.t[tx] || []).forEach(function (k) { s[k] = 1; }); return; }
       String(o.t[tx]).split(',').forEach(function (r) { var m = r.split('-'), lo = Number(m[0]), hi = m.length > 1 ? Number(m[1]) : lo; for (var n = lo; n <= hi; n++) s[tx + ':' + n] = 1; }); });
     return s; }
-  function notifyHatch(w) { dataSeen();
+  var hDbg = { calls: 0, at: 0, got: 0, why: '' }; /* read by V2Held.why() only */
+  function notifyHatch(w) { dataSeen(); hDbg.calls++; hDbg.at = Date.now(); hDbg.why = 'start';
     if (!ME || !w || !w.pets) return [];
     var raw = null; try { raw = JSON.parse(localStorage.getItem(HKEY)); } catch (e) { }
     var persisted = hUnpack(raw);
@@ -688,7 +689,7 @@
     /* hatch-tray-1124 (owner Nov 24 2026: one Shock Box opened as three pop-ups, 47 then 353 then 600, and 'the animation just popping up is annoying').
      * A big wallet arrives in owner pages, and each page used to open its own review. Now nothing is counted until the list has settled
      * (90 s safety cap, then the old way), so one hatch = one review. Display only: same newHatches keys, nothing signed. */
-    if (!settled) { if (!hDefer0) hDefer0 = Date.now(); if (Date.now() - hDefer0 < HDEFER_MS) return []; }
+    if (!settled) { if (!hDefer0) hDefer0 = Date.now(); if (Date.now() - hDefer0 < HDEFER_MS) { hDbg.why = 'unsettled'; return []; } }
     /* box-reveal-1124: past the cap (HDEFER_MS) the list counts as settled for 'live vs away' too. Before, a wallet whose pages were still loading
      * never set hSessTip, so every hatch (even one you watched land) went quietly into the tray. */
     var counted = settled || !!hDefer0;
@@ -701,6 +702,7 @@
      * hid them. Away eggs open the box reveal again (one pop-up per load: every away batch merges into one), without the egg-crack animation;
      * 'Later' on the reveal puts them in the pill. Eggs that hatch while you watch still get the egg-crack moment first. Display only. */
     var away = [], live = [];
+    hDbg.why = 'groups:' + groups.length + '/' + r.groups.length + (hasKeys ? ':keys' : ':nokeys'); hDbg.got += groups.reduce(function (a, g) { return a + g.eggs.length; }, 0);
     groups.forEach(function (g) { g.eggs.forEach(function (p) { ((hSessTip == null || (p.hatchBlock || 0) <= hSessTip) ? away : live).push(p.id); }); });
     uAdd(away.concat(live)); /* unopened-1125: kept until the review is closed, so a reveal that never opens is never lost */
     if (away.length) { var qa = null; for (var ia = 0; ia < revealQ.length; ia++) if (revealQ[ia].kind === 'eggs' && revealQ[ia].away) { qa = revealQ[ia]; break; }
@@ -1246,6 +1248,15 @@
      * that landed on other pets were hidden everywhere: not in My Pets, not in the pile, and the feed check said 'discarded'. The pile is now
      * inPile's whole answer: this browser's list plus this wallet's living on-chain discards (⛓ chip, Restore signs the Add back burn). */
     var hs = hiddenSet(), gone = V2Own.pileList(w, ME, hs, !!cem); /* a risen zombie is never in the pile (inPile) */ /* one read of the discard list: parsing it once per owned pet froze My Pets when the pile held thousands */
+    /* Nov 27 2026 (G Money: "the 3 Homers ... now I can't find those"): My Pets leaves out every pet in the Discard pile, so a search for a
+     * discarded pet (a name, a species, a #id) said nothing at all while the pet sat among 14,952 others in the pile. A search now says how many
+     * more pets match in the Discard pile, with one tap to see them there (the pile opens with the same search). Display only. */
+    var fq = !cem && $('fSearch') ? String($('fSearch').value || '').trim() : '', XF = fq && window.UXB ? UXB.filters() : null;
+    if (fq && gone.length) { var pm = gone.filter(function (p) { return XF ? XF.keep(p) : false; }).length;
+      if (pm) { var ph = document.createElement('div'); ph.className = 'row small pilehint'; ph.id = 'pileHint'; ph.style.cssText = 'gap:8px;align-items:center;margin:0 0 8px;width:100%;grid-column:1/-1;flex-wrap:wrap';
+        ph.innerHTML = '<span>🗑️ <b>' + fmt(pm) + ' more pet' + (pm === 1 ? '' : 's') + '</b> match' + (pm === 1 ? 'es' : '') + ' in your Discard pile.</span> <button type="button" class="q" id="pileHintGo">Show ' + (pm === 1 ? 'it' : 'them') + ' in the Discard pile</button>';
+        ph.querySelector('button').onclick = function (e) { e.stopPropagation(); pileShow(fq); };
+        var em = box.querySelector(':scope > p.muted'); if (em && !list.length) { em.textContent = 'No pets in My Pets match this search.'; box.insertBefore(ph, em.nextSibling); } else box.insertBefore(ph, box.firstChild); } }
     if (gone.length) box.appendChild(discardedBox(gone, w));
     if (!cem && V.hdPlan) { var hdBar = chainDiscardBar(w); if (hdBar) box.appendChild(hdBar); }
     if (!cem) { pileLink(gone.length); lastHatchLink(w); } /* discard-pile jump link; unopened-1125: the last hatch, always one tap away */
@@ -1338,6 +1349,8 @@
     if (local.length) restoreLocal(local);
     if (chain.length) { if (!(V.hdOn && V.hdOn((S.tip || 0) + 1))) return toast('These pets were discarded on chain. Add back opens again at block ' + fmt(V.ACTIVATE_ONCHAIN_DISCARD_BLOCK) + '.'); chainDiscardIds(chain, true); } }
   /* 'Discard pile (N)' jump link next to the bulk discard buttons: opens + scrolls to the pile */
+  /* pileShow(q): open the Discard pile with its search set to q (and every other pile filter cleared), so the pets that match are on top. */
+  function pileShow(q) { DS.q = String(q || ''); DS.sp = 'all'; DS.tier = 'all'; DS.birth = ''; DS.n = 120; DS.open = true; render(); var d2 = document.querySelector('#discardPile details'); if (d2) { d2.open = true; d2.scrollIntoView({ block: 'start' }); } }
   function openPile() { DS.open = true; var d = document.querySelector('#discardPile .dgrid'); if (d) { var det = d.closest('details'); if (det) det.open = true; d.scrollIntoView({ block: 'start' }); return; } render(); var d2 = document.querySelector('#discardPile details'); if (d2) d2.scrollIntoView({ block: 'start' }); }
   /* On-chain discard. The game never signs: this only fills the same confirm sheet as every other burn.
    * One burn is 1 dander. If the pets do not fit one 34-byte tag, the sheet says so and lists the exact burns. */
@@ -1558,6 +1571,18 @@
       if (hit || !on) return; if (n < 8) return setTimeout(function () { aim(n + 1); }, 500);
       toast(p.owner !== ME ? '#' + p.id + ' is not in your wallet, so you can\'t unleash it.' : '#' + p.id + ' can\'t be unleashed right now: it has to be your feral zombie, not fed by a Mythic, and you can unleash once every 30 days. The pop-up shows its state.', 12000); })(0);
     return true; }
+  /* Nov 27 2026 (G Money's 3 Homers): the pet page of a pet in your Discard pile offers '↩️ Add back' (play.html#act-back-ID) and 'Open my
+   * Discard pile' (play.html#pile-ID, the pile opened and searched for that pet). Add back is the pile's own Restore (pileRestore): free for a
+   * browser-only discard, one 1-dander Add back burn (pet:hu) through the confirm sheet for an on-chain one. Nothing is sent from here. */
+  function backRoute() { var m = /^#act-back-(\d+)$/.exec(location.hash), k = !m && /^#pile-(\d+)$/.exec(location.hash); if (!m && !k) return false; var id = (m || k)[1], w = world(), p = w && w.byId[id];
+    if (!routeReady() || !p) return routeWait(backRoute, (m ? 'Add back' : 'the Discard pile') + ' for #' + id, id); backRoute.wait = null;
+    history.replaceState(null, '', location.pathname + location.search);
+    if (!ME || p.owner !== ME || p.dead || p.released) { toast('Only the owner of a living pet can do that. Connect the wallet that owns #' + p.id + '.'); return true; }
+    var d = V2Own.discarded(p, ME);
+    if (k) { pileShow('#' + p.id); return true; }
+    if (!d) { toast('#' + p.id + ' is not in your Discard pile: it is already in My Pets.'); return true; }
+    if (d === 'pending') { toast('Your discard burn for #' + p.id + ' is still confirming. Add it back once it confirms (about 10 minutes).', 9000); return true; }
+    pileRestore([p.id]); return true; }
   function actRoute() { if (cemRoute()) return true; if (giftRoute()) return true; if (unleashRoute()) return true; var m = /^#act-(feed|roll|froll|oroll)-(\d+)(-pet)?$/.exec(location.hash); if (!m) return false;
     var w = world(), p = w && w.byId[m[2]], a = m[1]; if (!routeReady() || !p) return routeWait(actRoute, ({ feed: 'Feed', roll: 'Gear roll', froll: 'Free roll', oroll: 'Overflow roll' })[a] + ' for #' + m[2], m[2]); actRoute.wait = null; /* card-actions-fast: wait for the page's world, not burn rows */
     history.replaceState(null, '', location.pathname + location.search); var back = !!m[3] && a === 'feed', bounce = function () { if (back) setTimeout(function () { petBackGo(p.id); }, 3500); return true; };
@@ -2088,7 +2113,11 @@
   window.V2Held = { count: function () { return heldA.length + (heldR ? revealQ.length : 0); },
     list: function () { return (heldR ? revealQ.map(function (r) { return r.kind === 'gear' ? '🎁 ' + r.wins.length + ' new gear piece' + (r.wins.length > 1 ? 's' : '') : '🥚 ' + r.eggs.length + ' egg' + (r.eggs.length > 1 ? 's' : '') + ' hatched'; }) : []).concat(heldA.map(function (a) { return a.label; })); },
     run: function () { askAt = Date.now(); released = true; heldR = false; var a = heldA; heldA = []; a.forEach(function (x) { queueAnim(x.fn); }); nextReveal(); awayPing(); },
-    skip: function () { released = true; heldR = false; heldA = []; revealQ.length = 0; awayPing(); } };
+    skip: function () { released = true; heldR = false; heldA = []; revealQ.length = 0; awayPing(); },
+    /* read-only: why a hatch/gear reveal is not on screen (the play-test robot prints it when a reveal never shows) */
+    why: function () { var w = world(), pg = w && w._pages; return { q: revealQ.map(function (r) { return r.kind + ':' + (r.eggs || r.wins || []).length + (r.away ? ':away' : '') + (r.tray ? ':tray' : ''); }), rev: rev ? rev.kind : null, wspin: wspinOn,
+      pack: $('packBox').classList.contains('on'), other: otherUp(), busy: playerBusy(), pick: picking(), life: !!(window.V2LifeAnim && V2LifeAnim.busy && V2LifeAnim.busy()), hold: holding(), heldR: heldR,
+      settled: hatchListSettled(w), defer: hDefer0 ? Date.now() - hDefer0 : 0, sessTip: hSessTip, hatchTip: hatchTip, tip: w && w.tip, pending: !!(w && w.pending), pages: pg ? pg.got + '/' + pg.pages : null, nh: { calls: hDbg.calls, ago: hDbg.at ? Date.now() - hDbg.at : -1, got: hDbg.got, why: hDbg.why } }; } };
   function queueAnim(fn, label) { if (holding()) { heldA.push({ fn: fn, label: label || '▶ Replay' }); awayPing(); return; } animQ.push(fn); if (!animM.el && animQ.length === 1) setTimeout(nextAnim, 600); }
   function nextAnim() { if (animM.el || !animQ.length) return; if ((window.V2CemAnim && V2CemAnim.busy()) || (window.V2LifeAnim && V2LifeAnim.busy())) return; /* a cemetery animation is on screen; it calls V2AnimDone when it ends */ if ($('packBox').classList.contains('on') || sheetOpen() || playerBusy()) return setTimeout(nextAnim, 1500); animQ.shift()(); } /* Nov 26 2026: and while the player is tapping or scrolling (js/v2-dock.js busy) */
   /* playtest (Nov 25 2026): a fight replay used to pop up in front of the Sign & burn sheet (or any other open sheet) a few seconds after the
@@ -2336,7 +2365,7 @@
   ['pending', 'log'].forEach(function (id) { $(id).onclick = function (e) { var drop = e.target.closest('[data-drop]'); if (drop && window.V2Wallet && V2Wallet.dismissPending) { e.preventDefault(); V2Wallet.dismissPending(drop.getAttribute('data-drop')); renderLog(world()); return; } var a = e.target.closest('a[data-tx]'); if (!a) return; e.preventDefault(); showTx(a.dataset.tx); }; });
   /* pet-page-zombies (Nov 23 2026, Jake: one pet page for every pet): a risen zombie's old link play.html#pet-ID forwards to pet.html?id=ID,
    * which now feeds, pledges, resurrects and hunts it. Other pets still open the pop-up here ('More in the game' on the pet page). */
-  function route() { if (actRoute()) return; var m = /^#pet-(\d+)$/.exec(location.hash), mp = m && world().byId[m[1]];
+  function route() { if (backRoute() || actRoute()) return; var m = /^#pet-(\d+)$/.exec(location.hash), mp = m && world().byId[m[1]];
     if (mp && ZB(mp)) { location.replace('pet.html?id=' + mp.id); return; }
     if (m && !mp && window.V2Split && V2Split.ensurePet && !route.ask) { route.ask = 1; V2Split.ensurePet(+m[1]).then(function () { route.ask = 0; if (location.hash === m[0] && world().byId[m[1]]) route(); }, function () { route.ask = 0; }); }
     if (mp) { detailId = Number(m[1]); detail(mp); }
