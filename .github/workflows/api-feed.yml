@@ -1,4 +1,5 @@
-# Manual backup of the Hetzner feed. The timer on xcpets-bot-1 runs /usr/local/bin/xcpets-feed.sh, which is the only automatic writer.
+# Backup of the Hetzner feed. The timer on xcpets-bot-1 runs /usr/local/bin/xcpets-feed.sh (the primary writer). Once started (by hand or by world watch),
+# this workflow keeps a watch loop going: it builds only while the server's feed is 20+ minutes old (Nov 27 2026).
 # This file rebuilds api/pets.json + api/meta.json from chain with tools/api-feed.js (Node only, public read APIs, no secrets)
 # and refreshes pet token metadata t/<id>.json + .png for tokened pets (tools/token-meta.js --tokened).
 # It commits only when the pets, totals or token files changed (generatedAt alone never triggers a commit). It only ever stages api/pets.json + api/meta.json + api/boot.json (site-fast first-visit copy),
@@ -18,19 +19,43 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 40  # (30 + the 5-minute pause before the next backup run) feed-rate-limit: a full (non-incremental) sale read at the gated pace took ~15.4 min in the Oct 25 dry run
     steps:
+      # Nov 27 2026: the loop below used to stop for good the first time the server published a feed. The server's feed job then
+      # published twice (23:06 and 23:50 UTC Nov 26) and died again, world watch's GitHub cron did not run for 5 hours, and the feed
+      # fell 12+ blocks behind (HatchBot's "catching up" post at 01:40 UTC). Now the loop never ends by itself: each run first asks
+      # whether a build is needed (no checkout, a few seconds). While the server's own feed is fresh it only watches; the moment the
+      # server's feed is 20+ minutes old it builds and publishes again.
+      - name: Is a backup build needed?
+        id: need
+        env: { GH_TOKEN: '${{ github.token }}', FRESH_MIN: '20' }
+        run: |
+          J=$(gh api "repos/$GITHUB_REPOSITORY/commits?sha=main&path=api/meta.json&per_page=1" --jq '.[0] | {m: .commit.message, t: .commit.committer.date}' || echo '{}')
+          AT=$(printf '%s' "$J" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{console.log(Math.floor(Date.parse(JSON.parse(s).t)/1000)||0)}catch(e){console.log(0)}})")
+          AGE=$(( $(date +%s) - ${AT:-0} ))
+          if printf '%s' "$J" | grep -q 'Feed-Source: github-backup'; then SRC=backup; else SRC=server; fi
+          if [ "$SRC" = server ] && [ "$AT" -gt 0 ] && [ "$AGE" -lt $((FRESH_MIN * 60)) ]; then
+            echo "The server's feed published $((AGE / 60)) min ago: watching only, no build." | tee -a "$GITHUB_STEP_SUMMARY"; echo "build=" >> "$GITHUB_OUTPUT"
+          else
+            echo "Newest feed is from the $SRC, $((AGE / 60)) min old: building." | tee -a "$GITHUB_STEP_SUMMARY"; echo "build=1" >> "$GITHUB_OUTPUT"
+          fi
       - uses: actions/checkout@v4
+        if: steps.need.outputs.build == '1'
         with: { ref: main, fetch-depth: 0 }
       - uses: actions/setup-node@v4
+        if: steps.need.outputs.build == '1'
         with: { node-version: '20' }
-      - run: node tools/api-feed.js --out api --save-input /tmp/feed-input.json
+      - if: steps.need.outputs.build == '1'
+        run: node tools/api-feed.js --out api --save-input /tmp/feed-input.json
       # Pet token metadata (Oct 23, 2026): refresh t/<id>.json + t/<id>.png only for tokened pets (tied, freshly minted, or already named). Never fails the feed.
       # token-proof: --input is the feed step's chain read. token-meta replays that input once and reuses its dex issuances (no second DEX read).
       # Mint lookback starts at api/token-meta-state.json lastBlock (only advanced when the full-node scan succeeded), not a fixed 36 blocks.
-      - run: node tools/token-meta.js --tokened --input /tmp/feed-input.json || echo "token-meta failed, skipping this run"
+      - if: steps.need.outputs.build == '1'
+        run: node tools/token-meta.js --tokened --input /tmp/feed-input.json || echo "token-meta failed, skipping this run"
       # sale-cache-feed: optional, never fails the feed (a failed read leaves the old file; the browser then checks blocks on a :4000 node or reads in full)
-      - run: node tools/recent-events.js --out api --blocks 60 || echo "recent-events failed, skipping"
+      - if: steps.need.outputs.build == '1'
+        run: node tools/recent-events.js --out api --blocks 60 || echo "recent-events failed, skipping"
       - name: Commit if changed
         id: commit
+        if: steps.need.outputs.build == '1'
         env: { FRESH_BLOCKS: '2' }
         run: |
           OLD=$(git show HEAD:api/boot.json 2>/dev/null | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{console.log(JSON.parse(s).tip||0)}catch(e){console.log(0)}})")
@@ -82,13 +107,14 @@ jobs:
       - name: Keep the backup going while the server's feed is down
         # (Nov 24 2026: the switch is read in the shell. In a GitHub `if:` an unset variable is '' and '' != '0' is false, because
         # both turn into the number 0, so the step was always skipped and the loop never ran.)
+        # Nov 27 2026: the loop no longer stops when the server publishes (see "Is a backup build needed?"). A run that only watched
+        # waits 4 minutes, a run that built waits 5. Only one chain: if another api-feed run is already queued or running (world watch
+        # started one), this run starts no next run.
         if: always() && github.event_name == 'workflow_dispatch'
-        env: { GH_TOKEN: '${{ github.token }}', LOOP_SWITCH: '${{ vars.FEED_BACKUP_LOOP }}' }
+        env: { GH_TOKEN: '${{ github.token }}', LOOP_SWITCH: '${{ vars.FEED_BACKUP_LOOP }}', BUILT: '${{ steps.need.outputs.build }}' }
         run: |
           if [ "$LOOP_SWITCH" = "0" ]; then echo "FEED_BACKUP_LOOP=0: the backup loop is off."; exit 0; fi
-          git fetch -q origin main
-          MSG=$(git log -1 --format=%B origin/main -- api/meta.json); AT=$(git log -1 --format=%ct origin/main -- api/meta.json)
-          AGE=$(( $(date +%s) - ${AT:-0} ))
-          if ! printf '%s' "$MSG" | grep -q 'Feed-Source: github-backup' && [ "$AGE" -lt 2700 ]; then echo "The server's feed published $((AGE / 60)) min ago: the backup stops here."; exit 0; fi
-          sleep 300
-          gh workflow run api-feed.yml -R "$GITHUB_REPOSITORY" --ref main && echo "The server's feed is still down (newest feed $((AGE / 60)) min old): started the next backup run." | tee -a "$GITHUB_STEP_SUMMARY"
+          if [ "$BUILT" = "1" ]; then sleep 300; else sleep 240; fi
+          OTHER=$(gh run list -R "$GITHUB_REPOSITORY" --workflow api-feed.yml --limit 10 --json databaseId,status --jq "[.[]|select(.status!=\"completed\" and .databaseId!=$GITHUB_RUN_ID)]|length" || echo 0)
+          if [ "${OTHER:-0}" != "0" ]; then echo "Another api-feed run is already waiting: it carries the loop on."; exit 0; fi
+          gh workflow run api-feed.yml -R "$GITHUB_REPOSITORY" --ref main && echo "Started the next feed check." | tee -a "$GITHUB_STEP_SUMMARY"
