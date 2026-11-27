@@ -13,6 +13,8 @@
 const path = require('path'), assert = require('assert');
 const ROOT = path.resolve(__dirname, '..');
 function chromium() { for (const p of [process.env.PW, 'playwright-core', 'playwright']) { if (!p) continue; try { return require(p).chromium; } catch (e) {} } throw new Error('playwright not found'); }
+/* same browser choice as the other browser tests (hunt-picker-test.js): CI has Google Chrome, not Playwright's own download */
+function launchOpts() { const fs = require('fs'), exe = process.env.CHROME || ['/usr/bin/google-chrome', '/opt/pw-browsers/chromium'].find(p => { try { return fs.statSync(p).isFile(); } catch (e) { return false; } }); return exe ? { executablePath: exe, args: ['--no-sandbox'] } : {}; }
 
 const FIXTURE = () => {
   const me = 'bc1qfixture', w = { tip: 977800, pets: [], byId: {}, _pages: { got: 1, pages: 10, n: 1000 } };
@@ -27,7 +29,7 @@ const FIXTURE = () => {
 };
 
 (async () => {
-  const browser = await chromium().launch(process.env.CHROME ? { executablePath: process.env.CHROME } : {});
+  const browser = await chromium().launch(launchOpts());
   let fails = 0; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) fails++; };
   try {
     const run = async (startPages) => {

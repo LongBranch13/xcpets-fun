@@ -64,7 +64,7 @@
           var sig = (pg ? (pg.got || 1) : 0) + ':' + ((w && w.pets && w.pets.length) || 0) + ':' + (w && w._full ? 1 : 0);
           if (sig !== last) { if (last) moved = true; last = sig; still = 0; } else still++;
           n++;
-          if (!moved && Date.now() - t0 > 6000) return finish(w); /* Nov 27 2026: was 1.5 s; on a slow phone the next owner page often takes longer, and the Feed / altar / gift lists then opened with only the first pages of a big wallet */
+          if (!moved && Date.now() - t0 > 3000) return finish(w); /* Nov 27 2026: was 1.5 s; on a slow phone the next owner page often takes longer, and the Feed / altar / gift lists then opened with only the first pages of a big wallet */
           if (moved && still >= 60) return finish(w);
           if (n > 240) return finish(w);
           setTimeout(tick, 250);

@@ -1581,7 +1581,7 @@
     if (!d) { toast('#' + p.id + ' is not in your Discard pile: it is already in My Pets.'); return true; }
     if (d === 'pending') { toast('Your discard burn for #' + p.id + ' is still confirming. Add it back once it confirms (about 10 minutes).', 9000); return true; }
     pileRestore([p.id]); return true; }
-  function actRoute() { if (cemRoute()) return true; if (giftRoute()) return true; if (unleashRoute()) return true; if (backRoute()) return true; var m = /^#act-(feed|roll|froll|oroll)-(\d+)(-pet)?$/.exec(location.hash); if (!m) return false;
+  function actRoute() { if (cemRoute()) return true; if (giftRoute()) return true; if (unleashRoute()) return true; var m = /^#act-(feed|roll|froll|oroll)-(\d+)(-pet)?$/.exec(location.hash); if (!m) return false;
     var w = world(), p = w && w.byId[m[2]], a = m[1]; if (!routeReady() || !p) return routeWait(actRoute, ({ feed: 'Feed', roll: 'Gear roll', froll: 'Free roll', oroll: 'Overflow roll' })[a] + ' for #' + m[2], m[2]); actRoute.wait = null; /* card-actions-fast: wait for the page's world, not burn rows */
     history.replaceState(null, '', location.pathname + location.search); var back = !!m[3] && a === 'feed', bounce = function () { if (back) setTimeout(function () { petBackGo(p.id); }, 3500); return true; };
     if (!ME || p.owner !== ME || p.dead || p.released) { toast('Only the owner of a living pet can do that. Connect the wallet that owns #' + p.id + '.'); return true; } /* stays on Play: the wallet connect is here */
@@ -2359,7 +2359,7 @@
   ['pending', 'log'].forEach(function (id) { $(id).onclick = function (e) { var drop = e.target.closest('[data-drop]'); if (drop && window.V2Wallet && V2Wallet.dismissPending) { e.preventDefault(); V2Wallet.dismissPending(drop.getAttribute('data-drop')); renderLog(world()); return; } var a = e.target.closest('a[data-tx]'); if (!a) return; e.preventDefault(); showTx(a.dataset.tx); }; });
   /* pet-page-zombies (Nov 23 2026, Jake: one pet page for every pet): a risen zombie's old link play.html#pet-ID forwards to pet.html?id=ID,
    * which now feeds, pledges, resurrects and hunts it. Other pets still open the pop-up here ('More in the game' on the pet page). */
-  function route() { if (actRoute()) return; var m = /^#pet-(\d+)$/.exec(location.hash), mp = m && world().byId[m[1]];
+  function route() { if (backRoute() || actRoute()) return; var m = /^#pet-(\d+)$/.exec(location.hash), mp = m && world().byId[m[1]];
     if (mp && ZB(mp)) { location.replace('pet.html?id=' + mp.id); return; }
     if (m && !mp && window.V2Split && V2Split.ensurePet && !route.ask) { route.ask = 1; V2Split.ensurePet(+m[1]).then(function () { route.ask = 0; if (location.hash === m[0] && world().byId[m[1]]) route(); }, function () { route.ask = 0; }); }
     if (mp) { detailId = Number(m[1]); detail(mp); }

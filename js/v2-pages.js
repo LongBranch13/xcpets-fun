@@ -285,7 +285,7 @@
    * led nowhere) and Discard, and never said where the pet was. Now the page says it is in your Discard pile and offers the one way back:
    * Add back (play.html#act-back-ID: the pile's own Restore, a 1-dander pet:hu burn through the confirm sheet for an on-chain discard, free for
    * a browser-only one). V2Own.discarded is the one answer to "is it discarded?". */
-  function pileState(p) { return ME && p && p.owner === ME && !p.dead && !p.released && window.V2Own && V2Own.discarded ? V2Own.discarded(p, ME) : null; }
+  function pileState(p) { return ME && typeof V2Own !== 'undefined' && V2Own.isLiving(p, ME) ? V2Own.discarded(p, ME) : null; }
   function pileNote(p, d) { var back = '<a class="btn" id="petAddBack" href="play.html#act-back-' + p.id + '" title="' + (d === 'chain' ? 'Signs one tiny Add back burn (1 dander). Nothing else is spent.' : 'Free: it was only hidden in this browser') + '">↩️ Add back to My Pets' + (d === 'chain' ? ' (1 dander)' : ' (free)') + '</a>';
     return '<div class="pilenote" id="pileNote" role="status"><p><b>🗑️ #' + p.id + ' is in your Discard pile' + (d === 'chain' ? ' (⛓ discarded on chain)' : d === 'pending' ? ' (your discard burn is still confirming)' : ' (only in this browser)') + '.</b> ' +
       (d === 'pending' ? 'Once the burn confirms (about 10 minutes) you can add it back from here or from 🗑️ Discard pile in My Pets.' : 'It is hidden from My Pets' + (d === 'chain' ? ', is never fed, and zombies or the Meat Grinder can use it' : '') + '. Add it back to keep it.') + '</p>' +
