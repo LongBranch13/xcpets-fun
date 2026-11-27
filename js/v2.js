@@ -675,7 +675,8 @@
     Object.keys(o.t).forEach(function (tx) { if (tx === '!') { (o.t[tx] || []).forEach(function (k) { s[k] = 1; }); return; }
       String(o.t[tx]).split(',').forEach(function (r) { var m = r.split('-'), lo = Number(m[0]), hi = m.length > 1 ? Number(m[1]) : lo; for (var n = lo; n <= hi; n++) s[tx + ':' + n] = 1; }); });
     return s; }
-  function notifyHatch(w) { dataSeen();
+  var hDbg = { calls: 0, at: 0, got: 0, why: '' }; /* read by V2Held.why() only */
+  function notifyHatch(w) { dataSeen(); hDbg.calls++; hDbg.at = Date.now(); hDbg.why = 'start';
     if (!ME || !w || !w.pets) return [];
     var raw = null; try { raw = JSON.parse(localStorage.getItem(HKEY)); } catch (e) { }
     var persisted = hUnpack(raw);
@@ -688,7 +689,7 @@
     /* hatch-tray-1124 (owner Nov 24 2026: one Shock Box opened as three pop-ups, 47 then 353 then 600, and 'the animation just popping up is annoying').
      * A big wallet arrives in owner pages, and each page used to open its own review. Now nothing is counted until the list has settled
      * (90 s safety cap, then the old way), so one hatch = one review. Display only: same newHatches keys, nothing signed. */
-    if (!settled) { if (!hDefer0) hDefer0 = Date.now(); if (Date.now() - hDefer0 < HDEFER_MS) return []; }
+    if (!settled) { if (!hDefer0) hDefer0 = Date.now(); if (Date.now() - hDefer0 < HDEFER_MS) { hDbg.why = 'unsettled'; return []; } }
     /* box-reveal-1124: past the cap (HDEFER_MS) the list counts as settled for 'live vs away' too. Before, a wallet whose pages were still loading
      * never set hSessTip, so every hatch (even one you watched land) went quietly into the tray. */
     var counted = settled || !!hDefer0;
@@ -701,6 +702,7 @@
      * hid them. Away eggs open the box reveal again (one pop-up per load: every away batch merges into one), without the egg-crack animation;
      * 'Later' on the reveal puts them in the pill. Eggs that hatch while you watch still get the egg-crack moment first. Display only. */
     var away = [], live = [];
+    hDbg.why = 'groups:' + groups.length + '/' + r.groups.length + (hasKeys ? ':keys' : ':nokeys'); hDbg.got += groups.reduce(function (a, g) { return a + g.eggs.length; }, 0);
     groups.forEach(function (g) { g.eggs.forEach(function (p) { ((hSessTip == null || (p.hatchBlock || 0) <= hSessTip) ? away : live).push(p.id); }); });
     uAdd(away.concat(live)); /* unopened-1125: kept until the review is closed, so a reveal that never opens is never lost */
     if (away.length) { var qa = null; for (var ia = 0; ia < revealQ.length; ia++) if (revealQ[ia].kind === 'eggs' && revealQ[ia].away) { qa = revealQ[ia]; break; }
@@ -2111,7 +2113,11 @@
   window.V2Held = { count: function () { return heldA.length + (heldR ? revealQ.length : 0); },
     list: function () { return (heldR ? revealQ.map(function (r) { return r.kind === 'gear' ? '🎁 ' + r.wins.length + ' new gear piece' + (r.wins.length > 1 ? 's' : '') : '🥚 ' + r.eggs.length + ' egg' + (r.eggs.length > 1 ? 's' : '') + ' hatched'; }) : []).concat(heldA.map(function (a) { return a.label; })); },
     run: function () { askAt = Date.now(); released = true; heldR = false; var a = heldA; heldA = []; a.forEach(function (x) { queueAnim(x.fn); }); nextReveal(); awayPing(); },
-    skip: function () { released = true; heldR = false; heldA = []; revealQ.length = 0; awayPing(); } };
+    skip: function () { released = true; heldR = false; heldA = []; revealQ.length = 0; awayPing(); },
+    /* read-only: why a hatch/gear reveal is not on screen (the play-test robot prints it when a reveal never shows) */
+    why: function () { var w = world(), pg = w && w._pages; return { q: revealQ.map(function (r) { return r.kind + ':' + (r.eggs || r.wins || []).length + (r.away ? ':away' : '') + (r.tray ? ':tray' : ''); }), rev: rev ? rev.kind : null, wspin: wspinOn,
+      pack: $('packBox').classList.contains('on'), other: otherUp(), busy: playerBusy(), pick: picking(), life: !!(window.V2LifeAnim && V2LifeAnim.busy && V2LifeAnim.busy()), hold: holding(), heldR: heldR,
+      settled: hatchListSettled(w), defer: hDefer0 ? Date.now() - hDefer0 : 0, sessTip: hSessTip, hatchTip: hatchTip, tip: w && w.tip, pending: !!(w && w.pending), pages: pg ? pg.got + '/' + pg.pages : null, nh: { calls: hDbg.calls, ago: hDbg.at ? Date.now() - hDbg.at : -1, got: hDbg.got, why: hDbg.why } }; } };
   function queueAnim(fn, label) { if (holding()) { heldA.push({ fn: fn, label: label || '▶ Replay' }); awayPing(); return; } animQ.push(fn); if (!animM.el && animQ.length === 1) setTimeout(nextAnim, 600); }
   function nextAnim() { if (animM.el || !animQ.length) return; if ((window.V2CemAnim && V2CemAnim.busy()) || (window.V2LifeAnim && V2LifeAnim.busy())) return; /* a cemetery animation is on screen; it calls V2AnimDone when it ends */ if ($('packBox').classList.contains('on') || sheetOpen() || playerBusy()) return setTimeout(nextAnim, 1500); animQ.shift()(); } /* Nov 26 2026: and while the player is tapping or scrolling (js/v2-dock.js busy) */
   /* playtest (Nov 25 2026): a fight replay used to pop up in front of the Sign & burn sheet (or any other open sheet) a few seconds after the

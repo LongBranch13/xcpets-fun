@@ -47,6 +47,8 @@ async function newContext(browser, size, o) {
   const S = SIZES[size];
   const cx = await browser.newContext({ viewport: { width: S.width, height: S.height }, deviceScaleFactor: 1, isMobile: !!S.mobile, hasTouch: !!S.mobile });
   await cx.addInitScript(INIT, o);
+  /* PLAYTEST_CPU=4 slows every page's CPU 4x (Chrome's own throttle), to play like a busy CI runner or a cheap phone */
+  if (Number(process.env.PLAYTEST_CPU) > 1) cx.on('page', p => { cx.newCDPSession(p).then(s => s.send('Emulation.setCPUThrottlingRate', { rate: Number(process.env.PLAYTEST_CPU) })).catch(() => {}); });
   const origins = [o.base, o.sync].filter(Boolean).map(u => new URL(u).origin);
   await cx.route('**/*', r => { const u = r.request().url(); if (u.startsWith('data:') || u.startsWith('blob:') || origins.some(x => u.startsWith(x))) return r.continue(); return r.abort(); });
   return cx;
