@@ -1800,13 +1800,20 @@
   /** spinTargetPlans(w, owner, ids, n, nb) -> 1-sat pet:ut plans that spend n saved spins (n = 'all' or a number) on exactly the picked pets, or
    * null (gate off / nothing picked / a picked pet not in the spin list). One burn if the picks fit 34 bytes; otherwise the spins are split over
    * the burns by how many pets each burn holds (every count written out, so each burn is exact). */
+  /* spinSplit(k, sizes, tot): spins per burn for a scattered pick (Nov 27 2026). Each burn rounded its share up (at least 1), so with 1,588 burns the
+   * early ones used up the spins and the last 737 picked pets were left out of every burn (tools/gear-target-fix-test, Evan's wallet). Now: floor
+   * of each share, every burn at least 1 while there are spins for all, the rest by largest remainder, none over UT_MAX_N; the total is k. Planner only. */
+  function spinSplit(k, sizes, tot) { var nB = sizes.length, floor1 = k >= nB ? 1 : 0, c = sizes.map(function (s) { return Math.min(UT_MAX_N, Math.max(floor1, Math.floor(k * s / tot))); }), sum = c.reduce(function (a, b) { return a + b; }, 0);
+    var order = sizes.map(function (s, j) { return j; }).sort(function (a, b) { return (k * sizes[b] / tot - Math.floor(k * sizes[b] / tot)) - (k * sizes[a] / tot - Math.floor(k * sizes[a] / tot)) || a - b; }), i, guard = 0;
+    while (sum > k && guard++ < 1e6) { for (i = nB - 1; i >= 0 && sum > k; i--) { var j = order[i]; if (c[j] > floor1) { c[j]--; sum--; } } if (floor1 && sum > k) floor1 = 0; }
+    while (sum < k && guard++ < 1e6) { var moved = false; for (i = 0; i < nB && sum < k; i++) { var q = order[i]; if (c[q] < UT_MAX_N) { c[q]++; sum++; moved = true; } } if (!moved) break; } return c; }
   function spinTargetPlans(w, owner, ids, n, nb) { var A = w && w.tip; if (A == null || !owner || !ids || !ids.length) return null; nb = nb != null ? nb : A + 1; if (!spinTargetOn(nb)) return null;
     var have = spinsLeft(w, owner, nb), all = n === 'all' || n == null, k = all ? have : Math.min(have, Math.max(0, n | 0)); if (!(k > 0)) return null;
     var code = A % FR_ANCHOR_MOD, aa = (code < 32 ? '0' : '') + code.toString(32).toUpperCase(), ref = spinList(w, owner, A, nb);
     var nTag = all ? 'ALL' : String(Math.min(k, UT_MAX_N)), one = runBodies(ref, ids, MAX_TAG_BYTES - UT_PREFIX.length - nTag.length - 1 - 3); if (!one) return null;
     if (one.length === 1) return [{ tag: UT_PREFIX + nTag + ':' + aa + ':' + one[0].body, amount: COSTS.froll, n: k, all: all, petIds: one[0].ids, anchor: A, label: (all ? 'Use all ' + k : 'Use ' + k) + ' saved spin' + (k === 1 ? '' : 's') + ' on ' + one[0].ids.length + ' picked pet' + (one[0].ids.length === 1 ? '' : 's') }];
-    var bodies = runBodies(ref, ids, MAX_TAG_BYTES - UT_PREFIX.length - 4 - 1 - 3), tot = ids.length, left = k, out = [];
-    bodies.forEach(function (bd, j) { var c = j === bodies.length - 1 ? left : Math.max(1, Math.round(k * bd.ids.length / tot)); c = Math.min(c, left, UT_MAX_N); if (c < 1) return; left -= c;
+    var bodies = runBodies(ref, ids, MAX_TAG_BYTES - UT_PREFIX.length - 4 - 1 - 3), tot = ids.length, out = [], cs = spinSplit(k, bodies.map(function (bd) { return bd.ids.length; }), tot);
+    bodies.forEach(function (bd, j) { var c = cs[j]; if (c < 1) return;
       out.push({ tag: UT_PREFIX + c + ':' + aa + ':' + bd.body, amount: COSTS.froll, n: c, petIds: bd.ids, anchor: A, label: 'Use ' + c + ' saved spin' + (c === 1 ? '' : 's') + ' on ' + bd.ids.length + ' picked pet' + (bd.ids.length === 1 ? '' : 's') }); });
     out.forEach(function (p, j) { if (out.length > 1) p.label += ' (burn ' + (j + 1) + ' of ' + out.length + ')'; }); return out.length ? out : null; }
   /* ONE-TIME RE-WEAR (gear-target-fix-1102, owner Nov 2 2026 [pt2652u]; LIVE from block 974,279, owner + G Money [pt2654u]). REWEAR_GRANTS lists use-all burns whose pieces landed on
