@@ -40,7 +40,7 @@ const INIT = `(() => {
   window.__long = []; window.__rafN = 0; window.__errs = [];
   try { new PerformanceObserver(l => l.getEntries().forEach(e => window.__long.push(Math.round(e.duration)))).observe({ entryTypes: ['longtask'] }); } catch (e) {}
   const raf = window.requestAnimationFrame;
-  window.requestAnimationFrame = function (fn) { window.__rafN++; return raf.apply(this, arguments); };
+  window.__rafM = 0; window.requestAnimationFrame = function (fn) { window.__rafN++; try { if (/v2-motel[.]js/.test(new Error().stack || '')) window.__rafM++; } catch (e) {} return raf.apply(this, arguments); };
   window.addEventListener('error', e => window.__errs.push(String(e.message || e.error || e)));
 })();`;
 function arm(page) {
@@ -388,11 +388,15 @@ async function renderMeasure(page, label) {
     rm = await context(1280, 800, { reduced: true });
     await boot(rm, origin, 'breed.html');
     const reduced = await rm.evaluate(async () => {
-      const a = window.__rafN; await new Promise(r => setTimeout(r, 600)); const n = window.__rafN - a;
-      return { frames: n, reduce: matchMedia('(prefers-reduced-motion: reduce)').matches, place: !!(window.V2Motel && V2Motel.placeOn && V2Motel.placeOn()) };
+      const a = window.__rafN, am = window.__rafM; await new Promise(r => setTimeout(r, 600)); const n = window.__rafN - a;
+      return { frames: n, motel: window.__rafM - am, reduce: matchMedia('(prefers-reduced-motion: reduce)').matches, place: !!(window.V2Motel && V2Motel.placeOn && V2Motel.placeOn()) };
     });
     results.pages.reduced = reduced;
-    ok(reduced.reduce && reduced.frames < 8, 'reduced motion does not keep the motel frame loop (' + reduced.frames + ' frames / 600ms)');
+    /* The motel's own frames are counted by caller (0 allowed: the still scene is drawn directly). The page-wide count used to be the proxy
+     * (< 8), but one-off frames from the (i) badges and lazy art while a slow runner is still painting the list reached 8 on CI with no loop;
+     * any loop at all is ~36 frames in 600 ms, so the page-wide guard is < 20. */
+    ok(reduced.reduce && reduced.motel === 0, 'reduced motion does not keep the motel frame loop (' + reduced.motel + ' motel frames / 600ms)');
+    ok(reduced.frames < 20, 'reduced motion: no frame loop anywhere on the page (' + reduced.frames + ' frames / 600ms)');
     console.log('MEASURE reduced motion', JSON.stringify(reduced));
     basePage = await context(1280, 800, { old: true });
     let baseline;

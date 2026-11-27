@@ -213,7 +213,10 @@
   var FRAME_MS = 50, motelVis = true, motelObs = null;
   function placeOn() { var p = document.getElementById('breedPanel'); return !!(p && !p.hidden && !p.classList.contains('split-off')); }
   function halt() { if (S.raf) { cancelAnimationFrame(S.raf); S.raf = 0; } }
-  function kick() { if (!S.raf && motelVis && !document.hidden && placeOn()) S.raf = requestAnimationFrame(frame); }
+  /* reduced motion: the scene is still and every draw is made directly (early, render), so kick starts no frame (it used to cost a frame and a
+   * second identical draw each time the scene was shown). Turning reduced motion off starts the loop. */
+  function kick() { if (!S.raf && !reduced() && motelVis && !document.hidden && placeOn()) S.raf = requestAnimationFrame(frame); }
+  try { if (RM.addEventListener) RM.addEventListener('change', function () { kick(); }); } catch (e) { }
   function watchVis(c) { if (motelObs || typeof IntersectionObserver === 'undefined') return; try { motelObs = new IntersectionObserver(function (es) { es.forEach(function (e) { motelVis = e.isIntersecting; }); if (motelVis) kick(); else halt(); }); motelObs.observe(c); } catch (e) { motelObs = null; } }
   function frame(n) { if (S.c && S.c !== (motelObs && motelObs._c)) { if (motelObs) { try { motelObs.disconnect(); } catch (e) { } motelObs = null; } watchVis(S.c); if (motelObs) motelObs._c = S.c; }
     if (document.hidden || !motelVis || !placeOn()) { S.raf = 0; return; }
