@@ -1,0 +1,12 @@
+{
+  "_note": "Draft (Nov 24 2026), not posted. Posts only when the owner runs Actions > hatchbot > Run workflow > update: launch-pet-shell. {PLACEHOLDERS} must be filled in first; announce.js refuses to post a file that still has one.",
+  "posts": [
+    {
+      "art": {
+        "kind": "image",
+        "file": "pet-shell.png"
+      },
+      "text": "🥚 PET SHELL: YOUR PET, IN YOUR HAND\n\n21 numbered handhelds, built by hand. Each one is bonded to one of YOUR pets and shows it live: hungry, happy, growing up, buzzing when it needs food.\n\n🐸 Pick your shell: Pepe, Bobo or Dodo (more species later).\n\n🍖 Tap Feed and it shows a QR code. Scan it and sign on your own phone. The Shell never holds a key. Ever.\n\n💰 $249 ({PRICE_BTC} BTC)\n🔨 #1 to #3: auction right here, highest bid by block {AUCTION_BLOCK}\n🔢 #4 to #21: buy 1 XCPETS.SHELL from the dispenser {SHELL_DISPENSER}\n📝 Then send your shipping details: {FORM_LINK}\n📦 Ships around {SHIP_DATE}, US first. Full refund if we don't ship.\n\nThe token is your receipt and your number. A collectible toy, not an investment. Ages 14+.\n\nxcpets.fun"
+    }
+  ]
+}

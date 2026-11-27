@@ -99,7 +99,7 @@ async function tgFile(method, field, file, name, caption) {
 tgFile.n = 0;
 async function post(ev, ctx, w) {
   const text = clean(ev.text);
-  if (ev.art && ctx && !NO_ART && text.length <= 1000 && Date.now() - T_START < ART_BUDGET_MS) {
+  if (ev.art && (ctx || ev.art.kind === 'image') && !NO_ART && text.length <= 1000 && Date.now() - T_START < ART_BUDGET_MS) {
     let a = null; try { a = require('./art.js').event(ctx, w, ev.art); } catch (e) { console.log('art skipped for ' + ev.key + ': ' + (e && e.message)); }
     if (a) { const ok = a.type === 'photo' ? await tgFile('sendPhoto', 'photo', a.file, a.name, text) : await tgFile('sendAnimation', 'animation', a.file, a.name, text); if (ok) return true; }
   }
@@ -265,7 +265,7 @@ async function main() {
     const U = JSON.parse(fs.readFileSync(f, 'utf8')), posts = (U.posts || []).filter(x => x && x.text);
     if (!posts.length) throw new Error('no posts in ' + f);
     if (!DRY && posts.some(x => /\{[A-Z_]+\}/.test(x.text))) throw new Error('unfilled placeholder in ' + f + ' (e.g. {OPEN}): fill it in before posting');
-    const needArt = !NO_ART && posts.some(x => x.art), R = needArt ? replay() : null; let bad = 0;
+    const needArt = !NO_ART && posts.some(x => x.art && x.art.kind !== 'image'), R = needArt ? replay() : null; let bad = 0;
     for (const x of posts) { const ok = await post({ key: 'update', text: x.text, art: x.art || null }, R && R.ctx, R && R.w); if (!ok && !DRY) bad++; await new Promise(r => setTimeout(r, 2500)); }
     process.exit(bad ? 1 : 0); }
   if (opt('--post') != null) { const t = opt('--post').trim(); if (!t) throw new Error('empty update'); const ok = await tg('sendMessage', { text: '📣 XCPETS update\n\n' + t, disable_web_page_preview: true }); process.exit(ok ? 0 : 1); }

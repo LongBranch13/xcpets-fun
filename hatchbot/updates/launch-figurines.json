@@ -1,0 +1,12 @@
+{
+  "_note": "Draft (Nov 24 2026), not posted. Posts only when the owner runs Actions > hatchbot > Run workflow > update: launch-figurines. {PLACEHOLDERS} must be filled in first; announce.js refuses to post a file that still has one.",
+  "posts": [
+    {
+      "art": {
+        "kind": "image",
+        "file": "figurine-wizard.png"
+      },
+      "text": "🗿 YOUR PET, BUT REAL\n\nPick any pet you own, any species, and we turn it into a chunky pixel figurine, printed in full color resin and shipped to your door. Your gear, your colors, your pet number on the base.\n\n📏 Mini 5 cm · Standard 7.5 cm · Big 10 cm, from {FIG_PRICE}\n🛒 Buy 1 XCPETS.FIG from the dispenser {FIG_DISPENSER}\n📝 Then tell us which pet: {FIG_FORM}\n📦 Made to order, about 2 to 3 weeks to your door.\n\nxcpets.fun"
+    }
+  ]
+}

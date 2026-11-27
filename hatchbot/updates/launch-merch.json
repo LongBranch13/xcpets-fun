@@ -1,0 +1,12 @@
+{
+  "_note": "Draft (Nov 24 2026), not posted. Posts only when the owner runs Actions > hatchbot > Run workflow > update: launch-merch. {PLACEHOLDERS} must be filled in first; announce.js refuses to post a file that still has one.",
+  "posts": [
+    {
+      "art": {
+        "kind": "image",
+        "file": "merch.png"
+      },
+      "text": "👕 XCPETS MERCH IS LIVE\n\nThe tee: EVERY pet at a pool party at Gooby's No-Tail Motel on the front 🏩🏊, and our logo hatching on the back.\n🐸 Stickers of every single pet, plain or fully geared. Collect the whole herd.\n\nPrinted when you order: {SHOP_LINK}\n\nEvery order keeps the servers fed. 🍖 xcpets.fun"
+    }
+  ]
+}
