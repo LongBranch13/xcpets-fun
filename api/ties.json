@@ -1,5 +1,5 @@
 {
- "lastBlock": 977813,
+ "lastBlock": 977814,
  "count": 559,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
@@ -5497,7 +5497,7 @@
    "species": "hyb3:dodo:djpepe:viking",
    "speciesLabel": "Dodjking (hybrid)",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 8540,
