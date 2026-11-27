@@ -48,7 +48,10 @@ const w1 = V.replay(rows.concat(fill), H(nb), [], fopts(nb));
 ok(w1.pantry && w1.pantry[o] && w1.pantry[o].ids.length === all.length, 'all ' + all.length + ' are on the list');
 
 /* before the serving: discard one listed living pet on chain (gifts are token sends now, so an owner change is not simulated here; pantryEats checks the owner) */
-const normal = ref.filter(p => !V.isZ(p) && !p.mythicCare && p.stage !== 5 && !p.dead).map(p => p.id);
+/* fixtures age: a pet alive at the tip can starve before the discard lands (#191391 at tip 977,740, Nov 27 2026); pick one whose death clock
+ * passes the next serving too */
+const lastNeed = V.clock(V.dayStart(V.day(nb + 1) + 1) + 1);
+const normal = ref.filter(p => !V.isZ(p) && !p.mythicCare && p.stage !== 5 && !p.dead && (p.deathBlock == null || p.deathBlock > lastNeed)).map(p => p.id);
 const dId = normal[0];
 const later = [];
 if (dId != null && V.hdPlan) { const hp = V.hdPlan(w1, o, [dId], nb + 1); if (hp && hp.plans && hp.plans.length) hp.plans.forEach(q => later.push(row(o, q.tag, q.amount, nb + 1))); }

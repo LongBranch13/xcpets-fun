@@ -152,14 +152,16 @@ function predicateChecks(rows, hashes, tip) {
   const boot = JSON.parse(fs.readFileSync(path.join(ROOT, 'api/boot.json'), 'utf8'));
   ok(boot.rows.length > 1000 && boot.tip > 0, 'live burn list ' + boot.tip + ' has ' + boot.rows.length + ' rows');
   const dex = boot.dex || null;
-  /* XP_LIVE_ONLY picks the part: 1 = all of it (by hand), a = full list + half split, back = three blocks back, tip = tip-only.
-   * Each part is its own suite file (resume-equiv-live / -back / -tip): the whole live half was ~375 s alone and passed 600 s under --jobs 4. */
+  /* XP_LIVE_ONLY picks the part: 1 = all of it (by hand), a = full list, half = the half-way split, back = three blocks back, tip = tip-only.
+   * Each part is its own suite file (resume-equiv-live / -half / -back / -tip): the whole live half was ~375 s alone and passed 600 s under --jobs 4.
+   * Nov 27 2026: 'a' still held the full list and the half split (364 s, 506 s, then killed at 600 s on a busy runner, with the other three parts
+   * replaying beside it), so the half split is its own file. */
   const part = process.env.XP_LIVE_ONLY || '1', want = k => part === '1' || part === k;
   if (want('a')) await samePair('live list', boot.rows, boot.hashes || {}, boot.tip, dex, []);
   /* 0.5 and three-blocks-back: a checkpoint far back and one just behind the tip. 0.9 sits between them and costs a
    * near-full replay of the live list, so it is covered on the snap fixtures instead. */
   for (const sp of splitsOf(boot.rows, boot.tip, [0.5])) {
-    if (!want(/^fraction/.test(sp.name) ? 'a' : 'back')) continue;
+    if (!want(/^fraction/.test(sp.name) ? 'half' : 'back')) continue;
     const baseDex = dex;
     await resumeCase('live ' + sp.name, boot.rows, boot.hashes || {}, boot.tip, dex, sp.baseRows, sp.baseTip, baseDex, []);
   }

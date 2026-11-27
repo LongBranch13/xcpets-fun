@@ -22,9 +22,10 @@ const hashes = Object.assign({}, ctx.XCPETS_BLOCK_HASHES || {}, boot.hashes || {
 const opts = t => ({ tip: t, live: E && E.RealCore, dex: boot.dex }); let txi = rows[rows.length - 1].tx_index + 1;
 const mk = (b, src, amt, tag) => ({ tx_index: txi++, tx_hash: crypto.createHash('sha256').update('dcd-test:' + tag + ':' + b + ':' + txi).digest('hex'), block_index: b, source: src, asset: 'XCPETS', quantity: Math.round(amt * 1e8), tag: hex(tag), status: 'valid' });
 /* eaters: hungry pets the engine can feed (a pet discarded on chain, p.hd === owner, never eats) */
-const G = V.dailyChoresGate(); V._setDailyChoresActivation(nb);
+const G = V.dailyChoresGate(); if (G == null || G > nb) V._setDailyChoresActivation(nb); /* a live gate stays put: moving it to nb drops every real pet:dc burn since go-live, so pets those burns kept fed look alive at the tip and starve at nb (fed 4 of 51, Nov 27 2026) */
 const w = V.replay(rows, hashes, [], opts(tip)), eaters = {};
-w.pets.forEach(p => { if (!p.community && !p.dead && !p.released && p.owner && p.hd !== p.owner && V.frEats(p, nb)) (eaters[p.owner] = eaters[p.owner] || []).push(p); });
+const alive2 = V.clock(nb + 1); /* fixtures age: skip a pet whose death clock runs out before the test burns land */
+w.pets.forEach(p => { if (!p.community && !p.dead && !p.released && p.owner && p.hd !== p.owner && V.frEats(p, nb) && (p.deathBlock == null || p.deathBlock > alive2)) (eaters[p.owner] = eaters[p.owner] || []).push(p); });
 const cand = Object.keys(eaters).map(o => ({ o, n: eaters[o].length })).filter(x => x.n >= 6 && x.n <= 600).sort((a, b) => b.n - a.n);
 ok(cand.length > 0, 'a wallet with 6-600 hungry eaters at tip ' + tip + ' (' + cand.length + ' found)');
 const who = cand[0].o, mine = eaters[who].slice().sort((a, b) => a.id - b.id);
