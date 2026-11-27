@@ -250,10 +250,12 @@ FLOWS.hatch = async (H, T, ctx) => {
     await H.pg.waitForTimeout(5000);
     const s = await H.pg.evaluate((tb) => ({ n: V2UI.mine(V2Mock.world()).filter(p => !p.dead).length, pop: newReveal(tb) }), trayBefore).catch(() => ({ n: 0, pop: null }));
     seen = s.n - before; if (s.pop) pop = s.pop;
+    if (process.env.PLAYTEST_TRACE) console.log('     t+' + Math.round((Date.now() - t0) / 1000) + ' s: ' + (s.n - before) + ' new, ' + JSON.stringify(await H.pg.evaluate(() => window.V2Held && V2Held.why ? V2Held.why() : null).catch(() => null)));
     if (seen >= want) break;
   }
   /* the eggs crack open first (a few seconds of animation), then the box reveal opens */
-  for (let i = 0; i < 12 && seen >= want && !pop; i++) { await H.pg.waitForTimeout(2500); pop = await H.pg.evaluate(newRevealSrc => newReveal(newRevealSrc), trayBefore).catch(() => null); }
+  for (let i = 0; i < 12 && seen >= want && !pop; i++) { await H.pg.waitForTimeout(2500); pop = await H.pg.evaluate(newRevealSrc => newReveal(newRevealSrc), trayBefore).catch(() => null);
+    if (process.env.PLAYTEST_TRACE) console.log('     t+' + Math.round((Date.now() - t0) / 1000) + ' s: ' + JSON.stringify(await H.pg.evaluate(() => window.V2Held && V2Held.why ? V2Held.why() : null).catch(() => null))); }
   const secs = Math.round((Date.now() - t0) / 1000);
   if (seen < want) problem('result-never-shows', 'hatched ' + want + ' eggs; after the block landed the page still showed ' + Math.max(0, seen) + ' of them after ' + secs + ' s on the page (no reload)');
   else ok(want + ' new eggs showed up ' + secs + ' s after the block' + (pop ? ' (' + pop + ')' : ''));

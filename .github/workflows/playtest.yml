@@ -40,7 +40,7 @@ jobs:
           node --max-old-space-size=6000 tools/playtest/rig.js > rig.log 2>&1 &
           for i in $(seq 1 120); do grep -q '^ready' rig.log && break; sleep 5; done; cat rig.log; grep -q '^ready' rig.log
       - name: Play every flow
-        run: CHROME=$(which google-chrome || which chromium) node tools/playtest/run.js --why-freeze --sizes ${{ matrix.size }} --wallet ${{ matrix.wallet }} --shots --out playtest-${{ matrix.size }}-${{ matrix.wallet }}
+        run: PLAYTEST_TRACE=1 CHROME=$(which google-chrome || which chromium) node tools/playtest/run.js --why-freeze --sizes ${{ matrix.size }} --wallet ${{ matrix.wallet }} --shots --out playtest-${{ matrix.size }}-${{ matrix.wallet }}
       - if: always()
         run: tail -50 rig.log || true
       - if: always()
