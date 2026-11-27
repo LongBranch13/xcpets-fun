@@ -7,7 +7,8 @@
  *     2 -> 2.0/s, 4+ -> 0/s (all 429). A 429 pauses the WHOLE client, not one path; in-flight reads to the same URL are coalesced.
  *   - XCP/launchpad apps/api/src/integrations/cooldown.ts: READ_LIMIT = 2, DEFAULT_COOLDOWN_MS = 30 s when no Retry-After.
  * Gate is per origin (api.counterparty.io, api.unspendablelabs.com and api.xcp.fun each get their own budget).
- * makeFetch(rawFetch, opts) -> fetch-compatible function. Non-matching URLs pass straight through (only counted). */
+ * makeFetch(rawFetch, opts) -> fetch-compatible function. Non-matching URLs skip the queue and pacing (only counted) but keep the header
+ * and body time limits (Nov 27 2026). */
 const DEF = { conc: 1, rps: 2, maxRetries: 4, defaultCooldownMs: 2000, maxCooldownMs: 30000, maxRetryAfterMs: 120000, jitter: 0.5, timeoutMs: 60000,
   match: u => /:4000\/|api\.xcp\.fun/.test(u) };
 function retryAfterMs(v, now) { const t = v == null ? '' : String(v).trim(); if (!t) return null;
@@ -48,9 +49,22 @@ function makeFetch(rawFetch, o) {
   function release(H) { H.inFlight--; pump(H); }
   async function clearance(H) { for (;;) { const t = now(), w = Math.max(H.pausedUntil - t, H.nextStart - t); if (w <= 0) break; stats.waitedMs += w; await sleep(w); }
     H.nextStart = now() + Math.ceil(1000 / o.rps); }
+  /* Nov 27 2026: URLs the gate doesn't pace (the server's Start9 proxy over Tor, mempool.space, ...) used to go to rawFetch with no
+   * limit at all. rjs/chain.js stops its own timer at the headers, so a Tor answer whose body stalled held the server's feed job until
+   * systemd killed it at 40 minutes, run after run (Nov 26: 4 good runs all day). They still skip the queue and the pacing, but get the
+   * same safety limits as paced reads: headers within timeoutMs, then the body under readBody's idle limit. The caller's signal still
+   * cancels them (chain.js aborts the losers of its race). */
+  async function guarded(url, init) {
+    init = Object.assign({}, init || {}); const sig = init.signal, ac = new AbortController(); let tm = null;
+    if (sig) { if (sig.aborted) ac.abort(); else if (sig.addEventListener) sig.addEventListener('abort', () => { try { ac.abort(); } catch (e) { } }, { once: true }); }
+    const late = new Promise((_, rej) => { tm = setTimeout(() => { try { ac.abort(); } catch (e) { } rej(Object.assign(new Error('timeout after ' + o.timeoutMs + ' ms'), { name: 'TimeoutError' })); }, o.timeoutMs); });
+    late.catch(() => { });
+    let r; try { r = await Promise.race([rawFetch(url, Object.assign({}, init, { signal: ac.signal })), late]); } finally { clearTimeout(tm); }
+    return readBody(r, ac);
+  }
   async function limited(url, init) {
     const u = typeof url === 'string' ? url : (url && url.url) || String(url);
-    if (!o.match(u)) { stats.passthrough++; return rawFetch(url, init); }
+    if (!o.match(u)) { stats.passthrough++; return guarded(url, init); }
     const H = host(u); init = Object.assign({}, init || {}); delete init.signal; /* the caller's short page timer would fire while we wait our turn */
     for (let attempt = 0; ; attempt++) {
       await acquire(H); let r;
