@@ -1,5 +1,5 @@
 {
- "lastBlock": 977770,
+ "lastBlock": 977773,
  "count": 553,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
@@ -5365,7 +5365,7 @@
    "species": "hyb:kek:nakamoto",
    "speciesLabel": "Kekmoto (hybrid)",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 210434,
@@ -5377,7 +5377,7 @@
    "species": "kek",
    "speciesLabel": "Lord Kek",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 210436,
@@ -5389,7 +5389,7 @@
    "species": "hyb:dodo:wizard",
    "speciesLabel": "Dowiz (hybrid)",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 210437,
@@ -5401,7 +5401,7 @@
    "species": "bobo",
    "speciesLabel": "Bobo",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 147174,
@@ -5425,7 +5425,7 @@
    "species": "hyb:bobo:dodo",
    "speciesLabel": "Bodo (hybrid)",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 210443,
@@ -5437,7 +5437,7 @@
    "species": "mumu",
    "speciesLabel": "Mumu",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 93700,
@@ -5461,7 +5461,7 @@
    "species": "wojak",
    "speciesLabel": "Wojak",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 210444,
@@ -5473,7 +5473,7 @@
    "species": "wojak",
    "speciesLabel": "Wojak",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 210445,
@@ -5485,7 +5485,7 @@
    "species": "hyb:dodo:snibby",
    "speciesLabel": "Dosnib (hybrid)",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 216449,
@@ -5737,7 +5737,7 @@
    "species": "starlordkek",
    "speciesLabel": "Star-Lord Kek",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 265268,
@@ -5749,7 +5749,7 @@
    "species": "starlordkek",
    "speciesLabel": "Star-Lord Kek",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 170217,
@@ -5941,7 +5941,7 @@
    "species": "homer",
    "speciesLabel": "Homer Pepe",
    "rarity": "Legendary",
-   "stage": "Juvenile"
+   "stage": "Adult"
   },
   {
    "id": 66566,
