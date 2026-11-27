@@ -1,6 +1,6 @@
 {
- "lastBlock": 977755,
- "count": 553,
+ "lastBlock": 977811,
+ "count": 559,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -5365,7 +5365,7 @@
    "species": "hyb:kek:nakamoto",
    "speciesLabel": "Kekmoto (hybrid)",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 210434,
@@ -5377,7 +5377,7 @@
    "species": "kek",
    "speciesLabel": "Lord Kek",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 210436,
@@ -5389,7 +5389,7 @@
    "species": "hyb:dodo:wizard",
    "speciesLabel": "Dowiz (hybrid)",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 210437,
@@ -5401,7 +5401,7 @@
    "species": "bobo",
    "speciesLabel": "Bobo",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 147174,
@@ -5425,7 +5425,7 @@
    "species": "hyb:bobo:dodo",
    "speciesLabel": "Bodo (hybrid)",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 210443,
@@ -5437,7 +5437,7 @@
    "species": "mumu",
    "speciesLabel": "Mumu",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 93700,
@@ -5461,7 +5461,7 @@
    "species": "wojak",
    "speciesLabel": "Wojak",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 210444,
@@ -5473,7 +5473,7 @@
    "species": "wojak",
    "speciesLabel": "Wojak",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 210445,
@@ -5485,7 +5485,7 @@
    "species": "hyb:dodo:snibby",
    "speciesLabel": "Dosnib (hybrid)",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 216449,
@@ -5737,7 +5737,7 @@
    "species": "starlordkek",
    "speciesLabel": "Star-Lord Kek",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 265268,
@@ -5749,7 +5749,7 @@
    "species": "starlordkek",
    "speciesLabel": "Star-Lord Kek",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 170217,
@@ -5941,7 +5941,7 @@
    "species": "homer",
    "speciesLabel": "Homer Pepe",
    "rarity": "Legendary",
-   "stage": "Juvenile"
+   "stage": "Adult"
   },
   {
    "id": 66566,
@@ -6637,6 +6637,78 @@
    "species": "kek",
    "speciesLabel": "Lord Kek",
    "rarity": "Rare",
+   "stage": "Juvenile"
+  },
+  {
+   "id": 271638,
+   "asset": "A9671700532738358069",
+   "tiedBlock": 977793,
+   "tiedTx": "d2f15e708020518bd2c46aa76a90c0ca67b6c3ad1e7e0d6b216e88491195f28b",
+   "kind": "deed",
+   "name": "Lishusobit",
+   "species": "kevin",
+   "speciesLabel": "KEVIN",
+   "rarity": "Rare",
+   "stage": "Adult"
+  },
+  {
+   "id": 271639,
+   "asset": "A16294544431122142158",
+   "tiedBlock": 977793,
+   "tiedTx": "7006a4913aecca9d4e53831f12c685cc5e5ba3cb1e566d8a03db3189201a70ce",
+   "kind": "deed",
+   "name": "Revooji",
+   "species": "doge",
+   "speciesLabel": "Doge",
+   "rarity": "Uncommon",
+   "stage": "Adult"
+  },
+  {
+   "id": 275645,
+   "asset": "A2074144390566250825",
+   "tiedBlock": 977793,
+   "tiedTx": "a2ef69a71733a2af1580c71fccb22313b867841d5fa26daa66b7e69463a42da4",
+   "kind": "deed",
+   "name": "Minasheru",
+   "species": "hyb:pepe:snibby",
+   "speciesLabel": "Pebby (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Juvenile"
+  },
+  {
+   "id": 275646,
+   "asset": "A10970257090127986715",
+   "tiedBlock": 977793,
+   "tiedTx": "c44bc3eff7174e1d4997be25e5b9e9be7685bf3611aa663429480189a1e0c107",
+   "kind": "deed",
+   "name": "Chishapop",
+   "species": "mumu",
+   "speciesLabel": "Mumu",
+   "rarity": "Legendary",
+   "stage": "Juvenile"
+  },
+  {
+   "id": 275648,
+   "asset": "A746836773074304349",
+   "tiedBlock": 977796,
+   "tiedTx": "fc08e1c1a379763722298e33933ef7a2602905b3dd3de92b702bffd86ab9b1e9",
+   "kind": "deed",
+   "name": "Donenib",
+   "species": "hyb:snibby:mumu",
+   "speciesLabel": "Snimu (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Juvenile"
+  },
+  {
+   "id": 275649,
+   "asset": "A16375225912186169402",
+   "tiedBlock": 977796,
+   "tiedTx": "cdb5005bc716309525b0402611bf94fa9040a416f6114ae68bd02d6351299e37",
+   "kind": "deed",
+   "name": "Rutachuki",
+   "species": "hyb:kevin:homer",
+   "speciesLabel": "Kemer (hybrid)",
+   "rarity": "Legendary",
    "stage": "Juvenile"
   }
  ]

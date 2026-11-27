@@ -103,7 +103,7 @@
   function hook() { var R = root.V2Render; if (!R || R._sig || OFF) return; R._sig = true; var base = R.petFrames, raw = R.petFramesRaw, cache = typeof WeakMap !== "undefined" ? new WeakMap() : new Map();
     R.petFrames = function (p, w, extra) { var fr = base(p, w, extra), k = kind(p); if (!k) return fr; var key = p.id + '|' + k + '|' + (fr && fr.length) + '|' + (p.art && p.art.bgColor);
       var hit = cache.get(fr); if (hit) return hit;
-      try { var kf = function (bg) { return raw(Object.assign({}, p, { mutation: null, shows: null, art: Object.assign({}, p.art, { background: 'solid', bgColor: bg, pattern: 'none' }) }), w, Object.assign({}, extra || {}, { noHunger: true })); };
+      try { var kfm = {}, kf = function (bg) { return kfm[bg] || (kfm[bg] = raw(Object.assign({}, p, { mutation: null, shows: null, art: Object.assign({}, p.art, { background: 'solid', bgColor: bg, pattern: 'none' }) }), w, Object.assign({}, extra || {}, { noHunger: true }))); }; /* each backdrop drawn once: apply and mythFx ask for the same two (a Mythic hybrid's drawing is ~0.4 s each) */
         var out = apply(fr, kf('#ff00fe'), kf('#00ff01'), k); if (R.mythFx) { var o2 = R.mythFx(out, function (bg) { var z = kf(bg); return out.map(function (_, i) { return z[i % z.length]; }); }); out = o2 || out; }
         cache.set(fr, out); return out; } catch (e) { return fr; } }; }
   root.MythSig = { kind: kind, apply: apply, masks: masks, FX: FX, NF: NF, hook: hook };
