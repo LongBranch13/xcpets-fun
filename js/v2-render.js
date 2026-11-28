@@ -166,7 +166,7 @@
     c.getContext('2d').putImageData(xgData(rs), 0, 0);
     if (!c._xg) { c._xg = 1; c.classList.add('xg-giant'); c.style.animationDelay = (-Math.random() * 7).toFixed(2) + 's'; /* giants never stomp in step */
       if (!w0 && typeof requestAnimationFrame !== 'undefined') requestAnimationFrame(function () { var w1 = c.offsetWidth; if (c._xg && w1 && w1 < XG_MIN) { c._xgSmall = 1; giantOff(c); paint(c, img); } }); }
-    if (c._mfx) mythDetach(c); if (window.V2Looks && (c._lkx || V2Looks.info(img))) V2Looks.attach(c, img);
+    if (c._mfx) mythDetach(c); if (window.V2Looks && (c._lkx || V2Looks.info(img))) V2Looks.attach(c, img); if (window.V2Weird && (img.wl || c._wlx)) V2Weird.attach(c, img);
     return true; }
   /* giant-look-1128 pet page: the Giant on a strip of grass next to two normal pets (the owner's own when it has some) and a tree,
    * all at the same pixel size, with a height ruler, so 'twice as tall' is plain to see. Display only; nothing here touches the rules. */
@@ -200,13 +200,13 @@
       if(!c._rareStyle){var cs=window.getComputedStyle?getComputedStyle(c):null;c._rareStyle={width:c.style.width,height:c.style.height,maxWidth:c.style.maxWidth};c._rareBasePx=(cs&&parseFloat(cs.width))||c.clientWidth||32;}
       c.width=c.height=64;c.style.width='min(100%, '+Math.round(c._rareBasePx*2)+'px)';c.style.height='auto';c.style.maxWidth='100%';
       c.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(rs.data),64,64),0,0);
-      if(c._mfx)mythDetach(c);if(window.V2Looks&&(c._lkx||V2Looks.info(img)))V2Looks.attach(c,img);return;
+      if(c._mfx)mythDetach(c);if(window.V2Looks&&(c._lkx||V2Looks.info(img)))V2Looks.attach(c,img);if(window.V2Weird&&(img.wl||c._wlx))V2Weird.attach(c,img); /* weird-looks-1128 */return;
     }
     giantOff(c);
     if(c._rareStyle){c.style.width=c._rareStyle.width;c.style.height=c._rareStyle.height;c.style.maxWidth=c._rareStyle.maxWidth;c._rareStyle=null;c.width=c.height=32;}
     /* goobys-grid-1107: a card canvas that was a 64px rare scene, or that still holds a previous frame, must be cleared before the 32px sprite is drawn or the old pixels smear across the card */
     if (c.width !== 32 || c.height !== 32) { c.width = c.height = 32; }
-    var pg = c.getContext('2d'); pg.setTransform(1, 0, 0, 1, 0, 0); pg.clearRect(0, 0, c.width, c.height); pg.putImageData(imgOf(img), 0, 0); if (MYTH_MODE || c._mfx) mythAttach(c, img); if (window.V2Looks && (c._lkx || V2Looks.info(img))) V2Looks.attach(c, img); } /* wiz-black-fix: never throw on a bad frame */
+    var pg = c.getContext('2d'); pg.setTransform(1, 0, 0, 1, 0, 0); pg.clearRect(0, 0, c.width, c.height); pg.putImageData(imgOf(img), 0, 0); if (MYTH_MODE || c._mfx) mythAttach(c, img); if (window.V2Looks && (c._lkx || V2Looks.info(img))) V2Looks.attach(c, img); if (window.V2Weird && (img.wl || c._wlx)) V2Weird.attach(c, img); /* weird-looks-1128 */ } /* wiz-black-fix: never throw on a bad frame */
   var animated = new Map(), seen = typeof IntersectionObserver !== 'undefined' ? new IntersectionObserver(function (es) { es.forEach(function (e) { var a = animated.get(e.target); if (!a) return; var was = a.vis; a.vis = e.isIntersecting; if (a.vis && !was) ensureOutline(e.target); }); }) : null;
   /* shared clock (Nov 26 2026, smooth): the 300 ms sprite step runs inside requestAnimationFrame, so every pet flips in the same frame the browser
    * paints anyway (and the same frame the Mythic outlines draw in), instead of a separate timer that forced its own extra paint between frames. */
@@ -490,6 +490,30 @@
   function inFrame(id, fa) { var d = BonusGear.DEFS[id], m = d && d.map; if (!m || !m.length || !fa) return fa; var w = m[0].length;
     if (d.at === 'handR' || d.at === 'tallR') return fa.maxX > 32 - w ? Object.assign({}, fa, { maxX: 32 - w }) : fa;
     if (d.at === 'handL') return fa.minX < w - 1 ? Object.assign({}, fa, { minX: w - 1 }) : fa; return fa; }
+  /* neck-fit (Jake Nov 28 2026: "scarf doesnt really fit", display only): a front neck piece (scarf, bandana, amulet) was one fixed picture centred on
+   * the middle of the canvas at a row from a coarse table, so on a narrow or off-centre body it hung past both sides, below the body or in the air (Dodo).
+   * It now sits on the body itself: centred on the body at its row, at most as wide as the body there (1 px in from each edge, shrunk with the same
+   * pixel scaler the hats use), and lifted so it never hangs below the body's lowest row. Pieces that already fit draw exactly as before. */
+  var NECK_FIT = {};
+  function isNeckFront(id) { var d = BonusGear.DEFS[id]; return !!(d && d.at === 'neck' && !d.behind && d.map); }
+  /* a neck piece stays on the body: any pixel it painted off the body's silhouette is put back (a chain that would hang in the air reads as going behind the neck) */
+  function onBodyOnly(img, snap, a) { var D = img.data; for (var q = 0; q < 1024; q++) { var i = q * 4; if (D[i] === snap[i] && D[i + 1] === snap[i + 1] && D[i + 2] === snap[i + 2]) continue; if (!a.isSil(q & 31, q >> 5)) { D[i] = snap[i]; D[i + 1] = snap[i + 1]; D[i + 2] = snap[i + 2]; D[i + 3] = snap[i + 3]; } } }
+  /* a front neck piece wider than the body is redrawn as a kerchief of that width in its own two main colours (cloth + pattern): a full band, a dotted
+   * band, then a point. Shrinking the picture squashed the lettering ("WOW" read as "LIOW" on Wojak); a kerchief keeps the piece's look at any width. */
+  function kerchief(m, tw) { var n = {}; m.forEach(function (row) { for (var i = 0; i < row.length; i++) { var c = row.charAt(i); if (c !== '.') n[c] = (n[c] || 0) + 1; } });
+    var cs = Object.keys(n).sort(function (a2, b2) { return n[b2] - n[a2]; }), Q = cs[0] || 'R', H = cs[1] || Q, out = [], y, x, row, rep = function (c, k) { return new Array(k + 1).join(c); };
+    out.push(rep(Q, tw)); row = ''; for (x = 0; x < tw; x++) row += x % 3 === 1 ? H : Q; out.push(row);
+    for (y = 1; tw - 2 * y >= 1; y++) { var k = tw - 2 * y; out.push(rep('.', y) + (k >= 5 && y === 1 ? Q + rep(H, 1) + rep(Q, k - 4) + H + Q : rep(Q, k)) + rep('.', y)); if (out.length >= 6) break; }
+    return out; }
+  function neckFit(id, a) { var d = BonusGear.DEFS[id], m = d && d.map; if (!m || !m.length || d.at !== 'neck' || d.behind || !a || !a.isSil || !a.gear || a.gear.scarf == null) return null;
+    var y = a.row(a.gear.scarf), x, l = -1, r = 99, w = m[0].length, h = m.length; /* the body's width on the piece's top row (its longest run of body: Dodo's beak is not his neck) */
+    for (var yy = y; yy < y + 1; yy++) { var l1 = -1, r1 = -2, s0 = -1; for (x = 0; x <= 32; x++) { var on = x < 32 && a.isSil(x, yy); if (on && s0 < 0) s0 = x; if (!on && s0 >= 0) { if (x - 1 - s0 > r1 - l1) { l1 = s0; r1 = x - 1; } s0 = -1; } } /* the longest run of body on the row */ if (l1 < 0) continue; l = Math.max(l, l1); r = Math.min(r, r1); }
+    if (l < 0 || r < l) return null; var span = r - l + 1, tw = Math.max(7, span - 2), map = m, band = m[0].replace(/\./g, '').length >= 0.8 * w;
+    if (w > tw) map = band ? kerchief(m, tw) : scaleMap(m, tw / w); var w2 = map[0].length, h2 = map.length, cx = (l + r + 1) / 2, x0 = Math.round(cx - w2 / 2), dx = x0 - (16 - Math.ceil(w2 / 2)), bottom = a.maxY != null ? a.maxY : 28, y2 = Math.min(y, bottom - h2 + 1);
+    if (map === m && dx === 0 && y2 === y) return null;
+    var key = id + '~neck' + w2; if (!NECK_FIT[key]) { NECK_FIT[key] = 1; BonusGear.DEFS[key] = Object.assign({}, d, { map: map }); }
+    var tmp = key + (dx ? 'x' + dx : ''); if (dx && !BonusGear.DEFS[tmp]) BonusGear.DEFS[tmp] = Object.assign({}, BonusGear.DEFS[key], { dx: (d.dx || 0) + dx });
+    var row0 = a.row; return { id: dx ? tmp : key, a: Object.assign({}, a, { row: function (q) { return q === a.gear.scarf ? y2 : row0(q); } }) }; }
   function isV2Face(id) { var d = BonusGear.DEFS[id]; return !!(d && /^v2(nose|mouth|septum|stud|cig)$/.test(d.at)); }
   /** eye-gear fit (2026-10-14, v2 only): draw glasses / mask / eye bags around the detected eyes (BonusGear star-eye pixels) so they track every
    * species, stage and pose. Lenses cover the eye box, frame rims it, bridge joins the lenses, arms run to the head edge. Eyeless poses fall back to the map. */
@@ -1196,7 +1220,7 @@
           rigidDraw(id, function () { if (id === 'dj-headphones' && drawStudioPhones(img, a)) return; if (id === 'dj-flat-cap') { if (!BonusGear.DEFS['dj-flat-cap~v2']) BonusGear.DEFS['dj-flat-cap~v2'] = Object.assign({}, BonusGear.DEFS['dj-flat-cap'], { dy: 2, map: FLAT_CAP }); id = 'dj-flat-cap~v2'; d = BonusGear.DEFS[id]; }
           if (F && it.slot === 'body' && d && d.map && d.at === 'chest' && !d.fitSil) F.outfit(img, a, d.map, BonusGear.COLORS); else if (isV2Face(id)) drawFace(id, img, faceSpots(bare, a, art.species), a); else if (d && d.at === 'mouth' && d.map && d.slot !== 'face') drawMouthHeld(d, img, faceSpots(bare, a, art.species), a); else if (d && d.v2snug) drawSnugBeanie(img, a); else if (d && d.kind === 'band' && d.at === 'head' && d.map && (BROW[a.spId] ? drawBrowBand(img, a, d, BROW[a.spId]) : bandLikeRed(img, key, stage, f, bare, d))) { /* brow, or the red headband footprint */ } else if (d && d.v2eye && drawEyeGear(img, a, d, d.v2eye.s === 'ninja' ? faceSpots(bare, a, art.species) : null) !== false) { /* traced */ } else { var fid = facedId(id, art), fa, placed = a.spId === 'peepo' ? placePeepoHead(fid, a) : null;
             if (!placed && BonusGear.DEFS[fid] && BonusGear.DEFS[fid].at === 'head' && (a.spId === 'sarutobi' || a.spId === 'wojak' || a.spId === 'mumu')) { var hd = BonusGear.DEFS[fid], fa0 = fitAnchors(fid, a), hh = hd.map ? hd.map.length : 0, htop = fa0.minY - hh + 1 + (hd.dy || 0); /* gear-sprites 2026-11-22: shrink a hat only when it would leave the canvas, and only as much as needed (a fixed 58%/85% shrink turned hats into smudges and broke lettering) */ if (hh && htop < 0) { var tid = placeScaled(fid, Math.max(0.6, (hh + htop) / hh)); if (tid) fid = tid; } }
-            fa = placed ? placed.a : fitAnchors(fid, a); if (placed) fid = placed.id; if (isBoard(fid)) fa = boardOut(fid, fa); else fa = inFrame(fid, fa); BonusGear.apply(fid, img, fa, f); } if (d && d.v2cig && ov.indexOf('v2-wojak-cig') < 0) { restoreEyes(); drawFace(d.v2cig, img, faceSpots(bare, a, art.species), a); } }); if (feetSnap) { var fL = grab(feetSnap, img.data); (feetKeep[id] = feetKeep[id] || [])[f] = { L: fL, n: fL.length / 5, bare: bd, post: new Uint8ClampedArray(img.data), img: img }; } } catch (e) {} }); restoreEyes(); injureAfter(img, a); });
+            fa = placed ? placed.a : fitAnchors(fid, a); if (placed) fid = placed.id; if (isBoard(fid)) fa = boardOut(fid, fa); else fa = inFrame(fid, fa); var nk = neckFit(fid, fa), nkSnap = null; if (nk) { fid = nk.id; fa = nk.a; } if (nk || isNeckFront(fid)) nkSnap = new Uint8ClampedArray(img.data); BonusGear.apply(fid, img, fa, f); if (nkSnap) onBodyOnly(img, nkSnap, fa); } if (d && d.v2cig && ov.indexOf('v2-wojak-cig') < 0) { restoreEyes(); drawFace(d.v2cig, img, faceSpots(bare, a, art.species), a); } }); if (feetSnap) { var fL = grab(feetSnap, img.data); (feetKeep[id] = feetKeep[id] || [])[f] = { L: fL, n: fL.length / 5, bare: bd, post: new Uint8ClampedArray(img.data), img: img }; } } catch (e) {} }); restoreEyes(); injureAfter(img, a); });
       plantFeet(feetKeep); }
     return fr;
   }
@@ -1622,6 +1646,7 @@
     var lk = looksOf(p, w, extra); /* looks-draw REAL (display only): realistic look overlays on top of the pixel sprite, see js/v2-looks.js */
     if (lk.length) try { var lkKey = function (bg) { var kf = keyed0(bg); return fr.map(function (_, i) { return kf[i % kf.length]; }); };
       var A0 = lkKey('#ff00fe'), B0 = lkKey('#00ff01');if(p.art.rareHatch){A0=rareHatchFrames(A0,Object.assign({},p,{art:Object.assign({},p.art,{bgColor:'#ff00fe'})}),w,extra);B0=rareHatchFrames(B0,Object.assign({},p,{art:Object.assign({},p.art,{bgColor:'#00ff01'})}),w,extra);} window.V2Looks.attachInfo(fr, A0, B0, lk, p.id); } catch (e) { if (window.console) console.warn('looks failed #' + (p && p.id), e); }
+    if (window.V2Weird) try { V2Weird.tag(fr, p, w); } catch (e) {} /* weird-looks-1128: card overlays for weird hatches, mutations and throwbacks (js/weird-looks.js) */
     return fr; }
   function looksOf(p, w, extra) { if (extra && extra.looks && window.V2Looks) return extra.looks; /* look picker previews: draw exactly these looks */
     if (!p || p.released || !w || (extra && extra.noLooks) || !window.V2Looks || !V.shownLooks || !(p.flameLooks || p.questLooks || p.earn || w.lookCopies)) return [];
@@ -1712,7 +1737,12 @@
       }
       if (!p.stage || ['god','djpepe','wizard','kek','wrong-egg'].indexOf(kind)>=0) return f;
       if (kind==='inverted') { body.forEach(function(q){var i=q*4;data[i]=255-data[i];data[i+1]=255-data[i+1];data[i+2]=255-data[i+2];});return {width:32,height:32,data:data}; }
-      if (kind==='ghost') { body.forEach(function(q){data[q*4+3]=Math.round(data[q*4+3]*.38);});return {width:32,height:32,data:data}; }
+      if (kind==='ghost') { /* weird-looks-1128: see-through and pale blue (blended into the backdrop, not just faded), the feet fade into a wispy tail, a faint afterimage trails behind */
+        var gbg=[f.data[0],f.data[1],f.data[2]],gin={},gmk={},gy1=-1;mask.forEach(function(q){gmk[q]=1;});body.forEach(function(q){gin[q]=1;gy1=Math.max(gy1,Math.floor(q/32));});
+        body.forEach(function(q){var i=q*4,yy=Math.floor(q/32),xx=q%32,l=(f.data[i]*.3+f.data[i+1]*.59+f.data[i+2]*.11),tc=[l*.55+95,l*.62+120,l*.5+150],k=.52;
+          var up=gy1-yy;if(up<5){k*=up/5;if((xx+yy)%2&&up<3)k=0;}for(var c3=0;c3<3;c3++)data[i+c3]=Math.round(gbg[c3]+(tc[c3]-gbg[c3])*k);});
+        body.forEach(function(q){var xx=q%32,yy=Math.floor(q/32),t=q-2;if(xx<2||gin[t]||gin[t+1]||gmk[t]||gy1-yy<4)return;var i=t*4,l=(f.data[q*4]*.3+f.data[q*4+1]*.59+f.data[q*4+2]*.11);for(var c3=0;c3<3;c3++)data[i+c3]=Math.round(data[i+c3]+([l*.55+95,l*.62+120,l*.5+150][c3]-data[i+c3])*.16);});
+        return {width:32,height:32,data:data}; }
       var x0=32,y0=32,x1=-1,y1=-1;mask.forEach(function(q){x0=Math.min(x0,q%32);x1=Math.max(x1,q%32);y0=Math.min(y0,Math.floor(q/32));y1=Math.max(y1,Math.floor(q/32));});
       if(x1<0)return f;
       var bg = [f.data[0],f.data[1],f.data[2],255];
@@ -1722,19 +1752,24 @@
       if(size===32)out.set(data);else for(y=0;y<64;y++)for(x=0;x<64;x++){q=(y*64+x)*4;for(var k=0;k<4;k++)out[q+k]=bg[k];}
       var cx=(x0+x1+1)/2,baseline=y1+1,scale=kind==='tiny'?.5:kind==='giant'?2:1;
       function put(px,py,rgba){if(px<0||py<0||px>=size||py>=size)return;out.set(rgba,(py*size+px)*4);}
-      function stamp(points,sc,dx,source,headOnly){points.forEach(function(q){var sx=q%32,sy=Math.floor(q/32),flip=kind==='backwards',tx=flip?x0+x1-sx:sx;
-        var xx=Math.floor((tx-cx)*sc+size/2+dx),yy=Math.floor((sy-baseline)*sc+(size===64?62:baseline));
-        var pixel=Array.prototype.slice.call(source,q*4,q*4+4),n=sc===2?2:1;for(var oy=0;oy<n;oy++)for(var ox=0;ox<n;ox++)put(xx+ox,yy+oy,pixel);
+      var bx0=size,by0=size,bx1=-1,by1=-1; /* weird-looks-1128: where the stamped pet sits (frame.wlBox) */
+      /* weird-looks-1128: any scale (Two-headed is stamped bigger now); a source pixel fills [floor(a*sc), floor((a+1)*sc)), at least 1 px: same pixels as before for 0.5x and 2x */
+      function stamp(points,sc,dx,source,headOnly){var by=size===64?62:baseline;points.forEach(function(q){var sx=q%32,sy=Math.floor(q/32),flip=kind==='backwards',tx=flip?x0+x1-sx:sx;
+        var ax=(tx-cx)*sc+size/2+dx,ay=(sy-baseline)*sc+by,xx=Math.floor(ax),yy=Math.floor(ay),nx=Math.max(1,Math.floor(ax+sc)-xx),ny=Math.max(1,Math.floor(ay+sc)-yy);
+        var pixel=Array.prototype.slice.call(source,q*4,q*4+4);for(var oy=0;oy<ny;oy++)for(var ox=0;ox<nx;ox++)put(xx+ox,yy+oy,pixel);
+        bx0=Math.min(bx0,xx);by0=Math.min(by0,yy);bx1=Math.max(bx1,xx+nx-1);by1=Math.max(by1,yy+ny-1);
       });}
       if(kind==='two-headed'){
         var split=Math.max(y0+1,y1-4),head=mask.filter(function(q){return Math.floor(q/32)<split;}),torso=mask.filter(function(q){return Math.floor(q/32)>=split;});
-        var headOffset=Math.ceil((x1-x0+1)/2);stamp(torso,1,0,f.data);stamp(head,1,-headOffset,f.data); // primary = LEFT, receives the one headgear slot
-        var secondary=nakedBody.filter(function(q){return Math.floor(q/32)<split;});stamp(secondary,1,headOffset,nakedReal[fi%nakedReal.length].data);
+        var headOffset=Math.ceil((x1-x0+1)*.36),span=(x1-x0+1)+2*headOffset,ths=Math.min(2,Math.floor(58/span*8)/8,Math.floor(56/(y1-y0+1)*8)/8); /* leaves 3 px around it for the Mythic aura */ /* weird-looks-1128: heads closer together and the whole pet stamped big enough to fill its card (was 1x in the 64 px scene, so it showed as two tiny twins) */
+        stamp(torso,ths,0,f.data);stamp(head,ths,-headOffset*ths,f.data); // primary = LEFT, receives the one headgear slot
+        var secondary=nakedBody.filter(function(q){return Math.floor(q/32)<split;});stamp(secondary,ths,headOffset*ths,nakedReal[fi%nakedReal.length].data);
       } else stamp(mask,scale,0,f.data);
-      if(size===32)return {width:32,height:32,data:out};
+      var wlBox=bx1<0?null:[bx0/size,by0/size,(bx1+1)/size,(by1+1)/size];
+      if(size===32)return {width:32,height:32,data:out,wlBox:wlBox};
       // Explicit expanded scene; legacy callers get a safe bounded thumbnail.
       var thumb=new Uint8ClampedArray(4096);for(y=0;y<32;y++)for(x=0;x<32;x++)thumb.set(out.slice((y*2*64+x*2)*4,(y*2*64+x*2)*4+4),(y*32+x)*4);
-      return {width:32,height:32,data:thumb,rareScene:{width:64,height:64,data:out,worldPixelScale:1,primaryHead:'left',kind:kind}};
+      return {width:32,height:32,data:thumb,wlBox:wlBox,rareScene:{width:64,height:64,data:out,worldPixelScale:1,primaryHead:'left',kind:kind}};
     });
   }
   // ---------------------------------------------------------------- standalone gear icons (the piece alone, not on a pet)

@@ -23,7 +23,8 @@ for(const [kind,seed]of Object.entries(vectors)){
  manifest.outcomes[kind]={seed,art:{species:art.species,tier:art.tierIndex,rareHatch:art.rareHatch},stages:out};
 }
 // Pixel-level contracts, not merely nonempty frame buffers.
-const ghost=manifest.outcomes.ghost.stages[3].data;ok(()=>assert(ghost.some((v,i)=>i%4===3&&v===97)));ok(()=>assert(ghost.some((v,i)=>i%4===3&&v===255)));
+/* weird-looks-1128: a ghost is pale and see-through by blending into its own backdrop (no alpha hole that showed the card behind it) */
+const gh=manifest.outcomes.ghost.stages[3],ghost=gh.data;ok(()=>assert(ghost.every((v,i)=>i%4!==3||v===255)));ok(()=>{let d=0;for(let i=0;i<4096;i+=4)if(ghost[i]!==gh.control[i]||ghost[i+1]!==gh.control[i+1])d++;assert(d>40,'ghost barely changed: '+d);});
 const inv=manifest.outcomes.inverted.stages[3],ic=inv.control;let neg=0;
 for(let i=0;i<4096;i+=4)if(inv.data[i]===255-ic[i]&&inv.data[i+1]===255-ic[i+1]&&inv.data[i+2]===255-ic[i+2]&&inv.data[i+3]===ic[i+3])neg++;
 ok(()=>assert(neg>20));
