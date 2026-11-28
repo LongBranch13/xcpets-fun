@@ -48,8 +48,11 @@ ok(a0.lastBreed === nb, 'the breed landed (#' + PA.id + ' lastBreed ' + a0.lastB
 const wOff = V.replay(rows.concat([brd, row(o, 'pet:dip:' + PA.id, 345, b2)]), H(b2), [], Object.assign(opts(b2), { _forkUse: tip }));
 ok(last(wOff).kind === 'rejected' && /unknown pet: tag/.test(last(wOff).msg) && wOff.byId[PA.id].dipFor == null, 'gate off: pet:dip is an unknown tag (' + last(wOff).msg + ')');
 
-/* 2. gate on */
-V._setDipActivation(nb);
+/* 2. gate on. Once the real gate is mined (feed tip past it), keep it: the checkpoint above replayed the chain's real dips
+ * (first ones at 977,465), and moving the gate up to nb would turn those into unknown tags in a full replay only, so forked and
+ * full worlds would follow two different rule sets (red from block 977,843, where a real dip changed a later breed). */
+const ON = gOff != null && gOff <= tip ? gOff : nb;
+V._setDipActivation(ON);
 const left0 = V.dipLeft(wB.byId[PA.id], b2);
 const wOn = V.replay(rows.concat([brd, row(o, 'pet:dip:' + PA.id, 345, b2)]), H(b2), [], Object.assign(opts(b2), { _forkUse: tip })), a1 = wOn.byId[PA.id];
 ok(last(wOn).kind === 'dip' && a1.dipFor === nb && a1.dipCut === Math.floor(left0 / 2), 'dip lands: ' + last(wOn).msg);
@@ -75,7 +78,7 @@ ok(wR.byId[PA.id].lastBreed === b3 && last(wR).kind === 'dip', 'both dipped, bre
 const info = V.dipInfo(wB, wB.byId[PA.id], b2);
 ok(info && info.on && info.cost > 0 && info.after === left0 - Math.floor(left0 / 2) && info.why === null && info.tag === 'pet:dip:' + PA.id, 'dipInfo: cost ' + (info && info.cost) + ', ' + (info && info.left) + ' -> ' + (info && info.after));
 /* the shortcut must not change the answer: the gate-on dip scenario, forked vs a full replay */
-{ V._setDipActivation(nb); const ex = rows.concat([brd, row(o, 'pet:dip:' + PA.id, 345, b2)]);
+{ V._setDipActivation(ON); const ex = rows.concat([brd, row(o, 'pet:dip:' + PA.id, 345, b2)]);
   const f = V.replay(ex, H(b2), [], Object.assign(opts(b2), { _forkUse: tip })), full = V.replay(ex, H(b2), [], opts(b2));
   ok(sig(f) === sig(full) && JSON.stringify(f.byId[PA.id]) === JSON.stringify(full.byId[PA.id]), 'forked replay = full replay (pets and the dipped pet)'); }
 V._setDipActivation(gOff);
