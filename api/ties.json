@@ -1,6 +1,6 @@
 {
- "lastBlock": 977906,
- "count": 561,
+ "lastBlock": 977942,
+ "count": 566,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -5929,7 +5929,7 @@
    "species": "hyb:nakamoto:kek",
    "speciesLabel": "Nakek (hybrid)",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 223100,
@@ -6553,7 +6553,7 @@
    "species": "chud",
    "speciesLabel": "Chud",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 269625,
@@ -6565,7 +6565,7 @@
    "species": "wojak",
    "speciesLabel": "Wojak",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 269626,
@@ -6577,7 +6577,7 @@
    "species": "hyb:chud:dodo",
    "speciesLabel": "Chudo (hybrid)",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 269627,
@@ -6589,7 +6589,7 @@
    "species": "hyb:dodo:snibby",
    "speciesLabel": "Dosnib (hybrid)",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 269628,
@@ -6601,7 +6601,7 @@
    "species": "hyb:dodo:snibby",
    "speciesLabel": "Dosnib (hybrid)",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 269629,
@@ -6613,7 +6613,7 @@
    "species": "sarutobi",
    "speciesLabel": "Sarutobi",
    "rarity": "Rare",
-   "stage": "Juvenile"
+   "stage": "Adult"
   },
   {
    "id": 269630,
@@ -6625,7 +6625,7 @@
    "species": "hyb:kevin:doge",
    "speciesLabel": "Kege (hybrid)",
    "rarity": "Legendary",
-   "stage": "Juvenile"
+   "stage": "Adult"
   },
   {
    "id": 271637,
@@ -6637,7 +6637,7 @@
    "species": "kek",
    "speciesLabel": "Lord Kek",
    "rarity": "Rare",
-   "stage": "Juvenile"
+   "stage": "Adult"
   },
   {
    "id": 271638,
@@ -6649,7 +6649,7 @@
    "species": "kevin",
    "speciesLabel": "KEVIN",
    "rarity": "Rare",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 271639,
@@ -6661,7 +6661,7 @@
    "species": "doge",
    "speciesLabel": "Doge",
    "rarity": "Uncommon",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 275645,
@@ -6673,7 +6673,7 @@
    "species": "hyb:pepe:snibby",
    "speciesLabel": "Pebby (hybrid)",
    "rarity": "Legendary",
-   "stage": "Juvenile"
+   "stage": "Adult"
   },
   {
    "id": 275646,
@@ -6685,7 +6685,7 @@
    "species": "mumu",
    "speciesLabel": "Mumu",
    "rarity": "Legendary",
-   "stage": "Juvenile"
+   "stage": "Adult"
   },
   {
    "id": 275648,
@@ -6697,7 +6697,7 @@
    "species": "hyb:snibby:mumu",
    "speciesLabel": "Snimu (hybrid)",
    "rarity": "Legendary",
-   "stage": "Juvenile"
+   "stage": "Adult"
   },
   {
    "id": 275649,
@@ -6709,7 +6709,7 @@
    "species": "hyb:kevin:homer",
    "speciesLabel": "Kemer (hybrid)",
    "rarity": "Legendary",
-   "stage": "Juvenile"
+   "stage": "Adult"
   },
   {
    "id": 218453,
@@ -6734,6 +6734,66 @@
    "speciesLabel": "Nakamoto",
    "rarity": "Legendary",
    "stage": "Hatchling"
+  },
+  {
+   "id": 280657,
+   "asset": "A5218017458063291998",
+   "tiedBlock": 977930,
+   "tiedTx": "89f7f6e0c574fa368a7bb86cad114dd9dfb140616552e651aaf1ffe5f6097cf6",
+   "kind": "deed",
+   "name": "Papen",
+   "species": "hyb:dodo:pepe",
+   "speciesLabel": "Dopep (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Juvenile"
+  },
+  {
+   "id": 280658,
+   "asset": "A15657818522676828039",
+   "tiedBlock": 977930,
+   "tiedTx": "c60d99d8f4ac0c3e304c1c011716b2c868660f8ac02b9b4dbb7bb9b9d70f268b",
+   "kind": "deed",
+   "name": "Watooshepop",
+   "species": "hyb:dodo:pepe",
+   "speciesLabel": "Dopep (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Juvenile"
+  },
+  {
+   "id": 280659,
+   "asset": "A17386695949675361304",
+   "tiedBlock": 977930,
+   "tiedTx": "1175431164cd5f347563bd929da14da0195d9466197419d6a0e0be48659a8f1c",
+   "kind": "deed",
+   "name": "Lapob",
+   "species": "hyb:snibby:dodo",
+   "speciesLabel": "Snido (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Juvenile"
+  },
+  {
+   "id": 280660,
+   "asset": "A14619005092208082372",
+   "tiedBlock": 977930,
+   "tiedTx": "a2637b710cea8603f2d3a04779925c165789de277c5e675f824f0b0b0af060fc",
+   "kind": "deed",
+   "name": "Suyopip",
+   "species": "hyb:snibby:dodo",
+   "speciesLabel": "Snido (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Juvenile"
+  },
+  {
+   "id": 280661,
+   "asset": "A12412888361620599227",
+   "tiedBlock": 977930,
+   "tiedTx": "f8af8a9c1a95fa746f50dfc5d4e158facbe22ab6298f3248fc3dba99ef3cbb35",
+   "kind": "deed",
+   "name": "Yunabop",
+   "species": "hyb3:chad:dodo:snibby",
+   "speciesLabel": "Chadoby (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Juvenile"
   }
  ]
 }
