@@ -182,6 +182,12 @@ function collect(V, w, tip, from) {
       add(k, x.block, '💨 GONE FOREVER. Zombie ' + (x.name || 'Pet') + ' #' + x.petId + (sp ? ' the ' + sp : '') + petEmoji(x.species) + ' went unfed and crumbled to dust. No grave. No seance. No coming back. Feed your zombies! Press F. 🪦', 3); }
     else if (x.kind === 'mzfull') add(k, x.block, '💀 FULL POWER! ' + petName(w, +id, V) + ' just maxed out its zombie power. Nobody is safe. 🧟\n' + link(id), 3, { kind: 'rage', id: +id, color: 'green' });
   });
+  /* 2a) mutants (weird-looks-1128): about 1 in 100 breeds (1 in 5 for a Jackpot Egg), only 5 in the whole game by Nov 28 2026, so every one posts (prio 4).
+     Twins that both mutate post once. */
+  (w.pets || []).forEach(p => { if (!p || !p.mutation || !(p.hatchBlock > from) || p.hatchBlock > tip || p.dead || p.released) return; const tw = p.twinOf != null && w.byId[p.twinOf];
+    if (tw && tw.mutation && tw.id < p.id) return; let lab = p.mutation.kind === 'glitch' ? 'Glitch mutation' : 'mutation'; try { if (V.mutationLabel) lab = V.mutationLabel(p.mutation); } catch (e) {}
+    const both = tw && tw.mutation, odds = p.jackpot ? 'a Jackpot Egg (1 in 5)' : 'a breed (about 1 in 100)';
+    add('mutant-' + p.id, p.hatchBlock, '🧬 MUTATION!! ' + petName(w, p.id, V) + (both ? ' and its twin ' + petName(w, tw.id, V) + ' both' : '') + ' hatched with a ' + lab.replace(/^\w/, c => c.toLowerCase()) + ' out of ' + odds + '. ' + (p.mutation.kind === 'glitch' ? 'The pixels are BROKEN and it loves it. 👾' : 'A colour no other pet has. 🎨') + '\n' + link(p.id), 4, { kind: 'hatch', id: p.id }); });
   /* 2) Legendary hatches: no posts since Nov 25 2026 (Jake: "Legendary haul can go"). Legendaries are common now (4,566 of the
      57,185 pets born on Nov 24 2026), so they were a third of HatchBot's ~90 posts a day. Season legends below still post. */
   /* 2b) raids: boss appears, HP milestones (50%, 25%, 10%), defeated or escaped */
