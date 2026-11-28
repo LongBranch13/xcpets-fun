@@ -162,6 +162,10 @@ html.hw .tomb.gtomb::after{display:none}
   .cv2-shelves{flex-wrap:nowrap;overflow-x:auto;justify-content:flex-start;padding-bottom:4px;scrollbar-width:none}.cv2-shelves::-webkit-scrollbar{display:none}.cv2-shelf{flex:0 0 auto;min-width:104px;font-size:17px}}
 /* Doom 2 red-candle stones (js/doom-week.js): on the cemetery they sat on the altar, the candle circle and Mort. Here they stand back in the
  * middle rows, clear of everything you can tap, and scale with the scene. */
+/* Nov 28 2026 (Jake: "red candles overlap Mort's speech"): the layer filled the whole scene box, tip bar included, so every % above was
+ * measured on a taller box than the picture; on a phone (3-line tip bar) the stones dropped onto Mort's words, Mort and the altar.
+ * The layer now covers the picture only (same 320:180 box as the canvas), so the stones stand where the %s say. */
+#cemScene .dw-cemfx{bottom:auto;right:auto;width:100%;height:auto;aspect-ratio:320/180}
 #cemScene .dw-stone{width:3%;height:auto;aspect-ratio:28/36;min-width:10px;box-shadow:inset 0 3px 0 #c8102e,inset -2px 0 0 #1a1020,0 0 0 1px #1a1020}
 #cemScene .dw-stone::after{left:40%;width:22%;top:-35%;height:35%}
 #cemScene .dw-stone:nth-of-type(1){left:7%!important;top:47%!important}
