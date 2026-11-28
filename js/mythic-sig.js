@@ -187,7 +187,8 @@
          * look (pet:aura, quest) shows that one instead. New frame objects drop the electric outline info, so the looks info (wings, skin, foil...) is
          * carried over by hand (before Nov 28 2026 it was dropped too: 79 Nakamoto / FUNTRUMP Mythics lost their earned Wings on cards). */
         var out = paid ? fr.map(function (f) { var g = { width: f.width || N, height: f.height || N, data: f.data }; if (f.rareScene) g.rareScene = f.rareScene; return g; }) : apply(fr, kf('#ff00fe'), kf('#00ff01'), k);
-        if (L && L.carry) out.forEach(function (g, i) { L.carry(fr[i % fr.length], g); });
+        out.forEach(function (g, i) { var src = fr[i % fr.length]; if (L && L.carry) L.carry(src, g); /* plain tags other effects put on a frame (weird-looks f.wl / f.wlBox ...) ride along too */
+          if (src && g !== src) Object.keys(src).forEach(function (key) { if (key !== 'data' && key !== 'rareScene' && key !== 'width' && key !== 'height' && !(key in g)) g[key] = src[key]; }); });
         cache.set(fr, out); return out; } catch (e) { return fr; } }; }
   root.MythSig = { kind: kind, apply: apply, masks: masks, FX: FX, WFX: WFX, WEIRD: WEIRD, NF: NF, hook: hook };
   if (root.V2Render) hook(); else if (root.addEventListener) root.addEventListener('DOMContentLoaded', hook);

@@ -68,5 +68,9 @@ const r3 = R({ back: 'wings' }), c3 = load(r3, L); c3.MythSig.hook();
 const f3 = r3.petFrames(pet('nakamoto', 5, null), {});
 ok(f3.length === 8 && f3.every(f => L.info(f) && L.info(f).by.back === 'wings'), 'a signature Mythic (Nakamoto) keeps its Wings look (was dropped before Nov 28 2026)');
 
+/* plain frame tags (js/weird-looks.js f.wl / f.wlBox) ride along to the new frames */
+const r4 = { petFrames: () => [{ width: 32, height: 32, data: s32.fr[0].data, wl: { kind: 'ghost' }, wlBox: [0.1, 0.2, 0.8, 0.9] }], petFramesRaw: (p) => p.art.bgColor === '#ff00fe' ? s32.A : s32.B }, c4 = load(r4, L); c4.MythSig.hook();
+const f4 = r4.petFrames(pet('pepe', 5, { version: 1, kind: 'ghost' }), {});
+ok(f4.length === 8 && f4.every(f => f.wl && f.wl.kind === 'ghost' && f.wlBox && f.wlBox[3] === 0.9 && f.data.length === 4096), 'frame tags (wl, wlBox) are kept on every aura frame');
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);
