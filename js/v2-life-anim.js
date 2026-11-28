@@ -347,7 +347,8 @@
   function more(n, shown) { return n > shown ? ' and ' + (n - shown).toLocaleString('en-US') + ' more' : ''; }
   function caption(ev, w) { var P = pets(ev, w), p = P.list[0], n = nm(p, ev.ids && ev.ids[0]), b = ev.block ? ' · block ' + Number(ev.block).toLocaleString('en-US') : '';
     switch (ev.kind) {
-      case 'hatch': case 'hatch-bulk': return '🥚 ' + (ev.n > 1 ? ev.n.toLocaleString('en-US') + ' eggs hatched! Best: ' + n + ' (' + TN[tierOf(p)].toLowerCase() + ')' : n + ' hatched (' + TN[tierOf(p)].toLowerCase() + ')');
+      case 'hatch': case 'hatch-bulk': if (p && p.art && (p.stage || 0) === 0 && !p.dead) return '🥚 ' + (ev.n > 1 ? ev.n.toLocaleString('en-US') + ' new eggs! Best: ' + n + ' (' + TN[tierOf(p)].toLowerCase() + '). One meal hatches each' : n + ' arrived as an egg (' + TN[tierOf(p)].toLowerCase() + '). One meal hatches it');
+        return '🥚 ' + (ev.n > 1 ? ev.n.toLocaleString('en-US') + ' eggs hatched! Best: ' + n + ' (' + TN[tierOf(p)].toLowerCase() + ')' : n + ' hatched (' + TN[tierOf(p)].toLowerCase() + ')');
       case 'feed': return '🍖 ' + (ev.n > 1 ? 'Fed ' + ev.n.toLocaleString('en-US') + ' pets: ' + n + more(ev.n, 1) : 'Fed ' + n) + b;
       case 'stage': return '✨ ' + n + ' grew to ' + (STAGES[ev.to] || '').charAt(0) + (STAGES[ev.to] || '').slice(1).toLowerCase() + (ev.n > 1 ? '. ' + (ev.n - 1) + ' more pets grew a stage' : '');
       case 'mythic': return '🌈 ' + n + ' reached MYTHIC: it never starves now' + (ev.n > 1 ? '. ' + (ev.n - 1) + ' more pets reached Mythic' : '');
