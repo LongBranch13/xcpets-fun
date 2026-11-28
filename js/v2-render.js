@@ -1607,8 +1607,12 @@
   function setGlow(fr, p, w, keyed0) { var col = setGlowOf(p, w); if (!col || !okFrames(fr)) return fr; var A = keyed0('#ff00fe'), B = keyed0('#00ff01'); if (!okFrames(A) || !okFrames(B)) return fr;
     var R = parseInt(col.slice(1, 3), 16), G = parseInt(col.slice(3, 5), 16), Bl = parseInt(col.slice(5, 7), 16);
     return fr.map(function (f, i) { var a = A[i % A.length].data, b = B[i % B.length].data, pet = function (x, y) { if (x < 0 || y < 0 || x > 31 || y > 31) return false; var j = (y * 32 + x) * 4; return a[j] === b[j] && a[j + 1] === b[j + 1] && a[j + 2] === b[j + 2]; };
-      var d = Array.prototype.slice.call(f.data), any = false;
-      for (var y = 0; y < 32; y++) for (var x = 0; x < 32; x++) { if (pet(x, y)) continue; if (!(pet(x - 1, y) || pet(x + 1, y) || pet(x, y - 1) || pet(x, y + 1))) continue;
+      var d = Array.prototype.slice.call(f.data), any = false, out = new Uint8Array(1024), st = [], q0;
+      /* only the OUTSIDE: background reached from the frame edge, so holes between the body and a held piece stay clean */
+      for (q0 = 0; q0 < 32; q0++) st.push(q0, 992 + q0, q0 * 32, q0 * 32 + 31);
+      while (st.length) { var q1 = st.pop(), x1 = q1 % 32, y1 = (q1 / 32) | 0; if (out[q1] || pet(x1, y1)) continue; out[q1] = 1;
+        if (x1 > 0) st.push(q1 - 1); if (x1 < 31) st.push(q1 + 1); if (y1 > 0) st.push(q1 - 32); if (y1 < 31) st.push(q1 + 32); }
+      for (var y = 0; y < 32; y++) for (var x = 0; x < 32; x++) { if (!out[y * 32 + x]) continue; if (!(pet(x - 1, y) || pet(x + 1, y) || pet(x, y - 1) || pet(x, y + 1))) continue;
         var q = (y * 32 + x) * 4; d[q] = Math.round(d[q] * 0.35 + R * 0.65); d[q + 1] = Math.round(d[q + 1] * 0.35 + G * 0.65); d[q + 2] = Math.round(d[q + 2] * 0.35 + Bl * 0.65); d[q + 3] = 255; any = true; }
       if (!any) return f; var o = Object.assign({}, f); o.data = f.data && f.data.constructor === Uint8ClampedArray ? new Uint8ClampedArray(d) : d; o.setGlow = col; return o; }); }
   function looksOf(p, w, extra) { if (extra && extra.looks && window.V2Looks) return extra.looks; /* look picker previews: draw exactly these looks */
