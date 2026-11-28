@@ -773,7 +773,7 @@
    * just asked for them ("Play them" on the away card), so they open at once. */
   var askAt = 0;
   function playerBusy() { return Date.now() - askAt > 4000 && !!(window.XcpDock && XcpDock.busy && XcpDock.busy()); }
-  function otherUp() { return [].some.call(document.querySelectorAll('.reveal.on:not(#packBox)'), shown) || picking() || !!(window.V2LifeAnim && V2LifeAnim.busy && V2LifeAnim.busy()); }
+  function otherUp() { return [].some.call(document.querySelectorAll('.reveal.on:not(#packBox)'), shown) || !!(window.XcpDock && XcpDock.sheetUp && XcpDock.sheetUp('#packBox')) || picking() || !!(window.V2LifeAnim && V2LifeAnim.busy && V2LifeAnim.busy()); }
   /* playtest-1125: an egg with no art (a fast page that picked the hatch up after the published world) made the box reveal throw on
    * x.art.tierIndex inside the egg-crack callback, so the reveal never opened. Ask for the art once; eggs still without it skip the review. */
   function revNeedsArt() { var q = revealQ[0], w = world(); if (!q || q.kind !== 'eggs' || !w || !w.byId) return false;
@@ -2145,7 +2145,7 @@
   function nextAnim() { if (animM.el || !animQ.length) return; if ((window.V2CemAnim && V2CemAnim.busy()) || (window.V2LifeAnim && V2LifeAnim.busy())) return; /* a cemetery animation is on screen; it calls V2AnimDone when it ends */ if ($('packBox').classList.contains('on') || sheetOpen() || playerBusy()) return setTimeout(nextAnim, 1500); animQ.shift()(); } /* Nov 26 2026: and while the player is tapping or scrolling (js/v2-dock.js busy) */
   /* playtest (Nov 25 2026): a fight replay used to pop up in front of the Sign & burn sheet (or any other open sheet) a few seconds after the
    * page opened, and the player's press landed on the replay. Replays wait until no sheet is open. */
-  function sheetOpen() { var L = document.querySelectorAll('.reveal.on, [aria-modal="true"]'); for (var i = 0; i < L.length; i++) { var e = L[i]; if (e.id === 'animBox' || e.closest('#animBox')) continue; if (e.offsetWidth || e.offsetHeight) return true; } return false; }
+  function sheetOpen() { if (window.XcpDock && XcpDock.sheetUp) return XcpDock.sheetUp('#animBox'); /* Nov 28 2026: the one shared answer (js/v2-dock.js) */ var L = document.querySelectorAll('.reveal.on, [aria-modal="true"]'); for (var i = 0; i < L.length; i++) { var e = L[i]; if (e.id === 'animBox' || e.closest('#animBox')) continue; if (e.offsetWidth || e.offsetHeight) return true; } return false; }
   window.V2AnimDone = function () { if (!animM.el && animQ.length) setTimeout(nextAnim, 500); };
   function animOpen(el, iv, onClose) { animClose(true); var box = $('animBox'); if (!box) { box = document.createElement('div'); box.id = 'animBox'; box.className = 'reveal anim'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true');
       box.innerHTML = '<div class="box wide"><button type="button" class="q" id="animClose" style="float:right" aria-label="Close">&times;</button><div id="animSlot"></div></div>'; document.body.appendChild(box);
