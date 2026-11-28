@@ -105,6 +105,7 @@
       (A.note ? '<p class="small muted">' + esc(A.note) + '</p>' : '') +
       '<div class="gcr-nav">' + (C.i > 0 ? '<button type="button" class="q" data-gc="prev">‹ Back</button>' : '') + (C.i < n - 1 ? '<button type="button" class="btn" data-gc="next">Next piece ›</button>' : '') +
       (n > 1 ? '<button type="button" class="q" data-gc="all">See all ' + n + '</button>' : '') + '<button type="button" class="q" data-gc="close">' + (C.i < n - 1 ? 'Close' : '✓ Done') + '</button></div>' +
+      (function () { var cv = C.cleanSent ? null : C.clean ? C.clean : (C.clean = cleanView(w, ctx.ME)); return cv && cv.ok && cv.n >= 10 ? '<div class="gcr-nav"><button type="button" class="q gcr-clean" data-gc="clean">' + esc(cleanText(cv)) + '</button></div>' : ''; })() +
       '<p class="small muted" style="margin:6px 0 0">Wear and Smash are tiny burns (1 dander + the Bitcoin fee) you sign in your wallet. Keep is free.</p></div>';
     var root = $('packSummary').querySelector('.gcr'), ic = root.querySelector('.gcr-item'), pc = root.querySelector('.gcr-pet');
     /* the big picture: the pet wearing just this piece (so a Ride shows under it, a hat on its head); the piece's own icon when the pet has no art here */
@@ -117,6 +118,7 @@
       if (k === 'next') { C.i = Math.min(n - 1, C.i + 1); return draw(ctx); } if (k === 'prev') { C.i = Math.max(0, C.i - 1); return draw(ctx); }
       if (k === 'all') { box.classList.remove('gcrate'); box.style.removeProperty('--gc'); return ctx.list(); }
       if (k === 'close') { box.classList.remove('gcrate'); box.style.removeProperty('--gc'); return ctx.close(); }
+      if (k === 'clean') { behind(box); cleanGo(ctx.world(), ctx.ME, ctx.confirmPlans, function () { C.clean = null; C.cleanSent = 1; if (ctx.rev === rev && box.classList.contains('on')) draw(ctx); }); return; }
       if (k === 'keep') { C.st[x.gid] = 'keep'; if (C.i < n - 1) C.i++; return draw(ctx); }
       var a = k === 'wear' ? A.wear : A.smash; if (!a || !a.plan) return;
       behind(box);
@@ -125,5 +127,17 @@
   function behind(box) { var cf = document.getElementById('confirmBox'); box.classList.add('gc-behind'); if (!cf || typeof MutationObserver === 'undefined') return;
     var mo = new MutationObserver(function () { if (!cf.classList.contains('on')) { box.classList.remove('gc-behind'); mo.disconnect(); } }); mo.observe(cf, { attributes: true, attributeFilter: ['class'] });
     setTimeout(function () { if (!cf.classList.contains('on')) { box.classList.remove('gc-behind'); mo.disconnect(); } }, 400); }
-  window.V2GearCrate = { fits: fits, draw: draw, actions: actions, smashable: smashable, CRATE_MAX: CRATE_MAX };
+  /* CLEAN UP (Jake Nov 28 2026 picked "one-tap Clean up my gear"): one pet:smash:R burn (1 dander) melts every spare copy up to Rare into Gear Dust.
+   * The rules always keep one copy of every piece; Legendary spares are left alone too (they are rare, and the Forge has its own Legendary button).
+   * From the stash-rolls rules (new rolls land unworn), a piece you have not looked at yet can be a spare copy: the label says how many are new
+   * (g.stashed === 1). The confirm sheet's sendBlock / forgePreview checks the burn again before anything is signed. */
+  var CLEAN_TOP = 2;
+  function cleanView(w, me) { var Vr = V(); if (!w || !me || !Vr || !Vr.forgeOn || !Vr.forgePlan) return null; var b = (w.tip || 0) + 1; if (!Vr.forgeOn(b)) return null;
+    var pl = Vr.forgePlan(w, me, 'smash', CLEAN_TOP, b); if (!pl || !pl.ok) return { ok: false, why: (pl && pl.why) || 'No spare copies', n: 0, dust: 0 };
+    var nNew = 0; try { Object.keys(w.items).forEach(function (k) { var g = w.items[k]; if (g && g.owner === me && g.stashed === 1 && tierOf(g) <= CLEAN_TOP && smashable(w, g, me)) nNew++; }); } catch (e) { }
+    return { ok: true, n: pl.n, dust: pl.dust, nNew: nNew, plan: { tag: pl.tag, amount: pl.amount, label: 'Clean up: smash ' + pl.n + ' spare cop' + (pl.n === 1 ? 'y' : 'ies') + ' into ' + pl.dust + ' Gear Dust' } }; }
+  function cleanText(v) { return '🔨 Clean up my gear: ' + v.n.toLocaleString('en-US') + ' spare cop' + (v.n === 1 ? 'y' : 'ies') + ' → +' + v.dust.toLocaleString('en-US') + ' Dust'; }
+  function cleanGo(w, me, confirm, after) { var v = cleanView(w, me); if (!v || !v.ok) return v;
+    confirm('🔨 Clean up: ' + v.n.toLocaleString('en-US') + ' spare copies → ' + v.dust.toLocaleString('en-US') + ' Gear Dust (keeps one of every piece and every Legendary' + (v.nNew ? '; includes ' + v.nNew + ' new piece' + (v.nNew === 1 ? '' : 's') : '') + ')', [v.plan], after); return v; }
+  window.V2GearCrate = { cleanView: cleanView, cleanText: cleanText, cleanGo: cleanGo, CLEAN_TOP: CLEAN_TOP, fits: fits, draw: draw, actions: actions, smashable: smashable, CRATE_MAX: CRATE_MAX };
 })();

@@ -183,18 +183,26 @@
     if (sl === 'all') G.set('all', !G.hidden('all')); else { if (G.hidden('all')) { G.set('all', false); RL().V2_SLOTS.forEach(function (s2) { G.set(s2, s2 !== sl); }); } G.set(sl, !G.hidden(sl)); }
     paintGear(); try { UI().render(); } catch (e2) { } }
   function paintGear() { var r = $('dzGsRow'); if (r) r.innerHTML = showRow(); paintUndress(); }
-  function paintUndress() { var u = $('dzUndress'); if (u) { var n = localPets(); var t = '🧺 Undress every pet' + (n ? ' (' + n.toLocaleString('en-US') + ')' : ''); if (u.textContent !== t) u.textContent = t; u.title = n ? 'Take off every browser-only Dress / Take off on ' + n + ' pets: they go back to the gear saved on Bitcoin. Free.' : 'No browser-only gear changes on this device'; } }
+  var cleanAt = 0, cleanV = null;
+  function cleanAsk() { var U = UI(); if (!U || !U.confirmPlans || !U.world) return; var v = V2GearCrate.cleanGo(U.world(), U.ME, U.confirmPlans, function () { cleanAt = 0; cleanV = null; paintClean(); });
+    if (!v || !v.ok) { var why = v ? v.why : 'The Gear Forge is not open yet'; if (U.toast) U.toast(why); else { var c = $('dzClean'); if (c) c.title = why; } } }
+  function paintClean() { var c = $('dzClean'), U = UI(); if (!c || !window.V2GearCrate || !U || !U.world) return; if (Date.now() - cleanAt > 30000) { cleanAt = Date.now(); try { cleanV = V2GearCrate.cleanView(U.world(), U.ME); } catch (e) { cleanV = null; } }
+    c.hidden = !cleanV; if (!cleanV) return; c.disabled = !cleanV.ok; var t = cleanV.ok ? V2GearCrate.cleanText(cleanV) : '🔨 Clean up my gear: no spare copies'; if (c.textContent !== t) c.textContent = t;
+    c.title = cleanV.ok ? 'One tiny burn (1 dander + the Bitcoin fee): smashes every spare copy up to Rare into Gear Dust. Keeps one of every piece and every Legendary.' + (cleanV.nNew ? ' Includes ' + cleanV.nNew + ' new pieces.' : '') : ''; }
+  function paintUndress() { paintClean(); var u = $('dzUndress'); if (u) { var n = localPets(); var t = '🧺 Undress every pet' + (n ? ' (' + n.toLocaleString('en-US') + ')' : ''); if (u.textContent !== t) u.textContent = t; u.title = n ? 'Take off every browser-only Dress / Take off on ' + n + ' pets: they go back to the gear saved on Bitcoin. Free.' : 'No browser-only gear changes on this device'; } }
   function hookMore() { var more = $('mpcMore'), care = $('mpcCare'); if ((!more && !care) || $('dzAllBtn') || !ready() || viewOnly()) return;
     var box = d.createElement('div'); box.id = 'dzGearSec'; box.innerHTML = '<h4>GEAR</h4><div class="mpc-sec"></div><div class="mpc-sec dz-gsrow" id="dzGsRow"></div>'; var sec = box.querySelector('.mpc-sec');
     var b = d.createElement('button'); b.type = 'button'; b.className = 'q'; b.id = 'dzAllBtn'; b.textContent = '👕 Dress every pet in its best gear'; b.title = 'Looks only, on this device: puts the strongest spare piece you own into every open slot it beats, on all your pets. Free, no burn. Fights count only gear saved on Bitcoin.';
     b.onclick = dressAsk; sec.appendChild(b);
     var u = d.createElement('button'); u.type = 'button'; u.className = 'q'; u.id = 'dzUndress'; u.onclick = undressAll; sec.appendChild(u);
+    /* gear-crate cleanup (Jake Nov 28 2026): one burn smashes every spare copy up to Rare into Gear Dust (js/v2-gear-crate.js cleanGo; confirm sheet checks it again) */
+    if (window.V2GearCrate && V2GearCrate.cleanGo) { var cl = d.createElement('button'); cl.type = 'button'; cl.className = 'q'; cl.id = 'dzClean'; cl.onclick = cleanAsk; sec.appendChild(cl); }
     if (more) more.appendChild(box); else { care.insertBefore(b, care.firstChild); care.insertBefore(u, b.nextSibling); care.appendChild(box.querySelector('#dzGsRow')); }
     var gs = $('dzGsRow'); if (gs) gs.addEventListener('click', gsClick); paintGear(); }
 
   var CSS = '#pcDress{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:center;gap:2px 8px;width:100%;margin:10px 0 4px;min-height:48px;font-family:"Press Start 2P",monospace;font-size:11px}#pcDress b{color:inherit}#pcDress small{font-family:"Comic Neue",sans-serif;font-size:12px;font-weight:700;opacity:.85}#pcDress.up{background:#ffd166;color:#2a1530;border-color:#000;box-shadow:3px 3px 0 #000}#pcDress[hidden]{display:none}' +
     '.dz-toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:2147483001;max-width:90vw;background:#160c28;color:#f3eaff;border:2px solid #3ddc84;border-radius:8px;padding:8px 14px;font:700 14px "Comic Neue",sans-serif;box-shadow:3px 3px 0 #000}.dz-toast[hidden]{display:none}' +
-    'html.viewonly #pcDress,html.viewonly #dzAllBtn,html.viewonly #dzUndress{display:none!important}.dz-gsrow{align-items:center}.dz-gsl{font-family:"Press Start 2P",monospace;font-size:8px;color:#ffd166}.dz-gs{min-height:36px}.dz-gs.on{border-color:#3ddc84}.dz-gsn{flex-basis:100%;font-size:12px;opacity:.8}' +
+    'html.viewonly #pcDress,html.viewonly #dzAllBtn,html.viewonly #dzUndress,html.viewonly #dzClean{display:none!important}.dz-gsrow{align-items:center}.dz-gsl{font-family:"Press Start 2P",monospace;font-size:8px;color:#ffd166}.dz-gs{min-height:36px}.dz-gs.on{border-color:#3ddc84}.dz-gsn{flex-basis:100%;font-size:12px;opacity:.8}' +
     '.dz-modal{position:fixed;inset:0;z-index:2147483000;background:rgba(8,4,16,.66);display:flex;align-items:flex-end;justify-content:center}html.dz-open{overflow:hidden}' +
     '.dz-box{width:100%;max-width:560px;max-height:92vh;display:flex;flex-direction:column;background:#221238;color:#f3eaff;border:3px solid #ffd166;border-bottom:0;border-radius:16px 16px 0 0;box-shadow:0 -6px 0 #000;font-family:"Comic Neue",sans-serif}' +
     '@media (min-width:700px){.dz-modal{align-items:center}.dz-box{border-bottom:3px solid #ffd166;border-radius:14px;max-height:88vh}}' +

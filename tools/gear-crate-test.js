@@ -46,6 +46,14 @@ ok(!a.wear && !a.smash, 'a piece that left your stash offers no burn');
 ok(C.fits([win('g1', 1)], w, ME) && !C.fits([win('g2', 1)], w, ME), 'the crate opens only for pieces you own');
 ok(!C.fits(new Array(C.CRATE_MAX + 1).fill(win('g1', 1)), w, ME), 'big batches keep the list view');
 
+/* Clean up my gear: one pet:smash:R burn (keeps Legendary spares), counts brand-new stash pieces, goes through the confirm sheet */
+V.forgeOn = b => b >= 900; w.items.g2.owner = ME; w.items.g4.stashed = 1;
+let cv = C.cleanView(w, ME);
+ok(cv && cv.ok && cv.plan.tag === 'pet:smash:R' && cv.plan.amount === 1e-8 && C.CLEAN_TOP === 2, 'Clean up = pet:smash:R (up to Rare, Legendary spares kept), 1 dander');
+ok(cv.nNew === 1, 'Clean up counts the new (unseen) stash pieces it would melt');
+let sent = null; C.cleanGo(w, ME, (t, plans) => { sent = { t, plans }; });
+ok(sent && sent.plans.length === 1 && sent.plans[0].tag === 'pet:smash:R' && /keeps one of every piece/.test(sent.t) && /1 new piece/.test(sent.t), 'Clean up goes through confirmPlans and says what it keeps and that it includes new pieces');
+V.forgeOn = () => false; ok(C.cleanView(w, ME) === null, 'no Clean up before the Gear Forge opens'); V.forgeOn = b => b >= 900;
 /* slot names: feet shows as Ride, the tag code FOOTWEAR is untouched */
 const sw = { V2Rules: { slotLabel: s => ({ feet: 'Footwear', body: 'Outfits', head: 'Headwear' })[s], SLOT_LABELS: { feet: 'Footwear', body: 'Outfits', head: 'Headwear' } } }; sw.window = sw;
 vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/slot-names.js'), 'utf8'), vm.createContext(sw));
