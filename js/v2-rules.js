@@ -522,6 +522,66 @@
       floor: !claimed && nx >= LOOT_FLOOR_DAY, toGold: LOOT_GOLD_EVERY - (claimed ? live : nx) % LOOT_GOLD_EVERY, toLucky: LOOT_LUCKY_EVERY - (claimed ? live : nx) % LOOT_LUCKY_EVERY,
       meal: costAt(w, COSTS.feedMin, nb), n: R ? R.n : 0, meals: R ? R.meals : 0, eggs: R ? R.eggs.slice() : [], gold: R ? R.gold : 0, lucky: R ? R.lucky : 0, goblin: R ? R.goblin : null, last: R ? R.last : null }; }
   function lootPlan() { return { tag: 'pet:loot', amount: LOOT_COST, label: 'Open today’s Daily Loot chest' }; }
+  /* ===== HOLDER WELCOME GIFT (Jake Nov 28 2026: "a plan to get XCPETS holders that have not played ... to start playing", he picked the one-time free
+   *  starter pack). 97 wallets held 1+ XCPETS at block 977,947 and had never burned for the game (Counterparty balances vs every game burn; the fixed
+   *  list below, so new wallets can't farm it; wallets left with under 1 XCPETS from DEX trades are not on it).
+   *  - pet:welcome   CLAIM THE STARTER PACK: 1 dander, once per listed wallet, within WELCOME_DAYS game days of the gate. The pack, rolled from the block
+   *                  hash and the burn (never gear): WELCOME_EGGS free Eggs (born like a bought egg, the last one a Golden Egg = best rarity of 3 rolls)
+   *                  + WELCOME_MEALS meals into the Pantry (today's minimum feed price each), enough to hatch every egg.
+   *  Records: w.welcome[addr] = { block, tx, eggs: [ids], meals, credit }. A wallet not on the list, a second claim or a late claim is rejected (the
+   *  1 dander is community food) and refused before signing by sendBlock. Before the gate pet:welcome is an unknown tag (community food), replay unchanged. */
+  var ACTIVATE_WELCOME_BLOCK = 977990; /* <<< WELCOME GIFT GATE: feed tip 977,950 (Nov 28 2026 ~15:00 UTC) + 40, about 7 hours */
+  var WELCOME_SNAPSHOT_BLOCK = 977947, WELCOME_DAYS = 60, WELCOME_EGGS = 3, WELCOME_MEALS = 3, WELCOME_COST = HD_COST;
+  var WELCOME_LIST = [
+    '12JSmc5R82YVdRQYRJXUfBT4XQLn4fG23g', '12iZJaUrQ6ZDLKWFoJGfjyaCGAwjiHqRJb', '138kNmWCdJxGUGUxMzgcjMpHVhqGaDrh1k', '144HfypzfqgAwf1KRJxBXDXQ9FyLPRY1XE',
+    '146BaqumvC9p7W23YLEdFx7NknjpBr3cpr', '14vF8zQkwmmg6jutpJ1vajAfetVHDgtekJ', '153TR9ywmuT4ADS6hzBUrxQGTQcPt9BNTw', '15CQHVZvS4HmbFergawJmA1wZsUvpuVFrj',
+    '15nuwGKJ5G5ctvkrLanjToJXStasJmFAVe', '16MZKswS4Qgan77WPvEuUd1a21nbP3idRG', '16xuY57bL7pqBzbFXZopFyeWkKMjmZyJkD', '173cE6ScUFCmBLCqZeG18ij6r9KHRPbAjC',
+    '176rtYu9LZMFky3PZQYJ5AeJ7x3SSBcjZz', '178x9M5jhjyiU4ZaiUQyHH8qae8DJovHL3', '17JqqKacU6ibZheUyDQaW6K49otYx7Aysq', '17LV3y5KhExPdVcqS81zXuVUfNV9pmaGA',
+    '17Xw41Zg2zxNV5DcCPQ28TdSVaAwk1SpdA', '18PHGKzAcMDNVNie6kwDp2s6rkKM8RBcg2', '18rQPd8jtavSossgLz6HgU3jUatFd1BAJw', '19KpBbTZHPuDxsGj18MoKpwPBD4NA5ZoCX',
+    '19QWXpMXeLkoEKEJv2xo9rn8wkPCyxACSX', '19RfaWiQnoqkmbUSDosKymg4mALrNbN13p', '19tP9vZBWeJN2Mhu1rUSSFQdE1ee7yeQ1N', '1A8tcSvXnEJ5TatU3Phb6Dtdphe3biPnMb',
+    '1ACU8wkEnC7HaKyEVCfUS3SnSPW7iGe6tm', '1ALXrsNxpo3uJsjNWSjGiKGWsqMtWtZsr5', '1AYqYuycfWV8jkiHY1xXqAzVafo5NjBqjh', '1B5aqPE26ZaA7bPzwJbowbjLtQB6zkBS9z',
+    '1BAAXMdcT3Jt9hjSoquWqAVdAy4vNsyvdk', '1BAPET8BkHsnv565KYDUKqwPeaYcxXStPS', '1BCM4srBHq2kN3j3DAzXF6Nd22nPhYwFBa', '1BLfyx2HZTUjnST1HYgRSBb33WzCX62Hcf',
+    '1BfbEGGtu5hvFBdTuYPtgVMvHboZHtdJ7Y', '1CR9NYcwDhMgebeMtBpoGWLF7JeCZdKK3w', '1DAHj9kSbrmphc61hRomoGiVhJLYpkXibs', '1DDhrwpaNN7q9shfE8c1XbrvkAhEhz39wn',
+    '1DZJoJZH1UyG6HzRcrwnH1Kouk2fKtFxPM', '1DupWFQJrPeqDnw8cVPgo6TeZ4HwN96d73', '1Dw5WtDY3LRptQuRK1WHw3mjk5F9w2ieny', '1EoVkFwG6JQvXyFaekSM4Lqz61nMR3SVPN',
+    '1FVMD5roExZhetmgFWuds8nMiMe4txg3Ze', '1FgGQDxe25NV9VpLwVvGTUJWKKjssiTJFV', '1GgSFid3YwWjUPSJfq32JDeWkASL2Ahjmg', '1GoCcYoAaAb6WGqXciYkLHs5gB8vZqo5n7',
+    '1HZuqhEHj8qisADqwGKZJj5jd4qJuFQRuX', '1Hnej9fu2mAaM6EPVewLgsJKs9c6JYSFfP', '1J2eYA8JUqAi5MqXsGjegdXu8Sr2Gmj2Mx', '1J88x7AdjpGSRtaZuKpQPmZ3gAEku4hycA',
+    '1JDogZS6tQcSxwfxhv6XKKjcyicYA4Feev', '1KZHG6aUQEHkGn3ArXSf5RTp56SsjfL6Wy', '1KacrYMuQW5eqLbrYUotQ1mdsVpxin6hC9', '1Keaoo5SePGka5Qv5UMTzqjuEmWbfHCmCr',
+    '1LAQY9ukTCsUFYBYVooZwhtUpJ8NCnQwyC', '1Ma25Zk25MM1ig2VVrH8XWKT8GSVDsRPLz', '1MdhaFee5U4xKsVHBn8HJWQCdovbEykkHM', '1PD2dPwrS2dyp7ApidGANSpNaWKhAiAxxR',
+    '1Pf15R1DzCGmsDvbVdKsuA4j7b7fvo9LzR', 'bc1p40f5g8g8t5h2utmnhzlmr3gqrxxmlrkgv4d26zzynawr7wfemhhsvw2q89',
+    'bc1p8ek8ugz8jdqdejwgpacjfau7z7sltkxf3nkpazd6wg4x5e76hgmsq9c9tf', 'bc1pd7c4w2kwwgn6e89988c627ytt0aqu0nh846v4wtz9s6vdp27l0ps3upnn8',
+    'bc1pgdszkv6xvz89s73s6jsh8pwv9nte3js2jzk74p57ws524hrk9rmstcrye5', 'bc1phpav5y3ed2wusvgfpq72yze4uu5fccyhl6th3lwz4yxsfch6mxcqm72q9x',
+    'bc1q0t59fuv5e98s570fpldg04863058tuksuq3jxg', 'bc1q2gtw42yt9fqzzr0d4mrgzs53sd9qkmca384nst', 'bc1q2lrgsnqh60gn5dph4x50l25004kcxhmj5spwcx',
+    'bc1q2zh6394sefpk7u3kvjvfayp0t59a7eg8kvzasz', 'bc1q5m49d6y9yetcn3gqyzy0tw7kqj385jwtlsjjmn', 'bc1q6jw4s8zyqssf5x2xxhaegtefvrmw63rhaqcurj',
+    'bc1q6yk75w0dcjtpe268ulk7udmdmgp0k39kenepth', 'bc1q9v8n9nmcfuxjqdswv065xena2vf7384vr9rlc0', 'bc1qavq0ju7s7mryatr6g85hcnn4n6p3u6geh28577',
+    'bc1qc9sgy2llcvlclwg2dtqqrhhrcq023qkt45h8y2', 'bc1qe80902fvyz9r624ef5gqpkkvljta2de4mzexw5', 'bc1qgdxt2kez6pwapqmgerekehmpjw78y8z5vtjjj8',
+    'bc1qhq9qqay8jffmkgzlef7h342qc9l89gw4crg8s2', 'bc1qhx06tknt7y6xajy4g6r3r2j2jxhf6yzz9jrlxj', 'bc1qj3ys8mnqackqgynev5ftnscn9zqq280ys3aasv',
+    'bc1qj9ty7lvs6fk6cudf29aad2akd88an62zjnevzh', 'bc1qnuyhzpk0tau68ulsymf8x4leuxtyjc7z3cuu0k', 'bc1qnvk5apv3yuql3a8q3rhwwukpktd0lxh5p5l5tr',
+    'bc1qp0ys5k7uuzhnekcuyymg76ujpgf9ut9j5vf7sd', 'bc1qpsh6h93nj06hrafuk3m8fnhrp9fk8phyfhnsgf', 'bc1qqmdcs2ceq8ynxyue68pt2utq883yywccmt32n0',
+    'bc1qsgktuz669fc2aw34ksq3fjuu7z3ywew0crvu45', 'bc1qszzxmjr5f4j737qtugeysjpr8xf0yeverc957r', 'bc1qtn3w5puxu7mq4jnf9drqhkmcy9h6mekg3e2vgn',
+    'bc1qujj5tuh5pdx6ezhauw0daxvhhmnqnhaxvsayf9', 'bc1quzmw3r6v7csqsw8rf4n8e6r2wl487v4d4ys04s', 'bc1qvqkplhyuc7ex7e02szud9g44n8ajwd9m8g6fmr',
+    'bc1qw282q85khygftf42ey067st0lfknwf8t07jv00', 'bc1qx7d0ys0gxc38r0wlrudl0n38m5z0xyg8mammtk', 'bc1qxfezfffzzsje55pwv6t8wzzvxdnmu4jytxv7yd',
+    'bc1qxp87f78kqs855zyu5dtawemuxkq9c5s0380smt', 'bc1qy6zq3n3nhhrx96ur5yv393mwt7tzt0d8vh9awe', 'bc1qymjnalje4yvnua4xn5jt8zwu2nml8jp9a6g2mv',
+    'bc1qyna6w8hwqg60tvdyg4hcjczfzus6r89xws0cq3', 'bc1qz8y760738dcuv6g3jf6sa5tdcmzddneh2u220w'
+  ];
+  var WELCOME_SET = WELCOME_LIST.reduce(function (m, a) { m[a] = 1; return m; }, {});
+  function welcomeOn(b) { return ACTIVATE_WELCOME_BLOCK != null && b != null && Number(b) >= ACTIVATE_WELCOME_BLOCK && pantryOn(b); }
+  /** welcomeOpen(b): the claim window is on (gate reached, fewer than WELCOME_DAYS game days since it). */
+  function welcomeOpen(b) { return welcomeOn(b) && day(b) - day(ACTIVATE_WELCOME_BLOCK) < WELCOME_DAYS; }
+  function welcomeListed(a) { return !!a && WELCOME_SET.hasOwnProperty(a); }
+  /** welcomeEggArt(bh, tx, b, k): the art of starter egg k (0-based). The last egg is Golden (best rarity of 3 rolls); own sub-ids 89000+ (loot is 88000+). */
+  function welcomeEggArt(bh, tx, b, k) { var n = k === WELCOME_EGGS - 1 ? 3 : 1, best = null, bid = null;
+    for (var i = 0; i < n; i++) { var id = tx + ':' + (89000 + k * 10 + i), a = hatchArt(bh, id, b); if (!best || a.tierIndex > best.tierIndex) { best = a; bid = id; } }
+    return { art: noBornShades(best), id: bid }; }
+  /** welcomeWhy(w, a, b): why wallet a can't claim at block b, or null. */
+  function welcomeWhy(w, a, b) { if (!welcomeOn(b)) return 'The holder welcome gift opens at block ' + (ACTIVATE_WELCOME_BLOCK == null ? '(not set yet)' : ACTIVATE_WELCOME_BLOCK);
+    if (!welcomeOpen(b)) return 'The holder welcome gift has ended (it was open for ' + WELCOME_DAYS + ' game days)';
+    if (!welcomeListed(a)) return 'This wallet is not on the holder welcome list (wallets that held XCPETS at block ' + WELCOME_SNAPSHOT_BLOCK + ' and had never played)';
+    if (w && w.welcome && w.welcome[a]) return 'This wallet already claimed its welcome gift'; return null; }
+  /** welcomeInfo(w, a, nb): the gift as the page shows it: { on, open, listed, claimed, rec, eggs, meals, meal (price of 1 meal now), endsDay, daysLeft, gate }. */
+  function welcomeInfo(w, a, nb) { if (!w || !a) return null; nb = nb != null ? nb : (w.tip || 0) + 1; var R = (w.welcome && w.welcome[a]) || null, on = welcomeOn(nb);
+    return { on: on, open: welcomeOpen(nb), listed: welcomeListed(a), claimed: !!R, rec: R, eggs: WELCOME_EGGS, meals: WELCOME_MEALS, meal: costAt(w, COSTS.feedMin, nb), gate: ACTIVATE_WELCOME_BLOCK,
+      daysLeft: on ? Math.max(0, WELCOME_DAYS - (day(nb) - day(ACTIVATE_WELCOME_BLOCK))) : WELCOME_DAYS }; }
+  function welcomePlan() { return { tag: 'pet:welcome', amount: WELCOME_COST, label: 'Claim your holder welcome gift' }; }
   /* a piece still on a dead pet (not a zombie, not grave-locked) is spare too: the end-of-block sweep takes it off anyway, and the page's finished world
    * already shows it in the stash, so the preview and the replay agree (found by tools/gear-forge-test.js: 138 such pieces in one wallet) */
   function onDead(w, g, b) { if (g.on == null) return true; var q = w.byId[g.on]; if (!q) return false; liveAt(w, q, b); return !!q.dead && !isZ(q) && !q.community; }
@@ -2659,6 +2719,7 @@
     if (a === 'WEAR' && p.length >= 4 && p.length <= 3 + WEAR_MAX && idOk(p[2]) && t.length <= MAX_TAG_BYTES) { var wgs = []; for (var wgi = 3; wgi < p.length; wgi++) { if (!/^(0|[1-9A-V][0-9A-V]{0,6})$/.test(p[wgi])) return { action: 'invalid' }; var wgid = 'g' + parseInt(p[wgi], 32); if (wgs.indexOf(wgid) >= 0) return { action: 'invalid' }; wgs.push(wgid); } return { action: 'wear', petId: n(2), gids: wgs }; }
     if (a === 'DUSTROLL' && p.length === 3 && idOk(p[2])) return { action: 'dustroll', petId: n(2) };
     if (a === 'LOOT' && p.length === 2) return { action: 'loot' }; /* DAILY LOOT (unknown tag = community food before ACTIVATE_LOOT_BLOCK) */
+    if (a === 'WELCOME' && p.length === 2) return { action: 'welcome' }; /* HOLDER WELCOME GIFT (unknown tag = community food before ACTIVATE_WELCOME_BLOCK) */
     if ((a === 'HD' || a === 'HU') && t.length <= MAX_TAG_BYTES) { /* on-chain discard / add back (community food before ACTIVATE_ONCHAIN_DISCARD_BLOCK) */
       var hide = a === 'HD';
       if (p.length === 3 && /^(ALL|C|U|R|L|NF|S[0-5])$/.test(p[2])) return { action: hide ? 'hd' : 'hu', filter: p[2].toLowerCase() };
@@ -3233,6 +3294,8 @@
     if (t.action === 'loot') { if (!lootOn(b)) return 'Daily Loot prizes open at block ' + (ACTIVATE_LOOT_BLOCK == null ? '(not set yet)' : ACTIVATE_LOOT_BLOCK); if (amt != null && !(Number(amt) >= LOOT_COST)) return 'below Daily Loot cost 1 dander';
       if (pend.some(function (q) { return q.action === 'loot'; })) return 'your chest claim is already waiting to confirm';
       if (me && w.loot && w.loot[me] && w.loot[me].day === day(b)) return 'You already opened today’s chest. A new one unlocks next game day.'; return null; } /* DAILY LOOT: never sign a second claim the same game day */
+    if (t.action === 'welcome') { if (amt != null && !(Number(amt) >= WELCOME_COST)) return 'below the welcome gift cost 1 dander'; if (pend.some(function (q) { return q.action === 'welcome'; })) return 'your welcome gift claim is already waiting to confirm';
+      var wwy = welcomeWhy(w, me, b); if (wwy && (me || !welcomeOpen(b))) return wwy; return null; } /* HOLDER WELCOME GIFT: never sign a claim the rules would reject */
     if (t.action === 'hd' || t.action === 'hu') { if (!hdOn(b)) return 'on-chain discard opens at block ' + ACTIVATE_ONCHAIN_DISCARD_BLOCK; if (amt != null && !(Number(amt) >= HD_COST)) return 'below discard cost 1 dander'; return pickSendWhy(w, t, plan, me, b); }
     if (t.action === 'feedr') { if (!feedRunsOn(b)) return 'one-burn feeding opens at block ' + ACTIVATE_FEED_RUNS_BLOCK; if (plan && plan.anchor != null && b - plan.anchor > 900) return 'this feed plan is too old, press Feed again'; }
     if (t.action === 'swap' || t.action === 'swapok' || t.action === 'swapno') { if (!giveOn(b)) return 'swaps open at a later block';
@@ -4607,6 +4670,7 @@
     if (STASH_ACTIONS[t.action] && !stashOn(b)) t = { action: 'invalid' }; /* GEAR STASH OFF: same as before (unknown tag, community food) */
     if (FORGE_ACTIONS[t.action] && !forgeOn(b)) t = { action: 'invalid' }; /* GEAR FORGE OFF: same as before (unknown tag, community food) */
     if (t.action === 'loot' && !lootOn(b)) t = { action: 'invalid' }; /* DAILY LOOT OFF: same as before (unknown tag, community food) */
+    if (t.action === 'welcome' && !welcomeOn(b)) t = { action: 'invalid' }; /* WELCOME GIFT OFF: same as before (unknown tag, community food) */
     if (t.action === 'pantry' && !pantryOn(b)) t = { action: 'invalid' }; /* pantry OFF: same as before (unknown tag) */
     if (t.action === 'dip' && !dipOn(b)) t = { action: 'invalid' }; /* POOL DIP OFF: same as before (unknown tag) */
     if (t.action === 'raid' && !raidOn(b)) t = { action: 'invalid' }; /* raids OFF: same as before (unknown tag) */
@@ -4767,6 +4831,15 @@
         LR.last = { day: LD, block: b, tx: r.tx_hash, prize: lpz, chest: lch, meals: lml, credit: lcr, petId: lpet ? lpet.id : null, tier: lpet ? lpet.tier : null, streak: lst };
         return L(r, 'loot', 'Daily Loot day ' + lst + (lch ? ' (' + (lch === 'gold' ? 'Gold' : 'Lucky') + ' Chest)' : '') + ': ' + LOOT_LABEL[lpz] + (lpet ? ' #' + lpet.id + ' (' + TIER_LABELS[lpet.tier] + ' ' + speciesLabel(lpet.species) + ')' : '') + (lml ? (lpet ? ' + ' : ' = ') + lml + ' meal' + (lml === 1 ? '' : 's') + ' (' + lcr + ' XCPETS) into the Pantry' : ''),
           { prize: lpz, chest: lch, streak: lst, meals: lml, credit: lcr, petId: lpet ? lpet.id : null }); }
+      case 'welcome': { /* HOLDER WELCOME GIFT: once per listed wallet (see ACTIVATE_WELCOME_BLOCK) */
+        if (!(amt >= WELCOME_COST)) return L(r, 'rejected', 'below the welcome gift cost 1 dander');
+        var wwhy = welcomeWhy(w, src, b); if (wwhy) return L(r, 'rejected', 'welcome gift: ' + wwhy);
+        if (!bh) return L(r, 'rejected', 'block hash pending');
+        var WE = [], wmc = costAt(w, COSTS.feedMin, b), wcr = r8(wmc * WELCOME_MEALS), WP = pantryRec(w, src); WP.bal = r8(WP.bal + wcr); WP.won = r8((WP.won || 0) + wcr);
+        for (var wk = 0; wk < WELCOME_EGGS; wk++) { var wea = welcomeEggArt(bh, r.tx_hash, b, wk), wpet = mk(w, src, wea.art, b, bornCare(b), wea.id); wpet.welcome = wk === WELCOME_EGGS - 1 ? 'golden' : 'egg'; WE.push(wpet); token(wpet, 'stageUp'); }
+        w.welcome = w.welcome || {}; w.welcome[src] = { block: b, tx: r.tx_hash, eggs: WE.map(function (q) { return q.id; }), meals: WELCOME_MEALS, credit: wcr };
+        return L(r, 'welcome', 'Holder welcome gift: ' + WE.map(function (q) { return '#' + q.id + ' (' + TIER_LABELS[q.tier] + ' ' + speciesLabel(q.species) + ')'; }).join(', ') + ' + ' + WELCOME_MEALS + ' meals (' + wcr + ' XCPETS) into the Pantry',
+          { eggs: WE.map(function (q) { return q.id; }), meals: WELCOME_MEALS, credit: wcr }); }
       case 'hd': case 'hu': { /* ON-CHAIN DISCARD / ADD BACK. 1 dander for the burn. Ineligible pets are skipped, not used to reject the rest. */
         if (!hdOn(b)) return L(r, 'plain', 'plain burn (community food)');
         if (!(amt >= HD_COST)) return L(r, 'rejected', 'below discard cost 1 dander');
@@ -6470,6 +6543,7 @@
     grindGate: function () { return ACTIVATE_GRIND_BLOCK; }, grindOn: grindOn, grindWhy: grindWhy, grindList: grindList, grindPreview: grindPreview, grindPlan: grindPlan, _setGrindActivation: function (b) { ACTIVATE_GRIND_BLOCK = b == null ? null : Number(b); }, _sausageTierTest: sausageTier, GRIND: { COST: GRIND_COST, MAX: GRIND_MAX, MEAT: GRIND_MEAT, SPIN_EVERY: GRIND_SPIN_EVERY, EGG_EVERY: GRIND_EGG_EVERY, SAUSAGE_10K: GRIND_SAUSAGE_10K, GOLD_PER_PET: GRIND_GOLD_PER_PET, GOLD_MAX: GRIND_GOLD_MAX },
     grind2Gate: function () { return ACTIVATE_GRIND2_BLOCK; }, aspieGate: function () { return ACTIVATE_ASPIE_BLOCK; }, aspieOn: aspieOn, _setAspieActivation: function (b) { ACTIVATE_ASPIE_BLOCK = b == null ? null : Number(b); }, _asArt: asArt, _aspieChild: aspieChild, _grinderSpecialArt: grinderSpecialArt, grind2On: grind2On, _setGrind2Activation: function (b) { ACTIVATE_GRIND2_BLOCK = b == null ? null : Number(b); }, grindGoldOdds: grindGoldOdds,
     GRIND2: { SAUSAGE_10K: GRIND2_SAUSAGE_10K, GOLD_PER_PET: GRIND2_GOLD_PER_PET, GOLD_MAX: GRIND2_GOLD_MAX, SPECIAL_IN: GRIND2_SPECIAL_IN, KEEP: GRIND_KEEP }, _specialEggArt: specialEggArt, _sausageSpecialTest: sausageSpecial,
+    ACTIVATE_WELCOME_BLOCK: ACTIVATE_WELCOME_BLOCK, welcomeGate: function () { return ACTIVATE_WELCOME_BLOCK; }, _setWelcomeActivation: function (b) { ACTIVATE_WELCOME_BLOCK = b == null ? null : Number(b); }, welcomeOn: welcomeOn, welcomeOpen: welcomeOpen, welcomeListed: welcomeListed, welcomeInfo: welcomeInfo, welcomePlan: welcomePlan, welcomeWhy: welcomeWhy, welcomeEggArt: welcomeEggArt, WELCOME_LIST: WELCOME_LIST, WELCOME_DAYS: WELCOME_DAYS, WELCOME_EGGS: WELCOME_EGGS, WELCOME_MEALS: WELCOME_MEALS, WELCOME_SNAPSHOT_BLOCK: WELCOME_SNAPSHOT_BLOCK,
     ACTIVATE_LOOT_BLOCK: ACTIVATE_LOOT_BLOCK, lootOn: lootOn, lootInfo: lootInfo, lootPlan: lootPlan, lootRoll: lootRoll, lootChest: lootChest, lootEggArt: lootEggArt, LOOT_TABLE: LOOT_TABLE, LOOT_LABEL: LOOT_LABEL, LOOT_COST: LOOT_COST, lootGate: function () { return ACTIVATE_LOOT_BLOCK; }, _setLootActivation: function (b) { ACTIVATE_LOOT_BLOCK = b == null ? null : Number(b); },
     pantryGate: function () { return ACTIVATE_PANTRY_BLOCK; }, pantryOn: pantryOn, pantryPlan: pantryPlan, pantryInfo: pantryInfo, dayStart: dayStart, PANTRY_PREFIX: PANTRY_PREFIX, _pantrySweep: pantrySweep, _setPantryActivation: function (b) { ACTIVATE_PANTRY_BLOCK = b == null ? null : Number(b); },
     dailyChoresGate: function () { return ACTIVATE_DAILY_CHORES_BLOCK; }, choresOn: choresOn, dailyChoresPlan: dailyChoresPlan, DC_PREFIX: DC_PREFIX, DC_BODY: DC_BODY, _setDailyChoresActivation: function (b) { ACTIVATE_DAILY_CHORES_BLOCK = b == null ? null : Number(b); },
