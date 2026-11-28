@@ -32,6 +32,6 @@ ok(w.log.length === logN, 'adds no log entries');
 if (mined) {
   const live = S.replayWorld(S.workerFns(), boot.rows, H, boot.tip, boot.dex || null), LR = live.byId[73324], LN = live.byId[205411];
   ok(live.ragnarGift === G0, 'boot tip ' + boot.tip + ' is past the gate: the live replay fired the gift');
-  ok(LR && (LR.carried || []).some(c => c.stat === 'vigor' && c.value === 33 && c.gift) && LN && LN.stats.vigor === 33, 'live world: Ragnar carries Vigor 33 and Naking has Vigor 33');
+  ok(LR && (LR.carried || []).some(c => c.stat === 'vigor' && c.value === 33 && c.gift) && LN && LN.stats.vigor - ((LN.shards && LN.shards.vigor) || 0) === 33, 'live world: Ragnar carries Vigor 33 and Naking has Vigor 33 before later play (now ' + (LN && LN.stats.vigor) + ', quest shards +' + ((LN && LN.shards && LN.shards.vigor) || 0) + ')'); /* Nov 28 2026: Naking earned +1 Vigor from a Cold Storage quest shard at 977,920, which is normal play, not the gift */
 } else console.log('     boot tip ' + boot.tip + ' is before the gate: live check skipped');
 console.log(fails ? fails + ' FAILED' : 'all passed'); process.exit(fails ? 1 : 0);
