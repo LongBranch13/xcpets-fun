@@ -139,7 +139,9 @@
     var i = CELLS.push(c) - 1, rc = col ? col.col : '#2b2b2b', cls = c.mine ? 'got' : 'miss', solo = c.n === 1 ? ' solo' : '';
     return '<button type="button" class="pdx-c ' + cls + solo + '" style="--rc:' + rc + '" data-i="' + i + '" aria-label="' + esc((c.name || '') + ' ' + (col ? col.name : '') + (c.mine ? ', caught' : ', not caught yet')) + '">' +
       (tag ? '<b>' + tag + '</b>' : '') + '<canvas data-pdx="' + i + '" width="32" height="32"></canvas></button>'; }
+  function GB() { return root.V2GearBook && root.V2Closet && root.V2Rules && root.V2Rules.catalogBySlot ? root.V2GearBook : null; }
   function body() { var x = dexNow; CELLS = [];
+    if (tab === 'gear') return GB() ? GB().html(wNow, me()) : '<p class="pdx-note">Loading the gear list…</p>'; /* 🎽 Gear Collection book (js/v2-gearbook.js) */
     if (tab === 'species') return '<div class="pdx-head"><span></span>' + COLS.map(function (c) { return '<span style="color:' + c.col + ';text-shadow:1px 1px 0 #2b2b2b">' + c.short + '</span>'; }).join('') + '</div>' +
       x.rows.map(function (r) { return '<div class="pdx-row' + (r.done ? ' done' : '') + '"><span class="pdx-nm">' + esc(r.name) + '<small>' + r.have + '/' + r.of + '</small>' + (r.done ? '<span class="pdx-stamp">MASTERED</span>' : '') + '</span>' +
         r.cells.map(function (c, j) { if (c) c.name = r.name; return cellHtml(c, COLS[j], c && c.n === 1 ? '1!' : ''); }).join('') + '</div>'; }).join('');
@@ -153,8 +155,8 @@
     var how = col && col.k === 'M' ? 'Raise one to Mythic (Road to Mythic on its pet page).' : isHyb(c.sp) ? 'Breed its parent species together, or find one for sale in Spam City.' : col ? 'Hatch eggs, breed, or find one for sale in Spam City.' : 'These are rare. Watch Spam City and the Telegram for one.';
     return '❓ ' + what + ': not yet. <b>' + fmt(c.n) + '</b> exist' + (c.n === 1 ? 's' : '') + ', held by ' + fmt(c.players) + ' player' + (c.players === 1 ? '' : 's') + '. ' + how; }
   var pKey = '', pTimer = 0, boardAsked = 0;
-  function paint() { var w = world(), m = me(); if (!el) return; wNow = w; pKey = m + '|' + (w && w.tip) + '|' + (w && w.pets ? w.pets.length : 0) + '|' + (w && w._full ? 1 : 0) + (w && w._ranked ? 'r' : '');
-    if (!pTimer) pTimer = setInterval(function () { if (!el || el.hidden) { clearInterval(pTimer); pTimer = 0; return; } var w2 = world(), k = me() + '|' + (w2 && w2.tip) + '|' + (w2 && w2.pets ? w2.pets.length : 0) + '|' + (w2 && w2._full ? 1 : 0) + (w2 && w2._ranked ? 'r' : ''); if (k !== pKey) paint(); }, 2000); /* the world keeps loading */
+  function paint() { var w = world(), m = me(); if (!el) return; wNow = w; pKey = m + '|' + (w && w.tip) + '|' + (w && w.pets ? w.pets.length : 0) + '|' + (w && w._full ? 1 : 0) + (w && w._ranked ? 'r' : '') + '|' + (w && w.itemList ? w.itemList.length : 0);
+    if (!pTimer) pTimer = setInterval(function () { if (!el || el.hidden) { clearInterval(pTimer); pTimer = 0; return; } var w2 = world(), k = me() + '|' + (w2 && w2.tip) + '|' + (w2 && w2.pets ? w2.pets.length : 0) + '|' + (w2 && w2._full ? 1 : 0) + (w2 && w2._ranked ? 'r' : '') + '|' + (w2 && w2.itemList ? w2.itemList.length : 0); if (k !== pKey) paint(); }, 2000); /* the world keeps loading */
     var box = el.querySelector('.pdx'); if (!w || !w.pets || !w.pets.length) { box.querySelector('.pdx-body').innerHTML = '<p class="pdx-note">' + (m ? 'Reading the chain… the Petdex opens once your pets have loaded.' : 'Connect your wallet at the top (or view any wallet) to open your Petdex: every species, rarity, legend and hybrid on chain, and which ones you have caught.') + '</p>'; return; }
     /* a view-only / fast world carries only this wallet's pets: read every living pet once (view/rank.json, the same file Rankings uses) so
      * "how many exist" and the silhouettes are real. Until it lands the squares count only what this wallet has. */
@@ -167,17 +169,19 @@
     box.querySelector('.pdx-sub').textContent = !m ? 'Connect a wallet (or view one) to see what you have caught.' : counting ? 'Counting every pet on chain\u2026 ' : (w._pages && !w._full && !w._ranked ? 'Still loading some pets… ' : '') + dexNow.mastered.length + ' row' + (dexNow.mastered.length === 1 ? '' : 's') + ' mastered · tap any square';
     [['species', 'Species ' + dexNow.species.got + '/' + dexNow.species.of], ['legends', 'Legends ' + dexNow.legendGot + '/' + dexNow.legends.length], ['hybrids', 'Hybrids ' + dexNow.hybridGot + '/' + dexNow.hybrids.length]].forEach(function (t) {
       var b = box.querySelector('[data-tab=' + t[0] + ']'); b.textContent = t[1]; b.setAttribute('aria-pressed', String(tab === t[0])); });
-    var bd = box.querySelector('.pdx-body'); bd.innerHTML = body(); watch(bd); }
+    var gb = box.querySelector('[data-tab=gear]'); if (gb) { gb.hidden = !GB(); gb.textContent = '🎽 ' + (GB() ? GB().tabLabel(w, m) : 'Gear'); gb.setAttribute('aria-pressed', String(tab === 'gear')); }
+    var bd = box.querySelector('.pdx-body'); bd.innerHTML = body(); if (tab === 'gear' && GB()) GB().after(bd, PAGE ? null : el); else watch(bd); }
   var PAGE = false;
   function open() { if (!PAGE) { location.href = 'petdex.html'; return; } css(); var w = world(); if (!el) { el = d.createElement('div'); el.id = 'petdex'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', 'Petdex');
       el.innerHTML = '<div class="pdx"><button type="button" class="pdx-x" aria-label="Close">×</button><h2>📖 PETDEX</h2>' +
         '<div class="pdx-top"><span class="pdx-score"></span><span class="pdx-rank"></span><span class="pdx-sub small"></span><div class="pdx-bar"><i></i></div></div>' +
-        '<div class="pdx-tabs"><button type="button" data-tab="species"></button><button type="button" data-tab="legends"></button><button type="button" data-tab="hybrids"></button><button type="button" class="pdx-share" data-share="1">📤 Share</button></div>' +
+        '<div class="pdx-tabs"><button type="button" data-tab="species"></button><button type="button" data-tab="legends"></button><button type="button" data-tab="hybrids"></button><button type="button" data-tab="gear" hidden></button><button type="button" class="pdx-share" data-share="1">📤 Share</button></div>' +
         '<div class="pdx-body"></div><div class="pdx-tip">Tap a square: what it is, how many exist, how to get one.</div></div>';
       var mount = $('petdexMount'); if (mount) { el.className = 'pdx-page'; mount.appendChild(el); } else d.body.appendChild(el);
       el.addEventListener('click', function (e) { if (e.target === el || e.target.closest('.pdx-x')) return close();
         var t = e.target.closest('[data-tab]'); if (t) { tab = t.getAttribute('data-tab'); el.scrollTop = 0; return paint(); }
         if (e.target.closest('[data-share]')) return share(e.target.closest('[data-share]'));
+        if (tab === 'gear' && GB()) { var r = GB().click(e.target); if (r && r.repaint) return paint(); if (r && r.tip) { el.querySelector('.pdx-tip').innerHTML = r.tip; return; } }
         var c = e.target.closest('.pdx-c[data-i]'); if (c) { var x = CELLS[+c.getAttribute('data-i')]; if (x) { el.querySelector('.pdx-tip').innerHTML = tipFor(x); c.classList.remove('pop'); void c.offsetWidth; c.classList.add('pop'); if (root.V2Sfx && root.V2Sfx.blip) try { root.V2Sfx.blip(); } catch (er) { } } } });
       d.addEventListener('keydown', function (e) { if (e.key === 'Escape' && el && !el.hidden) close(); }); }
     el.hidden = false; if (!PAGE) d.body.classList.add('pdx-open'); paint(); void w;
@@ -193,7 +197,7 @@
   function todayHtml() { var w = world(); if (w && w._view && !w._ranked) { css(); return '<button type="button" class="td-dex" data-td="dex">\ud83d\udcd6 <span>Petdex: every species, rarity and hybrid. What are you missing?</span><span class="td-go">gotta burn em all \u203a</span></button>'; }
     var x = summary(); if (!x) return ''; css();
     return '<button type="button" class="td-dex" data-td="dex">📖 <span>Petdex <b>' + x.got + '/' + x.total + '</b> · ' + esc(x.rank) + (x.mastered.length ? ' · ⭐ ' + x.mastered.length + ' mastered' : '') + '</span><span class="td-go">gotta burn em all ›</span></button>'; }
-  function start() { if (!d) return; var q = /[?&]petdex=(\w+)/.exec(location.search) || /[?&]tab=(\w+)/.exec(location.search); if (q && /^(species|legends|hybrids)$/.test(q[1])) tab = q[1];
+  function start() { if (!d) return; var q = /[?&]petdex=(\w+)/.exec(location.search) || /[?&]tab=(\w+)/.exec(location.search); if (q && /^(species|legends|hybrids|gear)$/.test(q[1])) tab = q[1];
     var go = function () { PAGE = d.body && d.body.getAttribute('data-v2page') === 'petdex';
       if (!PAGE && (location.hash === '#petdex' || /[?&]petdex=/.test(location.search))) { location.replace('petdex.html' + (q ? '?tab=' + q[1] : '')); return; }
       if (!PAGE) return; var n = 0, t = setInterval(function () { var w = world(); if ((w && w.pets && w.pets.length) || ++n > 120 || (n > 20 && !me())) { clearInterval(t); open(); } }, 500); };
