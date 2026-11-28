@@ -221,6 +221,10 @@ table.odds td,table.odds th{padding:2px 6px}table.odds .t1{color:#4fd18b}table.o
 .hybbodies canvas{display:block;width:100%;aspect-ratio:1;image-rendering:pixelated;border-radius:8px;border:1px solid rgba(255,255,255,.08);background:#16121f}
 .hybbodies figcaption{margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hybstages{margin:8px 0 4px}
+.hybsort{margin:10px 0 0}.hybsort::before{content:"Order:";align-self:center;margin-right:6px;opacity:.7;font-size:.9em}
+@media (max-width:640px){.hybsort::before{display:none}}
+.hybitem.hybmine{border-color:rgba(255,206,64,.7);box-shadow:0 0 0 1px rgba(255,206,64,.25) inset}
+.chip.hybyou{background:#ffce40;color:#1a1300}
 @media (max-width:640px){.hybgrid{gap:8px}.hybitem{padding:8px}}
 /* cast stage strips: equal columns even on 360px phones (a long "Hatchling" label used to widen its column) */
 .strip6{grid-template-columns:repeat(6,minmax(0,1fr))}.strip6>div{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
