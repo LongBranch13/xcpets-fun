@@ -1,5 +1,5 @@
 {
- "lastBlock": 977940,
+ "lastBlock": 977941,
  "count": 566,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
@@ -5929,7 +5929,7 @@
    "species": "hyb:nakamoto:kek",
    "speciesLabel": "Nakek (hybrid)",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 223100,
