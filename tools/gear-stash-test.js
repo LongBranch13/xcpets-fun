@@ -37,19 +37,21 @@ ok(V.parseTag('pet:gearoff').action === 'gearoff' && V.parseTag('pet:gearoff:12:
 const pw = V.parseTag('pet:wear:7:A:0:1V');
 ok(pw.action === 'wear' && pw.petId === 7 && pw.gids.join() === 'g10,g0,g63' && V.parseTag('pet:wear:7').action !== 'wear' && V.parseTag('pet:wear:7:A:A').action === 'invalid' && V.parseTag('pet:wear:7:1:2:3:4').action !== 'wear', 'parseTag: pet:wear:ID:G[:G[:G]] (base 32 gear numbers)');
 ok(V.gidCode('g1000000') === (1000000).toString(32).toUpperCase(), 'gidCode: g1000000 -> ' + V.gidCode('g1000000'));
-const wOff = run([row(me, 'pet:gearoff', nb)], nb);
+let wOff = run([row(me, 'pet:gearoff', nb)], nb);
 ok(last(wOff).kind === 'rejected' && /unknown pet: tag/.test(last(wOff).msg) && wornBy(wOff, me).length === wornBy(w0, me).length, 'gate off: pet:gearoff is an unknown tag, nothing comes off');
+wOff = null; /* each world is ~570 MB at 215k pets: drop it once its checks are done, or the test runs out of heap */
 ok(/later block/.test(V.sendBlock(w0, { tag: 'pet:gearoff', amount: 0.00000001 }, tip, { me: me }) || ''), 'gate off: the page refuses to sign pet:gearoff');
 const rollAmt = V.costAt(w0, V.BASE_COSTS.roll, nb);
-const spinRow = row(me, 'pet:spin', nb, rollAmt), wR0 = run([spinRow], nb), r0 = last(wR0), g0 = r0 && wR0.items[r0.gid];
+const spinRow = row(me, 'pet:spin', nb, rollAmt); let wR0 = run([spinRow], nb), r0 = last(wR0), g0 = r0 && wR0.items[r0.gid];
 ok(r0.kind === 'roll' && !!g0 && g0.on != null, 'gate off: a roll is still worn at once (' + r0.msg + ')');
 
 /* 2 */
 V._setGearStash(nb);
-const wR = run([spinRow], nb), r1 = last(wR), g1 = r1 && wR.items[r1.gid];
+let wR = run([spinRow], nb); const r1 = last(wR), g1 = r1 && wR.items[r1.gid];
 ok(!!g1 && g1.on == null && g1.bag == null && g1.stashed === 1 && g1.owner === me, 'gate on: the rolled piece (' + (g1 && g1.label) + ') waits in the stash, not worn' + (g1 && g1.on != null ? ' [on #' + g1.on + ', stashed ' + g1.stashed + ', ' + r1.msg + ']' : ''));
 ok(g0 && g1 && g0.item === g1.item, 'same roll, same piece either side of the gate (only where it goes changed)');
 ok(g1 && V.wornOf(wR, g1.rolledOn).map(g => g.gid).sort().join() === V.wornOf(w0, g1.rolledOn).map(g => g.gid).sort().join(), '#' + (g1 && g1.rolledOn) + ' wears exactly what it wore before the spin');
+wR0 = wR = null;
 
 /* 3 */
 const pv = V.stashPreview(w0, me, 'gearoff', null, nb);
@@ -60,10 +62,12 @@ ok(last(wT).kind === 'gearoff' && last(wT).n === pv.n, 'take off: ' + last(wT).m
 ok(myPets.every(p => V.wornOf(wT, p.id).filter(g => g.owner === me && !g.grave && g.pledge == null && g.src !== 'trophy').length === 0), 'every living pet of the wallet wears none of its own gear now');
 ok(items(wT).filter(g => g.owner === me).length === items(w0).filter(g => g.owner === me).length, 'nothing was lost: the wallet still owns every piece');
 ok(/no gear/.test(V.sendBlock(wT, { tag: 'pet:gearoff', amount: 0.00000001 }, nb, { me: me }) || ''), 'pre-sign: a second take-off (nothing left) is refused: ' + V.sendBlock(wT, { tag: 'pet:gearoff', amount: 0.00000001 }, nb, { me: me }));
-const wT2 = run([row(me, 'pet:gearoff', nb), row(me, 'pet:gearoff', nb + 1)], nb + 1);
+let wT2 = run([row(me, 'pet:gearoff', nb), row(me, 'pet:gearoff', nb + 1)], nb + 1);
 ok(last(wT2).kind === 'rejected', 'replay: a second take-off right after does nothing: ' + last(wT2).msg);
-const one = dressed[0], wT1 = run([row(me, 'pet:gearoff:' + one, nb)], nb);
+wT2 = null;
+const one = dressed[0]; let wT1 = run([row(me, 'pet:gearoff:' + one, nb)], nb);
 ok(last(wT1).kind === 'gearoff' && last(wT1).petIds.join() === String(one) && V.wornOf(wT1, one).filter(g => g.owner === me).length === 0 && wornBy(wT1, me).length === wornBy(w0, me).length - V.wornOf(w0, one).filter(g => g.owner === me).length, 'pet:gearoff:' + one + ' undresses only that pet');
+wT1 = null;
 const naked = myPets.filter(p => !V.wornOf(w0, p.id).length)[0];
 if (naked) ok(/no gear/.test(V.sendBlock(w0, { tag: 'pet:gearoff:' + naked.id, amount: 0.00000001 }, tip, { me: me }) || ''), 'pre-sign: taking gear off a pet that wears none is refused');
 ok(/1 dander/.test(V.sendBlock(w0, { tag: 'pet:gearoff', amount: 0 }, tip, { me: me }) || ''), 'pre-sign: a take-off below 1 dander is refused');
@@ -74,15 +78,16 @@ const pick = []; const used = {}; (tp.openSlots || []).forEach(sl => { const g =
 ok(pick.length >= 2, 'found ' + pick.length + ' stash pieces #' + tp.id + ' can wear');
 const plan = V.stashPlan(wT, me, 'wear', { petId: tp.id, gids: pick.map(g => g.gid) }, nb);
 ok(plan.ok && Buffer.byteLength(plan.tag) <= 34 && !V.sendBlock(wT, plan, nb, { me: me }), 'plan: ' + plan.tag + ' [' + pick.map(g => g.gid).join() + '] (' + Buffer.byteLength(plan.tag) + ' bytes) passes the pre-sign check');
-const wW = run([row(me, 'pet:gearoff', nb), row(me, plan.tag, nb + 1)], nb + 1);
+let wW = run([row(me, 'pet:gearoff', nb), row(me, plan.tag, nb + 1)], nb + 1);
 ok(last(wW).kind === 'wear' && pick.every(g => wW.items[g.gid].on === tp.id), 'wear: ' + last(wW).msg);
 const worn1 = V.wornOf(w0, one)[0];
 ok(/already wears/.test(V.sendBlock(wW, plan, nb + 1, { me: me }) || ''), 'pre-sign: wearing the same pieces again is refused');
 const other = Object.keys(cnt).filter(a => a !== me)[0], og = other && items(w0).filter(g => g.owner === other)[0];
 if (og) ok(/do not own/.test(V.sendBlock(wT, { tag: 'pet:wear:' + tp.id + ':' + V.gidCode(og.gid), amount: 0.00000001 }, nb, { me: me }) || ''), "pre-sign: another player's piece is refused");
 const two = dressed[1]; if (two && worn1) ok(/not in your stash/.test(V.sendBlock(w0, { tag: 'pet:wear:' + two + ':' + V.gidCode(worn1.gid), amount: 0.00000001 }, tip, { me: me }) || ''), 'pre-sign: a piece another pet wears is refused (take it off first)');
-const wBad = run([row(me, 'pet:wear:' + tp.id + ':' + V.gidCode(pick[0].gid), nb)], nb);
+let wBad = run([row(me, 'pet:wear:' + tp.id + ':' + V.gidCode(pick[0].gid), nb)], nb);
 ok(last(wBad).kind === 'rejected' || last(wBad).kind === 'wear', 'replay: a wear burn either wears or is rejected with a reason: ' + last(wBad).msg);
+wBad = wW = null;
 
 const oldG = items(wT).filter(g => !/^g[0-9]+$/.test(g.gid) && g.owner === me && g.on == null)[0];
 if (oldG) ok(/first game/.test(V.stashPreview(wT, me, 'wear', { petId: tp.id, gids: [oldG.gid] }, nb).why || ''), 'a piece from the first game (' + oldG.gid.slice(0, 8) + '…) has no gear number: the page says to use Gear up');
