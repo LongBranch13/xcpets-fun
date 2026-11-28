@@ -155,14 +155,46 @@
     var gain = 0, pets = {}; ops.forEach(function (o) { var g = w.items[o.gid], cur = (wornBySlot(w, w.byId[o.petId]) || {})[o.slot]; gain += (g ? dmg(g.item) : 0) - (cur ? dmg(cur.item) : 0); pets[o.petId] = 1; });
     var St = U.S(); ops.forEach(function (o) { St.ops.push(o); }); U.save(); IX = null; U.render();
     U.toast('\u26a1 ' + Object.keys(pets).length + ' pets dressed: +' + gain + ' gear power (' + ops.length + ' pieces, free)'); }
-  function hookMore() { var sec = $('mpcCare'); if (!sec || $('dzAllBtn') || !ready() || viewOnly()) return;
-    var b = d.createElement('button'); b.type = 'button'; b.className = 'q'; b.id = 'dzAllBtn'; b.textContent = '👕 Dress every pet in its best gear'; b.title = 'Puts the strongest spare piece you own into every open slot it beats, on all your pets. Free, no burn.';
-    b.onclick = dressAll;
-    sec.insertBefore(b, sec.firstChild); }
+  /* ---- gear-fun quick win (Jake Nov 28 2026: "all my pets are covered with gear i didnt put on. I probably just hit put on all gear but it would take
+   * ages to get it all off. gear is not fun"). Display + local ops only, no burn, nothing signed.
+   *  - "Dress every pet" now asks first and says what it is: browser-only looks (fights count only gear saved on Bitcoin).
+   *  - "Undress every pet": one tap removes every browser-only Dress / Take off you made with this wallet on this device (the 'equip' ops),
+   *    so each pet shows exactly the gear saved on Bitcoin again. The page reloads to rebuild the pets without them.
+   *  - "Gear you see": hide any gear slot (or all gear) from view on this device; V2Render.gearShow keeps the choice. Pieces stay worn. */
+  var OPS_KEY = 'xcpets-v2-prod';
+  function localOps() { var U = UI(), me = U && U.ME; try { return (U.S().ops || []).filter(function (o) { return o && o.kind === 'equip' && o.owner === me; }); } catch (e) { return []; } }
+  function localPets() { var n = {}; localOps().forEach(function (o) { n[o.petId] = 1; }); return Object.keys(n).length; }
+  function dressAsk() { if (!ready() || blocked()) return; var ops = allOps(); if (!ops.length) return UI().toast('Every pet already wears the best spare gear you own.');
+    var pets = {}; ops.forEach(function (o) { pets[o.petId] = 1; });
+    var ok = true; try { ok = window.confirm('Dress ' + Object.keys(pets).length + ' pets in ' + ops.length + ' spare pieces?\n\nThis is looks only, on this device. Fights count only gear saved on Bitcoin (Gear up for real in the Rare Room).\nYou can undo it any time with "Undress every pet".'); } catch (e) { }
+    if (ok) dressAll(); }
+  function undressAll() { if (!ready() || blocked()) return; var U = UI(), me = U.ME, mine = function (o) { return o && o.kind === 'equip' && o.owner === me; }, n = localOps().length, np = localPets();
+    if (!n) return U.toast('Nothing to undress: every piece your pets wear is saved on Bitcoin. Hide it from view with "Gear you see".');
+    var ok = true; try { ok = window.confirm('Take off all ' + n.toLocaleString('en-US') + ' browser-only gear changes on ' + np.toLocaleString('en-US') + ' pets?\n\nYour pets go back to the gear saved on Bitcoin. Free, no burn. The page reloads.'); } catch (e) { }
+    if (!ok) return; var St = U.S(); St.ops = (St.ops || []).filter(function (o) { return !mine(o); });
+    try { var v = JSON.parse(localStorage.getItem(OPS_KEY) || 'null'); if (v && Array.isArray(v.ops)) { v.ops = v.ops.filter(function (o) { return !mine(o); }); localStorage.setItem(OPS_KEY, JSON.stringify(v)); } } catch (e) { }
+    U.toast('🧺 ' + np.toLocaleString('en-US') + ' pets undressed. Reloading…'); setTimeout(function () { try { location.reload(); } catch (e) { } }, 700); }
+  function GS() { return window.V2Render && V2Render.gearShow; }
+  function showRow() { var G = GS(), V = RL(); if (!G || !V) return ''; var all = G.hidden('all');
+    return '<span class="dz-gsl">👁 Gear you see:</span>' + V.V2_SLOTS.map(function (sl) { var on = !all && !G.hidden(sl); return '<button type="button" class="q dz-gs' + (on ? ' on' : '') + '" data-gs="' + sl + '" aria-pressed="' + on + '">' + (on ? '✓ ' : '') + esc(slotName(sl)) + '</button>'; }).join('') +
+      '<button type="button" class="q dz-gs' + (all ? ' on' : '') + '" data-gs="all" aria-pressed="' + all + '">' + (all ? '✓ ' : '') + 'Hide all gear</button>' +
+      '<small class="dz-gsn">Looks only, this device. Hidden pieces still count in fights and other players still see them.</small>'; }
+  function gsClick(e) { var b = e.target.closest('[data-gs]'), G = GS(); if (!b || !G) return; var sl = b.dataset.gs;
+    if (sl === 'all') G.set('all', !G.hidden('all')); else { if (G.hidden('all')) { G.set('all', false); RL().V2_SLOTS.forEach(function (s2) { G.set(s2, s2 !== sl); }); } G.set(sl, !G.hidden(sl)); }
+    paintGear(); try { UI().render(); } catch (e2) { } }
+  function paintGear() { var r = $('dzGsRow'); if (r) r.innerHTML = showRow(); paintUndress(); }
+  function paintUndress() { var u = $('dzUndress'); if (u) { var n = localPets(); var t = '🧺 Undress every pet' + (n ? ' (' + n.toLocaleString('en-US') + ')' : ''); if (u.textContent !== t) u.textContent = t; u.title = n ? 'Take off every browser-only Dress / Take off on ' + n + ' pets: they go back to the gear saved on Bitcoin. Free.' : 'No browser-only gear changes on this device'; } }
+  function hookMore() { var more = $('mpcMore'), care = $('mpcCare'); if ((!more && !care) || $('dzAllBtn') || !ready() || viewOnly()) return;
+    var box = d.createElement('div'); box.id = 'dzGearSec'; box.innerHTML = '<h4>GEAR</h4><div class="mpc-sec"></div><div class="mpc-sec dz-gsrow" id="dzGsRow"></div>'; var sec = box.querySelector('.mpc-sec');
+    var b = d.createElement('button'); b.type = 'button'; b.className = 'q'; b.id = 'dzAllBtn'; b.textContent = '👕 Dress every pet in its best gear'; b.title = 'Looks only, on this device: puts the strongest spare piece you own into every open slot it beats, on all your pets. Free, no burn. Fights count only gear saved on Bitcoin.';
+    b.onclick = dressAsk; sec.appendChild(b);
+    var u = d.createElement('button'); u.type = 'button'; u.className = 'q'; u.id = 'dzUndress'; u.onclick = undressAll; sec.appendChild(u);
+    if (more) more.appendChild(box); else { care.insertBefore(b, care.firstChild); care.insertBefore(u, b.nextSibling); care.appendChild(box.querySelector('#dzGsRow')); }
+    var gs = $('dzGsRow'); if (gs) gs.addEventListener('click', gsClick); paintGear(); }
 
   var CSS = '#pcDress{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:center;gap:2px 8px;width:100%;margin:10px 0 4px;min-height:48px;font-family:"Press Start 2P",monospace;font-size:11px}#pcDress b{color:inherit}#pcDress small{font-family:"Comic Neue",sans-serif;font-size:12px;font-weight:700;opacity:.85}#pcDress.up{background:#ffd166;color:#2a1530;border-color:#000;box-shadow:3px 3px 0 #000}#pcDress[hidden]{display:none}' +
     '.dz-toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:2147483001;max-width:90vw;background:#160c28;color:#f3eaff;border:2px solid #3ddc84;border-radius:8px;padding:8px 14px;font:700 14px "Comic Neue",sans-serif;box-shadow:3px 3px 0 #000}.dz-toast[hidden]{display:none}' +
-    'html.viewonly #pcDress,html.viewonly #dzAllBtn{display:none!important}' +
+    'html.viewonly #pcDress,html.viewonly #dzAllBtn,html.viewonly #dzUndress{display:none!important}.dz-gsrow{align-items:center}.dz-gsl{font-family:"Press Start 2P",monospace;font-size:8px;color:#ffd166}.dz-gs{min-height:36px}.dz-gs.on{border-color:#3ddc84}.dz-gsn{flex-basis:100%;font-size:12px;opacity:.8}' +
     '.dz-modal{position:fixed;inset:0;z-index:2147483000;background:rgba(8,4,16,.66);display:flex;align-items:flex-end;justify-content:center}html.dz-open{overflow:hidden}' +
     '.dz-box{width:100%;max-width:560px;max-height:92vh;display:flex;flex-direction:column;background:#221238;color:#f3eaff;border:3px solid #ffd166;border-bottom:0;border-radius:16px 16px 0 0;box-shadow:0 -6px 0 #000;font-family:"Comic Neue",sans-serif}' +
     '@media (min-width:700px){.dz-modal{align-items:center}.dz-box{border-bottom:3px solid #ffd166;border-radius:14px;max-height:88vh}}' +
@@ -182,7 +214,7 @@
   function css() { if ($('dzCss')) return; var s = d.createElement('style'); s.id = 'dzCss'; s.textContent = CSS; (d.head || d.documentElement).appendChild(s); }
   function boot() { css(); hookMore(); petBtn(); }
   /* a fresh world (new block, fast-load page batch) or ops from another tab: rebuild the index, refresh the open drawer and the visible buttons */
-  function tick() { try { boot(); var w = ready() && UI().world(); if (w && (!IX || IX.w !== w || IX.o !== opsN() || IX.mk !== wornMark(w.itemList || []))) { index(w); if (DR.pid != null && $('dzModal')) draw(); soon(); } } catch (e) { } }
+  function tick() { try { boot(); paintUndress(); var w = ready() && UI().world(); if (w && (!IX || IX.w !== w || IX.o !== opsN() || IX.mk !== wornMark(w.itemList || []))) { index(w); if (DR.pid != null && $('dzModal')) draw(); soon(); } } catch (e) { } }
   if (typeof window !== 'undefined') { boot(); setInterval(tick, 1500); }
   window.V2Dress = { open: open, close: close, dressAll: dressAll, index: function (w) { return index(w); }, ready: ready, label: label, stars: stars, slotName: slotName, slotsOf: slotsOf, dmg: dmg, iconHtml: iconHtml, plan: function (w, p) { return plan(w, p); }, decorate: decorate, _reset: function () { IX = null; } };
 })();
