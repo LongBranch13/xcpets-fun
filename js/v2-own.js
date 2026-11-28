@@ -32,8 +32,11 @@
    *   A risen zombie is never discarded. A pet whose p.hd is another address (a former owner) is NOT discarded for me, as in the rules.
    *   o.set / o.pend: pass null to leave that kind out, leave undefined to read it now (pileIds / pendingHd). Read them once outside a loop. */
   function has(set, id) { return !!(set && (typeof set.has === 'function' ? set.has(id) || set.has(String(id)) : set[id])); }
+  /* Nov 28 2026 (40,000-pet freeze): kept while the stored text is unchanged; screens ask once per pet card */
+  var poC = { k: null, s: null, out: [] };
   function pileOrder(me) { var out = [], seen = {}; if (!me) return out; try { var net = (root.LiveEngine && root.LiveEngine.CFG && root.LiveEngine.CFG.network) || 'mainnet', ls = root.localStorage;
-      var raw = ls ? JSON.parse(ls.getItem('xcpets-hidden-' + net + '-' + me) || '[]') : []; if (raw && raw.forEach) raw.forEach(function (id) { id = +id; if (id > 0 && !seen[id]) { seen[id] = 1; out.push(id); } }); } catch (e) {}
+      var k = 'xcpets-hidden-' + net + '-' + me, s = ls ? ls.getItem(k) || '[]' : '[]'; if (poC.k === k && poC.s === s) return poC.out.slice();
+      var raw = JSON.parse(s); if (raw && raw.forEach) raw.forEach(function (id) { id = +id; if (id > 0 && !seen[id]) { seen[id] = 1; out.push(id); } }); poC = { k: k, s: s, out: out.slice() }; } catch (e) {}
     return out; }
   function pileIds(me) { var h = {}; pileOrder(me).forEach(function (id) { h[id] = 1; }); return h; }
   function pendingHd() { try { var u = root.V2UI, o = u && u.pendingFeedIds && u.pendingFeedIds(); return (o && o.hd) || {}; } catch (e) { return {}; } }

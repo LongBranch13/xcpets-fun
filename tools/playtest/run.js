@@ -49,7 +49,10 @@ function busiest(profile, budget) {
   if (cur && cur.ms >= budget * 0.6) runs.push(cur);
   const incl = {};
   runs.forEach(r => r.ids.forEach(([id, dt]) => { const seen = new Set(); for (let x = byId[id]; x; x = byId[par[x.id]]) { const cf = x.callFrame; if (!cf.url && !/^\((program|garbage collector)\)$/.test(cf.functionName)) continue; const k = (cf.functionName || '(anon)') + ' ' + cf.url.split('/').pop().split('?')[0] + ':' + (cf.lineNumber + 1); if (!seen.has(k)) { seen.add(k); incl[k] = (incl[k] || 0) + dt; } } }));
-  return Object.entries(incl).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([k, v]) => k + ' ' + Math.round(v) + 'ms').join(', ');
+  /* Nov 28 2026: plus the top self time (the line that is itself slow, not just on the stack), so a report says where the time really goes */
+  const self = {}; runs.forEach(r => r.ids.forEach(([id, dt]) => { const cf = byId[id].callFrame; const k = (cf.functionName || '(anon)') + ' ' + (cf.url || '').split('/').pop().split('?')[0] + ':' + (cf.lineNumber + 1); self[k] = (self[k] || 0) + dt; }));
+  return Object.entries(incl).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([k, v]) => k + ' ' + Math.round(v) + 'ms').join(', ') +
+    '\n       self: ' + Object.entries(self).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([k, v]) => k + ' ' + Math.round(v) + 'ms').join(', ');
 }
 
 /* ------------------------------------------------------------------ a player's hands */
@@ -375,7 +378,21 @@ FLOWS.feed = async (H, T, ctx) => {
 };
 
 /* the Grinder opens on screen, its filter works, GRIND reaches the sheet */
-FLOWS.grinder = async (H) => {
+FLOWS.grinder = async (H, T, ctx) => {
+  /* Nov 28 2026: a real GRIND needs pets discarded ON CHAIN, and the test wallets have none at the fixture. On the first screen size the
+   * robot mines one pet:hd burn for 30 plain Commons (the rules' own hdPlan) so the Grinder has something to grind. */
+  if (ctx && ctx.size === ctx.first && !ctx.hdForGrind) {
+    if (!(await H.open('play.html'))) return; await H.settled();
+    const hd = await H.pg.evaluate((me) => { try { const V = window.V2Rules, w = V2Mock.world(), nb = (w.tip || 0) + 1, star = new Set(((window.V2UI && V2UI.starIds && V2UI.starIds()) || []).map(Number));
+      if (!V.grindOn || !V.grindOn(nb) || !V.hdPlan) return { why: 'the Grinder or on-chain discards are not open at block ' + nb };
+      const ids = w.pets.filter(p => p.owner === me && !p.dead && !p.released && !p.hd && (p.tier | 0) === 0 && p.stage < 5 && !p.mythicGod && !p.ascended && !(p.zombie && !p.zombie.end) && !p.token && !star.has(p.id)).map(p => p.id).sort((a, b) => a - b).slice(0, 30);
+      if (!ids.length) return { why: 'no plain Common to discard' };
+      const pl = V.hdPlan(w, me, ids, nb); if (!pl || !pl.ok) return { why: (pl && pl.why) || 'no exact pet:hd burn' };
+      return { ids, burns: pl.plans.map(q => ({ tag: q.tag, amount: q.amount })) }; } catch (e) { return { why: String(e) }; } }, ctx.me);
+    if (hd.burns) { const blk = await L.post(SYNC, '/_t/block', { burns: hd.burns.map(x => ({ source: ctx.me, tag: x.tag, qty: x.amount })) }); ctx.mined.push(blk.tip); ctx.hdForGrind = hd.ids.length; ctx.hdIds = hd.ids;
+      ctx.hdBlock = blk.tip; ok('mined block ' + blk.tip + ': ' + hd.ids.length + ' plain pets discarded on chain (' + hd.burns.map(x => x.tag).join(' ').slice(0, 60) + ')'); }
+    else ok('no discard for the Grinder: ' + hd.why);
+  }
   if (!(await H.open('play.html#grinder'))) return;
   await H.dismiss(8000, '.mgr-bg'); /* it used to close the Grinder it came to test (✕ is a dismiss word) */
   /* Nov 28 2026: play.html#grinder opens the Grinder once My Pets has finished loading (every discard in the hopper), ~20 s on 40,000 pets.
@@ -385,15 +402,31 @@ FLOWS.grinder = async (H) => {
   let on = null; for (let i = 0; i < 60 && !(on = await where()); i++) await H.pg.waitForTimeout(1000);
   if (!on) { await H.pg.evaluate(() => window.V2Grinder && V2Grinder.open()); await H.pg.waitForTimeout(1500); on = await where(); if (on) problem('slow-open', 'play.html#grinder did not open the Grinder within 60 s'); }
   if (!on) return problem('no-sheet', 'the Grinder never opened');
+  if (ctx && ctx.hdBlock && ctx.size === ctx.first) { /* the page catches up to the block with the discards (a few seconds), then the Grinder is opened again */
+    let caught = false; for (let i = 0; i < 90 && !caught; i++) { caught = await H.pg.evaluate(([ids, me]) => { try { const w = V2Mock.world(); return ids.every(id => w.byId[id] && w.byId[id].hd === me); } catch (e) { return false; } }, [ctx.hdIds, ctx.me]); if (!caught) await H.pg.waitForTimeout(1000); }
+    if (!caught) problem('slow-block', 'the page never caught up to block ' + ctx.hdBlock + ' (the discards for the Grinder)');
+    else { await H.pg.evaluate(() => { const x = document.querySelector('.mgr-bg .mgr-x'); if (x) x.click(); }); await H.pg.waitForTimeout(800); await H.pg.evaluate(() => window.V2Grinder && V2Grinder.open()); await H.pg.waitForTimeout(1500); }
+  }
   if (on.top > 900 || on.top < -50) problem('off-screen', 'the Grinder opened ' + on.top + ' px down the page');
   else ok('Grinder open on screen');
   await H.layout('Grinder'); await H.shot('grinder');
   const t = await now(H.pg);
   const st = await H.pg.evaluate(() => { const b = document.querySelector('.mgr-bg button.mgr-go'); return b ? { dis: b.disabled, why: (document.querySelector('.mgr-bg .mgr-box') || {}).textContent || '' } : null; });
-  if (st && st.dis) { ok('GRIND is off: ' + st.why.slice(0, 120)); return; }
+  if (st && st.dis) { if (ctx && ctx.hdForGrind && ctx.size === ctx.first) problem('grind-off', 'GRIND is off after ' + ctx.hdForGrind + ' pets were discarded on chain: ' + st.why.slice(0, 120)); else ok('GRIND is off: ' + st.why.slice(0, 120)); return; }
 const go = H.pg.locator('.mgr-bg button.mgr-go').first();
-  if (await go.count()) { await go.click({ timeout: 5000 }).catch(e => problem('button-blocked', 'GRIND: ' + e.message.split('\n')[0])); await H.pg.waitForTimeout(2500); await H.freezes(t, 'GRIND');
-    const sh = await H.sheet(); if (sh) ok('GRIND → Sign sheet: ' + sh.amt); else ok('GRIND pressed (no sheet: ' + (await H.openSheets()).join(',') + ')'); }
+  if (await go.count()) { await go.click({ timeout: 5000 }).catch(e => problem('button-blocked', 'GRIND: ' + e.message.split('\n')[0])); await H.pg.waitForTimeout(1500);
+    /* special pets in the grind get the safety sheet first (V2SacGuard), then the ~3 s wind-up, then Sign & burn */
+    if (!(await H.sheet())) await H.press(/Grind them|Yes|Continue/i, 'GRIND safety sheet', { wait: 500, quiet: true });
+    for (let i = 0; i < 10 && !(await H.sheet()); i++) await H.pg.waitForTimeout(500); await H.freezes(t, 'GRIND');
+    const sh = await H.sheet();
+    if (sh) {
+      /* the sheet shows 2 decimals: what the wallet is asked for is the real check (nothing is mined) */
+      const sent = await H.sign('GRIND'), g = sent.find(x => /^pet:grind/.test(x.tag));
+      const want = g ? await H.pg.evaluate(([me, tag]) => { try { const V = window.V2Rules, w = V2Mock.world(), b = (w.tip || 0) + 1, t = tag.split(':'), n = /^\d+$/.test(t[2] || '') ? +t[2] : 0, keep = { C: 0, U: 1, R: 2 }[t[3] || t[2]];
+          const pl = V.grindPlan(w, me, b, n, keep); return pl && pl.ok !== false ? { tag: pl.tag, amount: pl.amount } : null; } catch (e) { return null; } }, [ctx && ctx.me, g.tag]) : null;
+      if (!g) problem('no-burn', 'GRIND: Sign sent no pet:grind burn (' + sent.map(x => x.tag).join(' ') + ')');
+      else if (want && (g.tag !== want.tag || Math.abs(g.amount - want.amount) > 1e-8)) problem('price', 'GRIND asked the wallet for ' + g.amount + ' (' + g.tag + '), the rules want ' + want.amount + ' (' + want.tag + ')');
+      else ok('GRIND asked the wallet for ' + g.amount + ' (' + g.tag + (want ? ', rules agree' : '') + ')'); } else ok('GRIND pressed (no sheet: ' + (await H.openSheets()).join(',') + ')'); }
   else ok('no GRIND button (no pets to grind)');
   await H.cancel();
 };

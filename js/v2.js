@@ -464,7 +464,10 @@
   /* Local discard (any rarity) = live xcpets.fun: no burn, no wallet, hidden in THIS browser per network + address; still on chain; restorable. */
   var NET = (window.LiveEngine && LiveEngine.CFG && LiveEngine.CFG.network) || (M.prod ? 'mainnet' : 'v2demo');
   function hidKey() { return 'xcpets-hidden-' + NET + '-' + (ME || ''); }
-  function hiddenIds() { try { return JSON.parse(localStorage.getItem(hidKey()) || '[]'); } catch (e) { return []; } }
+  /* Nov 28 2026 (robot, Evan's 40,000 pets: a discard froze the page ~3 s, 2.2 s of it here): one redraw asks for this list hundreds of times
+   * and each call parsed the whole stored list again. The parse is kept while the stored text is unchanged (another tab's write changes it). */
+  var hidC = { k: null, raw: null, a: [] };
+  function hiddenIds() { try { var k = hidKey(), raw = localStorage.getItem(k) || '[]'; if (hidC.k !== k || hidC.raw !== raw) hidC = { k: k, raw: raw, a: JSON.parse(raw) }; return hidC.a.slice(); } catch (e) { return []; } }
   function setHidden(l) { zHidRev++; var seen = new Set(), out = [], i, x; for (i = 0; i < l.length; i++) { x = l[i]; if (seen.has(x)) continue; seen.add(x); out.push(x); } localStorage.setItem(hidKey(), JSON.stringify(out)); }
   function hideLocal(ids) { setHidden(hiddenIds().concat(ids)); var drop = new Set(); for (var i = 0; i < ids.length; i++) { drop.add(ids[i]); drop.add(Number(ids[i])); } S.sel = S.sel.filter(function (x) { return !drop.has(x) && !drop.has(Number(x)); }); save(); render();
     toast('🗑️ Moved ' + ids.length + ' pet' + (ids.length > 1 ? 's' : '') + ' to the Discard pile. ' + (hdLive() ? 'Sign the tiny burn to make it permanent on every device. ' : '') + '<a href="#" class="undo">Undo</a>', 9000);
