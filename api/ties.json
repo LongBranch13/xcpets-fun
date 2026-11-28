@@ -1,5 +1,5 @@
 {
- "lastBlock": 977892,
+ "lastBlock": 977896,
  "count": 560,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
@@ -5425,7 +5425,7 @@
    "species": "hyb:bobo:dodo",
    "speciesLabel": "Bodo (hybrid)",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 210443,
@@ -5437,7 +5437,7 @@
    "species": "mumu",
    "speciesLabel": "Mumu",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 93700,
@@ -5461,7 +5461,7 @@
    "species": "wojak",
    "speciesLabel": "Wojak",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 210444,
@@ -5473,7 +5473,7 @@
    "species": "wojak",
    "speciesLabel": "Wojak",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 210445,
@@ -5485,7 +5485,7 @@
    "species": "hyb:dodo:snibby",
    "speciesLabel": "Dosnib (hybrid)",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 216449,
@@ -5737,7 +5737,7 @@
    "species": "starlordkek",
    "speciesLabel": "Star-Lord Kek",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 265268,
@@ -5749,7 +5749,7 @@
    "species": "starlordkek",
    "speciesLabel": "Star-Lord Kek",
    "rarity": "Legendary",
-   "stage": "Elder"
+   "stage": "Mythic"
   },
   {
    "id": 170217,
