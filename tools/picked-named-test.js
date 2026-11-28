@@ -32,7 +32,9 @@ if (!V.feedRunsOn(NB) || !V.cemRunsOn(NB) || !V.hdOn(NB)) { console.log('skip: r
 
 /* a mid-size wallet with hungry pets in its feed list (fast to plan, every list non-trivial) */
 const eat = {}; w.pets.forEach(p => { if (p.owner && !p.dead && !p.released && V.frEats(p, NB)) eat[p.owner] = (eat[p.owner] || 0) + 1; });
-const ME = Object.keys(eat).filter(o => eat[o] >= 50 && eat[o] <= 5000).map(o => [o, V.refList(w, o, TIP, NB).length]).filter(x => x[1] >= 100).sort((a, b) => b[1] - a[1])[0];
+const ME = Object.keys(eat).filter(o => eat[o] >= 50 && eat[o] <= 5000).map(o => [o, V.refList(w, o, TIP, NB).length]).filter(x => x[1] >= 100).sort((a, b) => (V.spinsLeft(w, b[0], NB) > 0) - (V.spinsLeft(w, a[0], NB) > 0) || b[1] - a[1])[0];
+/* Nov 28 2026: prefer a wallet with saved spins, so the pet:ut (saved spins) burns are planned too. At tip 977,892 the biggest wallet had 0 spins
+ * left, no pet:ut plan existed and check D "gate off moves a saved-spin burn" failed on main with nothing to move. */
 if (!ME) { console.log('skip: no wallet with 50-5,000 hungry pets in its feed list'); process.exit(0); }
 const me = ME[0];
 console.log('wallet ' + me.slice(0, 10) + '... at block ' + TIP + ': ' + ME[1] + ' pets in its feed list, ' + eat[me] + ' hungry');
@@ -91,7 +93,8 @@ const SG = V.ACTIVATE_SPIN_HD_ANCHOR_BLOCK;
 ok(typeof SG === 'number' && SG > TIP || V.spinHdAnchorOn(NB), 'spin-list anchor gate ' + SG + (SG > TIP ? ' is after the replayed chain (replay unchanged)' : ' is on'));
 V._setSpinHdAnchorActivation(null);
 const off = landsFirst('discard', discard);
-ok(off.kinds.length === 1 && off.kinds[0] === 'pet:ut (saved spins)', 'D gate off: a discard of #' + pre.id + ' landing first moved ' + off.moved + ' saved-spin burn(s) (the bug: ' + off.kinds.join(', ') + ')');
+if (!D['pet:ut (saved spins)']) console.log('skip D gate off: wallet ' + me.slice(0, 10) + '... has no saved spins, so no pet:ut burn to move (no wallet in range has spins)');
+else ok(off.kinds.length === 1 && off.kinds[0] === 'pet:ut (saved spins)', 'D gate off: a discard of #' + pre.id + ' landing first moved ' + off.moved + ' saved-spin burn(s) (the bug: ' + off.kinds.join(', ') + ')');
 V._setSpinHdAnchorActivation(Math.min(NB, SG));
 [['a discard', discard], ['a release', release]].forEach(([l, f]) => { const r = landsFirst(l, f);
   ok(r.moved === 0, 'D: ' + l + ' of #' + pre.id + ' landing first moves no other burn\'s places (' + r.moved + ' moved' + (r.moved ? ': ' + r.kinds.join(', ') : '') + ')'); });
