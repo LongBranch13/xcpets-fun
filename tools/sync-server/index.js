@@ -9,7 +9,7 @@
  *   XP_BOOT_CACHE  optional boot.json used as the hash and sale base, the same way the feed does
  *   XP_SNAPSHOT=0  do not build a pet-world snapshot
  *   XP_SNAPSHOT_EVERY  build when the published snapshot is at least this many blocks behind (default 6)
- *   XP_SNAPSHOT_HEAP   Node heap cap in MB for the builder (default 1536)
+ *   XP_SNAPSHOT_HEAP   Node heap cap in MB for the builder (default 2560; Nov 28 2026 a build at 215k pets peaked at 1,307 MB, 85% of the old 1536)
  *   XP_SNAPSHOT_MAX_MIN  stop a build that runs longer than this many minutes (default 30) so one hung build can't stop every later one
  *   XP_FETCH_MS    per-request upstream timeout in ms, body included (default 15000)
  *   XP_TICK_MAX_MIN  a follow step (one tick) that runs longer than this many minutes is stuck: the service writes stall.json and
@@ -146,7 +146,7 @@ function startSnapshot(state, dataDir, codeDir) {
   startSnapshot.code = snapJs === path.join(__dirname, 'snapshot.js') ? 'installed' : 'main';
   const args = [snapJs, '--state', st, '--out', out];
   if (process.env.XP_SNAPSHOT_COMPRESS === '0') args.push('--no-compress');
-  const heap = String(+(process.env.XP_SNAPSHOT_HEAP || 1536));
+  const heap = String(+(process.env.XP_SNAPSHOT_HEAP || 2560));
   const nodeArgs = ['--max-old-space-size=' + heap, ...args];
   const cmd = process.platform === 'win32' ? null : 'nice';
   const child = cmd ? spawn(cmd, ['-n', '10', process.execPath, ...nodeArgs], { stdio: ['ignore', 'pipe', 'pipe'] }) : spawn(process.execPath, nodeArgs, { stdio: ['ignore', 'pipe', 'pipe'] });
