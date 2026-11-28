@@ -25,43 +25,97 @@
   function traitBits(pets) { var N = pets.length, RF = {}, rk = pets.map(function (p) { var a = p.art || {}, v = [isHyb(p) ? 'hybrid' : String(p.species), a.eyes, a.pattern, a.background, cheekKey(a.cheeks), p.mutation ? 'mut-' + (p.mutation.kind || 'odd') : 'none', p.shows ? 'tb-' + p.shows : 'none']; /* glitch-display-1102: a mutation and a showing throwback trait are traits too (display only) */
       for (var t = 0; t < v.length; t++) { var key = t + ':' + v[t]; RF[key] = (RF[key] || 0) + 1; v[t] = key; } return v; });
     return { RF: RF, rk: rk, bits: rk.map(function (v) { var b = 0; for (var t = 0; t < v.length; t++) b -= Math.log2(RF[v[t]] / N); return b; }) }; }
+  /* SCORE BASE (Nov 28 2026, Jake: "pet scores dont seem to match between my pets and the pet card"). Every number here is graded on a
+   * curve against a population of pets: Stats against the same species, Looks and the 💎 trait rarity against every pet, the final ⭐
+   * rank against every score. A full replay holds every pet in the game, but a fast page holds only the pets it has loaded: your own
+   * pets, page by page, plus the odd parent or the pet a pet page asked for. So the same pet scored against "your pets so far" on My
+   * Pets, against a slightly different set on its pet page, and against the whole game on a full replay (a one-pet wallet read
+   * "top 100%, Rarity 0.0" instead of "top 22%, Rarity 19.4"). The game server now publishes the whole game's population tables in
+   * view/summary.json (psBase, made by basis() below from its full replay), and a fast world scores its pets against those. A full
+   * world never uses a base, so its numbers are exactly what they always were. tools/pet-score-base-test.js checks both. */
+  function grpOf(p) { return isHyb(p) ? 'hybrid' : String(p.species); }
+  function comboOf(p) { var a = p.art || {}; return [a.eyes, a.pattern, a.crown, a.cape, a.armor].join('|'); }
+  function gearVals(w, V) { var gv = {}; (w.itemList || Object.keys(w.items || {}).map(function (k) { return w.items[k]; })).forEach(function (it) {
+      if (!it) return; var pid = it.wonBy != null ? it.wonBy : it.rolledOn; if (pid == null) return; var v = V && V.itemView ? V.itemView(it.item) || {} : {}, t = +it.tier || 0;
+      var val = t + 1 + (t >= 3 ? 3 : 0) + (it.legendary || v.exclusive ? 4 : 0) + (v.sig ? 2 : 0); gv[pid] = (gv[pid] || 0) + val; });
+    return gv; }
+  /** basis(w, opt) -> the population tables of a FULL world (server side), for summary.psBase:
+   *  { v: 1, tip, n, stat: { group: [total, count, total, count, ...] }, combo: { d: [part, ...], k: [5 part indexes, count, ...] } (the Looks
+   *    combos eyes|pattern|crown|cape|armor and how many pets share each, the parts written once: 155 KB as plain keys, 40 KB like this), rf: { traitKey: count },
+   *    hist: [score, count, ...], gv: { petId: gear value } }. */
+  function basis(w, opt) { var r = (opt && opt.scored) || compute(w, opt), pets = population(w), stat = {}, combo = {}, hist = {}, gv = {}, out = { v: 1, tip: w.tip || 0, n: r.n, stat: {}, combo: combo, rf: traitBits(pets).RF, hist: [], gv: gv };
+    pets.forEach(function (p) { var g = grpOf(p), t = total(p), m = stat[g] = stat[g] || {}; m[t] = (m[t] || 0) + 1; var k = comboOf(p); combo[k] = (combo[k] || 0) + 1; });
+    Object.keys(stat).forEach(function (g) { var a = []; Object.keys(stat[g]).map(Number).sort(function (x, y) { return x - y; }).forEach(function (t) { a.push(t, stat[g][t]); }); out.stat[g] = a; });
+    r.ranked.forEach(function (s) { hist[s.score] = (hist[s.score] || 0) + 1; if (s.breakdown.gear.won) gv[s.id] = s.breakdown.gear.won; });
+    Object.keys(hist).map(Number).sort(function (x, y) { return x - y; }).forEach(function (s) { out.hist.push(s, hist[s]); });
+    var d = [], di = {}, k = []; Object.keys(combo).forEach(function (key) { key.split('|').forEach(function (part) { if (di[part] == null) { di[part] = d.length; d.push(part); } k.push(di[part]); }); k.push(combo[key]); });
+    out.combo = { d: d, k: k }; return out; }
+  function comboMap(c) { if (!c || !Array.isArray(c.d) || !Array.isArray(c.k)) return c || {}; var m = {}, d = c.d, k = c.k;
+    for (var i = 0; i + 5 < k.length; i += 6) m[d[k[i]] + '|' + d[k[i + 1]] + '|' + d[k[i + 2]] + '|' + d[k[i + 3]] + '|' + d[k[i + 4]]] = k[i + 5]; return m; }
+  function okBase(b) { return b && b.v === 1 && b.n > 0 && b.stat && b.combo && b.rf && b.hist ? b : null; }
+  /** the base a world is scored against: a fast world's published base, or null for a full world (scored against its own pets).
+   * A world copied or rebuilt without the field still gets the page's base when it holds fewer pets than the game (a partial world). */
+  function baseOf(w, opt) { if (opt && opt.base !== undefined) return okBase(opt.base); if (!w) return null; if (w._psBase) return okBase(w._psBase);
+    var S = root.V2Split, b = null; try { b = S && S.scoreBase ? okBase(S.scoreBase()) : null; } catch (e) { b = null; }
+    return b && (w._view || (w.pets || []).length < b.n) ? b : null; }
+  /* lookups made once per base: mid-rank percentile of a value inside a counted list, exactly as pctMap() ranks a full list */
+  var bix = typeof WeakMap === 'function' ? new WeakMap() : null;
+  function baseIx(b) { var x = bix && bix.get(b); if (x) return x; x = { stat: {}, size: {}, looks: {}, above: {}, combo: comboMap(b.combo) };
+    Object.keys(b.stat).forEach(function (g) { var a = b.stat[g], m = {}, below = 0, i, n = 0; for (i = 1; i < a.length; i += 2) n += a[i];
+      for (i = 0; i < a.length; i += 2) { m[a[i]] = [below, a[i + 1]]; below += a[i + 1]; } x.stat[g] = { m: m, a: a, n: n }; x.size[g] = n; });
+    /* Looks = log(N / combo count): fewer pets sharing the combo = higher. Pets whose combo count is c share one value. */
+    var byC = {}; Object.keys(x.combo).forEach(function (k) { var c = x.combo[k]; byC[c] = (byC[c] || 0) + c; });
+    var cs = Object.keys(byC).map(Number).sort(function (p, q) { return q - p; }), less = 0; cs.forEach(function (c) { x.looks[c] = [less, byC[c]]; less += byC[c]; }); x.looksCs = cs;
+    var h = b.hist, above = 0; for (var j = h.length - 2; j >= 0; j -= 2) { x.above[h[j]] = above; above += h[j + 1]; } x.hist = h;
+    if (bix) bix.set(b, x); return x; }
+  function midPc(less, eq, n) { if (n <= 1) return 0.5; return eq > 0 ? (less + (eq - 1) / 2) / (n - 1) : less / (n - 1); }
+  function statPc(x, g, t) { var s = x.stat[g]; if (!s) return 0.5; var e = s.m[t]; if (e) return midPc(e[0], e[1], s.n);
+    var below = 0; for (var i = 0; i < s.a.length && s.a[i] < t; i += 2) below += s.a[i + 1]; return midPc(below, 0, s.n); }
+  function looksPc(x, c, n) { var e = x.looks[c]; if (e) return midPc(e[0], e[1], n); var less = 0; x.looksCs.forEach(function (k) { if (k > c) less += x.looks[k][1]; }); return midPc(less, 0, n); }
+  function aboveOf(x, s) { if (x.above[s] != null) return x.above[s]; var a = 0, h = x.hist; for (var i = 0; i < h.length; i += 2) if (h[i] > s) a += h[i + 1]; return a; }
+  function baseBits(b, pets) { var RF = b.rf, N = b.n, rk = pets.map(function (p) { var a = p.art || {}, v = [isHyb(p) ? 'hybrid' : String(p.species), a.eyes, a.pattern, a.background, cheekKey(a.cheeks), p.mutation ? 'mut-' + (p.mutation.kind || 'odd') : 'none', p.shows ? 'tb-' + p.shows : 'none'];
+      for (var t = 0; t < v.length; t++) v[t] = t + ':' + v[t]; return v; });
+    var rf = {}; rk.forEach(function (v) { v.forEach(function (k) { if (!rf[k]) rf[k] = RF[k] || 1; }); });
+    return { RF: rf, rk: rk, bits: rk.map(function (v) { var bb = 0; for (var t = 0; t < v.length; t++) bb -= Math.log2(rf[v[t]] / N); return bb; }) }; }
   /** rarityAll(w) -> [{ id, bits, oneIn }] for every ranked pet (community and released pets left out), in world order. Cached per world. */
   var rcache = typeof WeakMap === 'function' ? new WeakMap() : null;
   function rarityAll(w) { if (!w) return []; var c0 = cache && cache.get(w), n = (w.pets || []).length; if (c0 && c0.tip === w.tip && c0.len === n) return c0.r.ranked.map(function (r) { return { id: r.id, bits: r.rarityBits, oneIn: r.rarityOneIn }; });
     var c = rcache && rcache.get(w); if (c && c.tip === w.tip && c.len === n) return c.r;
-    var pets = population(w), b = traitBits(pets).bits, r = pets.map(function (p, i) { return { id: p.id, bits: b[i], oneIn: Math.pow(2, b[i]) }; });
+    var B = baseOf(w), pets = population(w), b = (B ? baseBits(B, pets) : traitBits(pets)).bits, r = pets.map(function (p, i) { return { id: p.id, bits: b[i], oneIn: Math.pow(2, b[i]) }; });
     if (rcache) rcache.set(w, { tip: w.tip, len: n, r: r }); return r; }
   /* freeze-hunt (Nov 22 2026): compute() is split into prep -> one pet at a time -> finish, so computeAsync() can do the same work in short
    * slices. Over a full world (about 160,000 pets) the score took 1.2 s on a fast PC and about 3 s on a laptop in one go: the page froze
    * ('Page Unresponsive') whenever the server's ready-made world was missing. Same numbers either way. */
   function prep(w, opt, staged) {
-    opt = opt || {}; var V = opt.rules || root.V2Rules, tip = w.tip || 0;
+    opt = opt || {}; var V = opt.rules || root.V2Rules, tip = w.tip || 0, B = baseOf(w, opt), X = B ? baseIx(B) : null;
     var pets, N, byId = {}, grp, sStats, ck, cf, sLooks, gv, TR, RF, rk, rBits, sc, minC, maxL;
     var stages = [function () {
-    pets = (w.pets || []).filter(function (p) { return !isComm(p) && !p.released; }); N = pets.length;
+    pets = (w.pets || []).filter(function (p) { return !isComm(p) && !p.released; }); N = B ? B.n : pets.length;
     }, function () {
+    if (X) { sStats = pets.map(function (p) { return statPc(X, grpOf(p), total(p)); }); return; }
     /* Stats: total percentile within species (hybrids vs hybrids) */
     grp = {}; pets.forEach(function (p, i) { var g = isHyb(p) ? 'hybrid' : String(p.species); (grp[g] = grp[g] || []).push(i); });
     sStats = new Array(N); Object.keys(grp).forEach(function (g) { var ix = grp[g], pc = pctMap(ix.map(function (i) { return total(pets[i]); })); ix.forEach(function (i, k) { sStats[i] = pc[k]; }); });
     }, function () {
     /* Looks: inverse frequency of the exact eyes+pattern+crown+cape+armor combo, log-scaled, as a percentile across all pets */
-    ck = pets.map(function (p) { var a = p.art || {}; return [a.eyes, a.pattern, a.crown, a.cape, a.armor].join('|'); }); cf = {};
+    ck = pets.map(comboOf); cf = {};
+    if (X) { ck.forEach(function (k) { cf[k] = X.combo[k] || 1; }); sLooks = ck.map(function (k) { return looksPc(X, cf[k], N); }); return; }
     ck.forEach(function (k) { cf[k] = (cf[k] || 0) + 1; }); sLooks = pctMap(ck.map(function (k) { return Math.log(N / cf[k]); }));
     }, function () {
     /* Gear: pieces won from on-chain rolls (and battle spoils) credited to the pet that won them; equip state is browser-only and ignored */
-    gv = {}; (w.itemList || Object.keys(w.items || {}).map(function (k) { return w.items[k]; })).forEach(function (it) {
-      var pid = it.wonBy != null ? it.wonBy : it.rolledOn; if (pid == null) return; var v = V && V.itemView ? V.itemView(it.item) || {} : {}, t = +it.tier || 0;
-      var val = t + 1 + (t >= 3 ? 3 : 0) + (it.legendary || v.exclusive ? 4 : 0) + (v.sig ? 2 : 0); gv[pid] = (gv[pid] || 0) + val; });
+    /* a fast world holds only its own wallet's pieces, so a piece the pet won that now sits in another wallet was missed: the base has every pet's value */
+    gv = B && B.gv ? B.gv : gearVals(w, V);
     }, function () {
     /* Trait rarity (rarity-sort 2026-10-20, owner approved 8:58 PM CT; display only): bits = sum of -log2(freq / N) over species (hybrids one bucket,
      * player Wizards / Lord Kek their own species), eyes, pattern, background and cheeks, from the global frequencies of this same population. */
-    TR = traitBits(pets); RF = TR.RF; rk = TR.rk; rBits = TR.bits;
+    TR = B ? baseBits(B, pets) : traitBits(pets); RF = TR.RF; rk = TR.rk; rBits = TR.bits;
     }, function () {
     /* Scarcity: inverse species count */
-    sc = {}; pets.forEach(function (p) { var g = isHyb(p) ? 'hybrid' : String(p.species); sc[g] = (sc[g] || 0) + 1; });
+    if (X) { sc = {}; Object.keys(X.size).forEach(function (g) { sc[g] = X.size[g]; }); pets.forEach(function (p) { var g = grpOf(p); if (!sc[g]) sc[g] = 1; }); }
+    else { sc = {}; pets.forEach(function (p) { var g = isHyb(p) ? 'hybrid' : String(p.species); sc[g] = (sc[g] || 0) + 1; }); }
     minC = Math.min.apply(null, Object.keys(sc).map(function (k) { return sc[k]; })); maxL = Math.log(N / minC) || 1;
     }];
-    function ready() { return N ? { tip: tip, N: N, byId: byId, pets: pets, one: one } : { tip: tip, N: 0, byId: byId }; }
+    function ready() { return N ? { tip: tip, N: N, byId: byId, pets: pets, one: one, X: X } : { tip: tip, N: 0, byId: byId }; }
     if (staged) return { stages: stages, ready: ready, empty: function () { return !N; } };
     stages[0](); if (!N) return ready(); for (var si = 1; si < stages.length; si++) stages[si]();
     function one(p, i) {
@@ -78,9 +132,10 @@
       return { id: p.id, score: Math.round(s * 1000), dead: !!p.dead, breakdown: bd, rarityBits: rBits[i], rarityOneIn: Math.pow(2, rBits[i]), traitOneIn: rk[i].map(function (k) { return N / RF[k]; }) }; }
     return ready();
   }
-  function finish(st, res) { var N = st.N, byId = st.byId, tip = st.tip;
+  function finish(st, res) { var N = st.N, byId = st.byId, tip = st.tip, X = st.X;
     res.sort(function (a, b) { return b.score - a.score || a.id - b.id; });
-    res.forEach(function (r, i) { r.rank = i > 0 && res[i - 1].score === r.score ? res[i - 1].rank : i + 1; r.percentile = Math.round(1000 * (1 - (r.rank - 1) / N)) / 10;
+    /* with a base the rank is the pet's place among every scored pet in the game: 1 + the pets scored higher */
+    res.forEach(function (r, i) { r.rank = X ? Math.min(N, 1 + aboveOf(X, r.score)) : i > 0 && res[i - 1].score === r.score ? res[i - 1].rank : i + 1; r.percentile = Math.round(1000 * (1 - (r.rank - 1) / N)) / 10;
       r.top = Math.max(1, Math.ceil(100 * r.rank / N)); byId[r.id] = r; });
     return { tip: tip, n: N, byId: byId, ranked: res };
   }
@@ -90,7 +145,7 @@
     function step() { var t0 = Date.now(); try {
         if (!pr) pr = prep(w, opt, true);
         if (!st) { pr.stages[k++](); if (k === 1 && pr.empty()) { st = pr.ready(); return done({ tip: st.tip, n: 0, byId: st.byId, ranked: [] }); }
-          if (k < pr.stages.length) return setTimeout(step, 0); st = pr.ready(); res = new Array(st.N); n = st.N; return setTimeout(step, 0); }
+          if (k < pr.stages.length) return setTimeout(step, 0); st = pr.ready(); n = st.pets.length; res = new Array(n); /* with a base N is the whole game, the list is the loaded pets */ return setTimeout(step, 0); }
         while (i < n && Date.now() - t0 < 12) { res[i] = st.one(st.pets[i], i); i++; }
         if (i < n) return setTimeout(step, 0);
         done(finish(st, res)); } catch (e) { done(null); } }
@@ -126,9 +181,9 @@
    * moves when other pets hatch, grow or fight even if this one doesn't ("rarity score went down on my pets"). This browser keeps one line per
    * pet it has shown (localStorage, newest 4,000): the score, the number of pets scored and the pet's own inputs, per chain day. The chip gets
    * a small arrow and the breakdown says how much it moved and whether this pet changed or only the others did. */
-  var HK = 'xcpets-ps-hist', HMAX = 4000, hist = null, hT = 0;
+  var HK = 'xcpets-ps-hist2', /* hist2 (Nov 28 2026): fast pages now grade on the whole game's curve, so the old lines would show one false jump */ HMAX = 4000, hist = null, hT = 0;
   function ls() { try { return root.localStorage || null; } catch (e) { return null; } }
-  function hLoad() { if (hist) return hist; hist = {}; var L = ls(); try { var v = L && JSON.parse(L.getItem(HK) || '{}'); if (v && typeof v === 'object' && !Array.isArray(v)) hist = v; } catch (e) { } return hist; }
+  function hLoad() { if (hist) return hist; hist = {}; var L = ls(); try { if (L && L.getItem('xcpets-ps-hist') != null) L.removeItem('xcpets-ps-hist'); } catch (e0) { } try { var v = L && JSON.parse(L.getItem(HK) || '{}'); if (v && typeof v === 'object' && !Array.isArray(v)) hist = v; } catch (e) { } return hist; }
   function hSave() { if (hT || typeof setTimeout !== 'function') return; hT = setTimeout(function () { hT = 0; var L = ls(); if (!L) return; try { var k = Object.keys(hist);
       if (k.length > HMAX) k.sort(function (a, b) { return hist[a].d - hist[b].d; }).slice(0, k.length - HMAX).forEach(function (x) { delete hist[x]; }); L.setItem(HK, JSON.stringify(hist)); } catch (e) { } }, 1500); }
   function selfKey(s) { var b = s.breakdown || {}; return [b.stats && b.stats.total, b.growth && b.growth.mythicPct, b.growth && b.growth.streak, b.gear && b.gear.won, b.battles && b.battles.fights, b.battles && b.battles.wins].join(','); }
@@ -220,7 +275,7 @@
     doc.addEventListener('scroll', repos, true);
     if (view) { view.addEventListener('resize', repos); if (view.visualViewport) { view.visualViewport.addEventListener('resize', repos); view.visualViewport.addEventListener('scroll', repos); } }
   }
-  var api = { moved: moved, whyHtml: whyHtml, discardInfo: discardInfo, rarityChip: rarityChip, rarityAll: rarityAll, rarity: rarity, bitsOf: bitsOf, rarityLine: rarityLine, fmtN: fmtN, compute: compute, computeAsync: computeAsync, get: get, of: of, peek: peek, badge: badge, label: label, WEIGHTS: W, LABELS: LABEL, install: install };
+  var api = { basis: basis, baseOf: baseOf, moved: moved, whyHtml: whyHtml, discardInfo: discardInfo, rarityChip: rarityChip, rarityAll: rarityAll, rarity: rarity, bitsOf: bitsOf, rarityLine: rarityLine, fmtN: fmtN, compute: compute, computeAsync: computeAsync, get: get, of: of, peek: peek, badge: badge, label: label, WEIGHTS: W, LABELS: LABEL, install: install };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   if (typeof window !== 'undefined') { window.PetScore = api; if (window.document && document.createElement && document.head) try { install(document); } catch (e) {} }
 })(typeof window !== 'undefined' ? window : globalThis);
