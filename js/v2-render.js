@@ -422,6 +422,30 @@
   function inFrame(id, fa) { var d = BonusGear.DEFS[id], m = d && d.map; if (!m || !m.length || !fa) return fa; var w = m[0].length;
     if (d.at === 'handR' || d.at === 'tallR') return fa.maxX > 32 - w ? Object.assign({}, fa, { maxX: 32 - w }) : fa;
     if (d.at === 'handL') return fa.minX < w - 1 ? Object.assign({}, fa, { minX: w - 1 }) : fa; return fa; }
+  /* neck-fit (Jake Nov 28 2026: "scarf doesnt really fit", display only): a front neck piece (scarf, bandana, amulet) was one fixed picture centred on
+   * the middle of the canvas at a row from a coarse table, so on a narrow or off-centre body it hung past both sides, below the body or in the air (Dodo).
+   * It now sits on the body itself: centred on the body at its row, at most as wide as the body there (1 px in from each edge, shrunk with the same
+   * pixel scaler the hats use), and lifted so it never hangs below the body's lowest row. Pieces that already fit draw exactly as before. */
+  var NECK_FIT = {};
+  function isNeckFront(id) { var d = BonusGear.DEFS[id]; return !!(d && d.at === 'neck' && !d.behind && d.map); }
+  /* a neck piece stays on the body: any pixel it painted off the body's silhouette is put back (a chain that would hang in the air reads as going behind the neck) */
+  function onBodyOnly(img, snap, a) { var D = img.data; for (var q = 0; q < 1024; q++) { var i = q * 4; if (D[i] === snap[i] && D[i + 1] === snap[i + 1] && D[i + 2] === snap[i + 2]) continue; if (!a.isSil(q & 31, q >> 5)) { D[i] = snap[i]; D[i + 1] = snap[i + 1]; D[i + 2] = snap[i + 2]; D[i + 3] = snap[i + 3]; } } }
+  /* a front neck piece wider than the body is redrawn as a kerchief of that width in its own two main colours (cloth + pattern): a full band, a dotted
+   * band, then a point. Shrinking the picture squashed the lettering ("WOW" read as "LIOW" on Wojak); a kerchief keeps the piece's look at any width. */
+  function kerchief(m, tw) { var n = {}; m.forEach(function (row) { for (var i = 0; i < row.length; i++) { var c = row.charAt(i); if (c !== '.') n[c] = (n[c] || 0) + 1; } });
+    var cs = Object.keys(n).sort(function (a2, b2) { return n[b2] - n[a2]; }), Q = cs[0] || 'R', H = cs[1] || Q, out = [], y, x, row, rep = function (c, k) { return new Array(k + 1).join(c); };
+    out.push(rep(Q, tw)); row = ''; for (x = 0; x < tw; x++) row += x % 3 === 1 ? H : Q; out.push(row);
+    for (y = 1; tw - 2 * y >= 1; y++) { var k = tw - 2 * y; out.push(rep('.', y) + (k >= 5 && y === 1 ? Q + rep(H, 1) + rep(Q, k - 4) + H + Q : rep(Q, k)) + rep('.', y)); if (out.length >= 6) break; }
+    return out; }
+  function neckFit(id, a) { var d = BonusGear.DEFS[id], m = d && d.map; if (!m || !m.length || d.at !== 'neck' || d.behind || !a || !a.isSil || !a.gear || a.gear.scarf == null) return null;
+    var y = a.row(a.gear.scarf), x, l = -1, r = 99, w = m[0].length, h = m.length; /* the body's width on the piece's top row (its longest run of body: Dodo's beak is not his neck) */
+    for (var yy = y; yy < y + 1; yy++) { var l1 = -1, r1 = -2, s0 = -1; for (x = 0; x <= 32; x++) { var on = x < 32 && a.isSil(x, yy); if (on && s0 < 0) s0 = x; if (!on && s0 >= 0) { if (x - 1 - s0 > r1 - l1) { l1 = s0; r1 = x - 1; } s0 = -1; } } /* the longest run of body on the row */ if (l1 < 0) continue; l = Math.max(l, l1); r = Math.min(r, r1); }
+    if (l < 0 || r < l) return null; var span = r - l + 1, tw = Math.max(7, span - 2), map = m, band = m[0].replace(/\./g, '').length >= 0.8 * w;
+    if (w > tw) map = band ? kerchief(m, tw) : scaleMap(m, tw / w); var w2 = map[0].length, h2 = map.length, cx = (l + r + 1) / 2, x0 = Math.round(cx - w2 / 2), dx = x0 - (16 - Math.ceil(w2 / 2)), bottom = a.maxY != null ? a.maxY : 28, y2 = Math.min(y, bottom - h2 + 1);
+    if (map === m && dx === 0 && y2 === y) return null;
+    var key = id + '~neck' + w2; if (!NECK_FIT[key]) { NECK_FIT[key] = 1; BonusGear.DEFS[key] = Object.assign({}, d, { map: map }); }
+    var tmp = key + (dx ? 'x' + dx : ''); if (dx && !BonusGear.DEFS[tmp]) BonusGear.DEFS[tmp] = Object.assign({}, BonusGear.DEFS[key], { dx: (d.dx || 0) + dx });
+    var row0 = a.row; return { id: dx ? tmp : key, a: Object.assign({}, a, { row: function (q) { return q === a.gear.scarf ? y2 : row0(q); } }) }; }
   function isV2Face(id) { var d = BonusGear.DEFS[id]; return !!(d && /^v2(nose|mouth|septum|stud|cig)$/.test(d.at)); }
   /** eye-gear fit (2026-10-14, v2 only): draw glasses / mask / eye bags around the detected eyes (BonusGear star-eye pixels) so they track every
    * species, stage and pose. Lenses cover the eye box, frame rims it, bridge joins the lenses, arms run to the head edge. Eyeless poses fall back to the map. */
@@ -1128,7 +1152,7 @@
           rigidDraw(id, function () { if (id === 'dj-headphones' && drawStudioPhones(img, a)) return; if (id === 'dj-flat-cap') { if (!BonusGear.DEFS['dj-flat-cap~v2']) BonusGear.DEFS['dj-flat-cap~v2'] = Object.assign({}, BonusGear.DEFS['dj-flat-cap'], { dy: 2, map: FLAT_CAP }); id = 'dj-flat-cap~v2'; d = BonusGear.DEFS[id]; }
           if (F && it.slot === 'body' && d && d.map && d.at === 'chest' && !d.fitSil) F.outfit(img, a, d.map, BonusGear.COLORS); else if (isV2Face(id)) drawFace(id, img, faceSpots(bare, a, art.species), a); else if (d && d.at === 'mouth' && d.map && d.slot !== 'face') drawMouthHeld(d, img, faceSpots(bare, a, art.species), a); else if (d && d.v2snug) drawSnugBeanie(img, a); else if (d && d.kind === 'band' && d.at === 'head' && d.map && (BROW[a.spId] ? drawBrowBand(img, a, d, BROW[a.spId]) : bandLikeRed(img, key, stage, f, bare, d))) { /* brow, or the red headband footprint */ } else if (d && d.v2eye && drawEyeGear(img, a, d, d.v2eye.s === 'ninja' ? faceSpots(bare, a, art.species) : null) !== false) { /* traced */ } else { var fid = facedId(id, art), fa, placed = a.spId === 'peepo' ? placePeepoHead(fid, a) : null;
             if (!placed && BonusGear.DEFS[fid] && BonusGear.DEFS[fid].at === 'head' && (a.spId === 'sarutobi' || a.spId === 'wojak' || a.spId === 'mumu')) { var hd = BonusGear.DEFS[fid], fa0 = fitAnchors(fid, a), hh = hd.map ? hd.map.length : 0, htop = fa0.minY - hh + 1 + (hd.dy || 0); /* gear-sprites 2026-11-22: shrink a hat only when it would leave the canvas, and only as much as needed (a fixed 58%/85% shrink turned hats into smudges and broke lettering) */ if (hh && htop < 0) { var tid = placeScaled(fid, Math.max(0.6, (hh + htop) / hh)); if (tid) fid = tid; } }
-            fa = placed ? placed.a : fitAnchors(fid, a); if (placed) fid = placed.id; if (isBoard(fid)) fa = boardOut(fid, fa); else fa = inFrame(fid, fa); BonusGear.apply(fid, img, fa, f); } if (d && d.v2cig && ov.indexOf('v2-wojak-cig') < 0) { restoreEyes(); drawFace(d.v2cig, img, faceSpots(bare, a, art.species), a); } }); if (feetSnap) { var fL = grab(feetSnap, img.data); (feetKeep[id] = feetKeep[id] || [])[f] = { L: fL, n: fL.length / 5, bare: bd, post: new Uint8ClampedArray(img.data), img: img }; } } catch (e) {} }); restoreEyes(); injureAfter(img, a); });
+            fa = placed ? placed.a : fitAnchors(fid, a); if (placed) fid = placed.id; if (isBoard(fid)) fa = boardOut(fid, fa); else fa = inFrame(fid, fa); var nk = neckFit(fid, fa), nkSnap = null; if (nk) { fid = nk.id; fa = nk.a; } if (nk || isNeckFront(fid)) nkSnap = new Uint8ClampedArray(img.data); BonusGear.apply(fid, img, fa, f); if (nkSnap) onBodyOnly(img, nkSnap, fa); } if (d && d.v2cig && ov.indexOf('v2-wojak-cig') < 0) { restoreEyes(); drawFace(d.v2cig, img, faceSpots(bare, a, art.species), a); } }); if (feetSnap) { var fL = grab(feetSnap, img.data); (feetKeep[id] = feetKeep[id] || [])[f] = { L: fL, n: fL.length / 5, bare: bd, post: new Uint8ClampedArray(img.data), img: img }; } } catch (e) {} }); restoreEyes(); injureAfter(img, a); });
       plantFeet(feetKeep); }
     return fr;
   }
