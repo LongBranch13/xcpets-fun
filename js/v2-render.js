@@ -1260,10 +1260,27 @@
   function gsGet() { if (gsPref) return gsPref; try { gsPref = JSON.parse(localStorage.getItem(GS_KEY) || 'null'); } catch (e) { gsPref = null; } if (!gsPref || typeof gsPref !== 'object') gsPref = {}; if (!gsPref.hide || typeof gsPref.hide !== 'object') gsPref.hide = {}; return gsPref; }
   function gsSet(slot, hide) { var P = gsGet(); if (hide) P.hide[slot] = 1; else delete P.hide[slot]; try { localStorage.setItem(GS_KEY, JSON.stringify(P)); } catch (e) { } frCache.clear(); return P; }
   function gsHidden(slot) { var H = gsGet().hide; return !!(H.all || H[slot]); }
-  function shownWorn(w, id) { var L = worn(w, id), H = gsGet().hide; if (H.all) return []; return L.filter(function (g) { return !H[g.slot]; }); }
-  try { window.addEventListener('storage', function (e) { if (e.key === GS_KEY) { gsPref = null; frCache.clear(); } }); } catch (e) { }
+  function shownWorn(w, id, p) { var L = wardrobe(w, p && p.id === id ? p : (w && w.byId && w.byId[id]), worn(w, id)), H = gsGet().hide; if (H.all) return []; return L.filter(function (g) { return !H[g.slot]; }); }
+  /* Wardrobe (gear-closet, Jake Nov 28 2026 "I love all your suggestions": Outfits you save + Wardrobe / transmog, display only). A pet can show another
+   * piece's LOOK in a slot while it keeps the piece it really wears (power, fights and other players are unchanged: fights read on-chain gear).
+   * localStorage 'xcpets-wardrobe-v1' = { v: 1, w: { <owner address>: { pets: { <pet id>: { <slot>: <item id> | '-' } }, fits: [ saved outfits ] } } }.
+   * '-' hides that slot. A look shows only on a pet its address owns, in an unlocked slot. The UI (js/v2-closet.js) offers only pieces the wallet
+   * owns (any copy, worn or spare: a look is not a piece, so one copy dresses any number of pets). Drawing does NOT re-check ownership: the pet page
+   * and the Petdex load only part of a big wallet's gear, and a look must look the same on every page. */
+  var WD_KEY = 'xcpets-wardrobe-v1', wdPref = null, wdVer = 0;
+  function wdGet() { if (wdPref) return wdPref; try { wdPref = JSON.parse(localStorage.getItem(WD_KEY) || 'null'); } catch (e) { wdPref = null; } if (!wdPref || typeof wdPref !== 'object' || typeof wdPref.w !== 'object' || !wdPref.w) wdPref = { v: 1, w: {} }; return wdPref; }
+  function wdSave(P) { wdPref = P || wdGet(); try { localStorage.setItem(WD_KEY, JSON.stringify(wdPref)); } catch (e) { } wdVer++; frCache.clear(); return wdPref; }
+  function wdMap(p) { if (!p || p.owner == null || p.dead || p.released) return null; var W = wdGet().w[p.owner]; return W && W.pets ? W.pets[p.id] || null : null; }
+  function wardrobe(w, p, L) { var M = wdMap(p); if (!M) return L; var by = (V && V.GEAR_BY_ID) || {}, out = L.slice(), sl;
+    for (sl in M) { var want = M[sl], k = -1, i; for (i = 0; i < out.length; i++) if (out[i].slot === sl) { k = i; break; }
+      if (want === '-') { if (k >= 0) out.splice(k, 1); continue; }
+      var it = by[want]; if (!it || it.slot !== sl) continue; if (k >= 0 && out[k].item === want) continue;
+      if (k < 0 && V && V.slotOpen && !V.slotOpen(p, sl)) continue;
+      var g = { item: want, slot: sl, on: p.id, look: true, gid: k >= 0 ? out[k].gid : null }; if (k >= 0) out[k] = g; else out.push(g); }
+    return out; }
+  try { window.addEventListener('storage', function (e) { if (e.key === GS_KEY) { gsPref = null; frCache.clear(); } if (e.key === WD_KEY) { wdPref = null; wdVer++; frCache.clear(); } }); } catch (e) { }
   var frCache = new Map(), FR_MAX = 6000;
-  function frKey(p, w, extra) { return p.id + '|' + p.stage + '|' + shownWorn(w, p.id).map(function (g) { return g.item; }).join(',') + '|' + !!(p.blackEye || (extra && extra.blackEye)) + '|' + !!p.crowned + '|' + p.hatchBlock + '|' + JSON.stringify(p.art) + '|h' + (extra && extra.noHunger ? 0 : hungerDays(p, w)) + '|L' + looksOf(p, w, extra).map(function (L) { return L.id; }).join(','); }
+  function frKey(p, w, extra) { return p.id + '|' + p.stage + '|' + shownWorn(w, p.id, p).map(function (g) { return g.item; }).join(',') + '|' + !!(p.blackEye || (extra && extra.blackEye)) + '|' + !!p.crowned + '|' + p.hatchBlock + '|' + JSON.stringify(p.art) + '|h' + (extra && extra.noHunger ? 0 : hungerDays(p, w)) + '|L' + looksOf(p, w, extra).map(function (L) { return L.id; }).join(',') + '|S' + (setGlowOf(p, w) || ''); }
   function petFramesC(p, w, extra) { var k = frKey(p, w, extra), f = frCache.get(k); if (f) return f; f = petFrames(p, w, extra); if (frCache.size >= FR_MAX) frCache.clear(); frCache.set(k, f); return f; }
   /* page-unresponsive-fix (2026-10-27, owner: 'the arena freezes while picking fighters'): the observer used to paint EVERY sprite that came into view
    * in one task (a search in the Arena picker = dozens of Mythic sprites = 1.8 s on the owner's laptop). It now queues them and paints in ~12 ms
@@ -1641,6 +1658,7 @@
       fr = p && p.art && p.hatchBlock > cut ? fr.map(function (f, i) { return window.V2Bg ? V2Bg.apply(f, p.art, i, cpLogo) : cpLogo(f, p.art); }) : fr; } catch (e) { fr = null; if (window.console) console.warn('petFrames look step failed for #' + (p && p.id), e); }
     /* fail safe: if the hunger / background steps break a frame, draw the bare sprite instead of an empty (black) canvas */
     fr = okFrames(fr) ? fr : bare;
+    if (p.stage !== 5 && !(p.art && p.art.rareHatch) && !looksOf(p, w, extra).length) try { fr = setGlow(fr, p, w, keyed0); } catch (e) { if (window.console) console.warn('set glow failed #' + p.id, e); } /* GEAR SETS: a Mythic, a weird hatch (its own look) or a pet with looks keeps only that aura */
     if (MYTH_MODE && p && p.stage === 5 && !p.dead && !p.released && !(p.art && p.art.rareHatch && ['tiny','giant','two-headed','backwards'].indexOf(p.art.rareHatch.kind)>=0)) fr = mythFx(fr, function (bg) { var kf = keyed0(bg); return fr.length === kf.length ? kf : fr.map(function (_, i) { return kf[i % kf.length]; }); }); /* mythic-look options */
     if (p && p.art && p.art.rareHatch) fr = rareHatchFrames(fr, p, w, extra);
     var lk = looksOf(p, w, extra); /* looks-draw REAL (display only): realistic look overlays on top of the pixel sprite, see js/v2-looks.js */
@@ -1648,11 +1666,28 @@
       var A0 = lkKey('#ff00fe'), B0 = lkKey('#00ff01');if(p.art.rareHatch){A0=rareHatchFrames(A0,Object.assign({},p,{art:Object.assign({},p.art,{bgColor:'#ff00fe'})}),w,extra);B0=rareHatchFrames(B0,Object.assign({},p,{art:Object.assign({},p.art,{bgColor:'#00ff01'})}),w,extra);} window.V2Looks.attachInfo(fr, A0, B0, lk, p.id); } catch (e) { if (window.console) console.warn('looks failed #' + (p && p.id), e); }
     if (window.V2Weird) try { V2Weird.tag(fr, p, w); } catch (e) {} /* weird-looks-1128: card overlays for weird hatches, mutations and throwbacks (js/weird-looks.js) */
     return fr; }
+  /* GEAR SETS glow (Jake Nov 28 2026, display only): a pet that shows all 3 pieces of a set (V2Rules.GEAR_SETS) gets a 1-pixel rim in the set's colour
+   * just OUTSIDE its silhouette, blended into the background like the old Mythic rim, so it never covers the pet. Silhouette = pixels that are the same
+   * on the magenta and the green keyed render. Two sets: the first set's colour. Off before the gate (V2Rules.stashOn). */
+  function setGlowOf(p, w) { if (!V.setsIn || !V.stashOn || !w || !V.stashOn((w.tip || 0) + 1)) return null; var sh = {}; shownWorn(w, p.id, p).forEach(function (g) { sh[g.item] = 1; }); /* the set must be really worn (wardrobe looks are looks only, no bonus) AND shown */
+    var k = V.setsIn(worn(w, p.id)).filter(function (key) { return V.GEAR_SETS.some(function (S) { return S.key === key && S.items.every(function (id) { return sh[id]; }); }); })[0]; if (!k) return null;
+    var S = V.GEAR_SETS.filter(function (x) { return x.key === k; })[0]; return S ? S.glow : null; }
+  function setGlow(fr, p, w, keyed0) { var col = setGlowOf(p, w); if (!col || !okFrames(fr)) return fr; var A = keyed0('#ff00fe'), B = keyed0('#00ff01'); if (!okFrames(A) || !okFrames(B)) return fr;
+    var R = parseInt(col.slice(1, 3), 16), G = parseInt(col.slice(3, 5), 16), Bl = parseInt(col.slice(5, 7), 16);
+    return fr.map(function (f, i) { var a = A[i % A.length].data, b = B[i % B.length].data, pet = function (x, y) { if (x < 0 || y < 0 || x > 31 || y > 31) return false; var j = (y * 32 + x) * 4; return a[j] === b[j] && a[j + 1] === b[j + 1] && a[j + 2] === b[j + 2]; };
+      var d = Array.prototype.slice.call(f.data), any = false, out = new Uint8Array(1024), st = [], q0;
+      /* only the OUTSIDE: background reached from the frame edge, so holes between the body and a held piece stay clean */
+      for (q0 = 0; q0 < 32; q0++) st.push(q0, 992 + q0, q0 * 32, q0 * 32 + 31);
+      while (st.length) { var q1 = st.pop(), x1 = q1 % 32, y1 = (q1 / 32) | 0; if (out[q1] || pet(x1, y1)) continue; out[q1] = 1;
+        if (x1 > 0) st.push(q1 - 1); if (x1 < 31) st.push(q1 + 1); if (y1 > 0) st.push(q1 - 32); if (y1 < 31) st.push(q1 + 32); }
+      for (var y = 0; y < 32; y++) for (var x = 0; x < 32; x++) { if (!out[y * 32 + x]) continue; if (!(pet(x - 1, y) || pet(x + 1, y) || pet(x, y - 1) || pet(x, y + 1))) continue;
+        var q = (y * 32 + x) * 4; d[q] = Math.round(d[q] * 0.35 + R * 0.65); d[q + 1] = Math.round(d[q + 1] * 0.35 + G * 0.65); d[q + 2] = Math.round(d[q + 2] * 0.35 + Bl * 0.65); d[q + 3] = 255; any = true; }
+      if (!any) return f; var o = Object.assign({}, f); o.data = f.data && f.data.constructor === Uint8ClampedArray ? new Uint8ClampedArray(d) : d; o.setGlow = col; return o; }); }
   function looksOf(p, w, extra) { if (extra && extra.looks && window.V2Looks) return extra.looks; /* look picker previews: draw exactly these looks */
     if (!p || p.released || !w || (extra && extra.noLooks) || !window.V2Looks || !V.shownLooks || !(p.flameLooks || p.questLooks || p.earn || w.lookCopies)) return [];
     try { return V.shownLooks(w, p) || []; } catch (e) { return []; } }
   function petFrames0(p, w, extra) {
-    var ids = shownWorn(w, p.id).map(function (g) { return g.item; }), ov = [];
+    var ids = shownWorn(w, p.id, p).map(function (g) { return g.item; }), ov = [];
     if (p.blackEye || (extra && extra.blackEye)) ov.push('v2-black-eye'); if (p.crowned) ov.push('v2-rumble-crown');
     try { if (typeof location !== 'undefined' && /(?:^|[?&])honk=1(?:&|$)/.test(location.search || '')) ov.push('v2-honk'); } catch (e) {}
     return framesWith(p.art, p.stage, ids, ov);
@@ -2362,7 +2397,7 @@
   /** graveCount / graveLine (grave gear): a dead pet that kept its gear (the owner's on-chain choice). */
   function graveCount(w, p) { return p && p.dead ? V.wornOf(w, p.id).length : 0; }
   function graveLine(w, p) { var n = graveCount(w, p); return n ? '🪦 Buried with ' + n + ' gear piece' + (n === 1 ? '' : 's') : ''; }
-  window.V2Render = { lastColdName: lastColdName, communityGoal: communityGoal, communityGoalFill: communityGoalFill, eraChip: eraChip, eraChip0: eraChip0, rareInfo: rareInfo, rareChip: rareChip, RARE_LEG: RARE_LEG, RARE_WEIRD: RARE_WEIRD, anatomyFramesWith:framesWith,nativeFrame:nativeFrame,exportFrame:exportFrame,spriteCanvas:spriteCanvas,drawSprite:drawSprite,giantStrip:giantStrip, rareHatchFrames: rareHatchFrames, originOf: originOf, genOf: genOf, mutationChip: mutationChip, traitsOf: traitsOf, traitChips: traitChips, mutationTip: mutationTip, mutationOdds: mutationOdds, bornExtraRows: bornExtraRows, badgesOf: badgesOf, JACKPOT_ODDS: JACKPOT_ODDS, frKey: frKey, gearShow: { get: gsGet, set: gsSet, hidden: gsHidden, shownWorn: shownWorn, hasFeet: hasFeet, isShoe: isShoe }, godBornChip: godBornChip, haloSvg: haloSvg, burnLordFx: burnLordFx, FACING: FACING, setNextNo: setNextNo, kekOn: kekOn, KEK_CARD: KEK_CARD, communityTipHtml: communityTipHtml, communityGap: communityGap, comingSoonFrames: comingSoonFrames, comingSoonText: comingSoonText, wizardTopHtml: wizardTopHtml, COMMUNITY_NEXT_NO: COMMUNITY_NEXT_NO, showEl: showEl, careTarget: careTarget, communityStats: communityStats, communityWearing: communityWearing, bindCommunityTip: bindCommunityTip, wizardGear: wizardGear, coldFrames: coldFrames, genChip: genChip, breedExtrasHtml: breedExtrasHtml, bredFrom: bredFrom, communityFrames: communityFrames, communityGearText: communityGearText, drawSnugBeanie: drawSnugBeanie, drawEyeGear: drawEyeGear, fitAnchors: fitAnchors, drawFace: drawFace, faceSpots: faceSpots, facePos: facePos, isV2Face: isV2Face, paint: paint, animate: animate, framesWith: displayFramesWith, petFrames: petFramesC, petFramesRaw: petFrames, revive: revive, mythFx: mythFx, MYTH_MODE: MYTH_MODE, MYTH_PREVIEW: MYTH_PREVIEW, hungerDays: hungerDays, worn: worn, lazy: lazy, itemIcon: itemIcon, cpLogo: cpLogo, iconCanvas: iconCanvas, gearPicker: gearPicker, starveInfo: starveInfo, starveHtml: starveHtml, bindStarve: bindStarve, starveChip: starveChip, graveCount: graveCount, graveLine: graveLine, esc: esc, TID: TID, familyHtml: familyHtml };
+  window.V2Render = { lastColdName: lastColdName, communityGoal: communityGoal, communityGoalFill: communityGoalFill, eraChip: eraChip, eraChip0: eraChip0, rareInfo: rareInfo, rareChip: rareChip, RARE_LEG: RARE_LEG, RARE_WEIRD: RARE_WEIRD, anatomyFramesWith:framesWith,nativeFrame:nativeFrame,exportFrame:exportFrame,spriteCanvas:spriteCanvas,drawSprite:drawSprite,giantStrip:giantStrip, rareHatchFrames: rareHatchFrames, originOf: originOf, genOf: genOf, mutationChip: mutationChip, traitsOf: traitsOf, traitChips: traitChips, mutationTip: mutationTip, mutationOdds: mutationOdds, bornExtraRows: bornExtraRows, badgesOf: badgesOf, JACKPOT_ODDS: JACKPOT_ODDS, frKey: frKey, gearShow: { get: gsGet, set: gsSet, hidden: gsHidden, shownWorn: shownWorn, hasFeet: hasFeet, isShoe: isShoe }, wardrobe: { get: wdGet, save: wdSave, apply: wardrobe, map: wdMap, ver: function () { return wdVer; }, KEY: WD_KEY }, godBornChip: godBornChip, haloSvg: haloSvg, burnLordFx: burnLordFx, FACING: FACING, setNextNo: setNextNo, kekOn: kekOn, KEK_CARD: KEK_CARD, communityTipHtml: communityTipHtml, communityGap: communityGap, comingSoonFrames: comingSoonFrames, comingSoonText: comingSoonText, wizardTopHtml: wizardTopHtml, COMMUNITY_NEXT_NO: COMMUNITY_NEXT_NO, showEl: showEl, careTarget: careTarget, communityStats: communityStats, communityWearing: communityWearing, bindCommunityTip: bindCommunityTip, wizardGear: wizardGear, coldFrames: coldFrames, genChip: genChip, breedExtrasHtml: breedExtrasHtml, bredFrom: bredFrom, communityFrames: communityFrames, communityGearText: communityGearText, drawSnugBeanie: drawSnugBeanie, drawEyeGear: drawEyeGear, fitAnchors: fitAnchors, drawFace: drawFace, faceSpots: faceSpots, facePos: facePos, isV2Face: isV2Face, paint: paint, animate: animate, framesWith: displayFramesWith, petFrames: petFramesC, petFramesRaw: petFrames, revive: revive, mythFx: mythFx, MYTH_MODE: MYTH_MODE, MYTH_PREVIEW: MYTH_PREVIEW, hungerDays: hungerDays, worn: worn, lazy: lazy, itemIcon: itemIcon, cpLogo: cpLogo, iconCanvas: iconCanvas, gearPicker: gearPicker, starveInfo: starveInfo, starveHtml: starveHtml, bindStarve: bindStarve, starveChip: starveChip, graveCount: graveCount, graveLine: graveLine, esc: esc, TID: TID, familyHtml: familyHtml };
 })();
 /* Launch (Jake 2026-10-14): "Share to Telegram" + branching family tree (parents + grandparents) on the pet detail dialog and pet page. Opens t.me/share with the pet's deep link (pet.html?id=N) and a short brag. */
 (function () {

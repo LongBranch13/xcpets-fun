@@ -73,6 +73,7 @@
   var FG = { key: null, v: null };
   function forgeView(w) { var V = window.V2Rules, ME = U().ME, b = (w.tip || 0) + 1, k = D().index(w) + '|' + b; if (FG.key === k) return FG.v;
     var v = { up: V.forgePreview(w, ME, 'gearup', [], b), sm: [0, 1, 2, 3].map(function (t) { return V.forgePreview(w, ME, 'smash', t, b); }), fu: V.forgePreview(w, ME, 'fuse', null, b), dust: V.dustOf(w, ME) };
+    if (V.stashOn && V.stashOn(b)) { v.off = V.stashPreview(w, ME, 'gearoff', null, b); var mp = mirrorPet(w); if (mp) v.offP = V.stashPreview(w, ME, 'gearoff', [mp.id], b); } /* GEAR STASH (from ACTIVATE_GEAR_STASH_BLOCK) */
     FG.key = k; FG.v = v; return v; }
   function forgeHtml(w, P) { var V = window.V2Rules; if (!V || !V.forgePreview || !forgeLive()) return ''; var f = forgeView(w), RAR = ['Commons', 'Uncommons', 'Rares', 'Legendaries'];
     return '<section class="rrc-forge" aria-label="Gear Forge"><div class="rrc-uh"><h3>🔨 Gear Forge</h3><span class="small">🪙 ' + fmt(f.dust) + ' Gear Dust</span></div>' +
@@ -81,8 +82,10 @@
       '<div class="rrc-fg-row"><b>Smash spares into Dust</b> <span class="small">(one copy of every piece is always kept)</span><div class="rrc-fg-pills">' +
       f.sm.map(function (x, t) { return '<button type="button" class="q rrc-fg-sm" data-fg="sm" data-t="' + t + '"' + (x.ok ? '' : ' disabled') + '>' + (t ? 'up to ' : '') + RAR[t] + (t ? '' : ' only') + '<small>' + fmt(x.n || 0) + ' → ' + fmt(x.dust || 0) + ' dust</small></button>'; }).join('') + '</div></div>' +
       '<div class="rrc-fg-row"><b>Fuse</b> <span class="small">3 spare copies → 1 piece one rarity higher</span> <button type="button" class="q" data-fg="fu"' + (f.fu.ok ? '' : ' disabled') + '>' + (f.fu.ok ? '✨ Fuse ' + fmt(f.fu.used) + ' into ' + fmt(f.fu.n) : 'Nothing to fuse yet') + '</button></div>' +
+      (f.off ? '<div class="rrc-fg-row"><b>Take gear off</b> <span class="small">pieces go back to your stash, nothing is lost</span> <button type="button" class="q" data-fg="off"' + (f.off.ok ? '' : ' disabled') + '>' + (f.off.ok ? '🧺 All pets: ' + fmt(f.off.n) + ' piece' + (f.off.n === 1 ? '' : 's') : 'Nothing worn') + '</button>' +
+        (P && f.offP ? ' <button type="button" class="q" data-fg="offp" data-pid="' + P.id + '"' + (f.offP.ok ? '' : ' disabled') + '>' + (f.offP.ok ? '🧺 Only #' + P.id + ': ' + fmt(f.offP.n) : '#' + P.id + ' wears nothing') + '</button>' : '') + '</div>' : '') +
       (P ? '<div class="rrc-fg-row"><b>Dust roll</b> <span class="small">' + V.DUST_ROLL + ' Gear Dust = one gear roll for #' + P.id + '</span> <button type="button" class="q" data-fg="dr" data-pid="' + P.id + '"' + (f.dust >= V.DUST_ROLL ? '' : ' disabled') + '>🎲 Roll for #' + P.id + '</button></div>' : '') + '</section>'; }
-  function forgeGo(kind, arg) { var V = window.V2Rules, u = U(), w = u.world(), pl = V.forgePlan(w, u.ME, kind, arg, (w.tip || 0) + 1);
+  function forgeGo(kind, arg) { var V = window.V2Rules, u = U(), w = u.world(), pl = kind === 'gearoff' ? V.stashPlan(w, u.ME, kind, arg, (w.tip || 0) + 1) : V.forgePlan(w, u.ME, kind, arg, (w.tip || 0) + 1);
     if (!pl.ok) return u.toast ? u.toast(pl.why) : null; FG.key = null;
     u.confirmPlans(pl.label, [{ tag: pl.tag, amount: pl.amount, label: pl.label }], function () { FG.key = null; ST.ups = null; setTimeout(closet, 800); }); }
   function bindSprites(el, w) { el.querySelectorAll('canvas[data-pid]').forEach(function (c) { var p = w.byId[+c.getAttribute('data-pid')]; if (p) sprite(c, p, w); }); }
@@ -115,7 +118,7 @@
     if (ds.rc === 'more') { ST.more = !ST.more; return draw(w); }
     if (ds.rc === 'allgear') { ST.allGear = true; return draw(w); }
     if (ds.rc === 'all') { X.dressAll(); ST.ups = null; setTimeout(closet, 600); }
-    if (ds.fg === 'up') return forgeGo('gearup', []); if (ds.fg === 'sm') return forgeGo('smash', +ds.t); if (ds.fg === 'fu') return forgeGo('fuse', null); if (ds.fg === 'dr') return forgeGo('dustroll', +ds.pid); }
+    if (ds.fg === 'up') return forgeGo('gearup', []); if (ds.fg === 'sm') return forgeGo('smash', +ds.t); if (ds.fg === 'fu') return forgeGo('fuse', null); if (ds.fg === 'dr') return forgeGo('dustroll', +ds.pid); if (ds.fg === 'off') return forgeGo('gearoff', null); if (ds.fg === 'offp') return forgeGo('gearoff', [+ds.pid]); }
 
   /* ---- the room's mirror and door open the drawer here (they used to switch the page into #dressing-room) */
   function onHash() { var h = location.hash; if (h === '#dressing-room') { var pid = null; try { var s = V2Shop._state(); pid = s.pet != null ? s.pet : s.mpId; } catch (e) { }

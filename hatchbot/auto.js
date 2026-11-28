@@ -339,7 +339,7 @@ export function lagPosts(meta, tip, st, C) {
 /* ---------------------------------------------------------------- routines (pet of the day, fight night, motel, leaderboard) */
 const ROUTINES = { pet_of_day: { hour_ct: 12, max_per_day: 1 }, fight_night: { hour_ct: 20, max_per_day: 1 }, motel_alert: { max_per_day: 6, min_gap_min: 120 }, leaderboard: { weekday: 0, hour_ct: 18, max_per_day: 1 } };
 const QUIET = { start: 10, end: 21 };
-function topPets(P, n) { /* Rarity Score from api/pets.json (the old Pet Score needs the full replay; see PR notes) */
+function topPets(P, n) { /* the ⭐ Pet Score from api/pets.json (its rarityScore column is PetScore.compute on the full replay, the number the site's ⭐ chip shows; Nov 28 2026: posts said "Rarity Score", which on the site is the 💎 trait rarity, a different number) */
   const out = [];
   for (const r of P.rows) { if (r[10] || r[4] == null || !(r[8] === 0 || r[0] === 1765)) continue; out.push(r); }
   out.sort((a, b) => b[4] - a[4] || a[0] - b[0]);
@@ -361,7 +361,7 @@ export function routinePosts(P, W, st, C, nowMs, force) {
   const push = (name, key, text, photoId, photoWait) => { if (st.rt.sent[key] && !force) return; out.push({ type: name, prio: 2, keys: [key], routine: name, block: P ? P.tip : 0, text, photoId, photoWait }); };
   if (P && ok("pet_of_day")) {
     const top = topPets(P, 50), recent = new Set(st.rt.potd || []), pool = top.filter((p) => !recent.has(p.id)), p = (pool.length ? pool : top)[h32(t.date) % (pool.length || top.length || 1)];
-    if (p) push("pet_of_day", "potd:" + t.date, "\u{1F31F} Pet of the Day: " + p.name + " #" + p.id + ", " + an(TIER[p.tier]) + " " + TIER[p.tier] + " " + p.label + " with a Rarity Score of " + p.score + " (rank #" + fmt(p.rank) + "). Give it a wave!\nxcpets.fun/pet.html?id=" + p.id, p.id);
+    if (p) push("pet_of_day", "potd:" + t.date, "\u{1F31F} Pet of the Day: " + p.name + " #" + p.id + ", " + an(TIER[p.tier]) + " " + TIER[p.tier] + " " + p.label + " with a \u2B50 Pet Score of " + p.score + " (rank #" + fmt(p.rank) + "). Give it a wave!\nxcpets.fun/pet.html?id=" + p.id, p.id);
   }
   if (P && W && ok("fight_night")) {
     const fs24 = W.fights.filter((x) => x.block > W.tip - 144);
@@ -378,7 +378,7 @@ export function routinePosts(P, W, st, C, nowMs, force) {
   }
   if (P && ok("leaderboard")) {
     const top = topPets(P, 5);
-    if (top.length) push("leaderboard", "lb:" + t.date, "\u{1F3C5} Weekly Rarity Score top 5:\n" + top.map((p, i) => (i + 1) + ". " + p.name + " #" + p.id + " " + p.score).join("\n"), top[0].id);
+    if (top.length) push("leaderboard", "lb:" + t.date, "\u{1F3C5} Weekly \u2B50 Pet Score top 5:\n" + top.map((p, i) => (i + 1) + ". " + p.name + " #" + p.id + " " + p.score).join("\n"), top[0].id);
   }
   return out;
 }
