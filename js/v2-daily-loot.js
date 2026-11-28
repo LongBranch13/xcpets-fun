@@ -64,15 +64,15 @@
   function openChest() { var s = state(); if (!ready(s)) { var miss = TICKS.filter(function (k) { return !s.t[k[0]]; }).map(function (k) { return k[2].toLowerCase(); }); if (root.V2UI && V2UI.toast) V2UI.toast('Chest locked: ' + miss.join(', ') + ' first.'); else alert('Chest locked: ' + miss.join(', ') + ' first.'); return; }
     var first = !s.opened; if (first) s = fire('open'); var day = s.day;
     getMemes(function (L) { var m = memeFor(L, day); css(); var ov = d.createElement('div'); ov.id = 'dlOv'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-label', 'Daily loot chest');
-      ov.innerHTML = '<div class="dl-title">' + (first ? 'DAILY LOOT!' : 'TODAY’S LOOT') + '</div><div class="dl-big" aria-hidden="true">🎁</div>' +
+      ov.innerHTML = '<div class="dl-title">' + (first ? 'MEME OF THE DAY!' : 'TODAY’S MEME') + '</div><div class="dl-big" aria-hidden="true">🎁</div>' +
         '<div class="dl-card">' + (m ? '<img alt="' + esc(m.caption) + '" src="hb-memes/' + encodeURIComponent(m.file) + '"><div class="dl-cap">' + esc(m.caption) + '</div>' : '<div class="dl-cap">gm. WAGMI.</div>') +
-        '<div class="dl-sub">Today’s meme card. Chest streak: <b>' + s.streak + '</b> day' + (s.streak === 1 ? '' : 's') + ' (best ' + s.best + '). A new chest unlocks tomorrow.</div>' +
+        '<div class="dl-sub"><b>Just for laughs:</b> the words on the card are part of the meme, not a prize. Nothing was added to your wallet. Chest streak: <b>' + s.streak + '</b> day' + (s.streak === 1 ? '' : 's') + ' (best ' + s.best + '). A new chest unlocks tomorrow.</div>' +
         '<div class="dl-row"><button type="button" data-dl="share">📤 Share</button><button type="button" data-dl="close">Close</button></div></div>';
       d.body.appendChild(ov); var S2 = root.V2Sfx, reduced = root.matchMedia && root.matchMedia('(prefers-reduced-motion: reduce)').matches;
       if (S2 && S2.knock) { [0, 300, 600, 900].forEach(function (t) { setTimeout(function () { S2.knock(); }, t); }); setTimeout(function () { S2.crack(); S2.reveal(3); }, 1100); }
       setTimeout(function () { ov.classList.add('open'); }, reduced || !first ? 0 : 1300);
       ov.addEventListener('click', function (e) { var b = e.target.closest('[data-dl]'); if (b && b.getAttribute('data-dl') === 'share') { e.stopPropagation(); return share(m, b); } if (!e.target.closest('.dl-card') || b) ov.remove(); }); }); }
-  function share(m, b) { var t = '🎁 Today’s XCPETS loot: ' + (m ? m.caption : 'gm') + '\nxcpets.fun' + (m ? '/hb-memes/' + encodeURIComponent(m.file) : '');
+  function share(m, b) { var t = '🐸 Today’s XCPETS meme: ' + (m ? m.caption : 'gm') + '\nxcpets.fun' + (m ? '/hb-memes/' + encodeURIComponent(m.file) : '');
     try { if (navigator.share && /Mobi|Android/i.test(navigator.userAgent)) { navigator.share({ text: t }).catch(function () { }); return; } } catch (e) { }
     try { navigator.clipboard.writeText(t).then(function () { b.textContent = '✅ Copied'; }); } catch (e) { } }
   function start() { if (!d) return; var go = function () { var page = d.body && d.body.getAttribute('data-split'); if (/practice/.test(location.pathname)) return;
