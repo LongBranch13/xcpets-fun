@@ -920,7 +920,7 @@
     var nBox = (function () { var t = {}, k = 0; all.forEach(function (x) { if (!revEl(x)) return; var b = String(x.hatchTx || '').replace(/:\d+$/, ''); if (b && !t[b]) { t[b] = 1; k++; } }); return k; })();
     var box = nEl >= 100 && nEl >= n / 2, ex = Math.round(nEl * (V.ELECTRIC_TIER_10K || [3000, 4000, 2200, 800])[3] / 10000);
     var ck = star.length ? 'weird' : box && ex && tiers[3] >= ex * 1.1 ? 'luck' : tiers[3] ? 3 : tiers[2] ? 2 : tiers[1] ? 1 : 0, caps = INTRO_CAPS[ck], cap = caps[(n + tiers[3]) % caps.length];
-    $('packTitle').textContent = box ? (nBox > 1 ? '⚡ ' + nBox + ' Shock Boxes opened!' : '⚡ Shock Box opened!') : '🥚 ' + n.toLocaleString('en-US') + ' eggs hatched!';
+    $('packTitle').textContent = box ? (nBox > 1 ? '⚡ ' + nBox + ' Shock Boxes opened!' : '⚡ Shock Box opened!') : (all.every(function (x) { return (x.stage || 0) === 0; }) ? '🥚 ' + n.toLocaleString('en-US') + (n === 1 ? ' new egg! One meal hatches it' : ' new eggs! One meal hatches each') : '🥚 ' + n.toLocaleString('en-US') + ' eggs hatched!');
     var bars = [3, 2, 1, 0].map(function (t) { var c = tiers[t], pc = n ? Math.max(c ? 2 : 0, Math.round(c * 100 / n)) : 0;
       return '<div class="pkibar t' + t + '"><span class="pkil">' + esc(TIERS[t].label) + '</span><span class="pkit"><i data-w="' + pc + '" style="width:0;background:' + TIER_C[t] + '"></i></span><b class="pkic" data-n="' + c + '">0</b></div>'; }).join('');
     var head = star.length ? (wd ? '🌀 ' + wd + ' weird' : '') + (wd && sp ? ' + ' : '') + (sp ? '✨ ' + sp + ' special' : '') + (star.length === 1 && !(wd + sp > 1) ? ' find!' : ' finds!') : '🏆 Your best pulls';
@@ -1152,7 +1152,7 @@
     if (X && X.flip) list.reverse();
     /* eggs-first-1128 (Jake Nov 28 2026): Eggs head My Pets in every order, so you see all your eggs first, then the order you picked inside
      * the eggs and inside the rest. Not for '🌱 Biggest stage' (that order is about stage) or '☑️ Selected first' (your picks on top). */
-    if (!cem && window.PetSort && PetSort.eggsFirst && fS !== 'stage' && fS !== 'sel') list = PetSort.eggsFirst(list);
+    if (!cem && window.PetSort && PetSort.eggsFirst && !{ stage: 1, sel: 1, weird: 1, starred: 1, tok: 1 }[fS]) list = PetSort.eggsFirst(list); /* eggs first, except in sorts that put something else first (Biggest stage, Selected / Weird / Starred / Tokenized first) */
     return list; }
   /* hotfix 3: a sort change only reorders the existing cards (same set, new order); anything else falls back to a full render */
   function resort() { var w = world(), all = mine(w), list = petList(all.filter(function (p) { return !p.dead; }), all.filter(function (p) { return p.dead; })), box = $('pets'), m = {};
@@ -2076,7 +2076,7 @@
    * mark it left last time. It keeps the seen keys (once per tx) and plays through the same queue / 'While you were away' hold. Display only. */
   var LIFE_PV = /[?&]anim=(hatch|hatch-bulk|feed|feed-many|stage|mythic|starve|god|birth-[a-z]+|sold|bought|listed|closed|gift-in|gift-out|swap|gear|hunt-won|hunt-lost|altar|arrival|grant)(&|$)/.test(location.search);
   function lifeReduced() { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } }
-  function withLife(cb) { if (window.V2LifeAnim) return cb(true); var q = withLife.q = withLife.q || []; q.push(cb); if (q.length > 1) return; var t = document.createElement('script'); t.src = 'js/v2-life-anim.js?v=8697717877';
+  function withLife(cb) { if (window.V2LifeAnim) return cb(true); var q = withLife.q = withLife.q || []; q.push(cb); if (q.length > 1) return; var t = document.createElement('script'); t.src = 'js/v2-life-anim.js?v=eb4caad158';
     var fin = function (ok) { var a = withLife.q; withLife.q = []; a.forEach(function (f) { try { f(ok); } catch (e) { if (window.console) console.warn('life anim', e); } }); }; t.onload = function () { fin(true); }; t.onerror = function () { fin(false); }; document.body.appendChild(t); }
   function lifeNeeded(w) { if (!ME || !w || !w.log) return false; var m = 0; try { m = Number(localStorage.getItem('xcpets-life-mark-' + ME)) || 0; } catch (e) { return false; } if (!m) return true; var tip = S.tip || w.tip || 0; if (tip <= m) return false;
     for (var i = w.log.length - 1; i >= 0 && w.log[i].block > m; i--) { var l = w.log[i]; if (l.kind === 'feed' && (l.petIds || [l.petId]).some(function (id) { var p = w.byId[id]; return p && p.owner === ME; })) return true; }
