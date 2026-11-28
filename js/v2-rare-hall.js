@@ -14,12 +14,14 @@
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function fmt(n) { return Number(n).toLocaleString('en-US'); }
   function reduced() { return !!(RM && RM.matches); }
-  function finds(w) { var R = window.V2Render, out = []; if (!R || !R.rareInfo || !w || !w.pets) return out; w.pets.forEach(function (p) { var i = R.rareInfo(p); if (i) out.push({ p: p, i: i }); });
+  function finds(w) { var R = window.V2Render, out = []; if (!R || !R.rareInfo || !w || !w.pets) return out; w.pets.forEach(function (p) { var i = R.rareInfo(p); if (!i && p && p.mutation) i = mutInfo(p); if (i) out.push({ p: p, i: i }); }); /* weird-looks-1128: mutants have their own tab */
     out.sort(function (a, b) { return (b.i.legend - a.i.legend) || (b.i.god - a.i.god) || (a.i.block || a.p.hatchBlock || 0) - (b.i.block || b.p.hatchBlock || 0) || a.p.id - b.p.id; }); return out; }
+  /* weird-looks-1128 (Jake Nov 28 2026: "what about mutations too? can that be funner too"): mutants (1 in 100 breeds, 5 in the game on Nov 28) get a tab */
+  function mutInfo(p) { var V = window.V2Rules, m = p.mutation, lab = V && V.mutationLabel ? V.mutationLabel(m) : 'Mutation'; return { kind: 'mutant', mutant: true, legend: false, god: false, weird: false, name: lab, label: lab, icon: '🧬', block: p.hatchBlock || 0 }; }
   function css() { if ($('rhCss')) return; var s = document.createElement('style'); s.id = 'rhCss';
     s.textContent = '#rareHall .rh-odds{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:8px 0}' +
       '#rareHall .rh-o{border:3px solid #000;box-shadow:3px 3px 0 #000;background:#2a1450;color:#fff3b0;padding:8px;text-align:center}#rareHall .rh-o b{display:block;font-size:15px}#rareHall .rh-o .rh-n{font-family:"Press Start 2P",monospace;font-size:11px;color:#ffcf3a;margin-top:4px}' +
-      '#rareHall .rh-o.rh-w{background:#13351f;color:#dfffe8}#rareHall .rh-o.rh-w .rh-n{color:#7dff9a}#rareHall .rh-o.rh-g{background:#0d1f3d;color:#e6fbff}#rareHall .rh-o.rh-g .rh-n{color:#7fe8ff}' +
+      '#rareHall .rh-o.rh-m{background:#3a1040;color:#ffe0fb}#rareHall .rh-o.rh-m .rh-n{color:#ff8af0}#rareHall .rh-o.rh-w{background:#13351f;color:#dfffe8}#rareHall .rh-o.rh-w .rh-n{color:#7dff9a}#rareHall .rh-o.rh-g{background:#0d1f3d;color:#e6fbff}#rareHall .rh-o.rh-g .rh-n{color:#7fe8ff}' +
       '#rareHall .rh-tabs{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}#rareHall .rh-tabs .on{background:#E8B33A;color:#100E14}' +
       '#rareHall .rh-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}' +
       '#rareHall .rh-card{display:flex;flex-direction:column;align-items:center;gap:4px;border:3px solid #000;box-shadow:3px 3px 0 #000;background:#1b1440;padding:8px;color:#fff;text-decoration:none;text-align:center}' +
@@ -35,8 +37,9 @@
       '<p class="small">Every hatch has a tiny chance to crack open a Legend, a God pet or a weird pet. This page lists the finds it has loaded. Look up a wallet address or a pet number to add more. The whole world is not loaded here.</p>') +
       '<div class="rh-odds">' + ODDS.map(function (o) { return '<div class="rh-o' + (o[2] === 'God pet' ? ' rh-g' : '') + '"><span aria-hidden="true">' + o[0] + '</span><b>' + o[1] + '</b><span class="small">' + o[2] + '</span><div class="rh-n">' + o[3] + '</div></div>'; }).join('') +
       '<div class="rh-o rh-w"><span aria-hidden="true">🌀</span><b>Weird hatch</b><span class="small">' + WEIRD.join(' · ') + '</span><div class="rh-n">about 1 in 5,400 each</div></div>' +
-      '<div class="rh-o rh-w"><span aria-hidden="true">🧬</span><b>Weird babies</b><span class="small">each weird parent passes its weirdness on</span><div class="rh-n">1 in 77</div></div></div>' +
-      '<div class="rh-tabs" role="group" aria-label="Show"><button type="button" class="btn ghost q on" data-rh="all" aria-pressed="true">All finds <span class="rh-c" data-c="all"></span></button><button type="button" class="btn ghost q" data-rh="legend" aria-pressed="false">🏆 Legends <span class="rh-c" data-c="legend"></span></button><button type="button" class="btn ghost q" data-rh="weird" aria-pressed="false">🌀 Weird <span class="rh-c" data-c="weird"></span></button></div>' +
+      '<div class="rh-o rh-w"><span aria-hidden="true">🧬</span><b>Weird babies</b><span class="small">each weird parent passes its weirdness on</span><div class="rh-n">1 in 77</div></div>' +
+      '<div class="rh-o rh-m"><span aria-hidden="true">🧬</span><b>Mutation</b><span class="small">Glitch or a new palette, from a breed or a Jackpot Egg</span><div class="rh-n">1 in 100 breeds</div></div></div>' +
+      '<div class="rh-tabs" role="group" aria-label="Show"><button type="button" class="btn ghost q on" data-rh="all" aria-pressed="true">All finds <span class="rh-c" data-c="all"></span></button><button type="button" class="btn ghost q" data-rh="legend" aria-pressed="false">🏆 Legends <span class="rh-c" data-c="legend"></span></button><button type="button" class="btn ghost q" data-rh="weird" aria-pressed="false">🌀 Weird <span class="rh-c" data-c="weird"></span></button><button type="button" class="btn ghost q" data-rh="mutant" aria-pressed="false">🧬 Mutants <span class="rh-c" data-c="mutant"></span></button></div>' +
       '<div id="rareLookHost"></div><div class="rh-grid" id="rhGrid"><div class="rh-none muted">Reading the chain…</div></div>';
     box.querySelector('.rh-tabs').addEventListener('click', function (e) { var b = e.target.closest('[data-rh]'); if (!b) return; show = b.getAttribute('data-rh'); applyFilter(); });
     var g = $('rhGrid');
@@ -51,18 +54,18 @@
     if (RM.addEventListener) RM.addEventListener('change', syncLoop);
     placeLook();
     return box; }
-  function filtered() { return !listAll ? [] : listAll.filter(function (x) { return show === 'all' || (show === 'legend' ? x.i.legend : !x.i.legend); }); }
-  function counts() { var c = { all: listAll ? listAll.length : 0, legend: listAll ? listAll.filter(function (x) { return x.i.legend; }).length : 0 }; c.weird = c.all - c.legend; return c; }
+  function filtered() { return !listAll ? [] : listAll.filter(function (x) { return show === 'all' || (show === 'legend' ? x.i.legend : show === 'mutant' ? x.i.mutant : !x.i.legend && !x.i.mutant); }); }
+  function counts() { var c = { all: listAll ? listAll.length : 0, legend: listAll ? listAll.filter(function (x) { return x.i.legend; }).length : 0 }; c.mutant = listAll ? listAll.filter(function (x) { return x.i.mutant; }).length : 0; c.weird = c.all - c.legend - c.mutant; return c; }
   function paintCounts(box) { var c = counts(); Array.prototype.forEach.call(box.querySelectorAll('.rh-c'), function (s) { s.textContent = '(' + c[s.getAttribute('data-c')] + ')'; });
     Array.prototype.forEach.call(box.querySelectorAll('[data-rh]'), function (b) { var on = b.getAttribute('data-rh') === show; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); }); }
-  function cardHtml(x) { var p = x.p, R = window.V2Render, w = worldRef; return '<a class="rh-card" href="pet.html?id=' + p.id + '"><canvas width="32" height="32" data-rh-id="' + p.id + '"></canvas>' + (R && R.rareChip ? R.rareChip(w, p) : '') +
+  function cardHtml(x) { var p = x.p, R = window.V2Render, w = worldRef; return '<a class="rh-card" href="pet.html?id=' + p.id + '"><canvas width="32" height="32" data-rh-id="' + p.id + '"></canvas>' + (x.i.mutant ? (R && R.traitChips ? R.traitChips(w, p, 'card', 'mutant') : '🧬') : R && R.rareChip ? R.rareChip(w, p) : '') +
     '<span class="rh-nm">#' + p.id + ' ' + esc(p.name || '') + '</span><span class="small">' + esc(window.V2Rules && V2Rules.petSpeciesLabel ? V2Rules.petSpeciesLabel(p) : p.species) + (x.i.block ? ' · block ' + fmt(x.i.block) : '') + (p.dead ? ' · in the Pet Cemetery' : '') + '</span></a>'; }
   function light() { return !!(worldRef && worldRef._view && !worldRef._ranked); }
   function emptyHtml() {
     var looked = window.V2Lookup && V2Lookup.last && V2Lookup.last(), none = !listAll || !listAll.length;
     if (looked && looked.query && none) return '<div class="rh-none muted">' + esc(looked.error || ((looked.pets && looked.pets.length) ? 'Loaded ' + looked.pets.length + ' pet' + (looked.pets.length === 1 ? '' : 's') + '. None of them is a Legend or a weird hatch.' : looked.note) || 'Nothing in that lookup is a rare find.') + '</div>';
     if (light() && none) return '<div class="rh-none muted">No rare find is loaded yet. Type a wallet address or a pet number above. This page does not load the whole world.</div>';
-    return '<div class="rh-none muted">' + (show === 'weird' ? 'No weird pets yet. Who will be first?' : show === 'legend' ? 'No Legends yet. Who will be first?' : 'Nothing found yet. Who will be first?') + '</div>'; }
+    return '<div class="rh-none muted">' + (show === 'mutant' ? 'No mutants loaded. A mutation is a 1 in 100 roll on every breed.' : show === 'weird' ? 'No weird pets yet. Who will be first?' : show === 'legend' ? 'No Legends yet. Who will be first?' : 'Nothing found yet. Who will be first?') + '</div>'; }
   function placeLook() { var box = $('rareHall'); if (!box || !window.V2Lookup) return; var host = $('rareLookHost'); if (!host) return;
     V2Lookup.mount(host, { id: 'rareLook', mode: 'rare', onReady: function () { worldRef = null; listAll = null; draw(); } }); }
   function skey(p, w) { var R = window.V2Render; try { if (R && R.frKey) return R.frKey(p, w); } catch (e) {} var r = p.art && p.art.rareHatch; return p.id + '|' + p.stage + '|' + (r && r.kind) + '|' + (r && r.block); }

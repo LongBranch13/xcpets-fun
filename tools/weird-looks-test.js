@@ -20,7 +20,7 @@ function ctxWith(renderSrc) {
 }
 let pass = 0; const t = (name, fn) => { fn(); pass++; console.log('ok', name); };
 const now = ctxWith(rd('js/v2-render.js')), R = now.V2Render, WL = now.V2Weird;
-let before = null; try { before = ctxWith(cp.execSync('git show origin/main:js/v2-render.js', { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 << 20 })).V2Render; } catch (e) { console.log('skip: no origin/main to compare with'); }
+let before = null; try { before = ctxWith(cp.execSync('git show 71043d373c95733173ed42259a13a42c635c9ac2:js/v2-render.js', { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 << 20 })).V2Render; } catch (e) { console.log('skip: the last main before these looks (71043d3) is not in this clone'); }
 
 /* ---------------- which look ---------------- */
 const rh = (kind, extra) => ({ art: { rareHatch: Object.assign({ version: 1, kind, block: 975000 }, extra || {}) } });
@@ -43,9 +43,7 @@ if (before) t('Tiny, Giant, Backwards, Inverted, Wrong egg: same pixels as befor
 t('Tiny and Giant frames say where the pet sits', () => SPEC.forEach(sp => { const b = frames(R, sp, 'tiny', 3)[0].wlBox; assert(b && b[2] - b[0] < 0.5 && b[3] <= 1, sp + ' ' + b); const g = frames(R, sp, 'giant', 3)[0].wlBox; assert(g && g[2] - g[0] > 0.5, sp + ' ' + g); }));
 t('Two-headed fills its 64 px scene and leaves room for the aura', () => SPEC.forEach(sp => { const f = frames(R, sp, 'two-headed', 3)[0], b = f.wlBox; assert(f.rareScene, 'scene');
   const w = (b[2] - b[0]) * 64, h = (b[3] - b[1]) * 64; assert(w >= 40 || h >= 40, sp + ' too small: ' + w + 'x' + h); assert(b[0] * 64 >= 2.9 && b[2] * 64 <= 61.1, sp + ' no margin: ' + b.map(x => x * 64)); }));
-if (before) t('Two-headed is bigger than before', () => SPEC.forEach(sp => { const big = frames(R, sp, 'two-headed', 3)[0].wlBox, n = (b) => (b[2] - b[0]) * (b[3] - b[1]); const o = frames(before, sp, 'two-headed', 3)[0]; const d = o.rareScene.data; let x0 = 64, x1 = -1, y0 = 64, y1 = -1, bg = [d[0], d[1], d[2]];
-  for (let q = 0; q < 4096; q++) { const i = q * 4; if (Math.abs(d[i] - bg[0]) + Math.abs(d[i + 1] - bg[1]) + Math.abs(d[i + 2] - bg[2]) > 8) { x0 = Math.min(x0, q % 64); x1 = Math.max(x1, q % 64); y0 = Math.min(y0, q >> 6); y1 = Math.max(y1, q >> 6); } }
-  assert(n(big) > ((x1 - x0 + 1) * (y1 - y0 + 1)) / 4096 * 1.3, sp); }));
+/* (the old Two-headed was about 26 px wide in its 64 px scene; the check above asks for 40) */
 t('Ghost stays opaque on the card (blended into its backdrop), pale and see-through', () => SPEC.forEach(sp => { const g = frames(R, sp, 'ghost', 3)[0].data, n = frames(R, sp, 'inverted', 3), base = R.framesWith(arts[sp], 3, [])[0].data; let a = 0, changed = 0;
   for (let q = 0; q < 1024; q++) { if (g[q * 4 + 3] !== 255 && base[q * 4 + 3] === 255) a++; if (g[q * 4] !== base[q * 4] || g[q * 4 + 1] !== base[q * 4 + 1]) changed++; } assert.strictEqual(a, 0, sp + ' alpha holes'); assert(changed > 60, sp + ' barely changed'); assert(n.length); }));
 
