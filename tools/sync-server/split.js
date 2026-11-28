@@ -7,6 +7,7 @@
  * rules-signature + tip. Missing or stale files are the page's fallback. */
 const fs = require('fs'), path = require('path'), os = require('os'), crypto = require('crypto'), zlib = require('zlib');
 const Art = require('../../js/v2-art');
+const PetScore = require('../../js/pet-score');
 const PET_SHARD = 2000;
 const PAGE = 24;
 const COLD_KEYS = ['wizard', 'kek', 'homer', 'rabbit', 'groyper', 'funtrump', 'djpepe']; /* groyper: community pet #7 (Nov 24 2026); reaches the VPS with a server-repair code update */
@@ -314,13 +315,6 @@ function artOpt(meta) {
     itemOf: V && V.itemOf ? function (id) { return V.itemOf(id); } : null
   };
 }
-function traitVec(p) {
-  const a = p.art || {};
-  const cheek = a.cheeks === true ? 'blush' : (!a.cheeks ? 'none' : String(a.cheeks));
-  const hy = !!(p.hybrid || a.hybrid || /^hyb:/.test(String(p.species || '')));
-  return [hy ? 'hybrid' : String(p.species), a.eyes, a.pattern, a.background, cheek,
-    p.mutation ? 'mut-' + (p.mutation.kind || 'odd') : 'none', p.shows ? 'tb-' + p.shows : 'none'];
-}
 function isComm(p) { return !!(p.community || (p.art && p.art.community)); }
 function viewPet(p, worn, tables, opt) {
   const rec = copy(p) || { id: p.id };
@@ -485,15 +479,17 @@ function write(dir, world, meta) {
     hashes: hashes
   };
   const all = world.pets || [];
-  const RF = {};
-  let traitN = 0;
-  for (let ti = 0; ti < all.length; ti++) {
-    const tp = all[ti];
-    if (!tp || isComm(tp) || tp.released || (tp.id | 0) === 1765) continue;
-    traitN++;
-    const vec = traitVec(tp);
-    for (let t = 0; t < vec.length; t++) { const key = t + ':' + vec[t]; RF[key] = (RF[key] || 0) + 1; }
-  }
+  /* Nov 28 2026 (Jake: "pet scores dont seem to match between my pets and the pet card"): the ⭐ Pet Score and 💎 trait rarity are graded
+   * on a curve against every pet, but a fast page holds only the pets it loaded, so each page graded against a different set. The whole
+   * game's curve (js/pet-score.js basis) now rides in the summary and every fast page grades against it. The rank board's rarity (rb)
+   * comes from the same code: it used to be a second copy here that left #1765 out, so the board and the cards disagreed a little too. */
+  const scoreV = meta && meta.ctx && meta.ctx.V2Rules;
+  let psBase = null, rbOf = null;
+  try {
+    const scored = scoreV ? PetScore.compute(world, { rules: scoreV }) : null;
+    if (scored) { psBase = PetScore.basis(world, { rules: scoreV, scored: scored }); rbOf = new Map(); scored.ranked.forEach(r => rbOf.set(r.id, r.rarityBits)); }
+    else { rbOf = new Map(); PetScore.rarityAll(world).forEach(r => rbOf.set(r.id, r.bits)); }
+  } catch (e) { console.error('pet score base: ' + String(e && e.message || e).split('\n')[0]); }
   let alive = 0, dead = 0, released = 0, n = 0;
   const counts = new Map();
   const sample = [];
@@ -512,11 +508,7 @@ function write(dir, world, meta) {
       const owner = p.owner || '';
       counts.set(owner, (counts.get(owner) || 0) + 1);
       const rec = viewPet(p, wornBy.get(p.id) || [], tables, opt);
-      let bits = null;
-      if (!isComm(p) && !p.released && (p.id | 0) !== 1765 && traitN) {
-        const vec = traitVec(p); bits = 0;
-        for (let t = 0; t < vec.length; t++) bits -= Math.log2((RF[t + ':' + vec[t]] || 1) / traitN);
-      }
+      const bits = rbOf && rbOf.has(p.id) && (p.id | 0) !== 1765 ? rbOf.get(p.id) : null;
       const worn = wornBy.get(p.id) || [];
       let gn = 0, gt = 0;
       for (let gi = 0; gi < worn.length; gi++) { const g = worn[gi]; if (!g) continue; gn++; gt += g.legendary ? 3 : (g.tier | 0); }
@@ -584,6 +576,8 @@ function write(dir, world, meta) {
     /* Nov 24 2026 (fastcheck): the cemetery's Gods door counted only the Gods a fast page happened to load (0, 2 or 6 instead of 19).
      * Every living Resurrected pet rides here (id, name, owner, block): a few dozen tiny records. */
     gods: gods,
+    /* the whole game's Pet Score curve (see above); ~90 KB raw, ~28 KB gzipped at 207,000 pets. Older summaries have none */
+    psBase: psBase || undefined,
     /* FAST WORLD STATE (see STATE_OWN / STATE_SKIP / STATE_SLIM): every other rules table, so a page reads what a replay reads */
     state: st.state,
     stateBig: st.big.length ? st.big : undefined
