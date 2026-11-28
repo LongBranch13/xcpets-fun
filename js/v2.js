@@ -794,7 +794,7 @@
   window.V2GearRevealPreview = function (n) { var w = world(); if (!w || !ME || !$('packBox')) return 0; var r = V.newWins(w, ME, {}), wins = r.wins.slice(0, n || 400); if (!wins.length) return 0; revealQ.push({ kind: 'gear', wins: wins, away: true }); nextReveal(); return wins.length; };
   window.V2RevealPreview = function (ids) { ids = (ids || []).map(Number).filter(function (n) { return n >= 1 && n !== 1765; }); if (!ids.length || !$('packBox')) return; revealQ.push({ kind: 'eggs', eggs: ids }); nextReveal(); };
   /* egg-review-sort 2026-10-24: the sort options and logic now live in js/pet-sort.js (PetSort), shared with Gooby's Hotel mate search. */
-  function sortEggs(w, list, k) { return window.PetSort ? PetSort.sort(w, list, k) : list; }
+  function sortEggs(w, list, k) { var s = window.PetSort ? PetSort.sort(w, list, k) : list; return window.PetSort && PetSort.eggsFirst ? PetSort.eggsFirst(s) : s; } /* eggs-first-1128: Eggs first in the hatch review too (Jake: 'that would affect the initial discard pop up'), the picked sort inside each part */
   /* hatch-review-simple 2026-10-28 (owner 1:28 AM CT: 'I dont like ticked duds. we need better wording. make this all very simple to do and sort through').
    * Replaces the Dud Duster wording and controls. UI only: hiding = the SAME free local Discard (hidden in this browser, Undo, restorable from the
    * Discard pile). No burn, no wallet, no chain rule touched, replay unchanged. Protected pets (Legendary, Mythic, wearing gear, starred) are never
@@ -1144,6 +1144,9 @@
     if (!cem && !noZF && ZFK && window.V2ZombieFilter) { var ZFw = world(), ZFb = (ZFw.tip || 0) + 1; list = list.filter(function (p) { return V2ZombieFilter.match(ZFK, ZFw, p, ZFb, ME); }); } /* mypets-zombie-filter: All zombies / Hungry / Feral / Crumbling soon (optional, off by default) */
     if (!noTok && window.V2TokFilter) { var tk = tokKind(); if (tk) { var Tw = world(); list = list.filter(function (p) { return V2TokFilter.match(tk, Tw, p); }); } } /* mypets-tok-filter: optional, off by default; noTok counts the other filters without this one */
     if (X && X.flip) list.reverse();
+    /* eggs-first-1128 (Jake Nov 28 2026): Eggs head My Pets in every order, so you see all your eggs first, then the order you picked inside
+     * the eggs and inside the rest. Not for '🌱 Biggest stage' (that order is about stage) or '☑️ Selected first' (your picks on top). */
+    if (!cem && window.PetSort && PetSort.eggsFirst && fS !== 'stage' && fS !== 'sel') list = PetSort.eggsFirst(list);
     return list; }
   /* hotfix 3: a sort change only reorders the existing cards (same set, new order); anything else falls back to a full render */
   function resort() { var w = world(), all = mine(w), list = petList(all.filter(function (p) { return !p.dead; }), all.filter(function (p) { return p.dead; })), box = $('pets'), m = {};
