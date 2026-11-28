@@ -22,7 +22,7 @@ const logs = (w, n) => w.log.slice(w.log.length - n);
 
 /* 1. parse + gate off */
 ok(V.parseTag('pet:loot').action === 'loot' && V.parseTag('pet:loot:1').action !== 'loot', 'parseTag reads pet:loot (and nothing longer)');
-const gate0 = V.lootGate(); ok(gate0 > tip, 'ACTIVATE_LOOT_BLOCK ' + gate0 + ' is above the tip ' + tip + ' (replay unchanged)');
+const gate0 = V.lootGate(); ok(gate0 === 977930, 'ACTIVATE_LOOT_BLOCK is 977930'); V._setLootActivation(null); /* gate-off checks run with the gate cleared (fixtures age past the real gate) */
 const w0 = V.replay(rows, hashes, [], Object.assign(opts(tip), { _forkSave: true }));
 const me = Object.keys(w0.pets.reduce((m, p) => { if (!p.community && !p.dead && p.owner) m[p.owner] = 1; return m; }, {})).sort()[0];
 const wOff = run([row(me, 'pet:loot', nb)], nb);
@@ -70,5 +70,10 @@ const seven = []; for (let i = 0; i < 7; i++) seven.push(row(me, 'pet:loot', i ?
 const w7 = run(seven, dS(d0 + 6)), R7 = w7.loot[me], g7 = w7.byId[R7.last.petId];
 ok(R7.streak === 7 && R7.gold === 1 && R7.last.chest === 'gold' && R7.last.prize === 'golden' && R7.last.meals === 3 && g7 && g7.loot === 'golden', 'day 7: Gold Chest = Golden Egg #' + (g7 && g7.id) + ' (' + (g7 && g7.tier) + ') + 3 meals');
 
+/* with EGG HATCH on, a loot egg is born an Egg (care 0) like a bought one; find a claim seed that rolls an egg */
+const eg0 = V.eggHatchGate(); V._setEggHatch(nb);
+let eggRow = null, wE = null; for (let k = 0; k < 40 && !eggRow; k++) { const rr = row(me, 'pet:loot', nb); const we = run([rr], nb); const L = we.loot[me].last; if (L.petId) { eggRow = rr; wE = we; } }
+ok(eggRow && wE.byId[wE.loot[me].last.petId].care === 0 && wE.byId[wE.loot[me].last.petId].stage === 0, 'EGG HATCH on: a loot egg is born an Egg (care 0), like a bought egg');
+V._setEggHatch(eg0);
 V._setLootActivation(gate0);
 console.log(fails ? fails + ' FAILED' : 'daily-loot-rules-test: all checks pass'); process.exit(fails ? 1 : 0);
