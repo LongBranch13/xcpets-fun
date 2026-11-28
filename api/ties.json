@@ -1,5 +1,5 @@
 {
- "lastBlock": 977898,
+ "lastBlock": 977903,
  "count": 560,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
@@ -5941,7 +5941,7 @@
    "species": "homer",
    "speciesLabel": "Homer Pepe",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 66566,

@@ -1152,7 +1152,7 @@
     if (X && X.flip) list.reverse();
     /* eggs-first-1128 (Jake Nov 28 2026): Eggs head My Pets in every order, so you see all your eggs first, then the order you picked inside
      * the eggs and inside the rest. Not for '🌱 Biggest stage' (that order is about stage) or '☑️ Selected first' (your picks on top). */
-    if (!cem && window.PetSort && PetSort.eggsFirst && fS !== 'stage' && fS !== 'sel') list = PetSort.eggsFirst(list);
+    if (!cem && window.PetSort && PetSort.eggsFirst && !{ stage: 1, sel: 1, weird: 1, starred: 1, tok: 1 }[fS]) list = PetSort.eggsFirst(list); /* eggs first, except in sorts that put something else first (Biggest stage, Selected / Weird / Starred / Tokenized first) */
     return list; }
   /* hotfix 3: a sort change only reorders the existing cards (same set, new order); anything else falls back to a full render */
   function resort() { var w = world(), all = mine(w), list = petList(all.filter(function (p) { return !p.dead; }), all.filter(function (p) { return p.dead; })), box = $('pets'), m = {};
