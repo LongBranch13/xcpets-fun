@@ -237,7 +237,8 @@ FLOWS.open = async (H, T) => {
     return { mine: V2UI.mine(w).length, alive: V2UI.mine(w).filter(p => !p.dead).length, sale: !!document.querySelector('.fs-banner, #fsBanner, .firesale, [data-firesale]') || /FIRE SALE/i.test(document.body.innerText.slice(0, 20000)),
       hatch: t('hatchBtn'), dozen: t('dozenBtn'), kase: t('caseBtn'), zap: t('zapBtn'), feed: t('cfeedBtn'), tip: V2Mock.state().tip, wtip: w.tip }; });
   const listed = T.me.alive - (T.me.hdAlive || 0);
-  if (T.me.listed != null && s.alive !== T.me.listed) problem('wrong-count', 'My Pets shows ' + s.alive + ' living pets, the full replay has ' + T.me.listed);
+  /* pets that starve at the next block may already show dead (the page looks at the next block); either count is right */
+  if (T.me.listed != null && s.alive !== T.me.listed && s.alive !== T.me.listedNext) problem('wrong-count', 'My Pets shows ' + s.alive + ' living pets, the full replay has ' + T.me.listed + (T.me.listedNext !== T.me.listed ? ' (' + T.me.listedNext + ' at the next block)' : ''));
   else ok('My Pets count ' + s.alive);
   if (!!T.sale !== !!s.sale) problem('fire-sale', 'Fire Sale is ' + (T.sale ? 'ON' : 'off') + ' in the rules but the page ' + (s.sale ? 'shows' : 'does not show') + ' it');
   else ok('Fire Sale banner ' + (s.sale ? 'shown' : 'not shown') + ' (rules agree)');
