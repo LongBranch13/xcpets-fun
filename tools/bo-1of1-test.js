@@ -52,7 +52,12 @@ gids.forEach(id => { try { R.framesWith(gk.art, 4, [id], []); gOk++; } catch (e)
   for (let g = 2; g <= 4; g++) { par.stage = 3; par.care = 999; const mate = live.find(p => p.species === par.species && p.id !== par.id && p.id !== P2.id) || P2;
     const kid = V.breedOne(ww, ww.byId[par.id] || par, ww.byId[mate.id], fakeHash(END + 901 + g), 'test:g' + g, END + g, bo.owner); ok(kid.art.boMark === 1, 'generation ' + g + ' keeps eye black (' + kid.species + ')'); par = kid; } }
 /* Bo gear renders on a Bo baby and on Bo himself */
-(c.V2Gear.BO_GEAR || []).forEach(x => { try { const a = R.framesWith(gk.art, 4, [x[0]], [])[0].data, z = R.framesWith(gk.art, 4, [], [])[0].data; let d = 0; for (let q = 0; q < a.length; q += 4) if (a[q] !== z[q] || a[q + 1] !== z[q + 1] || a[q + 2] !== z[q + 2]) d++; ok(d > 0, x[0] + ' drawn on baby (' + d + 'px)'); } catch (e) { ok(false, x[0] + ' baby ' + e.message); }
+/* no-feet-shoes (Jake Nov 28 2026): shoes are drawn only on a body that has feet, so the high-tops show on a Bo baby with legs and stay off a bust-shaped one */
+const pxDiff = (art, id) => { const a = R.framesWith(art, 4, [id], [])[0].data, z = R.framesWith(art, 4, [], [])[0].data; let d = 0; for (let q = 0; q < a.length; q += 4) if (a[q] !== z[q] || a[q + 1] !== z[q + 1] || a[q + 2] !== z[q + 2]) d++; return d; };
+const footed = shown.find(s2 => R.gearShow.hasFeet(s2.kid.art, 4)), bust = shown.find(s2 => !R.gearShow.hasFeet(s2.kid.art, 4));
+ok(!!footed && !!bust, 'Bo babies with feet and without (' + (footed && footed.k) + ' / ' + (bust && bust.k) + ')');
+(c.V2Gear.BO_GEAR || []).forEach(x => { try { const shoe = R.gearShow.isShoe(x[0]), on = shoe ? footed.kid.art : gk.art, d = pxDiff(on, x[0]); ok(d > 0, x[0] + ' drawn on baby (' + d + 'px)');
+    if (shoe) { const d0 = pxDiff(bust.kid.art, x[0]); ok(d0 === 0, x[0] + ' not drawn on a baby with no feet (' + bust.k + ', ' + d0 + 'px)'); } } catch (e) { ok(false, x[0] + ' baby ' + e.message); }
   try { const f = R.framesWith(Object.assign({}, b.art, { species: 'bojackson' }), 4, [x[0]], []); ok(f && f.length >= 1, x[0] + ' on Bo'); } catch (e) { ok(false, x[0] + ' on Bo ' + e.message); } });
 /* before the Bo gate: no mark (replay SAME) */ { const ww = clone(), P2 = partners[Object.keys(partners)[0]], kid = V.breedOne(ww, ww.byId[P2.id], ww.byId[live.find(p => p.species === P2.species && p.id !== P2.id).id], fakeHash(END), 'test:nb', END, P2.owner); ok(!kid.art.boMark, 'non-Bo babies unmarked'); }
 console.log('Bo babies bred: ' + nb + ' partners ' + Object.keys(partners).join(','));

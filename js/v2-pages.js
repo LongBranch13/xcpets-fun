@@ -7,6 +7,9 @@
   function shardSub(p) { var n = shardTot(p); return n ? '💠 ' + n + ' shard point' + (n === 1 ? '' : 's') + (p.shardsIn ? ' (' + p.shardsIn + ' from parents)' : '') : ''; }
   function ptA(p) { return window.V2PowerTip ? V2PowerTip.attr(V2PowerTip.power(p)) : ''; } 
   var V = window.V2Rules, M = window.V2Mock, R = window.V2Render, ME = M.ME, $ = function (id) { return document.getElementById(id); }, esc = R.esc;
+  /* burnsN (Nov 28 2026): how many XCPETS burns the world was built from. A fast (published) world carries no burn rows (M.state().rows is empty),
+   * so pages said "replayed from 0 XCPETS burns"; its summary count (w._counts.burns) is the real number. Full replays still count their rows. */
+  function burnsN(w) { var c = w && w._counts; return c && c.burns != null ? c.burns : M.state().rows.length; }
   var fmt = (function () { var F2 = null, F8 = null; try { F2 = new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }); F8 = new Intl.NumberFormat('en-US', { maximumFractionDigits: 8 }); } catch (e) {} /* freeze-hunt: one formatter each, not a new one per number (was the top cost of drawing big pet lists) */
     return function (n) { n = Number(n); var two = Math.abs(n) >= 1 || n === 0; if (F2) return (two ? F2 : F8).format(n); return n.toLocaleString('en-US', { maximumFractionDigits: two ? 2 : 8 }); }; })(); /* >= 1: 2 decimals (hides float noise like 1,335,328.99999996) */
   var TL = V.TIER_LABELS, TID = ['common', 'uncommon', 'rare', 'legendary'];
@@ -391,7 +394,7 @@
       try { var ck = String(c.returnTx || c.returnBlock); if (c.returned && V2Return.seen() !== ck) localStorage.setItem(V2Return.SEEN_KEY, ck); } catch (e) { } if (V2Return.previewRequested()) V2Return.maybeAutoplay(w, opts);
     });
     if ($('crGear')) $('crGear').textContent = wiz ? 'Wizard hat, staff and robe grow with its stage (' + N[st] + ')' : '';
-    $('crNet').textContent = ' chain'; $('crNote').textContent = window.V2DataLag && V2DataLag.note ? V2DataLag.note(M.state().rows.length, { dataTip: M.state().tip, chainTip: M.state().chainTip, feedTip: M.state().feedTip }) : 'Replayed from ' + M.state().rows.length + ' XCPETS burns on chain at block ' + fmt(M.state().tip) + '.'; /* stale-copy-fix: blocks behind */
+    $('crNet').textContent = ' chain'; $('crNote').textContent = window.V2DataLag && V2DataLag.note ? V2DataLag.note(burnsN(w), { dataTip: M.state().tip, chainTip: M.state().chainTip, feedTip: M.state().feedTip }) : 'Replayed from ' + fmt(burnsN(w)) + ' XCPETS burns on chain at block ' + fmt(M.state().tip) + '.'; /* stale-copy-fix: blocks behind */
     cast(w);
     var b = $('xcpConnect'); if (b) { b.removeAttribute('data-xcp-connect'); b.textContent = ME && !(window.V2View && V2View.viewOnly()) ? 'Connected: ' + ME.slice(0, 8) + '…' : 'Connect ' + (V2Wallet.label ? V2Wallet.label() : 'XCP Wallet'); /* address-lookup: a viewed address is not a connection. casa-connect: 'Connect Casa Tookan' inside Casa */ b.onclick = function () { $('xcpMsg').textContent = 'Looking for ' + (V2Wallet.label ? V2Wallet.label() : 'XCP Wallet') + '…'; V2Wallet.connect().then(function (a) { b.textContent = 'Connected: ' + a.slice(0, 8) + '…'; $('xcpMsg').innerHTML = 'Connected <b>' + esc(a) + '</b> · <a href="play.html">go play →</a>'; }, function (e) { $('xcpMsg').innerHTML = V2Wallet.errHtml(e); }); }; }
   }
@@ -667,7 +670,7 @@
     if (window.V2CemeteryScene && V2CemeteryScene.page) return V2CemeteryScene.page({ w: M.world(), M: M, R: R, V: V, ME: ME, fmt: fmt, shortAddr: shortAddr }); /* cemetery-v2: perspective graveyard + all-graves list (js/v2-cemetery-scene.js) */
     var w = M.world(), dead = w.pets.filter(function (p) { return p.dead && !p.released; }).sort(function (a, b) { return b.deathBlock - a.deathBlock || b.id - a.id; });
     var STEP = window.matchMedia && matchMedia('(max-width: 640px)').matches ? 25 : 100, st = { n: STEP, q: '', mine: false, list: dead };
-    $('status').textContent = fmt(dead.length) + ' pet' + (dead.length === 1 ? '' : 's') + ' in the Pet Cemetery, from ' + fmt(M.state().rows.length) + ' XCPETS burns. A pet dies after 7 full chain days (144 blocks each) with no feed.';
+    $('status').textContent = fmt(dead.length) + ' pet' + (dead.length === 1 ? '' : 's') + ' in the Pet Cemetery, from ' + fmt(burnsN(M.world())) + ' XCPETS burns. A pet dies after 7 full chain days (144 blocks each) with no feed.';
     var tombs = $('tombs');
     if (window.V2CemeteryScene) V2CemeteryScene.mount(w, dead); /* cemetery-scene branch: pixel scene over the list (newest 12 graves) */
     if (!dead.length) { tombs.innerHTML = '<p class="muted">No pets have died yet. Pets starve after 7 full days with no meal: feed yours on <a href="play.html">Play</a>.</p>'; return; }
@@ -800,33 +803,36 @@
       V2Split.loadBoard(function (i) { if (hs) hs.textContent = 'Reading every living pet… ' + i + ' files'; }).then(function (w) { if (!w || !w._ranked) hybrids.gaveUp = 1; hybrids(); }, function () { hybrids.gaveUp = 1; hybrids(); });
       return;
     }
-    var w = M.world(), list = V.castHybrids(w), n = {}, G = window.GenPetCore || PetCore, stage = 5, grid = $('hybGrid'), tabs = $('hybStages');
-    (w.pets || []).forEach(function (p) { if (V.isHybrid(p.species) && !p.released) n[p.species] = (n[p.species] || 0) + 1; });
-    var three = list.filter(function (e) { return (e.roots || []).length > 2; }).length;
-    $('hybStatus').textContent = list.length ? fmt(list.length) + ' hybrid mix' + (list.length === 1 ? '' : 'es') + ' so far' + (three ? ' (' + fmt(three) + ' three-way)' : '') + ', replayed from ' + fmt(M.state().rows.length) + ' XCPETS burns.' : 'No hybrids yet. Breed two different species to make the first one.';
-    function draw() {
-      grid.innerHTML = list.map(function (e, i) { var roots = e.roots || [e.a, e.b], k = n[e.key] || 0;
-        return '<div class="hybitem" data-hyb="' + esc(e.key) + '"><h3 class="ch">' + esc((V.hybridLabel || V.hybridName)(e.key)) + ' <span class="chip hyb">' + (roots.length > 2 ? '3-WAY' : 'HYBRID') + '</span></h3>' +
-          '<p class="muted small">' + roots.map(function (r) { return esc(spLabel(r)); }).join(' × ') + (k ? ' · ' + fmt(k) + ' pet' + (k === 1 ? '' : 's') : '') + '</p><div class="hybbodies">' +
+    /* Order + mine (Nov 28 2026, Jake: "the hybrid page shows Bitcoin Wizard mixes for no reason really"). The page used to end with a hard-coded
+     * "Bitcoin Wizard mixes" block: an Oct 2026 launch preview of all 13 possible Wizard mixes, mostly "not bred yet", shown forever once Wizard
+     * breeding opened. No other species had one, and the Wizard mixes that were really bred are already in the main list, so it is gone.
+     * The main list was in first-ever-hatch order (oldest first); it now opens on the most bred mixes, with Newest and, for a wallet that owns
+     * hybrids, "Yours" (your living pets of each mix). Display only. */
+    var w = M.world(), all = V.castHybrids(w), n = {}, mine = {}, newest = {}, G = window.GenPetCore || PetCore, stage = 5, grid = $('hybGrid'), tabs = $('hybStages'), sortBar = $('hybSort');
+    (w.pets || []).forEach(function (p) { if (!V.isHybrid(p.species) || p.released) return; if (!(newest[p.species] > p.id)) newest[p.species] = p.id;
+      n[p.species] = (n[p.species] || 0) + 1; if (ME && p.owner === ME && !p.dead && !p.community) mine[p.species] = (mine[p.species] || 0) + 1; });
+    var mineN = all.filter(function (e) { return mine[e.key]; }).length, ORDERS = { bred: 'Most bred', newest: 'Newest' };
+    if (mineN) ORDERS.mine = 'Yours (' + fmt(mineN) + ')';
+    var order = 'bred'; try { var so = sessionStorage.getItem('xcpets-hyb-order'); if (so && ORDERS[so]) order = so; } catch (e) {}
+    function sorted() { var L = order === 'mine' ? all.filter(function (e) { return mine[e.key]; }) : all.slice(), pos = {}; all.forEach(function (e, i) { pos[e.key] = i; });
+      return L.sort(function (x, y) { return order === 'newest' ? (newest[y.key] || 0) - (newest[x.key] || 0) : order === 'mine' ? (mine[y.key] - mine[x.key]) || ((n[y.key] || 0) - (n[x.key] || 0)) : ((n[y.key] || 0) - (n[x.key] || 0)) || pos[x.key] - pos[y.key]; }); }
+    var list = all, three = all.filter(function (e) { return (e.roots || []).length > 2; }).length;
+    $('hybStatus').textContent = all.length ? fmt(all.length) + ' hybrid mix' + (all.length === 1 ? '' : 'es') + ' so far' + (three ? ' (' + fmt(three) + ' three-way)' : '') + ', replayed from ' + fmt(burnsN(w)) + ' XCPETS burns' + (mineN ? '. You own ' + fmt(mineN) + ' of them.' : '.') : 'No hybrids yet. Breed two different species to make the first one.';
+    function draw() { list = sorted();
+      grid.innerHTML = list.map(function (e, i) { var roots = e.roots || [e.a, e.b], k = n[e.key] || 0, my = mine[e.key] || 0;
+        return '<div class="hybitem' + (my ? ' hybmine' : '') + '" data-hyb="' + esc(e.key) + '"><h3 class="ch">' + esc((V.hybridLabel || V.hybridName)(e.key)) + ' <span class="chip hyb">' + (roots.length > 2 ? '3-WAY' : 'HYBRID') + '</span>' + (my ? ' <span class="chip hybyou">YOURS</span>' : '') + '</h3>' +
+          '<p class="muted small">' + roots.map(function (r) { return esc(spLabel(r)); }).join(' × ') + (k ? ' · ' + fmt(k) + ' pet' + (k === 1 ? '' : 's') : '') + (my ? ' · <b>' + fmt(my) + ' yours</b>' : '') + '</p><div class="hybbodies">' +
           (e.builds || [e.plan]).map(function (pl, j) { return '<figure><canvas width="32" height="32" data-i="' + i + '" data-j="' + j + '" role="img" aria-label="' + esc(e.name + ', ' + spLabel(pl.shape) + ' body, ' + V.STAGE_NAMES[stage]) + '"></canvas><figcaption class="small muted">' + esc(spLabel(pl.shape)) + ' body</figcaption></figure>'; }).join('') + '</div></div>'; }).join('');
       Array.prototype.forEach.call(grid.querySelectorAll('canvas[data-i]'), function (c) { var e = list[+c.getAttribute('data-i')], pl = (e.builds || [e.plan])[+c.getAttribute('data-j')], art = G.characterPet(pl.shape, { tier: 'legendary' }); art.hybrid = pl;
         R.paint(c, V.hybridRender(art, { stage: stage, frame: 0 })); });
       Array.prototype.forEach.call(tabs.children, function (b) { b.classList.toggle('on', +b.getAttribute('data-st') === stage); });
+      if (sortBar) Array.prototype.forEach.call(sortBar.children, function (b) { b.classList.toggle('on', b.getAttribute('data-o') === order); });
     }
     tabs.innerHTML = V.STAGE_NAMES.map(function (nm, si) { return si ? '<button type="button" data-st="' + si + '">' + esc(nm) + '</button>' : ''; }).join('');
     tabs.onclick = function (ev) { var b = ev.target.closest('button'); if (!b) return; stage = +b.getAttribute('data-st'); draw(); };
-    draw(); document.body.setAttribute('data-hyb-ready', String(list.length));
-    /* Wizard mixes (branch wizard-breed-on): once ACTIVATE_WIZ_BREED_BLOCK is reached, list all 13 Bitcoin Wizard mixes (both name orders) so players
-     * can see what a Wizard can make, marked bred / not bred yet. Hidden while the gate is null or not reached. Community Bitcoin Wizard never breeds. */
-    var wz = $('hybWiz'), wg = $('hybWizGrid'), tip = M.state().tip;
-    if (wz && wg && V.wizBreedOn && V.wizBreedOn(tip) && V.wizHybridPairs) { var pairs = V.wizHybridPairs();
-      wg.innerHTML = pairs.map(function (e, i) { var k = (n[e.a] || 0) + (n[e.b] || 0);
-        return '<div class="hybitem" data-wizhyb="' + esc(e.other) + '"><h3 class="ch">' + esc(e.nameA) + ' / ' + esc(e.nameB) + ' <span class="chip hyb">HYBRID</span></h3><p class="muted small">Bitcoin Wizard × ' + esc(spLabel(e.other)) + ' · ' + (k ? fmt(k) + ' bred' : 'not bred yet') + '</p><div class="hybbodies">' +
-          ['wizard', e.other].map(function (sh, j) { return '<figure><canvas width="32" height="32" data-wi="' + i + '" data-wj="' + j + '" role="img" aria-label="' + esc((j ? e.nameB : e.nameA) + ', ' + spLabel(sh) + ' body') + '"></canvas><figcaption class="small muted">' + esc(spLabel(sh)) + ' body</figcaption></figure>'; }).join('') + '</div></div>'; }).join('');
-      Array.prototype.forEach.call(wg.querySelectorAll('canvas[data-wi]'), function (c) { var e = pairs[+c.getAttribute('data-wi')], j = +c.getAttribute('data-wj'), sh = j ? e.other : 'wizard', col = j ? 'wizard' : e.other,
-        pl = Object.assign({}, V.hybridPlan(V.sha('cast:' + e.a), e.a), { shape: sh, color: col }), art = G.characterPet(sh, { tier: 'legendary' }); art.hybrid = pl;
-        try { R.paint(c, V.hybridRender(art, { stage: 5, frame: 0 })); } catch (er) {} });
-      var bb = wz.querySelector('.wizBreedBlk'); if (bb) bb.textContent = fmt(V.ACTIVATE_WIZ_BREED_BLOCK); wz.hidden = false; }
+    if (sortBar) { sortBar.innerHTML = all.length > 1 ? Object.keys(ORDERS).map(function (k) { return '<button type="button" data-o="' + k + '">' + esc(ORDERS[k]) + '</button>'; }).join('') : '';
+      sortBar.onclick = function (ev) { var b = ev.target.closest('button'); if (!b) return; order = b.getAttribute('data-o'); try { sessionStorage.setItem('xcpets-hyb-order', order); } catch (e) {} draw(); }; }
+    draw(); document.body.setAttribute('data-hyb-ready', String(all.length));
   }
   function inscriptions() { if (window.V2InscribeEnv && window.V2InscribeUI) V2InscribeUI.page(); /* without the test flag the page redirects home (inscriptions.html) */ }
   /* species-ranks (owner Oct 24 2026, display only): Hall of Fame, the best pets within each species.

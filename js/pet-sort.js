@@ -70,6 +70,11 @@
     rows.sort(function (a, c) { if (key === 'sp') { var A = a.k, B = c.k, d = (A[0] < B[0] ? -1 : A[0] > B[0] ? 1 : 0) || A[1] - B[1] || (A[2] < B[2] ? -1 : A[2] > B[2] ? 1 : 0); return (rev ? -d : d) || a.i - c.i; }
       var e = cmp(a.k, c.k); return (rev ? -e : e) || a.i - c.i; });
     return rows.map(function (r) { return r.x; }); }
+  /* eggs-first-1128 (Jake Nov 28 2026: "eggs, not hatchlings, to be the first thing in my pets so you see all the eggs"): a stable split, every
+   * Egg (stage 0, not fed into a Hatchling yet) ahead of the rest, each side in the order it came in. One O(n) pass, no re-sort, so a 30k-pet
+   * wallet pays nothing extra. Display order only: picks, ticks and discards are keyed by pet id, never by place on the screen. */
+  function isEgg(p) { return !!p && !p.dead && !p.released && (p.stage || 0) === 0 && !(p.zombie && !p.zombie.end); }
+  function eggsFirst(list, pet) { pet = pet || function (x) { return x; }; var e = [], r = [], i, x; for (i = 0; i < list.length; i++) { x = list[i]; (isEgg(pet(x)) ? e : r).push(x); } return e.length && r.length ? e.concat(r) : list; }
   function options(cur) { return OPTS.map(function (o) { return '<option value="' + o[0] + '"' + ((cur || '') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join(''); }
   /* hotel menu: every key both ways, grouped */
   function hotelOptions(cur) { cur = cur || ''; var o = '<option value=""' + (cur ? '' : ' selected') + '>Hatch order</option>';
@@ -95,6 +100,6 @@
     else if (live) steps.push(so ? '🗺️ All ' + CAP + ' shard points are used. Quests still bring gear, spins and eggs.' : '🗺️ All ' + QCAP + ' quest stat boosts are used. This pet\'s Power is set.');
     if (live && (p.stage || 0) >= 3) steps.push('💞 Breeding: pair high-Power pets to pass strong stats down, and each generation can build higher. Each egg stat is the parents\' average ±2, a hybrid egg keeps each parent\'s best stat, a same-species egg can come out bred true (+' + (R.BRED_TRUE_STAT || 3) + ' on one stat, or a rarer pattern or eyes), and a hidden trait passes from a carrier parent half the time.' + (so ? ' Shard points pass at half strength: each parent counts half its shard points (rounded down), and the egg keeps them as its own shard points inside its cap of ' + CAP + '.' : ''));
     return { power: tot, parts: parts, steps: steps, gain: g, edge: 'Gear, looks and stage only help in fights: worn gear adds hit damage and each stage adds HP. They do not change Power.' }; }
-  var API = window.PetSort = { OPTS: OPTS, KEYS: KEYS, STATS: STATS, sort: sort, options: options, hotelOptions: hotelOptions, line: line, power: power, gain: gain, free: free, ways: ways };
+  var API = window.PetSort = { OPTS: OPTS, KEYS: KEYS, STATS: STATS, sort: sort, options: options, hotelOptions: hotelOptions, line: line, power: power, gain: gain, free: free, ways: ways, isEgg: isEgg, eggsFirst: eggsFirst };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
 })();
