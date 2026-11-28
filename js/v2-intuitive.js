@@ -208,16 +208,18 @@
   var liveMemo = { w: null, m: null, tip: null, n: -1, list: [] };
   function myLive(w) { var m = me(); if (!w || !m) return []; if (liveMemo.w === w && liveMemo.m === m && liveMemo.tip === w.tip && liveMemo.n === w.pets.length) return liveMemo.list;
     var list = w.pets.filter(function (p) { return V2Own.isLiving(p, m); }); liveMemo = { w: w, m: m, tip: w.tip, n: w.pets.length, list: list }; return list; }
-  function urgent(w) { return myLive(w).filter(function (p) { return p.neglected && !p.mythicCare && p.deathBlock != null && p.deathBlock > w.tip; }); }
+  /* Nov 28 2026: one answer, V2Own.atRisk: discarded pets (chain, waiting, this browser) are never "in danger". The pile is read once per call. */
+  function urgent(w) { var m = me(), L = myLive(w); if (!m || !L.length) return []; var o = { set: V2Own.pileIds(m), pend: V2Own.pendingHd() };
+    return L.filter(function (p) { return V2Own.atRisk(p, m, w.tip, o); }); }
   function left(blocks) { var m = blocks * 10, dd = Math.floor(m / 1440), h = Math.round((m % 1440) / 60); return dd ? dd + 'd ' + h + 'h' : h + 'h'; }
   function badge(w) { var tab = $('tabAlive'); if (!tab) return; var n = urgent(w).length;
     var b = $('ipUrg'); if (!n) { if (b) b.remove(); return; }
     if (!b) { b = d.createElement('button'); b.type = 'button'; b.id = 'ipUrg'; b.className = 'ip-urg'; b.title = 'Neglected pets (3+ days unfed): they die after 7 unfed days. Tap to sort by most urgent.'; tab.parentNode.insertBefore(b, tab.nextSibling);
       b.onclick = function () { var s = $('fSort'); if (s) { s.value = 'urgent'; s.dispatchEvent(new Event('change', { bubbles: true })); } var pp = $('petsPanel'); if (pp) pp.scrollIntoView({ behavior: 'smooth' }); }; }
     b.textContent = '🪦 ' + n; b.setAttribute('aria-label', n + ' neglected pets, sort by most urgent'); }
-  function nba(w) { var box = $('ipNba'), pp = $('petsPanel'), L = myLive(w); if (!pp || !w) return; var day = Math.floor(w.tip / BPD);
+  function nba(w) { var box = $('ipNba'), pp = $('petsPanel'), L = myLive(w), mm = me(); if (!pp || !w) return; var day = Math.floor(w.tip / BPD);
     if (ls('xcpets-ip-nba') === String(day) || !L.length) { if (box) box.remove(); return; }
-    var starve = urgent(w), hungry = L.filter(function (p) { return p.hungry && p.nextMeal; }), line = '';
+    var starve = urgent(w), hungry = L.filter(function (p) { return p.nextMeal && V2Own.canEat(p, mm); }) /* Nov 28 2026: discarded pets are never "hungry" here (same as Today) */, line = '';
     if (starve.length) line = '🪦 ' + starve.length + ' neglected pet' + (starve.length === 1 ? '' : 's') + ' · first dies in ~' + left(Math.min.apply(null, starve.map(function (p) { return p.deathBlock - w.tip; }))) + ' · <a href="#" data-ipnba="urgent">see most urgent ▸</a>';
     else if (hungry.length) line = '🍽️ ' + hungry.length + ' hungry · ' + (window.XCPETS_FEED_ALL_PAUSED === true ? 'Feed all is paused for a fix.' /* feed-all-pause */ : '<a href="#" data-ipnba="feed">Feed all hungry ▸</a>');
     else { var f = L.filter(function (p) { return p.stage >= 2 && !p.neglected && !(p.fightDays && p.fightDays[day]); })[0]; if (f) line = '⚔️ #' + f.id + ' ' + esc(f.name) + ' can fight today · <a href="#kekimus">Kekimus ▸</a>'; }

@@ -61,9 +61,10 @@
   function blocked() { var U = UI(); if (!viewOnly()) return false; try { U.confirmPlans('Equip', [{}]); } catch (e) { } return true; }
 
   /* ---- the drawer */
-  var DR = { pid: null, tryOn: {}, exp: null, undo: null, back: null };
+  var DR = { pid: null, tryOn: {}, exp: null, undo: null, back: null, tab: 'power' };
+  function CL() { return window.V2Closet && window.V2Render && V2Render.wardrobe ? window.V2Closet : null; }
   function open(pid, opt) { if (!ready()) return; var w = UI().world(), p = w && w.byId[pid]; if (!p || p.dead || p.released || p.owner !== UI().ME) { UI().toast('Only your own living pets can be dressed here.'); return; }
-    if (DR.pid !== +pid) { DR.tryOn = {}; DR.exp = null; DR.undo = null; } DR.pid = +pid; if (opt && opt.slot) DR.exp = opt.slot; DR.back = d.activeElement; draw(true); }
+    if (DR.pid !== +pid) { DR.tryOn = {}; DR.exp = null; DR.undo = null; } if (opt && opt.tab && CL()) DR.tab = opt.tab; DR.pid = +pid; if (opt && opt.slot) DR.exp = opt.slot; DR.back = d.activeElement; draw(true); }
   function close() { var m = $('dzModal'); if (m) m.remove(); d.documentElement.classList.remove('dz-open'); DR.pid = null; DR.tryOn = {}; DR.exp = null; var b = DR.back; DR.back = null; if (b && b.focus && d.contains(b)) try { b.focus({ preventScroll: true }); } catch (e) { } }
   function row(w, p, sl, worn, pl) {
     var on = slotsOf(p).indexOf(sl) >= 0, nm = esc(slotName(sl));
@@ -81,8 +82,12 @@
         (cur ? '<button type="button" class="q dz-pc dz-offpc" data-off="' + sl + '">Take off ' + esc(label(cur.item)) + '</button>' : '') + '</div>';
       if (t) h += '<div class="dz-tryrow"><span>Trying on <b>' + esc(label(t)) + '</b></span><button type="button" class="btn dz-wear" data-wear="' + sl + '|' + esc(t) + '">Wear it</button><button type="button" class="q" data-untry="' + sl + '">Never mind</button></div>'; }
     return h; }
-  function mirror(cv, w, p, worn) { try { var ids = [], sl; for (sl in worn) if (!DR.tryOn[sl]) ids.push(worn[sl].item); for (sl in DR.tryOn) ids.push(DR.tryOn[sl]);
+  function mirror(cv, w, p, worn) { try { var ids = [], sl, C = CL(), sh = worn; if (C && DR.tab !== 'power') sh = C.shownBySlot(w, p); /* Looks / Outfits tabs: the look; Power tab: the real pieces + try-on */
+      for (sl in sh) if (!DR.tryOn[sl] || DR.tab !== 'power') ids.push(sh[sl].item); if (DR.tab === 'power') for (sl in DR.tryOn) ids.push(DR.tryOn[sl]);
       var fr = V2Render.framesWith(p.art, p.stage, ids, []); if (fr && fr.length) V2Render.animate(cv, fr); } catch (e) { if (window.console) console.warn('dress mirror', e); } }
+  /* gear-closet (Nov 28 2026): ⚔ Power = the real pieces (above), 🪞 Looks = the Wardrobe, 👗 Outfits = saved looks (js/v2-closet.js) */
+  function tabOn() { return DR.tab !== 'power' && !!CL(); }
+  function tabs() { if (!CL()) return ''; return '<div class="dz-tabs" role="group" aria-label="Dress">' + [['power', '⚔ Power'], ['looks', '🪞 Looks'], ['fits', '👗 Outfits']].map(function (t) { return '<button type="button" class="dz-tab" data-tab="' + t[0] + '" aria-pressed="' + (DR.tab === t[0]) + '">' + t[1] + '</button>'; }).join('') + '</div>'; }
   function draw(first) { if (DR.pid == null) return; var U = UI(), w = U.world(), p = w && w.byId[DR.pid];
     if (!p || p.dead || p.released || p.owner !== U.ME) return close();
     var worn = wornBySlot(w, p), pl = plan(w, p), tryD = 0, sl;
@@ -92,18 +97,21 @@
       m.addEventListener('click', function (e) { if (e.target === m) return close(); act(e); });
       m.addEventListener('keydown', function (e) { if (e.key === 'Escape') { e.stopPropagation(); close(); } }); }
     d.documentElement.classList.add('dz-open');
-    var power = Object.keys(DR.tryOn).length ? '⚔ ' + pl.now + ' → <b class="' + (tryD >= 0 ? 'pos' : 'neg') + '">' + (pl.now + tryD) + '</b> <small>trying on</small>' : pl.gain ? '⚔ ' + pl.now + ' → <b class="pos">' + (pl.now + pl.gain) + '</b> <small>in its best gear</small>' : '⚔ <b>' + pl.now + '</b> <small>wearing the best you own</small>';
+    var power = tabOn() ? '⚔ <b>' + pl.now + '</b> <small>same in any look</small>' : Object.keys(DR.tryOn).length ? '⚔ ' + pl.now + ' → <b class="' + (tryD >= 0 ? 'pos' : 'neg') + '">' + (pl.now + tryD) + '</b> <small>trying on</small>' : pl.gain ? '⚔ ' + pl.now + ' → <b class="pos">' + (pl.now + pl.gain) + '</b> <small>in its best gear</small>' : '⚔ <b>' + pl.now + '</b> <small>wearing the best you own</small>';
     m.innerHTML = '<div class="dz-box" role="dialog" aria-modal="true" aria-labelledby="dzTitle"><div class="dz-grab" aria-hidden="true"></div>' +
-      '<div class="dz-head"><h3 id="dzTitle">👕 Dress #' + p.id + ' ' + esc(p.name || '') + '</h3><button type="button" class="q dz-x" data-x="1" aria-label="Close">✕</button></div>' +
-      '<div class="dz-body"><div class="dz-mirror"><div class="dz-glass"><canvas width="32" height="32" role="img" aria-label="#' + p.id + ' in the mirror"></canvas></div><div class="dz-pow"><span class="dz-cap">GEAR POWER</span><span class="dz-num">' + power + '</span><span class="small">Tap ▾ on a slot to try other pieces on. Wearing gear is free, no burn.</span></div></div>' +
+      '<div class="dz-head"><h3 id="dzTitle">👕 Dress #' + p.id + ' ' + esc(p.name || '') + '</h3><button type="button" class="q dz-x" data-x="1" aria-label="Close">✕</button></div>' + tabs() +
+      '<div class="dz-body"><div class="dz-mirror"><div class="dz-glass"><canvas width="32" height="32" role="img" aria-label="#' + p.id + ' in the mirror"></canvas></div><div class="dz-pow"><span class="dz-cap">GEAR POWER</span><span class="dz-num">' + power + '</span><span class="small">' + (DR.tab === 'looks' ? 'The mirror shows the look. Fights count the real pieces (⚔ Power tab).' : DR.tab === 'fits' ? 'The mirror shows the look it wears now.' : 'Tap ▾ on a slot to try other pieces on. Wearing gear is free, no burn.') + '</span></div></div>' +
+      (tabOn() ? '<div class="dz-rows">' + CL().body(DR.tab, w, U.ME, p) + '</div></div><div class="dz-foot">' + CL().foot(DR.tab, w, U.ME, p) + '</div></div>' :
       '<div class="dz-rows">' + allSlots(p).map(function (s) { return row(w, p, s, worn, pl); }).join('') + '</div></div>' +
       '<div class="dz-foot"><button type="button" class="btn ico-flame dz-all" data-all="1"' + (pl.gain ? '' : ' disabled') + '>⚡ Wear all best' + (pl.gain ? ' · +' + pl.gain : '') + ' <span class="cost">free</span></button>' + (DR.undo ? '<button type="button" class="q" data-undo="1">↩ Undo</button>' : '') +
-      '<a class="q dz-spin" href="rare-room.html#rare-room-' + p.id + '">🎡 Spin for gear</a></div></div>';
-    mirror(m.querySelector('canvas'), w, p, worn);
+      (CL() ? '<button type="button" class="q" data-cl="fit">📸 Fit check</button>' : '') + '<a class="q dz-spin" href="rare-room.html#rare-room-' + p.id + '">🎡 Spin for gear</a></div></div>');
+    mirror(m.querySelector('canvas'), w, p, worn); if (tabOn()) CL().paint(m, w, U.ME, p);
     if (keep) m.querySelector('.dz-body').scrollTop = keep;
     if (first) { var x = m.querySelector('.dz-x'); if (x) try { x.focus({ preventScroll: true }); } catch (e) { } } }
   function act(e) { var b = e.target.closest('button'); if (!b) return; var U = UI(), V = RL(), w = U.world(), p = w.byId[DR.pid], ds = b.dataset; if (!p) return close();
     if (ds.x) return close();
+    if (ds.tab) { DR.tab = ds.tab; DR.tryOn = {}; return draw(); }
+    if (ds.cl && CL()) { if (ds.cl !== 'fit' && blocked()) return; if (CL().act(b, w, U.ME, p)) return draw(); return; }
     if (ds.exp) { DR.exp = DR.exp === ds.exp ? null : ds.exp; return draw(); }
     if (ds.untry) { delete DR.tryOn[ds.untry]; return draw(); }
     if (ds.try) { var q = ds.try.split('|'); if (DR.tryOn[q[0]] === q[1]) { DR.tryOn[q[0]] = null; delete DR.tryOn[q[0]]; } else DR.tryOn[q[0]] = q[1]; return draw(); }
@@ -202,7 +210,7 @@
 
   var CSS = '#pcDress{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:center;gap:2px 8px;width:100%;margin:10px 0 4px;min-height:48px;font-family:"Press Start 2P",monospace;font-size:11px}#pcDress b{color:inherit}#pcDress small{font-family:"Comic Neue",sans-serif;font-size:12px;font-weight:700;opacity:.85}#pcDress.up{background:#ffd166;color:#2a1530;border-color:#000;box-shadow:3px 3px 0 #000}#pcDress[hidden]{display:none}' +
     '.dz-toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:2147483001;max-width:90vw;background:#160c28;color:#f3eaff;border:2px solid #3ddc84;border-radius:8px;padding:8px 14px;font:700 14px "Comic Neue",sans-serif;box-shadow:3px 3px 0 #000}.dz-toast[hidden]{display:none}' +
-    'html.viewonly #pcDress,html.viewonly #dzAllBtn,html.viewonly #dzUndress,html.viewonly #dzClean{display:none!important}.dz-gsrow{align-items:center}.dz-gsl{font-family:"Press Start 2P",monospace;font-size:8px;color:#ffd166}.dz-gs{min-height:36px}.dz-gs.on{border-color:#3ddc84}.dz-gsn{flex-basis:100%;font-size:12px;opacity:.8}' +
+    'html.dz-open .dz-toast{bottom:auto;top:calc(12px + env(safe-area-inset-top))}html.viewonly #pcDress,html.viewonly #dzAllBtn,html.viewonly #dzUndress,html.viewonly #dzClean{display:none!important}.dz-gsrow{align-items:center}.dz-gsl{font-family:"Press Start 2P",monospace;font-size:8px;color:#ffd166}.dz-gs{min-height:36px}.dz-gs.on{border-color:#3ddc84}.dz-gsn{flex-basis:100%;font-size:12px;opacity:.8}' +
     '.dz-modal{position:fixed;inset:0;z-index:2147483000;background:rgba(8,4,16,.66);display:flex;align-items:flex-end;justify-content:center}html.dz-open{overflow:hidden}' +
     '.dz-box{width:100%;max-width:560px;max-height:92vh;display:flex;flex-direction:column;background:#221238;color:#f3eaff;border:3px solid #ffd166;border-bottom:0;border-radius:16px 16px 0 0;box-shadow:0 -6px 0 #000;font-family:"Comic Neue",sans-serif}' +
     '@media (min-width:700px){.dz-modal{align-items:center}.dz-box{border-bottom:3px solid #ffd166;border-radius:14px;max-height:88vh}}' +
@@ -224,5 +232,5 @@
   /* a fresh world (new block, fast-load page batch) or ops from another tab: rebuild the index, refresh the open drawer and the visible buttons */
   function tick() { try { boot(); paintUndress(); var w = ready() && UI().world(); if (w && (!IX || IX.w !== w || IX.o !== opsN() || IX.mk !== wornMark(w.itemList || []))) { index(w); if (DR.pid != null && $('dzModal')) draw(); soon(); } } catch (e) { } }
   if (typeof window !== 'undefined') { boot(); setInterval(tick, 1500); }
-  window.V2Dress = { open: open, close: close, dressAll: dressAll, index: function (w) { return index(w); }, ready: ready, label: label, stars: stars, slotName: slotName, slotsOf: slotsOf, dmg: dmg, iconHtml: iconHtml, plan: function (w, p) { return plan(w, p); }, decorate: decorate, _reset: function () { IX = null; } };
+  window.V2Dress = { open: open, close: close, dressAll: dressAll, ui: function () { return UI(); }, index: function (w) { return index(w); }, ready: ready, label: label, stars: stars, slotName: slotName, slotsOf: slotsOf, dmg: dmg, iconHtml: iconHtml, plan: function (w, p) { return plan(w, p); }, decorate: decorate, _reset: function () { IX = null; } };
 })();

@@ -19,7 +19,7 @@ ok(!/[×]|\bdiscount\b|\bprice\b/i.test(h), 'no banned words');
 m = P.moved(w(144 * 101 + 9), p, mk(799), 1300); ok(m && m.delta === -6, 'later the same day it still compares with yesterday');
 m = P.moved(w(144 * 104), p, mk(830, 60), 1400); ok(m && m.delta === 31 && m.days === 3 && m.self, 'three days later, pet grew: +31, self changed');
 ok(/since you last saw it 3 days ago/.test(P.whyHtml(m, 1400)) && /This pet changed/.test(P.whyHtml(m, 1400)), 'days-ago words');
-ok(JSON.parse(st['xcpets-ps-hist'])['7'].d === 104, 'history is kept in this browser');
+ok(JSON.parse(st['xcpets-ps-hist2'])['7'].d === 104, 'history is kept in this browser');
 ({ P } = fresh()); ok(/Why it moves/.test(P.whyHtml(null, 50)), 'no history: still explains why it moves');
 const badge = fs.readFileSync(path.join(__dirname, '..', 'js/pet-score.js'), 'utf8');
 ok(/arrow\(mv\)/.test(badge) && /whyHtml\(mv, n\)/.test(badge), 'the chip shows the arrow and the breakdown the why line');
