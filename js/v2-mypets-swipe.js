@@ -36,7 +36,10 @@
   function setView(v, quiet) { st.view = v === 'one' ? 'one' : 'grid'; set(KV, st.view); document.body.classList.toggle('mps-one', st.view === 'one');
     $('mpsGrid').setAttribute('aria-pressed', st.view === 'grid'); $('mpsOne').setAttribute('aria-pressed', st.view === 'one'); if (st.view === 'one') draw(); else if (!quiet) $('mpsBox').innerHTML = ''; }
   var tm = null; function sched() { clearTimeout(tm); tm = setTimeout(function () { if (!st.busy) draw(); }, 30); }
-  function idx(L) { var i = L.findIndex(function (p) { return p.id === st.id; }); return i < 0 ? 0 : i; }
+  /* eggs-first-1128 (Jake Nov 28 2026: "eggs ... the first thing in my pets so you see all the eggs"): until you move in this visit, the view opens on
+   * the first card, an Egg when you have one, instead of the pet remembered from last time (the first paint used to pin a Mythic from the first
+   * loaded page, and the eggs that came in with the next pages sat behind it). Once you swipe, it remembers your place as before. */
+  function idx(L) { if (!st.moved && L.length && window.PetSort && PetSort.isEgg && PetSort.isEgg(L[0])) return 0; var i = L.findIndex(function (p) { return p.id === st.id; }); return i < 0 ? 0 : i; }
   function gearHtml(u, w, p) { var R = window.V2Render, g = R && R.worn ? R.worn(w, p.id) : []; if (!g.length) return '<div class="mps-gear muted">🎒 No gear worn (' + (p.capacity || 0) + ' slots)</div>';
     return '<div class="mps-gear">🎒 ' + g.map(function (x) { return esc((x.slot ? x.slot + ': ' : '') + (x.label || x.item || x.gid)); }).join(' · ') + '</div>'; }
   function acts(u, w, p) { var V = window.V2Rules, me = u.ME, own = !!me && V2Own.isLiving(p, me), h = '';
@@ -48,7 +51,7 @@
     return '<div class="mps-acts">' + h + '</div>'; }
   function draw(dir) { var u = U(), box = $('mpsBox'); if (!u || !box || !u.cardFor) return; var w = u.world(), L = list();
     if (!L.length) { box.innerHTML = '<p class="muted">No pets match this filter.</p>'; return; }
-    var i = idx(L), p = L[i]; st.id = p.id; set(KP, p.id);
+    var i = idx(L), p = L[i]; st.id = p.id; if (st.moved) set(KP, p.id);
     box.innerHTML = '<div class="mps-nav"><button type="button" class="btn ghost" id="mpsPrev" aria-label="Previous pet"' + (L.length < 2 ? ' disabled' : '') + '>◀</button><span class="mps-pos" id="mpsPos" aria-live="polite">' + (i + 1) + ' / ' + L.length + '</span><button type="button" class="btn ghost" id="mpsNext" aria-label="Next pet"' + (L.length < 2 ? ' disabled' : '') + '>▶</button></div>' +
       '<div class="mps-stage" id="mpsStage"><div class="mps-card" id="mpsCard"></div></div><div class="mps-hint">Swipe, or use ◀ ▶ / arrow keys. Swiping only changes the pet shown; it never burns anything.</div><div class="mps-hint" id="mpsStars" aria-live="polite">' + starLine() + '</div>';
     var c = $('mpsCard'), d = u.cardFor(p, w); if (!d) return; c.appendChild(d);
@@ -64,7 +67,7 @@
   /* mypets-checkbox (owner Oct 28 2026): the ☑ checkbox on the card is the mark again (no stars). Feed selected, Discard selected and the Rare Room roll / Auto-equip act on the checked pets. */
   function starLine() { var u = U(), n = u && u.pickIds ? u.pickIds().length : 0; return '☑ <b>' + n.toLocaleString('en-US') + '</b> selected pet' + (n === 1 ? '' : 's') + '. Tick the box on a card to select it. Feed selected, Discard selected and the Rare Room multi-pet roll + Auto-equip act on your selected pets.'; }
   document.addEventListener('xcpets-sel', function () { var e = $('mpsStars'); if (e) e.innerHTML = starLine(); });
-  function go(dir) { var L = list(); if (L.length < 2 || st.busy) return; var i = idx(L), c = $('mpsCard'); st.id = L[(i + dir + L.length) % L.length].id; set(KP, st.id);
+  function go(dir) { var L = list(); if (L.length < 2 || st.busy) return; var i = idx(L), c = $('mpsCard'); st.moved = true; st.id = L[(i + dir + L.length) % L.length].id; set(KP, st.id);
     if (!c || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return draw();
     st.busy = true; c.style.transition = 'transform .22s ease-in, opacity .22s'; c.style.transform = 'translateX(' + (-dir * 110) + '%)'; c.style.opacity = '.3';
     setTimeout(function () { st.busy = false; draw(dir); }, 210); }
