@@ -33,7 +33,7 @@ jobs:
             }
             return [];
           }
-          const s = a => a.slice(0, 8) + '…' + a.slice(-5);
+          const s0 = 0; const s = a => a.slice(0, 8) + '…' + a.slice(-5);
           (async () => {
             const boot = JSON.parse(fs.readFileSync('api/boot.json'));
             const tip = boot.tip, burn = {};
@@ -51,6 +51,7 @@ jobs:
             for (const [lo, hi] of buckets) { const l = never.filter(a => hold[a] >= lo && hold[a] < hi); console.log('never-burned', lo, '-', hi, ':', l.length, 'hold', sum(l)); }
             console.log('--- burners (all) with current balance, days since last burn');
             for (const [a, b] of Object.entries(burn).sort((x, y) => y[1].q - x[1].q)) console.log(s(a), 'burns', b.n, 'burned', Math.round(b.q), 'daysIdle', ((tip - b.last) / 144).toFixed(1), 'holds', Math.round(hold[a] || 0));
+            console.log('NEVERLIST ' + JSON.stringify(never.filter(a => !/^1CounterpartyXXX/.test(a)).sort().map(a => [a, hold[a]])));
             console.log('--- top 60 never-burned holders');
             never.sort((x, y) => hold[y] - hold[x]).slice(0, 60).forEach(a => console.log(s(a), Math.round(hold[a])));
             // how did holders get XCPETS: credits by type
