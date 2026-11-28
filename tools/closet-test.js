@@ -29,7 +29,7 @@ const R = { get: () => { try { return JSON.parse(store['xcpets-wardrobe-v1']) ||
   apply: (w2, p, L) => L };
 const win = { V2Rules, V2Render: { wardrobe: R }, localStorage }; win.window = win;
 const cx = vm.createContext(win);
-['js/v2-closet.js', 'js/v2-gearbook.js'].forEach(f => vm.runInContext(fs.readFileSync(path.join(ROOT, f), 'utf8'), cx, { filename: f }));
+['js/v2-own.js', 'js/v2-closet.js', 'js/v2-gearbook.js'].forEach(f => vm.runInContext(fs.readFileSync(path.join(ROOT, f), 'utf8'), cx, { filename: f }));
 const C = win.V2Closet, B = win.V2GearBook;
 
 console.log('owned + looks');

@@ -18,6 +18,8 @@
   var d = root && root.document;
   function RL() { return root && root.V2Rules; }
   function RD() { return root && root.V2Render; }
+  /* this wallet's living pet: the one shared answer (V2Own.isLiving, root cause #2), never an inline copy */
+  function mine(p, me) { var O = root && root.V2Own; return !!(O && O.isLiving && O.isLiving(p, me)); }
   function WD() { var R = RD(); return R && R.wardrobe; }
   function $(id) { return d.getElementById(id); }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
@@ -81,7 +83,7 @@
    * and counted; '-' (hide) always applies. An outfit was saved from pieces the wallet owned, so ownership is not checked again here (the pet
    * page loads only part of a big wallet's gear). Pure: reads only the world, never writes. { maps: { pid: map }, pets, set, skipped } */
   function planOutfit(w, me, fit, pets) { var out = { maps: {}, pets: 0, set: 0, skipped: 0 };
-    pets.forEach(function (p) { if (!p || p.owner !== me || p.dead || p.released) return; var m = {}, k = 0;
+    pets.forEach(function (p) { if (!mine(p, me)) return; var m = {}, k = 0;
       Object.keys(fit.s || {}).forEach(function (sl) { var id = fit.s[sl]; if (id === '-') { m[sl] = '-'; k++; return; } if (fits(w, me, p, id)) { m[sl] = id; k++; } else out.skipped++; });
       out.maps[p.id] = m; out.pets++; out.set += k; });
     return out; }
@@ -158,7 +160,7 @@
   function hookBar() { var bar = $('bulkRow'); if (!bar || $('clSelBtn') || !root.V2UI || !RL() || !WD()) return; var b = d.createElement('button'); b.type = 'button'; b.id = 'clSelBtn'; b.className = 'q';
     b.textContent = '👗 Outfit'; b.title = 'Put a saved outfit on the pets you ticked (looks only, free)'; b.onclick = function () { pickSheet(); }; var lair = $('selLair'); if (lair && lair.parentNode === bar) bar.insertBefore(b, lair); else bar.appendChild(b); }
   function pickSheet() { var U = root.V2UI, w = U && U.world && U.world(), me = U && U.ME; if (!w || !me) return; if (viewOnly()) { toast('View only: connect your wallet to dress your pets.'); return; }
-    var ids = selIds(), pets = ids.map(function (id) { return w.byId[id]; }).filter(function (p) { return p && p.owner === me && !p.dead && !p.released; });
+    var ids = selIds(), pets = ids.map(function (id) { return w.byId[id]; }).filter(function (p) { return mine(p, me); });
     if (!pets.length) { toast('Tick some living pets first.'); return; }
     var F = allFits(me), first = pets[0], ov = d.createElement('div'); ov.className = 'dz-modal'; ov.id = 'clSheet';
     ov.innerHTML = '<div class="dz-box" role="dialog" aria-modal="true" aria-labelledby="clSheetT"><div class="dz-grab" aria-hidden="true"></div><div class="dz-head"><h3 id="clSheetT">👗 Outfit for ' + fmt(pets.length) + ' pet' + (pets.length === 1 ? '' : 's') + '</h3><button type="button" class="q dz-x" data-x="1" aria-label="Close">✕</button></div>' +
