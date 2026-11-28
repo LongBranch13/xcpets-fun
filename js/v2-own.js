@@ -52,6 +52,17 @@
     if (!me) return out;
     for (i = 0; i < P.length; i++) { p = P[i]; if (!p || p.owner !== me || p.released || isZ(p) || !!p.dead !== !!dead) continue; if (has(p.id) || (!dead && onChain(p, me))) out.push(p); }
     return out; }
-  var api = root.V2Own = { living: living, isLiving: isLiving, isZ: isZ, canEat: canEat, discarded: discarded, onChain: onChain, pendingHd: pendingHd, pileOrder: pileOrder, pileIds: pileIds, inPile: inPile, discardSet: discardSet, pileList: pileList };
+  /* IN DANGER (Nov 28 2026, Jake: "I don't want my discards, that's why I discarded them"). The "in danger" test (neglected, not Mythic-cared,
+   * death block still ahead) was copied into Today, the My Pets line and the urgency badge, and none of them left discarded pets out: Jake's
+   * Today card said 2,990 in danger, 1,388 of them pets he had discarded on chain. Every screen asks these two now:
+   *   V2Own.atRisk(p, me, tip, o)   this wallet's living pet (not a risen zombie) that starves at p.deathBlock unless fed, and is NOT discarded
+   *                                 (o as in discarded(): pass { set, pend } read once outside a loop)
+   *   V2Own.riskList(w, me)         every such pet of the wallet, the pile read once */
+  function starving(p, me, tip) { return isLiving(p, me, { zombies: false }) && !!p.neglected && !p.mythicCare && p.deathBlock != null && p.deathBlock > tip; } /* discards included: only to say how many were left out */
+  function atRisk(p, me, tip, o) { return starving(p, me, tip) && !discarded(p, me, o || {}); }
+  function riskList(w, me) { if (!w || !me) return []; var o = { set: pileIds(me), pend: pendingHd() }, P = w.pets || [], out = [], i;
+    for (i = 0; i < P.length; i++) if (P[i] && P[i].owner === me && atRisk(P[i], me, w.tip, o)) out.push(P[i]);
+    return out; }
+  var api = root.V2Own = { living: living, isLiving: isLiving, isZ: isZ, canEat: canEat, discarded: discarded, onChain: onChain, pendingHd: pendingHd, pileOrder: pileOrder, pileIds: pileIds, inPile: inPile, discardSet: discardSet, pileList: pileList, atRisk: atRisk, riskList: riskList, starving: starving };
   if (typeof module !== 'undefined' && module.exports) { module.exports = api; api.V2Own = api; } /* require(..).V2Own as before; node tools can require it (v2-habits under node) */
 })(typeof self !== 'undefined' ? self : this);
