@@ -773,7 +773,7 @@
    * just asked for them ("Play them" on the away card), so they open at once. */
   var askAt = 0;
   function playerBusy() { return Date.now() - askAt > 4000 && !!(window.XcpDock && XcpDock.busy && XcpDock.busy()); }
-  function otherUp() { return [].some.call(document.querySelectorAll('.reveal.on:not(#packBox)'), shown) || picking() || !!(window.V2LifeAnim && V2LifeAnim.busy && V2LifeAnim.busy()); }
+  function otherUp() { return [].some.call(document.querySelectorAll('.reveal.on:not(#packBox)'), shown) || !!(window.XcpDock && XcpDock.sheetUp && XcpDock.sheetUp('#packBox')) || picking() || !!(window.V2LifeAnim && V2LifeAnim.busy && V2LifeAnim.busy()); }
   /* playtest-1125: an egg with no art (a fast page that picked the hatch up after the published world) made the box reveal throw on
    * x.art.tierIndex inside the egg-crack callback, so the reveal never opened. Ask for the art once; eggs still without it skip the review. */
   function revNeedsArt() { var q = revealQ[0], w = world(); if (!q || q.kind !== 'eggs' || !w || !w.byId) return false;
@@ -920,7 +920,7 @@
     var nBox = (function () { var t = {}, k = 0; all.forEach(function (x) { if (!revEl(x)) return; var b = String(x.hatchTx || '').replace(/:\d+$/, ''); if (b && !t[b]) { t[b] = 1; k++; } }); return k; })();
     var box = nEl >= 100 && nEl >= n / 2, ex = Math.round(nEl * (V.ELECTRIC_TIER_10K || [3000, 4000, 2200, 800])[3] / 10000);
     var ck = star.length ? 'weird' : box && ex && tiers[3] >= ex * 1.1 ? 'luck' : tiers[3] ? 3 : tiers[2] ? 2 : tiers[1] ? 1 : 0, caps = INTRO_CAPS[ck], cap = caps[(n + tiers[3]) % caps.length];
-    $('packTitle').textContent = box ? (nBox > 1 ? '⚡ ' + nBox + ' Shock Boxes opened!' : '⚡ Shock Box opened!') : '🥚 ' + n.toLocaleString('en-US') + ' eggs hatched!';
+    $('packTitle').textContent = box ? (nBox > 1 ? '⚡ ' + nBox + ' Shock Boxes opened!' : '⚡ Shock Box opened!') : (all.every(function (x) { return (x.stage || 0) === 0; }) ? '🥚 ' + n.toLocaleString('en-US') + (n === 1 ? ' new egg! One meal hatches it' : ' new eggs! One meal hatches each') : '🥚 ' + n.toLocaleString('en-US') + ' eggs hatched!');
     var bars = [3, 2, 1, 0].map(function (t) { var c = tiers[t], pc = n ? Math.max(c ? 2 : 0, Math.round(c * 100 / n)) : 0;
       return '<div class="pkibar t' + t + '"><span class="pkil">' + esc(TIERS[t].label) + '</span><span class="pkit"><i data-w="' + pc + '" style="width:0;background:' + TIER_C[t] + '"></i></span><b class="pkic" data-n="' + c + '">0</b></div>'; }).join('');
     var head = star.length ? (wd ? '🌀 ' + wd + ' weird' : '') + (wd && sp ? ' + ' : '') + (sp ? '✨ ' + sp + ' special' : '') + (star.length === 1 && !(wd + sp > 1) ? ' find!' : ' finds!') : '🏆 Your best pulls';
@@ -1152,7 +1152,7 @@
     if (X && X.flip) list.reverse();
     /* eggs-first-1128 (Jake Nov 28 2026): Eggs head My Pets in every order, so you see all your eggs first, then the order you picked inside
      * the eggs and inside the rest. Not for '🌱 Biggest stage' (that order is about stage) or '☑️ Selected first' (your picks on top). */
-    if (!cem && window.PetSort && PetSort.eggsFirst && fS !== 'stage' && fS !== 'sel') list = PetSort.eggsFirst(list);
+    if (!cem && window.PetSort && PetSort.eggsFirst && !{ stage: 1, sel: 1, weird: 1, starred: 1, tok: 1 }[fS]) list = PetSort.eggsFirst(list); /* eggs first, except in sorts that put something else first (Biggest stage, Selected / Weird / Starred / Tokenized first) */
     return list; }
   /* hotfix 3: a sort change only reorders the existing cards (same set, new order); anything else falls back to a full render */
   function resort() { var w = world(), all = mine(w), list = petList(all.filter(function (p) { return !p.dead; }), all.filter(function (p) { return p.dead; })), box = $('pets'), m = {};
@@ -2076,7 +2076,7 @@
    * mark it left last time. It keeps the seen keys (once per tx) and plays through the same queue / 'While you were away' hold. Display only. */
   var LIFE_PV = /[?&]anim=(hatch|hatch-bulk|feed|feed-many|stage|mythic|starve|god|birth-[a-z]+|sold|bought|listed|closed|gift-in|gift-out|swap|gear|hunt-won|hunt-lost|altar|arrival|grant)(&|$)/.test(location.search);
   function lifeReduced() { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } }
-  function withLife(cb) { if (window.V2LifeAnim) return cb(true); var q = withLife.q = withLife.q || []; q.push(cb); if (q.length > 1) return; var t = document.createElement('script'); t.src = 'js/v2-life-anim.js?v=8697717877';
+  function withLife(cb) { if (window.V2LifeAnim) return cb(true); var q = withLife.q = withLife.q || []; q.push(cb); if (q.length > 1) return; var t = document.createElement('script'); t.src = 'js/v2-life-anim.js?v=eb4caad158';
     var fin = function (ok) { var a = withLife.q; withLife.q = []; a.forEach(function (f) { try { f(ok); } catch (e) { if (window.console) console.warn('life anim', e); } }); }; t.onload = function () { fin(true); }; t.onerror = function () { fin(false); }; document.body.appendChild(t); }
   function lifeNeeded(w) { if (!ME || !w || !w.log) return false; var m = 0; try { m = Number(localStorage.getItem('xcpets-life-mark-' + ME)) || 0; } catch (e) { return false; } if (!m) return true; var tip = S.tip || w.tip || 0; if (tip <= m) return false;
     for (var i = w.log.length - 1; i >= 0 && w.log[i].block > m; i--) { var l = w.log[i]; if (l.kind === 'feed' && (l.petIds || [l.petId]).some(function (id) { var p = w.byId[id]; return p && p.owner === ME; })) return true; }
@@ -2145,7 +2145,7 @@
   function nextAnim() { if (animM.el || !animQ.length) return; if ((window.V2CemAnim && V2CemAnim.busy()) || (window.V2LifeAnim && V2LifeAnim.busy())) return; /* a cemetery animation is on screen; it calls V2AnimDone when it ends */ if ($('packBox').classList.contains('on') || sheetOpen() || playerBusy()) return setTimeout(nextAnim, 1500); animQ.shift()(); } /* Nov 26 2026: and while the player is tapping or scrolling (js/v2-dock.js busy) */
   /* playtest (Nov 25 2026): a fight replay used to pop up in front of the Sign & burn sheet (or any other open sheet) a few seconds after the
    * page opened, and the player's press landed on the replay. Replays wait until no sheet is open. */
-  function sheetOpen() { var L = document.querySelectorAll('.reveal.on, [aria-modal="true"]'); for (var i = 0; i < L.length; i++) { var e = L[i]; if (e.id === 'animBox' || e.closest('#animBox')) continue; if (e.offsetWidth || e.offsetHeight) return true; } return false; }
+  function sheetOpen() { if (window.XcpDock && XcpDock.sheetUp) return XcpDock.sheetUp('#animBox'); /* Nov 28 2026: the one shared answer (js/v2-dock.js) */ var L = document.querySelectorAll('.reveal.on, [aria-modal="true"]'); for (var i = 0; i < L.length; i++) { var e = L[i]; if (e.id === 'animBox' || e.closest('#animBox')) continue; if (e.offsetWidth || e.offsetHeight) return true; } return false; }
   window.V2AnimDone = function () { if (!animM.el && animQ.length) setTimeout(nextAnim, 500); };
   function animOpen(el, iv, onClose) { animClose(true); var box = $('animBox'); if (!box) { box = document.createElement('div'); box.id = 'animBox'; box.className = 'reveal anim'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true');
       box.innerHTML = '<div class="box wide"><button type="button" class="q" id="animClose" style="float:right" aria-label="Close">&times;</button><div id="animSlot"></div></div>'; document.body.appendChild(box);
@@ -2419,7 +2419,13 @@
     /* Nov 25 2026 (robot, 40,000-pet wallet: breed/fight/raid froze ~1 s): a partial repaint ran inside the same task as the owner-page
      * batch that set the world, so the two costs added up into one freeze. Paint it in its own task; the complete world still paints at once. */
     if (partial) { freshAt = Date.now(); freshT = setTimeout(function () { freshT = 0; render(); }, 0); return; }
-    freshAt = Date.now(); render(); }
+    /* Nov 28 2026 (robot, Evan's 40,000 pets: GRIND froze the page ~3 s): a fresh world that lands while a sheet is open (the Grinder, Sign & burn,
+     * a dialog) redrew all of My Pets behind it, in the same moment the player pressed a button in the sheet. The sheet reads the world itself,
+     * so the page behind waits until the sheet closes (at most 60 s, then it draws anyway). */
+    if (sheetHeld()) { if (!freshHeld) freshHeld = Date.now(); freshT = setTimeout(freshRender, 700); return; }
+    freshHeld = 0; freshAt = Date.now(); render(); }
+  var freshHeld = 0;
+  function sheetHeld() { if (freshHeld && Date.now() - freshHeld > 60000) return false; try { return !!(window.XcpDock && XcpDock.sheetUp && XcpDock.sheetUp('#animBox')); } catch (e) { return false; } }
   if (M.onFresh) M.onFresh(freshRender); /* boot-from-cache: repaint when the fresh world replaces the saved one */
   /* new confirmed burns (e.g. your roll result) every 60 s. smooth-perf (2026-10-19): skipped while the tab is hidden (no background API calls or
    * re-renders); coming back to the tab after a missed poll reads the chain once right away. An unchanged chain keeps the same world (v2-chain.js). */

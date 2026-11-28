@@ -45,6 +45,12 @@
     if (win.MutationObserver && d.body) new win.MutationObserver(sched).observe(d.body, { attributes: true, attributeFilter: ['class', 'style'], childList: true });
     win.addEventListener('resize', sched);
   }
-  win.XcpDock = { BARS: BARS, refresh: sched, height: dockHeight, busy: busy };
+  /** sheetUp(except): a sheet or full-screen scene the player is looking at is open (Nov 28 2026, play-test robot: an egg-crack scene opened over
+   * the Grinder and covered GRIND). One answer for every "wait until no sheet is open" check: a .reveal.on sheet, any aria-modal dialog
+   * (Grinder, cemetery and gear dialogs, the Sign & burn sheet) or a life scene (.la-ov). Hidden ones (calm mode) and the away card don't count. */
+  function sheetUp(except) { var L = d.querySelectorAll('.reveal.on, [aria-modal="true"], .la-ov'), i, e;
+    for (i = 0; i < L.length; i++) { e = L[i]; if (e.classList.contains('returnov')) continue; if (except && (except === e || (typeof except === 'string' && e.closest && e.closest(except)))) continue; if (e.offsetWidth || e.offsetHeight) return true; }
+    return false; }
+  win.XcpDock = { BARS: BARS, refresh: sched, height: dockHeight, busy: busy, sheetUp: sheetUp };
   if (d.readyState === 'loading') d.addEventListener('DOMContentLoaded', boot); else boot();
 })(window);

@@ -21,7 +21,9 @@ ok(Own && Own.atRisk && Own.riskList && SB && SB.rank, 'V2Own.atRisk / riskList 
 /* 1 + 3: synthetic wallet */
 const ME = 'bc1qmetestwallet', tip = 980000;
 let id = 1;
-const pet = o => Object.assign({ id: id++, owner: ME, species: 'peepo', tier: 0, stage: 1, care: 69, stats: { a: 10, b: 10 }, neglected: true, hungry: true, nextMeal: 517.5, deathBlock: tip + 19 }, o);
+/* lastFed / hatchBlock: the rules' own feed check (V2Rules.burnMeal, PR 350) reads the starve clock from them, so a pet the test means to be
+ * saveable is fed recently by that clock, and 'too-late' was fed long ago (it starves before a burn could land) */
+const pet = o => Object.assign({ id: id++, owner: ME, species: 'peepo', tier: 0, stage: 1, care: 69, stats: { a: 10, b: 10 }, neglected: true, hungry: true, nextMeal: 517.5, deathBlock: tip + 19, hatchBlock: tip - 10, lastFed: tip - 10 }, o);
 const pets = [
   pet({ name: 'plain1' }), pet({ name: 'plain2' }), pet({ name: 'plain3', stats: { a: 40 } }),
   pet({ name: 'rare', tier: 2 }),
@@ -30,7 +32,7 @@ const pets = [
   pet({ name: 'adult', stage: 3, care: 30000, nextMeal: 900 }),
   pet({ name: 'chain-discard', tier: 3, hd: ME }),
   pet({ name: 'browser-discard', tier: 3 }),
-  pet({ name: 'too-late', tier: 3, deathBlock: tip + 2 }),
+  pet({ name: 'too-late', tier: 3, deathBlock: tip + 2, hatchBlock: tip - 144 * 30, lastFed: tip - 144 * 30 }),
   pet({ name: 'safe', neglected: false }),
   pet({ name: 'mythic', mythicCare: true }),
   pet({ name: 'zombie', zombie: { end: null } }),

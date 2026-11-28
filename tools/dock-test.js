@@ -78,11 +78,28 @@ ok(typeof r.win.XcpDock.busy === 'function' && r.win.XcpDock.busy() === false, '
 r.on.pointerdown(); ok(r.win.XcpDock.busy() === true, 'busy right after a tap');
 ok(!r.on.scroll, 'a scroll the page makes on its own does not count as the player');
 r = run(null); r.doc.body = { classList: { contains: c => c === 'selmode' } }; ok(r.win.XcpDock.busy() === true, 'busy while picking pets (select mode)');
-const v2s = rd('js/v2.js');
+var v2s = rd('js/v2.js');
 ok(/function nextReveal\(\)[\s\S]{0,600}!revealQ\[0\]\.tray && playerBusy\(\)/.test(v2s), 'the box reveal waits while the player is busy (a tapped pill / Last hatch opens at once)');
 ok(/function nextAnim\(\)[\s\S]{0,400}playerBusy\(\)/.test(v2s), 'fight / breed / cemetery replays wait while the player is busy');
 for (const f of ['js/v2-groyper-arrival.js', 'js/v2-kek-arrival.js', 'js/v2-rabbit-arrival.js'])
   ok(/XcpDock\.busy\(\)/.test(rd(f)), f + ' waits while the player is busy');
+
+/* 3c · XcpDock.sheetUp: one answer to "is a sheet open?" (Nov 28 2026, play-test robot on Evan's wallet: an egg-crack scene (.la-ov) opened
+ * over the Meat Grinder and covered GRIND, because the box reveal's otherUp() counted only .reveal.on sheets, not the Grinder's aria-modal dialog) */
+function el(o) { o = Object.assign({ w: 300, cls: [] }, o); return { id: o.id || '', offsetWidth: o.w, offsetHeight: o.w, classList: { contains: c => o.cls.includes(c) },
+  closest: sel => sel.split(',').map(x => x.trim()).some(x => x === '#' + o.id || (o.inside && x === '#' + o.inside)) ? {} : null }; }
+function up(list, except) { r = run(null); r.doc.querySelectorAll = () => list; return r.win.XcpDock.sheetUp(except); }
+ok(up([]) === false, 'nothing open: no sheet up');
+ok(up([el({ cls: ['mgr-bg'] })]) === true, 'the Meat Grinder (aria-modal dialog) counts as a sheet');
+ok(up([el({ cls: ['la-ov'] })]) === true, 'a life scene (egg crack, .la-ov) counts');
+ok(up([el({ w: 0 })]) === false, 'a hidden dialog (calm mode, display:none) does not count');
+ok(up([el({ cls: ['returnov'] })]) === false, 'the welcome-back card does not count');
+ok(up([el({ id: 'animBox' }), el({ inside: 'animBox' })], '#animBox') === false && up([el({ id: 'animBox' }), el({})], '#animBox') === true, 'except skips a box and what is inside it, nothing else');
+ok(/function otherUp\(\)[^\n]*XcpDock\.sheetUp/.test(v2s), 'the box reveal / hatch scene waits for any sheet (otherUp uses XcpDock.sheetUp)');
+ok(/function sheetOpen\(\)[^\n]*XcpDock\.sheetUp/.test(v2s), 'fight / breed / cemetery replays use the same answer (sheetOpen)');
+ok(/function freshRender\(\)[\s\S]{0,1600}if \(sheetHeld\(\)\)/.test(v2s) && /function sheetHeld\(\)[^\n]*60000[^\n]*XcpDock\.sheetUp/.test(v2s), 'a fresh world waits to redraw My Pets while a sheet is open (GRIND froze ~3 s on 40,000 pets), at most 60 s');
+for (const f of ['js/v2-groyper-arrival.js', 'js/v2-kek-arrival.js', 'js/v2-rabbit-arrival.js'])
+  ok(/function sheetUp\(\)[^\n]*XcpDock\.sheetUp\(\)/.test(rd(f)), f + ' waits for any sheet too (Grinder included)');
 
 /* 4 · the selection bar pins only while My Pets is on screen ("this feed bar is stuck", Nov 26 2026) */
 const calm = rd('js/v2-mypets-calm.js');

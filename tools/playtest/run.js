@@ -73,17 +73,17 @@ function hands(pg) {
     /* close what a player would close first: the welcome / arrival / farewell scenes, life scenes ("tap to skip"), the "while you
      * were away" box reveal (Later keeps the eggs in the pill) and Coach Peepo's tips. Pop-ups open one after another on a
      * returning wallet, so it keeps going until nothing new shows for a moment. Never touches the Sign & burn sheet. */
-    async dismiss(ms) {
+    async dismiss(ms, keep) { /* keep: a css selector for the sheet the flow came to test (the Grinder): never closed */
       const until = Date.now() + (ms || 0);
       for (let i = 0; i < 24; i++) {
-        const hit = await pg.evaluate(() => {
+        const hit = await pg.evaluate((keep) => {
           const vis = e => { const r = e.getBoundingClientRect(), c = getComputedStyle(e); return r.width > 2 && r.height > 2 && c.display !== 'none' && c.visibility !== 'hidden'; };
           const la = document.querySelector('.la-ov'); if (la) { la.click(); return 'life scene'; }
           const WORDS = /^\s*(Skip|Got it|Close|✕|×|OK|Later|Not now|Continue)\s*$/i;
-          const boxes = [...document.querySelectorAll('.reveal.on, .tut-tip, [role=dialog]')].filter(e => e.id !== 'confirmBox' && !e.closest('#confirmBox') && vis(e));
+          const boxes = [...document.querySelectorAll('.reveal.on, .tut-tip, [role=dialog]')].filter(e => e.id !== 'confirmBox' && !e.closest('#confirmBox') && !(keep && e.closest(keep)) && vis(e));
           for (const box of boxes) { const btn = [...box.querySelectorAll('button')].find(x => WORDS.test(x.textContent || '') && vis(x) && !x.disabled); if (btn) { btn.click(); return (box.id || box.className) + ': ' + btn.textContent.trim(); } }
           return '';
-        }).catch(() => '');
+        }, keep || '').catch(() => '');
         if (!hit) { if (Date.now() >= until) break; await pg.waitForTimeout(1000); continue; }
         await pg.waitForTimeout(600);
       }
@@ -377,15 +377,21 @@ FLOWS.feed = async (H, T, ctx) => {
 /* the Grinder opens on screen, its filter works, GRIND reaches the sheet */
 FLOWS.grinder = async (H) => {
   if (!(await H.open('play.html#grinder'))) return;
-  await H.dismiss(8000);
-  let on = await H.pg.evaluate(() => { const g = document.querySelector('.mgr-bg, #mgr, [class*=grind]'); if (!g) return null; const r = g.getBoundingClientRect(); return { top: Math.round(r.top), h: Math.round(r.height) }; });
-  if (!on) { await H.pg.evaluate(() => window.V2Grinder && V2Grinder.open()); await H.pg.waitForTimeout(1500); on = await H.pg.evaluate(() => { const g = document.querySelector('.mgr-bg, #mgr, [class*=grind]'); if (!g) return null; const r = g.getBoundingClientRect(); return { top: Math.round(r.top), h: Math.round(r.height) }; }); }
+  await H.dismiss(8000, '.mgr-bg'); /* it used to close the Grinder it came to test (✕ is a dismiss word) */
+  /* Nov 28 2026: play.html#grinder opens the Grinder once My Pets has finished loading (every discard in the hopper), ~20 s on 40,000 pets.
+   * The robot used to look 8 s, match any element with "grind" in its class (the Today card) and press the Today card's "🥩 Grind them for
+   * spins" button instead of GRIND: the flow never tested the Grinder. Wait for the real sheet (.mgr-bg), then press its own GRIND button. */
+  const where = () => H.pg.evaluate(() => { const g = document.querySelector('.mgr-bg .mgr'); if (!g || !(g.offsetWidth || g.offsetHeight)) return null; const r = g.getBoundingClientRect(); return { top: Math.round(r.top), h: Math.round(r.height) }; });
+  let on = null; for (let i = 0; i < 60 && !(on = await where()); i++) await H.pg.waitForTimeout(1000);
+  if (!on) { await H.pg.evaluate(() => window.V2Grinder && V2Grinder.open()); await H.pg.waitForTimeout(1500); on = await where(); if (on) problem('slow-open', 'play.html#grinder did not open the Grinder within 60 s'); }
   if (!on) return problem('no-sheet', 'the Grinder never opened');
   if (on.top > 900 || on.top < -50) problem('off-screen', 'the Grinder opened ' + on.top + ' px down the page');
   else ok('Grinder open on screen');
   await H.layout('Grinder'); await H.shot('grinder');
   const t = await now(H.pg);
-  const go = H.pg.locator('button').filter({ hasText: /GRIND/i }).filter({ visible: true }).first();
+  const st = await H.pg.evaluate(() => { const b = document.querySelector('.mgr-bg button.mgr-go'); return b ? { dis: b.disabled, why: (document.querySelector('.mgr-bg .mgr-box') || {}).textContent || '' } : null; });
+  if (st && st.dis) { ok('GRIND is off: ' + st.why.slice(0, 120)); return; }
+const go = H.pg.locator('.mgr-bg button.mgr-go').first();
   if (await go.count()) { await go.click({ timeout: 5000 }).catch(e => problem('button-blocked', 'GRIND: ' + e.message.split('\n')[0])); await H.pg.waitForTimeout(2500); await H.freezes(t, 'GRIND');
     const sh = await H.sheet(); if (sh) ok('GRIND → Sign sheet: ' + sh.amt); else ok('GRIND pressed (no sheet: ' + (await H.openSheets()).join(',') + ')'); }
   else ok('no GRIND button (no pets to grind)');

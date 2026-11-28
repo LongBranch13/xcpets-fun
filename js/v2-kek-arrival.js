@@ -82,7 +82,7 @@
   /** watch(el, w): first time el (his card / panel) is on screen while Lord Kek is the community pet, play once per player. */
   /* playtest Nov 25 2026: the arrival played the moment its card scrolled into view, even under an open sheet (Gift several pets,
    * Sign & burn), and covered its buttons. It now waits until no other pop-up is open. */
-  function sheetUp() { return [].some.call(document.querySelectorAll('.reveal.on, .la-ov'), function (e) { return !e.classList.contains('returnov') && !!(e.offsetWidth || e.offsetHeight); }); /* a hidden sheet (calm mode) does not count */ }
+  function sheetUp() { if (root.XcpDock && root.XcpDock.sheetUp) return root.XcpDock.sheetUp(); /* Nov 28 2026: the one shared answer (also counts the Grinder and other aria-modal dialogs) */ return [].some.call(document.querySelectorAll('.reveal.on, .la-ov'), function (e) { return !e.classList.contains('returnov') && !!(e.offsetWidth || e.offsetHeight); }); /* a hidden sheet (calm mode) does not count */ }
   function playFree(w, getW) { if (sheetUp() || (!previewRequested() && root.XcpDock && root.XcpDock.busy())) { /* Nov 26 2026: not while the player is tapping or scrolling (js/v2-dock.js busy) */ setTimeout(function () { playFree(typeof getW === 'function' ? getW() : w, getW); }, 1500); return; } play(w); }
   function watch(el, getW) { if (!el || el.__kekArr) return; el.__kekArr = 1;
     var go = function () { var w = getW(); if (!(root.V2Render && V2Render.kekOn && V2Render.kekOn(w))) return false; if (seen() && !previewRequested()) return true; playFree(w, getW); return true; };
