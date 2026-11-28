@@ -26,7 +26,9 @@ const G = V.dailyChoresGate(); if (G == null || G > nb) V._setDailyChoresActivat
 const w = V.replay(rows, hashes, [], opts(tip)), eaters = {};
 const alive2 = V.clock(nb + 1); /* fixtures age: skip a pet whose death clock runs out before the test burns land */
 w.pets.forEach(p => { if (!p.community && !p.dead && !p.released && p.owner && p.hd !== p.owner && V.frEats(p, nb) && (p.deathBlock == null || p.deathBlock > alive2)) (eaters[p.owner] = eaters[p.owner] || []).push(p); });
-const cand = Object.keys(eaters).map(o => ({ o, n: eaters[o].length })).filter(x => x.n >= 6 && x.n <= 600).sort((a, b) => b.n - a.n);
+/* Nov 28 2026: a wallet whose chores would make its first Mythic gets a one-pet plan (tools/feed-landing-test.js covers it); this test wants
+ * a whole chores burn, so it plays a wallet without one. */
+const cand = Object.keys(eaters).map(o => ({ o, n: eaters[o].length })).filter(x => x.n >= 6 && x.n <= 600 && !(V.firstMythicPets && V.firstMythicPets(w, x.o, eaters[x.o], nb).length)).sort((a, b) => b.n - a.n);
 ok(cand.length > 0, 'a wallet with 6-600 hungry eaters at tip ' + tip + ' (' + cand.length + ' found)');
 const who = cand[0].o, mine = eaters[who].slice().sort((a, b) => a.id - b.id);
 let hidden = mine.filter((p, i) => i % 3 === 1).map(p => p.id); /* every third pet discarded: forces 0 places inside the runs */

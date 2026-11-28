@@ -44,7 +44,9 @@ const owners = {}; w.pets.forEach(p => { if (!p.community && !p.dead && !p.relea
 ok(V.dailyChoresPlan(w, Object.keys(owners)[0], nb) === null, 'gate off: the planner offers nothing');
 ok(/not set yet/.test(V.sendBlock(w, { tag: 'pet:dc:3' }, tip, { me: Object.keys(owners)[0] }) || ''), 'gate off: send guard says "opens at block (not set yet)"');
 /* 2. gate off: same as any unknown tag */
-const said = o => !!(w.wagmi[o] && w.wagmi[o][V.day(nb)]), who = Object.keys(owners).map(o => ({ o, eat: owners[o].filter(p => V.frEats(p, nb)).length, spins: V.spinsLeft(w, o, nb), said: said(o) })).filter(x => x.eat <= 400).sort((a, b) => (b.eat > 0) - (a.eat > 0) || a.said - b.said || (b.spins > 0) - (a.spins > 0) || b.eat - a.eat)[0];
+/* Nov 28 2026: a wallet whose chores would make its FIRST Mythic gets a one-pet plan (V2Rules.firstMythicPets, tools/feed-landing-test.js);
+ * this test wants a whole chores burn, so it plays a wallet without one. */
+const said = o => !!(w.wagmi[o] && w.wagmi[o][V.day(nb)]), who = Object.keys(owners).map(o => ({ o, eat: owners[o].filter(p => V.frEats(p, nb)).length, spins: V.spinsLeft(w, o, nb), said: said(o) })).filter(x => x.eat <= 400 && !(V.firstMythicPets && V.firstMythicPets(w, x.o, owners[x.o].filter(p => V.frEats(p, nb)), nb).length)).sort((a, b) => (b.eat > 0) - (a.eat > 0) || a.said - b.said || (b.spins > 0) - (a.spins > 0) || b.eat - a.eat)[0];
 console.log('  test wallet ' + who.o.slice(0, 10) + '…: ' + who.eat + ' pets that eat, ' + who.spins + ' saved spins, WAGMI today: ' + who.said);
 { const r1 = mk(nb, who.o, 1, 'pet:dc:3', 'g'), r2 = Object.assign({}, r1, { tag: hex('pet:zz:3') });
   const a = play([r1], nb + 1), b = play([r2], nb + 1), l = a.log.find(x => x.tx === r1.tx_hash);

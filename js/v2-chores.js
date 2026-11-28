@@ -47,15 +47,15 @@
    * (every burn, not only the first) and how many discarded pets were left out. Rule files untouched. */
   function hiddenSet() { var u = U(); try { return new Set(((u && u.hiddenIds && u.hiddenIds()) || []).map(Number)); } catch (e) { return new Set(); } }
   function plan() { var u = U(), v = V(), w = u && u.world && u.world(), tip = u && u.S ? u.S().tip : 0; if (!w || !u.ME || !v.dailyChoresPlan) return null;
-    var nb = (tip || w.tip) + 1, h = hiddenSet(), eats = v.frEats || function (p) { return p && p.hungry; }, ids = [], gone = 0;
+    var nb = (tip || w.tip) + 1, h = hiddenSet(), eats = v.frEats || function (p) { return p && p.hungry; }, ids = [], gone = 0, late = 0;
     /* Nov 25 2026 (play-test robot): pets discarded ON CHAIN (pet:hd) were still in this list. The rules refuse their meals, so a big wallet's
      * chores burn was charged for every discarded hungry pet (294,249 XCPETS for 146 real meals). Both kinds of discard are left out now. */
     var ph = {}; try { ph = (u.pendingFeedIds && u.pendingFeedIds().hd) || {}; } catch (e) { } /* Nov 25 2026: discard burns still waiting to confirm count as discarded */
     var dz = { set: h, pend: ph }; /* Nov 26 2026: V2Own.discarded is the one answer (browser pile, on chain, or still confirming) */
-    w.pets.forEach(function (p) { if (p.owner !== u.ME || !p.hungry) return; if (V2Own.discarded(p, u.ME, dz)) { if (!p.dead && !p.released && eats(p, nb)) gone++; return; } if (p.zombie && !p.zombie.end) return; ids.push(p.id); });
+    w.pets.forEach(function (p) { if (p.owner !== u.ME || !p.hungry) return; if (V2Own.discarded(p, u.ME, dz)) { if (!p.dead && !p.released && eats(p, nb)) gone++; return; } if (p.zombie && !p.zombie.end) return; if (v.burnMeal && !p.dead && !p.released && !v.burnMeal(p, nb)) { late++; return; } ids.push(p.id); }); /* Nov 28 2026: a pet that starves before the burn can confirm is left out (the rules would not feed it in time) */
     var set = new Set(ids); ids.indexOf = function (x) { return set.has(x) ? 0 : -1; }; /* the planner asks ids.indexOf(id) >= 0 per pet; a Set keeps big wallets fast */
     var P = v.dailyChoresPlan(w, u.ME, nb, { ids: ids }); if (!P) return null;
-    P.feedTotal = P.plans.reduce(function (a, q) { return a + (q && q.petIds ? q.petIds.length : q && q.petId != null ? 1 : 0); }, 0); P.discardedSkipped = gone; return P; }
+    P.feedTotal = P.plans.reduce(function (a, q) { return a + (q && q.petIds ? q.petIds.length : q && q.petId != null ? 1 : 0); }, 0); P.discardedSkipped = gone; P.lateSkipped = late; return P; }
   /* playfreeze-1113: the 2 s ensure() loop only needs a new plan when the world, tip, wallet or discarded list changes. go() still calls plan() fresh. */
   /* smooth-chores (Nov 26 2026, play-test robot: "Do it all in one burn" froze Evan's page ~1 s on a phone): the plan AND its before-signing check
    * (sendWhy) are worked out ahead, in idle time, for the exact inputs they read: the same world object, tip, wallet, discarded list and
@@ -69,14 +69,16 @@
   function ready(u) { var w = u && u.world && u.world(), tip = u && u.S ? u.S().tip : 0; if (!pm.P || pm.w !== w || pm.k !== memoKey(u, tip)) return null; return pm.P; }
   function feedLine(P) { var n = P.feedTotal != null ? P.feedTotal : P.parts.feed; return n ? '✓ feed ' + fmt(n) + ' pet' + (n === 1 ? '' : 's') : '– no pet needs food'; }
   function goneLine(P) { var g = P.discardedSkipped || 0; return g ? '– ' + fmt(g) + ' discarded pet' + (g === 1 ? '' : 's') + ' left out (not fed)' : ''; }
+  function mythLine(P) { var p = P.parts || {}; return p.firstMythic != null ? '★ #' + p.firstMythic + ' becomes your first Mythic! It is fed alone now, because it turns your big pets Mythic for free; press again after it confirms for the other ' + fmt(p.waiting || 0) : ''; }
+  function lateLine(P) { var g = P.lateSkipped || 0; return g ? '– ' + fmt(g) + ' pet' + (g === 1 ? '' : 's') + ' starve' + (g === 1 ? 's' : '') + ' in the next few blocks, too soon for a burn to confirm (not fed, so no XCPETS lost)' : ''; }
   function sheetParts(P) { var p = P.parts; return '<ul class="dc-parts small" style="text-align:left;margin:6px auto;max-width:420px;padding-left:18px">' +
     '<li>' + (p.wagmi ? '✓ WAGMI check-in' : '– WAGMI: already said today') + '</li>' +
-    '<li>' + feedLine(P) + '</li>' + (goneLine(P) ? '<li class="dc-gone">' + goneLine(P) + '</li>' : '') +
+    '<li>' + feedLine(P) + '</li>' + (goneLine(P) ? '<li class="dc-gone">' + goneLine(P) + '</li>' : '') + (lateLine(P) ? '<li class="dc-gone">' + lateLine(P) + '</li>' : '') + (mythLine(P) ? '<li class="dc-gone">' + mythLine(P) + '</li>' : '') +
     '<li>' + (p.spins ? '✓ use all saved spins' : '– no saved spins') + '</li>' +
     '<li>' + P.plans.length + ' burn' + (P.plans.length === 1 ? '' : 's') + ' instead of ' + P.oldBurns + ' (fewer signatures, less network fee)</li></ul>'; }
   function sheetTitle(P) { var p = P.parts, bits = [];
     bits.push(p.wagmi ? '✓ WAGMI check-in' : '– WAGMI (already said today)');
-    bits.push(feedLine(P)); if (goneLine(P)) bits.push(goneLine(P));
+    bits.push(feedLine(P)); if (goneLine(P)) bits.push(goneLine(P)); if (lateLine(P)) bits.push(lateLine(P)); if (mythLine(P)) bits.push(mythLine(P));
     bits.push(p.spins ? '✓ use all saved spins' : '– no saved spins');
     var dan = P.plans.reduce(function (s, q) { return s + dander(q.amount || 0); }, 0);
     return '🧹 Daily chores · ' + bits.join(' · ') + ' · ' + P.plans.length + ' burn' + (P.plans.length === 1 ? '' : 's') + ' instead of ' + P.oldBurns + ' · ' + (dan < 1e8 ? fmt(dan) + ' dander' : fmt(dan / 1e8) + ' XCPETS'); }
