@@ -97,6 +97,7 @@ ok(up([el({ cls: ['returnov'] })]) === false, 'the welcome-back card does not co
 ok(up([el({ id: 'animBox' }), el({ inside: 'animBox' })], '#animBox') === false && up([el({ id: 'animBox' }), el({})], '#animBox') === true, 'except skips a box and what is inside it, nothing else');
 ok(/function otherUp\(\)[^\n]*XcpDock\.sheetUp/.test(v2s), 'the box reveal / hatch scene waits for any sheet (otherUp uses XcpDock.sheetUp)');
 ok(/function sheetOpen\(\)[^\n]*XcpDock\.sheetUp/.test(v2s), 'fight / breed / cemetery replays use the same answer (sheetOpen)');
+ok(/function freshRender\(\)[\s\S]{0,1600}if \(sheetHeld\(\)\)/.test(v2s) && /function sheetHeld\(\)[^\n]*60000[^\n]*XcpDock\.sheetUp/.test(v2s), 'a fresh world waits to redraw My Pets while a sheet is open (GRIND froze ~3 s on 40,000 pets), at most 60 s');
 for (const f of ['js/v2-groyper-arrival.js', 'js/v2-kek-arrival.js', 'js/v2-rabbit-arrival.js'])
   ok(/function sheetUp\(\)[^\n]*XcpDock\.sheetUp\(\)/.test(rd(f)), f + ' waits for any sheet too (Grinder included)');
 
