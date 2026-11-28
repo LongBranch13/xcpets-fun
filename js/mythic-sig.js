@@ -169,7 +169,7 @@
       if (M.bb.x1 >= 0) WFX[k](o, M, f);
       if (!big) { out.push({ width: N, height: N, data: Array.prototype.slice.call(o) }); continue; }
       var th = new Array(N * N * 4); for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) for (var c = 0; c < 4; c++) th[(y * N + x) * 4 + c] = o[(y * 2 * 64 + x * 2) * 4 + c];
-      out.push({ width: N, height: N, data: th, rareScene: { width: 64, height: 64, data: o, worldPixelScale: sc.worldPixelScale, primaryHead: sc.primaryHead } }); }
+      out.push({ width: N, height: N, data: th, rareScene: { width: 64, height: 64, data: o, worldPixelScale: sc.worldPixelScale, primaryHead: sc.primaryHead, kind: sc.kind } } /* giant-look-1128: keep the scene's kind (a Mythic Giant lost its card look) */); }
     return out; }
   /* apply(frames, A, B, k): 8 frames with the effect (base frames repeat; their bob keeps its timing). A/B = the same frames on #ff00fe / #00ff01. */
   function apply(fr, A, B, k) { if (WFX[k]) return applyW(fr, A, B, k); if (!FX[k] || !fr || !fr.length) return fr; var out = [];

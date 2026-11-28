@@ -4,10 +4,17 @@
  * candles in the rarity colour (2 for Common up to 5 for Legendary) with tiny flickering flames, and flowers in the rarity colour.
  * Grave states: crumbled (cracks, a chipped corner, a candle gone per crumble), hunted (clawed and bloodied, the mound dug up,
  * candles knocked over), dust (failed resurrection: the slab broken, a dust pile, candles out and smoking), halo (brought back:
- * a halo over a pale relief: raised once, it rests for good), open (an altar is open: green flames, a faint green glow). Display only: reads art, never the rules. */
+ * a halo over a pale relief: raised once, it rests for good), open (an altar is open: green flames, a faint green glow). Display only: reads art, never the rules.
+ * grave-engrave (Nov 28 2026, Jake: "all the info would look cooler on the stone"): the finder card stone (o.engrave, 64 by 108, CARD below) is a
+ * taller slab with room for the engraving the page lays over it (name, number, species, power, an epitaph), moss and hairline cracks that
+ * grow with o.days dead, flames in the rarity colour (a Legendary grave glows gold), o.ready (the player can raise it now): candles flare and
+ * flicker harder, and o.ghost: a tiny ghost of the pet bobbing over the stone's shoulder. A grave with no art carves its species' look. */
 (function () {
   'use strict';
   var TC = ['#9aa3b5', '#4fd18b', '#4f9dff', '#ffc93c'], RM = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
+  var FL = ['#ffd166', '#7dffb0', '#7fc4ff', '#ffd43c'], FC = ['#fff3b0', '#e6fff0', '#e8f4ff', '#fffbe0'];
+  /* the card layout in stone pixels: the page's engraving (css/cemetery-v2.css .gs-eng) sits in the top and bottom bands */
+  var CARD = { W: 64, H: 108, T: 12, gx: 5, relief: 36, top: [23, 35], bot: [69, 86] };
   var PF = { R: '110101110101101', I: '111010010010111', P: '110101110100100', '.': '000000000000010' }, MK = {}, LIVE = [], timer = 0, io = null;
   function hex(h) { return [parseInt(h.substr(1, 2), 16), parseInt(h.substr(3, 2), 16), parseInt(h.substr(5, 2), 16)]; }
   function mix(a, b, k) { a = hex(a); b = hex(b); return 'rgb(' + a.map(function (v, i) { return Math.round(v + (b[i] - v) * k); }).join(',') + ')'; }
@@ -30,12 +37,32 @@
   function bone(x, a, b) { R(x, '#e6dfc4', a, b, 7, 1); R(x, '#e6dfc4', a - 1, b - 1, 2, 1); R(x, '#e6dfc4', a - 1, b + 1, 2, 1); R(x, '#e6dfc4', a + 6, b - 1, 2, 1); R(x, '#e6dfc4', a + 6, b + 1, 2, 1); }
   function skull(x, a, b) { R(x, '#000', a - 1, b - 1, 8, 8); R(x, '#ece6cf', a, b, 6, 5); R(x, '#ece6cf', a + 1, b + 5, 4, 2); R(x, '#111', a + 1, b + 2, 2, 2); R(x, '#111', a + 4, b + 2, 1, 2); R(x, '#111', a + 3, b + 4, 1, 1); R(x, '#b8b09a', a + 5, b, 1, 5); }
   function crack(x, a, b, n, dir, c) { for (var k = 0; k < n; k++) { R(x, c || '#2e3038', a, b, 1, 1); b++; if (k % 2) a += dir; } }
+  /* grave-engrave: moss clumps on the slab's edges and foot (never the middle, where the engraving is); n grows with the days dead */
+  function moss(x, gx, gy, gw, gh, n, sd) { var MC = ['#2c5a26', '#3f7a34', '#5a9a3c', '#77b84a'];
+    for (var k = 0; k < n; k++) { var r = rnd(sd * 13 + k * 7.1), px, py; if (r < 0.45) { px = gx + 1 + Math.floor(rnd(sd + k * 3.3) * (gw - 3)); py = gy + gh - 2 - Math.floor(rnd(sd + k * 5.7) * 3); }
+      else if (r < 0.72) { px = gx + Math.floor(rnd(sd + k * 2.9) * 2); py = gy + 6 + Math.floor(rnd(sd + k * 4.1) * (gh - 8)); }
+      else if (r < 0.9) { px = gx + gw - 2 - Math.floor(rnd(sd + k * 6.3) * 2); py = gy + 6 + Math.floor(rnd(sd + k * 8.7) * (gh - 8)); }
+      else { px = gx + 4 + Math.floor(rnd(sd + k * 9.9) * (gw - 8)); py = gy + Math.floor(rnd(sd + k * 1.7) * 2); }
+      var c = MC[Math.floor(rnd(sd + k * 11.3) * 4)]; R(x, c, px, py, 1, 1); if (k % 3 !== 2) R(x, MC[Math.min(3, MC.indexOf(c) + 1)], px + (px > gx + gw / 2 ? -1 : 1), py, 1, 1); if (k % 4 === 0) R(x, MC[0], px, py + 1, 1, 1); } }
+  function box(M) { var a = 32, b = 32, c = -1, d = -1; for (var y = 0; y < 32; y++) for (var xx = 0; xx < 32; xx++) if (at(M, xx, y)) { if (xx < a) a = xx; if (y < b) b = y; if (xx > c) c = xx; if (y > d) d = y; } return c < 0 ? null : [a, b, c, d]; }
+  /* grave-engrave: a small pale ghost of the pet (its own silhouette, cropped; halved when it is bigger than 18 pixels), two frames for a wavy tail */
+  function ghostOf(M) { var bb = box(M); if (!bb) return null; var sc = (bb[2] - bb[0] + 1 > 18 || bb[3] - bb[1] + 1 > 18) ? 2 : 1, gw = Math.ceil((bb[2] - bb[0] + 1) / sc), gh = Math.ceil((bb[3] - bb[1] + 1) / sc), on = [], lum = [], X, Y;
+    for (Y = 0; Y < gh; Y++) for (X = 0; X < gw; X++) { var c = 0, l = 0, n = 0; for (var q = 0; q < sc * sc; q++) { var xx = bb[0] + X * sc + q % sc, yy = bb[1] + Y * sc + Math.floor(q / sc); n++; if (at(M, xx, yy)) { c++; var cc = M.c[yy * 32 + xx]; l += (cc[0] * 0.3 + cc[1] * 0.59 + cc[2] * 0.11) / 255; } } on.push(c * 2 >= n); lum.push(c ? l / c : 0); }
+    var low = []; for (X = 0; X < gw; X++) { low.push(-1); for (Y = gh - 1; Y >= 0; Y--) if (on[Y * gw + X]) { low[X] = Y; break; } }
+    return [0, 1].map(function (fr) { var cv = document.createElement('canvas'); cv.width = gw; cv.height = gh + 1; var g = cv.getContext('2d');
+      for (var Y2 = 0; Y2 < gh; Y2++) for (var X2 = 0; X2 < gw; X2++) { var j = Y2 * gw + X2; if (!on[j]) continue; if (Y2 === low[X2] && (X2 + fr) % 2) continue;
+        R(g, lum[j] < 0.25 ? '#3d5677' : lum[j] < 0.55 ? '#b9d6ee' : '#eef8ff', X2, Y2, 1, 1); }
+      for (X2 = 0; X2 < gw; X2++) if (low[X2] >= 0 && (X2 + fr) % 2 === 0) R(g, '#b9d6ee', X2, low[X2] + 1, 1, 1); return cv; }); }
   /* the stone without its flames (cached); returns the candle list for the flame pass */
   function base(o, W, H) { var c = document.createElement('canvas'); c.width = W; c.height = H; var x = c.getContext('2d'), i = Math.max(0, Math.min(3, o.tier | 0)), t = TC[i], st = o.state || '', cr = Math.min(3, o.crumbles | 0), M = mask(o.art, o.stage == null ? 3 : o.stage), big = H > 66, k;
     if (o.bg !== false) { R(x, '#14121f', 0, 0, W, H); for (k = 0; k < 10; k++) R(x, '#2a2742', (k * 31) % W, (k * 11) % (H - 24), 1, 1); }
 
     if (st === 'halo' && o.bg !== false) { x.save(); x.globalAlpha = 0.14; R(x, '#fff3b0', 6, 0, W - 12, H - 16); x.restore(); }
-    var gx = 9, gy = 4 + (big ? 2 : 0), gw = W - 18, gh = H - 22 - (big ? 2 : 0), ox = Math.round(W / 2 - 16), oy = gy + 10 + (big ? Math.round((gh - 46) / 2) : 0);
+    var gx = 9, gy = 4 + (big ? 2 : 0), gw = W - 18, gh = H - 22 - (big ? 2 : 0), ox = Math.round(W / 2 - 16), oy = gy + 10 + (big ? Math.round((gh - 46) / 2) : 0), eng = !!o.engrave;
+    if (eng) { gx = CARD.gx; gy = CARD.T; gw = W - 2 * CARD.gx; gh = H - 18 - CARD.T; big = false; var bb = box(M); /* the carving sits centred in its band, whatever the sprite's padding */
+      oy = bb ? CARD.relief + Math.round((32 - (bb[3] - bb[1] + 1)) / 2) - bb[1] : CARD.relief; if (bb) ox = Math.round(W / 2 - (bb[0] + bb[2] + 1) / 2); }
+    var age = Math.max(0, Math.min(14, +o.days || 0)), seed = (o.id | 0) || 7;
+    if (i === 3 && !o.open && !o.mythic && o.bg !== false && st !== 'dust' && st !== 'hunted') { /* grave-engrave: a Legendary grave glows gold */ x.save(); x.globalAlpha = 0.12; R(x, '#ffd43c', gx - 3, gy + 3, gw + 6, gh - 3); R(x, '#ffd43c', gx - 1, gy, gw + 2, 3); R(x, '#ffd43c', gx + 2, gy - 2, gw - 4, 2); x.globalAlpha = 0.06; R(x, '#ffd43c', gx - 5, gy + 6, gw + 10, gh - 6); x.restore(); }
     if (o.open && o.bg !== false) { /* an altar is open: a faint green glow hugging the stone (stepped, 8-bit) */ x.save(); x.globalAlpha = 0.13; R(x, '#7dff6a', gx - 3, gy + 3, gw + 6, gh - 3); R(x, '#7dff6a', gx - 1, gy, gw + 2, 3); R(x, '#7dff6a', gx + 2, gy - 2, gw - 4, 2); x.globalAlpha = 0.08; R(x, '#7dff6a', gx - 5, gy + 6, gw + 10, gh - 6); x.restore(); }
     if (o.mythic && o.bg !== false) { /* MYTHIC GOD LOOP: a Mythic eaten by a zombie rests in a violet grave (display only) */ x.save(); x.globalAlpha = o.open ? 0.08 : 0.15; R(x, '#b46cff', gx - 3, gy + 3, gw + 6, gh - 3); R(x, '#b46cff', gx - 1, gy, gw + 2, 3); R(x, '#b46cff', gx + 2, gy - 2, gw - 4, 2); x.globalAlpha = 0.07; R(x, '#b46cff', gx - 6, gy + 7, gw + 12, gh - 7); x.restore(); }
     if (st === 'dust') { /* the slab snapped: the lower half stands, the top half lies on the mound */
@@ -44,11 +71,13 @@
       x.save(); x.beginPath(); x.rect(0, cut + 2, W, H); x.clip(); carve(x, M, ox, oy, '#55585f', '#b0b4bc', '#8a8e98', 0.25); x.restore();
       for (k = 0; k < gw + 2; k += 2) R(x, '#000', gx - 1 + k, cut + 1 + (k % 4 ? 1 : 0) + (k % 6 ? 0 : 1), 2, 1);
     } else {
-      var fill = st === 'hunted' ? '#8e929c' : '#9a9ea8'; slab(x, gx, gy, gw, gh, fill, '#6a6e7a', '#c8ccd4', '#7c808c');
+      var fill = st === 'hunted' ? '#8e929c' : age ? mix('#9a9ea8', '#868a90', age / 14) : '#9a9ea8'; slab(x, gx, gy, gw, gh, fill, '#6a6e7a', '#c8ccd4', '#7c808c');
       ptxt(x, 'R.I.P.', W / 2, gy + 4, '#3a3d45');
       /* halo: it was raised once and rests for good with its halo, the relief worn pale */
       carve(x, M, ox, oy, st === 'halo' ? '#6a6e7a' : '#45484f', st === 'halo' ? '#eef0f4' : '#d2d6de', st === 'halo' ? '#b8bcc6' : '#9a9ea8', st === 'hunted' ? 0.1 : st === 'halo' ? 0.2 : 0);
       if (o.mythic) [[gx + 3, gy + 2], [gx + gw - 8, gy + 2]].forEach(function (s0) { var sx = s0[0], sy = s0[1]; /* carved violet stars beside R.I.P. */ R(x, '#3b1b66', sx + 2, sy, 1, 5); R(x, '#3b1b66', sx, sy + 2, 5, 1); R(x, '#8a4fe0', sx + 1, sy + 1, 3, 3); R(x, '#d6b4ff', sx + 2, sy + 1, 1, 1); R(x, '#d6b4ff', sx + 2, sy + 2, 1, 1); });
+      if (age >= 4 && st !== 'halo') { /* grave-engrave: hairline cracks creep in the longer it stays dead (lighter than a crumble's) */ crack(x, gx + 2, gy + Math.round(gh * 0.4), 6, 1, '#6c7079'); if (age >= 8) crack(x, gx + gw - 5, gy + 4, 5, -1, '#6c7079'); if (age >= 12) crack(x, gx + 3, gy + gh - 12, 5, 1, '#6c7079'); }
+      if (age >= 1 && st !== 'halo') moss(x, gx, gy, gw, gh, Math.round(age * 2.2), seed);
       if (cr || st === 'hunted') { crack(x, gx + 6, gy + 6, 7, 1); if (cr > 1 || st === 'hunted') crack(x, gx + gw - 9, gy + gh - 16, 6, -1); if (cr > 2 || st === 'hunted') crack(x, gx + Math.round(gw / 2) + 3, gy + 1, 5, 1);
         x.clearRect(gx + gw - 3, gy - 1, 5, 4); x.clearRect(gx + gw - 1, gy + 3, 2, 2); if (o.bg !== false) { R(x, '#14121f', gx + gw - 3, gy - 1, 5, 4); R(x, '#14121f', gx + gw - 1, gy + 3, 2, 2); } R(x, '#000', gx + gw - 4, gy + 2, 1, 2); R(x, '#000', gx + gw - 2, gy + 4, 1, 2); /* chipped corner */ }
       if (st === 'hunted') { for (k = 0; k < 3; k++) for (var q = 0; q < 9; q++) R(x, '#3a2a2a', gx + 6 + k * 3 + Math.floor(q / 3), gy + gh - 22 + q, 1, 1); /* claw marks */
@@ -68,15 +97,19 @@
     /* flowers in the rarity colour (wilted grey on a hunted or dusted grave) */ for (k = 0; k < i + 1; k++) { var fx = gx + 4 + k * 6, fc = st === 'hunted' || st === 'dust' ? '#6e6a62' : t; if (st === 'dust' && fx < 26) continue;
       R(x, '#3f7a34', fx, gy + gh + 1, 1, 3); R(x, fc, fx - 1, gy + gh, 3, 1); R(x, fc, fx, gy + gh - 1, 1, 3); }
     if (st === 'halo') { var hcx = Math.round(W / 2), hy = 1; R(x, '#000', hcx - 7, hy, 14, 4); R(x, '#ffc93c', hcx - 6, hy + 1, 12, 2); x.clearRect(hcx - 4, hy + 2, 8, 1); if (o.bg !== false) R(x, '#14121f', hcx - 4, hy + 2, 8, 1); R(x, '#fff3b0', hcx - 5, hy + 1, 3, 1); }
-    return { c: c, L: L, lit: st !== 'dust' && st !== 'hunted', green: !!o.open, halo: st === 'halo', violet: !!o.mythic, smoke: st === 'dust' };
+    return { c: c, L: L, lit: st !== 'dust' && st !== 'hunted', green: !!o.open, halo: st === 'halo', violet: !!o.mythic, smoke: st === 'dust', tier: i, ready: !!o.ready && st !== 'dust' && st !== 'hunted',
+      ghost: o.ghost && st !== 'halo' && st !== 'dust' ? ghostOf(M) : null, gpos: [W - 2, Math.max(0, gy - 12)] };
   }
   function frame(cv, B, tm) { var x = cv.getContext('2d'); x.clearRect(0, 0, cv.width, cv.height); flames(x, B, tm, 0, 0); }
   function flames(x, B, tm, dx, dy) { var rm = !!RM.matches, f = rm ? 0 : Math.floor((tm || 0) / 150); x.imageSmoothingEnabled = false; x.drawImage(B.c, dx, dy); x.save(); x.translate(dx, dy);
     B.L.forEach(function (p, k) { var cx = p[0], top = p[1];
-      if (B.lit) { var col = B.green ? '#7dff6a' : B.violet ? '#c08cff' : B.halo ? '#fff3b0' : '#ffd166', core = B.green ? '#e6ffd8' : B.violet ? '#f1e4ff' : '#fff3b0', s = (f + k) % 3, sw = s === 2 ? 1 : 0, hh = s === 1 ? 3 : 2;
-        x.save(); x.globalAlpha = 0.13 + (s === 1 ? 0.05 : 0); R(x, col, cx - 3, top - 6, 6, 6); R(x, col, cx - 2, top - 7, 4, 1); x.restore();
+      if (B.lit) { var ti = B.tier | 0, col = B.green ? '#7dff6a' : B.violet ? '#c08cff' : B.halo ? '#fff3b0' : FL[ti], core = B.green ? '#e6ffd8' : B.violet ? '#f1e4ff' : B.halo ? '#fff3b0' : FC[ti],
+          s = B.ready && !rm ? Math.floor(rnd(f * 3.7 + k * 1.3) * 3) : (f + k) % 3, sw = s === 2 ? 1 : 0, hh = (s === 1 ? 3 : 2) + (B.ready ? 1 : 0), ga = (ti === 3 ? 0.2 : 0.13) + (B.ready ? 0.07 : 0);
+        x.save(); x.globalAlpha = ga + (s === 1 ? 0.05 : 0); R(x, col, cx - 3, top - 6, 6, 6); R(x, col, cx - 2, top - 7, 4, 1); if (ti === 3 || B.ready) { x.globalAlpha = ga * 0.45; R(x, col, cx - 4, top - 8, 8, 9); } x.restore();
         R(x, col, cx - 1 + sw, top - hh - 1, 1, hh); R(x, core, cx, top - 2, 1, 1); if (s === 1) R(x, col, cx - 1, top - 4, 1, 1); }
-      else if (B.smoke && !rm) { var kk = (((tm || 0) / 1800) + k * 0.37) % 1; x.save(); x.globalAlpha = (1 - kk) * 0.5; R(x, '#8a8896', cx + Math.round(Math.sin((tm || 0) / 500 + k) * kk * 2), Math.round(top - 2 - kk * 9), 1, 1); x.restore(); } }); x.restore(); }
+      else if (B.smoke && !rm) { var kk = (((tm || 0) / 1800) + k * 0.37) % 1; x.save(); x.globalAlpha = (1 - kk) * 0.5; R(x, '#8a8896', cx + Math.round(Math.sin((tm || 0) / 500 + k) * kk * 2), Math.round(top - 2 - kk * 9), 1, 1); x.restore(); } });
+    if (B.ghost) { /* grave-engrave: the ghost bobs 0-2 pixels (still when reduced motion is on) */ var bob = rm ? 1 : [0, 1, 2, 1][Math.floor((tm || 0) / 450) % 4]; x.save(); x.globalAlpha = B.ready ? 0.8 : 0.58; var gi = B.ghost[rm ? 0 : Math.floor((tm || 0) / 300) % 2]; x.drawImage(gi, B.gpos[0] - gi.width, B.gpos[1] + bob); x.restore(); }
+    x.restore(); }
   /* paint the stone (no night background) into another canvas, e.g. beside the altar; the caller's own frame loop keeps it flickering */
   var PC = {}; function paintAt(x, o, dx, dy, tm, W, H) { W = W || 52; H = H || 62; var k = [o.art && (o.art.dna || o.art.species), o.stage, o.tier, o.state, o.crumbles, !!o.open, !!o.mythic, W, H].join('|');
     if (!PC[k]) { var ks = Object.keys(PC); if (ks.length > 40) delete PC[ks[0]]; PC[k] = base(Object.assign({}, o, { bg: false }), W, H); } flames(x, PC[k], tm, dx, dy); }
@@ -85,5 +118,5 @@
   function draw(cv, o) { if (!cv || !o) return; var B = base(o, cv.width, cv.height), e = null; for (var k = 0; k < LIVE.length; k++) if (LIVE[k].cv === cv) e = LIVE[k];
     if (!e) { e = { cv: cv, B: B, vis: true }; LIVE.push(e); if (window.IntersectionObserver) { io = io || new IntersectionObserver(function (es) { es.forEach(function (en) { LIVE.forEach(function (q) { if (q.cv === en.target) q.vis = en.isIntersecting; }); }); }); io.observe(cv); } } else e.B = B;
     frame(cv, B, performance.now()); if (!timer && !RM.matches) timer = setInterval(tick, 150); }
-  window.V2Gravestone = { draw: draw, paintAt: paintAt, TC: TC };
+  window.V2Gravestone = { draw: draw, paintAt: paintAt, TC: TC, CARD: CARD };
 })();
