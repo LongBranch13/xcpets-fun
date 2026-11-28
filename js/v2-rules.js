@@ -471,6 +471,44 @@
   function gDmg(g) { var it = view(BY_ID[g.item]); return 1 + 2 * ((it ? it.tier : g.tier) | 0); }
   function gTier(g) { var it = view(BY_ID[g.item]); return Math.min(3, Math.max(0, (it ? it.tier : g.tier) | 0)); }
   function dustOf(w, a) { return (w.dust && w.dust[a]) || 0; }
+  /* ===== DAILY LOOT (Jake Nov 27 2026: the Daily Loot chest only gave a meme card and "everyone is overloaded in gear"; he okayed the real-prize plan).
+   *  - pet:loot   OPEN TODAY'S CHEST: 1 dander, once per wallet per game day (day(b), pause blocks don't count). The prize is rolled from the block hash
+   *               and the burn (no gear, ever):  60% 1 meal into the Pantry · 25% 3 meals · 10% a free Egg · 4% a Golden Egg (3 tries, keeps the best
+   *               rarity) · 1% a Lucky Egg (Legendary guaranteed). A meal = today's minimum feed price (costAt feedMin, halvings and sales included);
+   *               it lands in the signer's Pantry balance (w.pantry[a].bal, also counted in .won) and can only feed pets.
+   *  - Streak: days in a row with a claim (a missed game day starts again at 1). From day 3 the roll can't land below 3 meals.
+   *               Every 7th day = GOLD CHEST: a Golden Egg + 3 meals (badge count .gold). Every 30th day = LUCKY CHEST: a Lucky Egg + 3 meals
+   *               and the Loot Goblin title (.goblin = first block earned).
+   *  Eggs are born like a bought egg (lootBorn: today's hatch care; after the EGG HATCH gate that is an Egg needing one meal).
+   *  Records: w.loot[addr] = { day, streak, best, n, meals, eggs: [ids], gold, lucky, goblin, last }. A second claim the same game day is rejected
+   *  (and refused before signing by sendBlock). Before the gate pet:loot is an unknown tag (community food), replay unchanged. */
+  var ACTIVATE_LOOT_BLOCK = 978000; /* placeholder: set to the tip + a few hours when it merges (lands after the Gear Stash, Egg Hatch and gear PRs) */
+  var LOOT_COST = HD_COST, LOOT_TABLE = [[600, 'meal1'], [850, 'meal3'], [950, 'egg'], [990, 'golden'], [1000, 'lucky']], LOOT_FLOOR_DAY = 3, LOOT_GOLD_EVERY = 7, LOOT_LUCKY_EVERY = 30, LOOT_LUCKY_TRIES = 256;
+  var LOOT_MEALS = { meal1: 1, meal3: 3, egg: 0, golden: 0, lucky: 0 }, LOOT_LABEL = { meal1: '1 free meal', meal3: '3 free meals', egg: 'a free Egg', golden: 'a Golden Egg', lucky: 'a Lucky Egg' };
+  function lootOn(b) { return ACTIVATE_LOOT_BLOCK != null && b != null && Number(b) >= ACTIVATE_LOOT_BLOCK && pantryOn(b); }
+  function lootBorn(b) { return COSTS.hatch; } /* the care a free egg is born with: same as a bought pet (switch to bornCare(b) once EGG HATCH is on main) */
+  function lootRec(w, a) { w.loot = w.loot || {}; return w.loot[a] || (w.loot[a] = { day: null, streak: 0, best: 0, n: 0, meals: 0, eggs: [], gold: 0, lucky: 0, goblin: null, last: null }); }
+  /** lootStreakAt(R, D): the streak a claim on game day D would have (1 after a gap). */
+  function lootStreakAt(R, D) { return R && R.day != null && R.day === D - 1 ? (R.streak || 0) + 1 : R && R.day === D ? R.streak || 0 : 1; }
+  /** lootChest(streak): 'lucky' every 30th day, 'gold' every 7th, else null (a normal chest). */
+  function lootChest(st) { return st > 0 && st % LOOT_LUCKY_EVERY === 0 ? 'lucky' : st > 0 && st % LOOT_GOLD_EVERY === 0 ? 'gold' : null; }
+  /** lootRoll(h, streak): the normal chest's prize from a sha hex (pure). */
+  function lootRoll(h, st) { var v = parseInt(h.slice(0, 8), 16) % 1000; if (st >= LOOT_FLOOR_DAY && v < LOOT_TABLE[0][0]) v = LOOT_TABLE[0][0] + v % (1000 - LOOT_TABLE[0][0]);
+    for (var i = 0; i < LOOT_TABLE.length; i++) if (v < LOOT_TABLE[i][0]) return LOOT_TABLE[i][1]; return 'meal1'; }
+  /** lootEggArt(bh, tx, b, kind): the art of a loot egg. egg = one normal hatch roll; golden = best rarity of 3 rolls; lucky = the first Legendary of up
+   *  to LOOT_LUCKY_TRIES rolls, else the best roll lifted to Legendary (stats moved by the tier bonus, as Wizard eggs). Returns { art, id }. */
+  function lootEggArt(bh, tx, b, kind) { var n = kind === 'lucky' ? LOOT_LUCKY_TRIES : kind === 'golden' ? 3 : 1, best = null, bid = null;
+    for (var i = 0; i < n; i++) { var id = tx + ':' + (88000 + i) /* own sub-ids: packs 0-143, Electric 0-999, Season 77000+ */, a = hatchArt(bh, id, b); if (!best || a.tierIndex > best.tierIndex) { best = a; bid = id; } if (best.tierIndex >= 3) break; }
+    if (kind === 'lucky' && best.tierIndex < 3) { var L0 = PetCore.TIERS[best.tierIndex], L1 = PetCore.TIERS[3], d = L1.statBonus - L0.statBonus;
+      Object.keys(best.baseStats).forEach(function (k) { best.baseStats[k] = Math.max(1, best.baseStats[k] + d); }); best.tierIndex = 3; best.tier = L1.id; }
+    return { art: noBornShades(best), id: bid }; }
+  /** lootInfo(w, a, nb): the chest as the page shows it: { on, gate, claimed (today), streak (now, 0 if broken), best, next (streak a claim now gets), chest (gold/lucky/null for that claim), toGold, toLucky, meal (credit of 1 meal now), last, ... }. */
+  function lootInfo(w, a, nb) { if (!w || !a) return null; nb = nb != null ? nb : (w.tip || 0) + 1; var R = (w.loot && w.loot[a]) || null, D = day(nb), nx = lootStreakAt(R, D), claimed = !!(R && R.day === D);
+    var live = R && (R.day === D || R.day === D - 1) ? R.streak : 0;
+    return { on: lootOn(nb), gate: ACTIVATE_LOOT_BLOCK, day: D, claimed: claimed, streak: live, best: R ? R.best : 0, next: claimed ? null : nx, chest: claimed ? null : lootChest(nx),
+      floor: !claimed && nx >= LOOT_FLOOR_DAY, toGold: LOOT_GOLD_EVERY - (claimed ? live : nx) % LOOT_GOLD_EVERY, toLucky: LOOT_LUCKY_EVERY - (claimed ? live : nx) % LOOT_LUCKY_EVERY,
+      meal: costAt(w, COSTS.feedMin, nb), n: R ? R.n : 0, meals: R ? R.meals : 0, eggs: R ? R.eggs.slice() : [], gold: R ? R.gold : 0, lucky: R ? R.lucky : 0, goblin: R ? R.goblin : null, last: R ? R.last : null }; }
+  function lootPlan() { return { tag: 'pet:loot', amount: LOOT_COST, label: 'Open today’s Daily Loot chest' }; }
   /* a piece still on a dead pet (not a zombie, not grave-locked) is spare too: the end-of-block sweep takes it off anyway, and the page's finished world
    * already shows it in the stash, so the preview and the replay agree (found by tools/gear-forge-test.js: 138 such pieces in one wallet) */
   function onDead(w, g, b) { if (g.on == null) return true; var q = w.byId[g.on]; if (!q) return false; liveAt(w, q, b); return !!q.dead && !isZ(q) && !q.community; }
@@ -2528,6 +2566,7 @@
     if (a === 'SMASH' && p.length === 3 && SMASH_TOP.hasOwnProperty(p[2])) return { action: 'smash', top: SMASH_TOP[p[2]] };
     if (a === 'FUSE' && p.length === 2) return { action: 'fuse' };
     if (a === 'DUSTROLL' && p.length === 3 && idOk(p[2])) return { action: 'dustroll', petId: n(2) };
+    if (a === 'LOOT' && p.length === 2) return { action: 'loot' }; /* DAILY LOOT (unknown tag = community food before ACTIVATE_LOOT_BLOCK) */
     if ((a === 'HD' || a === 'HU') && t.length <= MAX_TAG_BYTES) { /* on-chain discard / add back (community food before ACTIVATE_ONCHAIN_DISCARD_BLOCK) */
       var hide = a === 'HD';
       if (p.length === 3 && /^(ALL|C|U|R|L|NF|S[0-5])$/.test(p[2])) return { action: hide ? 'hd' : 'hu', filter: p[2].toLowerCase() };
@@ -3076,6 +3115,9 @@
       if (pend.some(function (q) { return FORGE_ACTIONS[q.action]; })) return 'a Gear Forge burn is already waiting to confirm: wait for it, then press again';
       if (me) { var fpv = forgePreview(w, me, t.action, t.action === 'gearup' ? t.ids : t.action === 'smash' ? t.top : t.action === 'dustroll' ? t.petId : null, b); if (!fpv.ok) return fpv.why; } return null; } /* GEAR FORGE: never sign a burn that would do nothing */
     if (t.action === 'grind') { if (!grindOn(b)) return 'The Meat Grinder opens at a later block'; if (amt != null && below(w, Number(amt), GRIND_COST, b)) return 'below grind cost ' + costAt(w, GRIND_COST, b); if (pend.some(function (q) { return q.action === 'grind'; })) return 'a grind is already waiting to confirm'; if (t.maxT != null && !grind2On(b)) return 'the keep-rarity choice opens at block ' + ACTIVATE_GRIND2_BLOCK; return me ? grindPreview(w, me, b, t.n, t.maxT).why : null; }
+    if (t.action === 'loot') { if (!lootOn(b)) return 'Daily Loot prizes open at block ' + (ACTIVATE_LOOT_BLOCK == null ? '(not set yet)' : ACTIVATE_LOOT_BLOCK); if (amt != null && !(Number(amt) >= LOOT_COST)) return 'below Daily Loot cost 1 dander';
+      if (pend.some(function (q) { return q.action === 'loot'; })) return 'your chest claim is already waiting to confirm';
+      if (me && w.loot && w.loot[me] && w.loot[me].day === day(b)) return 'You already opened today’s chest. A new one unlocks next game day.'; return null; } /* DAILY LOOT: never sign a second claim the same game day */
     if (t.action === 'hd' || t.action === 'hu') { if (!hdOn(b)) return 'on-chain discard opens at block ' + ACTIVATE_ONCHAIN_DISCARD_BLOCK; if (amt != null && !(Number(amt) >= HD_COST)) return 'below discard cost 1 dander'; return pickSendWhy(w, t, plan, me, b); }
     if (t.action === 'feedr') { if (!feedRunsOn(b)) return 'one-burn feeding opens at block ' + ACTIVATE_FEED_RUNS_BLOCK; if (plan && plan.anchor != null && b - plan.anchor > 900) return 'this feed plan is too old, press Feed again'; }
     if (t.action === 'swap' || t.action === 'swapok' || t.action === 'swapno') { if (!giveOn(b)) return 'swaps open at a later block';
@@ -4448,6 +4490,7 @@
     if (t.action === 'grind' && !grindOn(b)) t = { action: 'invalid' }; /* MEAT GRINDER OFF: same as before (unknown tag, community food) */
     if (t.action === 'grind' && t.maxT != null && !grind2On(b)) t = { action: 'invalid' }; /* pet:grind:N:T before MEAT GRINDER 2: unknown tag, as before */
     if (FORGE_ACTIONS[t.action] && !forgeOn(b)) t = { action: 'invalid' }; /* GEAR FORGE OFF: same as before (unknown tag, community food) */
+    if (t.action === 'loot' && !lootOn(b)) t = { action: 'invalid' }; /* DAILY LOOT OFF: same as before (unknown tag, community food) */
     if (t.action === 'pantry' && !pantryOn(b)) t = { action: 'invalid' }; /* pantry OFF: same as before (unknown tag) */
     if (t.action === 'dip' && !dipOn(b)) t = { action: 'invalid' }; /* POOL DIP OFF: same as before (unknown tag) */
     if (t.action === 'raid' && !raidOn(b)) t = { action: 'invalid' }; /* raids OFF: same as before (unknown tag) */
@@ -4585,6 +4628,18 @@
         if (!dit) return L(r, 'rejected', 'dust roll: no piece fits #' + dg.id);
         w.dust[src] = dustOf(w, src) - DUST_ROLL; var dni = newItem(w, dit, dg.owner, 'dustroll'); dni.rolledOn = dg.id; placeRolled(w, dg, dni, b);
         return L(r, 'roll', '#' + dg.id + ' dust roll: ' + dit.label + ' (' + slotLabel(dsl) + ') · ' + w.dust[src] + ' Gear Dust left', { petId: dg.id, gid: dni.gid, dust: true }); }
+      case 'loot': { /* DAILY LOOT: once per game day, prize from the block hash (see ACTIVATE_LOOT_BLOCK) */
+        if (!(amt >= LOOT_COST)) return L(r, 'rejected', 'below Daily Loot cost 1 dander');
+        if (!bh) return L(r, 'rejected', 'block hash pending');
+        var LD = day(b), LR = lootRec(w, src); if (LR.day === LD) return L(r, 'rejected', 'Daily Loot: today’s chest is already open (a new one unlocks next game day)');
+        var lst = lootStreakAt(LR, LD), lch = lootChest(lst), lh = sha(bh + r.tx_hash + 'XCPETS:v2:loot'), lpz = lch === 'lucky' ? 'lucky' : lch === 'gold' ? 'golden' : lootRoll(lh, lst);
+        var lml = lch ? 3 : LOOT_MEALS[lpz], lcr = 0, lpet = null;
+        if (lml) { var lmc = costAt(w, COSTS.feedMin, b); lcr = r8(lmc * lml); var LP = pantryRec(w, src); LP.bal = r8(LP.bal + lcr); LP.won = r8((LP.won || 0) + lcr); }
+        if (!LOOT_MEALS[lpz]) { var lea = lootEggArt(bh, r.tx_hash, b, lpz); lpet = mk(w, src, lea.art, b, lootBorn(b), lea.id); lpet.loot = lpz; LR.eggs.push(lpet.id); token(lpet, 'stageUp'); }
+        LR.day = LD; LR.streak = lst; LR.best = Math.max(LR.best, lst); LR.n++; LR.meals += lml; if (lch === 'gold') LR.gold++; if (lch === 'lucky') { LR.lucky++; if (LR.goblin == null) LR.goblin = b; }
+        LR.last = { day: LD, block: b, tx: r.tx_hash, prize: lpz, chest: lch, meals: lml, credit: lcr, petId: lpet ? lpet.id : null, tier: lpet ? lpet.tier : null, streak: lst };
+        return L(r, 'loot', 'Daily Loot day ' + lst + (lch ? ' (' + (lch === 'gold' ? 'Gold' : 'Lucky') + ' Chest)' : '') + ': ' + LOOT_LABEL[lpz] + (lpet ? ' #' + lpet.id + ' (' + TIER_LABELS[lpet.tier] + ' ' + speciesLabel(lpet.species) + ')' : '') + (lml ? (lpet ? ' + ' : ' = ') + lml + ' meal' + (lml === 1 ? '' : 's') + ' (' + lcr + ' XCPETS) into the Pantry' : ''),
+          { prize: lpz, chest: lch, streak: lst, meals: lml, credit: lcr, petId: lpet ? lpet.id : null }); }
       case 'hd': case 'hu': { /* ON-CHAIN DISCARD / ADD BACK. 1 dander for the burn. Ineligible pets are skipped, not used to reject the rest. */
         if (!hdOn(b)) return L(r, 'plain', 'plain burn (community food)');
         if (!(amt >= HD_COST)) return L(r, 'rejected', 'below discard cost 1 dander');
@@ -6267,6 +6322,7 @@
     grindGate: function () { return ACTIVATE_GRIND_BLOCK; }, grindOn: grindOn, grindWhy: grindWhy, grindList: grindList, grindPreview: grindPreview, grindPlan: grindPlan, _setGrindActivation: function (b) { ACTIVATE_GRIND_BLOCK = b == null ? null : Number(b); }, _sausageTierTest: sausageTier, GRIND: { COST: GRIND_COST, MAX: GRIND_MAX, MEAT: GRIND_MEAT, SPIN_EVERY: GRIND_SPIN_EVERY, EGG_EVERY: GRIND_EGG_EVERY, SAUSAGE_10K: GRIND_SAUSAGE_10K, GOLD_PER_PET: GRIND_GOLD_PER_PET, GOLD_MAX: GRIND_GOLD_MAX },
     grind2Gate: function () { return ACTIVATE_GRIND2_BLOCK; }, aspieGate: function () { return ACTIVATE_ASPIE_BLOCK; }, aspieOn: aspieOn, _setAspieActivation: function (b) { ACTIVATE_ASPIE_BLOCK = b == null ? null : Number(b); }, _asArt: asArt, _aspieChild: aspieChild, _grinderSpecialArt: grinderSpecialArt, grind2On: grind2On, _setGrind2Activation: function (b) { ACTIVATE_GRIND2_BLOCK = b == null ? null : Number(b); }, grindGoldOdds: grindGoldOdds,
     GRIND2: { SAUSAGE_10K: GRIND2_SAUSAGE_10K, GOLD_PER_PET: GRIND2_GOLD_PER_PET, GOLD_MAX: GRIND2_GOLD_MAX, SPECIAL_IN: GRIND2_SPECIAL_IN, KEEP: GRIND_KEEP }, _specialEggArt: specialEggArt, _sausageSpecialTest: sausageSpecial,
+    ACTIVATE_LOOT_BLOCK: ACTIVATE_LOOT_BLOCK, lootOn: lootOn, lootInfo: lootInfo, lootPlan: lootPlan, lootRoll: lootRoll, lootChest: lootChest, lootEggArt: lootEggArt, LOOT_TABLE: LOOT_TABLE, LOOT_LABEL: LOOT_LABEL, LOOT_COST: LOOT_COST, lootGate: function () { return ACTIVATE_LOOT_BLOCK; }, _setLootActivation: function (b) { ACTIVATE_LOOT_BLOCK = b == null ? null : Number(b); },
     pantryGate: function () { return ACTIVATE_PANTRY_BLOCK; }, pantryOn: pantryOn, pantryPlan: pantryPlan, pantryInfo: pantryInfo, dayStart: dayStart, PANTRY_PREFIX: PANTRY_PREFIX, _pantrySweep: pantrySweep, _setPantryActivation: function (b) { ACTIVATE_PANTRY_BLOCK = b == null ? null : Number(b); },
     dailyChoresGate: function () { return ACTIVATE_DAILY_CHORES_BLOCK; }, choresOn: choresOn, dailyChoresPlan: dailyChoresPlan, DC_PREFIX: DC_PREFIX, DC_BODY: DC_BODY, _setDailyChoresActivation: function (b) { ACTIVATE_DAILY_CHORES_BLOCK = b == null ? null : Number(b); },
     seanceRaisesGate: function () { return ACTIVATE_SEANCE_RAISES_BLOCK; }, seanceOn: seanceOn, _setSeanceRaisesActivation: function (b) { ACTIVATE_SEANCE_RAISES_BLOCK = b; }, cemHeld: cemHeld,
