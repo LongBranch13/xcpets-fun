@@ -127,14 +127,82 @@
    * animate() is O(1) (Map), and the tick only repaints canvases that are connected AND on screen (IntersectionObserver), never when the tab is hidden. */
   var idCache = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
   function imgOf(img) { var d = idCache && idCache.get(img); if (!d) { d = new ImageData(new Uint8ClampedArray(img.data), 32, 32); if (idCache && img && typeof img === 'object') idCache.set(img, d); } return d; }
+  /* giant-look-1128 (Jake: 'giant pets dont actually look giant', picked all 3 looks). DISPLAY ONLY.
+   * A Giant's 64 px scene used to be squeezed back into the same box as a normal pet, so it looked normal-sized.
+   * Now any card canvas 48 px or wider keeps its box but the Giant is drawn 1.6x bigger from the box's bottom edge,
+   * so it bursts out over the top of its card, with a heavy shadow and an occasional stomp.
+   * The scene's background stays only inside the card's own box; outside it is see-through. Clicks pass through to the card.
+   * Smaller canvases (icons, table rows) keep the old squeezed view. A container with class xg-off opts out. */
+  var XG_MIN = 48, xgCache = typeof WeakMap !== 'undefined' ? new WeakMap() : null, xgCssOn = false;
+  function xgCss() { if (xgCssOn || typeof document === 'undefined') return; xgCssOn = true; var st = document.createElement('style'); st.id = 'xgGiantCss';
+    /* 1.6x from the box's bottom edge: about half again as tall as the pets around it, head over the card's top; the card's
+     * content-visibility (paint containment) would clip it, so a card holding a Giant paints normally (39 Giants: no cost). */
+    st.textContent = 'canvas.xg-giant{transform:scale(1.6);transform-origin:50% 100%;background:transparent!important;border-radius:0!important;box-shadow:none!important;outline:0!important;overflow:visible!important;pointer-events:none;position:relative;z-index:1;animation:xgStomp 7s ease-out infinite}'
+      + '*:has(>canvas.xg-giant){content-visibility:visible!important;contain:none!important;overflow:visible!important}'
+      + '.pet:has(>canvas.xg-giant){padding-top:max(8px,22%)}' /* a My Pets / breed card makes room so the head pops over its own top edge, not over the row above */
+      + '@keyframes xgStomp{0%,84%,100%{transform:scale(1.6)}87%{transform:translateY(-4%) scale(1.6)}90%{transform:translateY(0) scale(1.648,1.552)}92%{transform:translateX(-1.2%) scale(1.6)}94%{transform:translateX(1.2%) scale(1.6)}96%{transform:translateX(-.6%) scale(1.6)}98%{transform:scale(1.6)}}'
+      + '.pc-art:has(>canvas.xg-giant){overflow:visible!important;overflow-x:clip!important}.pc-art>canvas.xg-giant{transform:scale(1.2);animation-name:xgStompP}'
+      + '@keyframes xgStompP{0%,84%,100%{transform:scale(1.2)}87%{transform:translateY(-2%) scale(1.2)}90%{transform:translateY(0) scale(1.236,1.164)}92%{transform:translateX(-1.2%) scale(1.2)}94%{transform:translateX(1.2%) scale(1.2)}96%{transform:translateX(-.6%) scale(1.2)}98%{transform:scale(1.2)}}'
+      + '.xg-strip{display:block;width:100%!important;height:auto!important;aspect-ratio:auto!important;max-width:340px!important;margin:0 auto 8px;image-rendering:pixelated;border:3px solid #000;border-radius:4px;background:linear-gradient(#2a2346,#171329)}.xg-cap{text-align:center;font-size:12px;margin:-4px 0 8px;opacity:.9}'
+      + '@media (prefers-reduced-motion:reduce){canvas.xg-giant{animation:none}}';
+    (document.head || document.documentElement).appendChild(st); }
+  function xgData(rs) { var hit = xgCache && xgCache.get(rs); if (hit) return hit;
+    var d = new Uint8ClampedArray(rs.data), bg = [d[0], d[1], d[2]], x, y, i, x0 = 64, x1 = -1, y1 = -1;
+    var isBg = function (j) { return Math.abs(d[j] - bg[0]) + Math.abs(d[j + 1] - bg[1]) + Math.abs(d[j + 2] - bg[2]) < 24; };
+    for (y = 0; y < 64; y++) for (x = 0; x < 64; x++) if (!isBg((y * 64 + x) * 4)) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y > y1) y1 = y; }
+    if (x1 >= 0) { /* heavy ground shadow + floor cracks, inside the card's own box (columns 16-47, rows 32-63) */
+      var cx = (x0 + x1 + 1) / 2, hw = Math.min(17, (x1 - x0 + 1) / 2 + 3), sy = Math.min(62, y1);
+      for (y = sy - 1; y < 64; y++) for (x = 16; x < 48; x++) { var ex = (x + .5 - cx) / hw, ey = (y + .5 - (sy + 1.5)) / 2.6; i = (y * 64 + x) * 4;
+        if (ex * ex + ey * ey <= 1 && isBg(i)) { d[i] = Math.round(d[i] * .35); d[i + 1] = Math.round(d[i + 1] * .35); d[i + 2] = Math.round(d[i + 2] * .35); } }
+      [[17, 63], [18, 62], [19, 62], [20, 61], [21, 61], [46, 63], [45, 62], [44, 62], [43, 61], [42, 61]].forEach(function (q) { i = (q[1] * 64 + q[0]) * 4; if (isBg(i)) { d[i] = 10; d[i + 1] = 8; d[i + 2] = 14; } }); }
+    for (y = 0; y < 64; y++) for (x = 0; x < 64; x++) { if (x >= 16 && x < 48 && y >= 32) continue; i = (y * 64 + x) * 4; if (isBg(i)) d[i + 3] = 0; }
+    var out = typeof ImageData !== 'undefined' ? new ImageData(d, 64, 64) : { data: d, width: 64, height: 64 }; if (xgCache) xgCache.set(rs, out); return out; }
+  function giantOff(c) { if (!c._xg) return; c._xg = 0; c.classList.remove('xg-giant'); c.style.animationDelay = ''; }
+  function giantPaint(c, img, rs) {
+    if (c._xgSmall || (c.closest && c.closest('.xg-off'))) return false;
+    var w0 = c.offsetWidth; if (w0 && w0 < XG_MIN) { c._xgSmall = 1; return false; }
+    if (c._rareStyle) { c.style.width = c._rareStyle.width; c.style.height = c._rareStyle.height; c.style.maxWidth = c._rareStyle.maxWidth; c._rareStyle = null; }
+    xgCss(); if (c.width !== 64 || c.height !== 64) c.width = c.height = 64;
+    c.getContext('2d').putImageData(xgData(rs), 0, 0);
+    if (!c._xg) { c._xg = 1; c.classList.add('xg-giant'); c.style.animationDelay = (-Math.random() * 7).toFixed(2) + 's'; /* giants never stomp in step */
+      if (!w0 && typeof requestAnimationFrame !== 'undefined') requestAnimationFrame(function () { var w1 = c.offsetWidth; if (c._xg && w1 && w1 < XG_MIN) { c._xgSmall = 1; giantOff(c); paint(c, img); } }); }
+    if (c._mfx) mythDetach(c); if (window.V2Looks && (c._lkx || V2Looks.info(img))) V2Looks.attach(c, img); if (window.V2Weird && (img.wl || c._wlx)) V2Weird.attach(c, img);
+    return true; }
+  /* giant-look-1128 pet page: the Giant on a strip of grass next to two normal pets (the owner's own when it has some) and a tree,
+   * all at the same pixel size, with a height ruler, so 'twice as tall' is plain to see. Display only; nothing here touches the rules. */
+  function xgCut(p, w) { var mk = function (bg) { var q = Object.assign({}, p, { art: Object.assign({}, p.art, { background: 'solid', bgColor: bg, pattern: 'none' }) }); var f = petFrames(q, w, { noHunger: true }); return f && f[0] ? nativeFrame(f[0]) : null; };
+    var A = mk('#ff00fe'), B = mk('#00ff01'); if (!A || !B || (A.width || 32) !== (B.width || 32)) return null; var S = A.width || 32, d = new Uint8ClampedArray(A.data), x0 = S, y0 = S, x1 = -1, y1 = -1, x, y, i;
+    for (y = 0; y < S; y++) for (x = 0; x < S; x++) { i = (y * S + x) * 4; if (Math.abs(A.data[i] - B.data[i]) + Math.abs(A.data[i + 1] - B.data[i + 1]) + Math.abs(A.data[i + 2] - B.data[i + 2]) > 60 || (S === 32 && x >= 27 && y < 5)) d[i + 3] = 0; else { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; } }
+    if (x1 < 0) return null; var c = document.createElement('canvas'); c.width = x1 - x0 + 1; c.height = y1 - y0 + 1; c.getContext('2d').putImageData(new ImageData(d, S, S), -x0, -y0, x0, y0, c.width, c.height); return c; }
+  function xgBuddies(p, w) { var list = (w && w.pets) || [], same = [], any = [], n = 0;
+    for (var i = list.length - 1; i >= 0 && n < 60000 && (same.length < 2); i--, n++) { var q = list[i]; if (!q || q === p || !q.art || q.dead || q.released || q.zombie || (q.art.rareHatch) || (q.stage || 0) < 3 || q.owner !== p.owner) continue; if (q.species === p.species) same.push(q); else if (any.length < 2) any.push(q); }
+    var out = same.concat(any).slice(0, 2); if (out.length < 2) for (var j = list.length - 1; j >= 0 && out.length < 2 && j > list.length - 4000; j--) { var r = list[j]; if (r && r !== p && r.art && !r.art.rareHatch && !r.dead && !r.zombie && (r.stage || 0) >= 3 && out.indexOf(r) < 0) out.push(r); }
+    return out; }
+  function giantStrip(box, p, w) { if (!box || !box.parentNode) return; var old = box.parentNode.querySelector('.xg-strip-wrap'), rh = p && p.art && p.art.rareHatch;
+    if (!rh || rh.version !== 1 || rh.kind !== 'giant' || !p.stage || p.dead) { if (old) old.parentNode.removeChild(old); return; }
+    var key = p.id + ':' + p.stage + ':' + (w && w.tip); if (old && old._k === key) return;
+    var G = xgCut(p, w); if (!G) return; xgCss(); var buds = xgBuddies(p, w).map(function (q) { return { p: q, c: xgCut(q, w) }; }).filter(function (b) { return b.c; });
+    var GY = 54, H = 62, W = 156, c = document.createElement('canvas'); c.width = W; c.height = H; c.className = 'xg-strip'; var g = c.getContext('2d');
+    g.fillStyle = '#3c7a3a'; g.fillRect(0, GY, W, H - GY); g.fillStyle = '#000'; g.fillRect(0, GY, W, 1); g.fillStyle = '#2f6430'; for (var x = 1; x < W; x += 4) g.fillRect(x, GY + 3 + (x % 8 ? 0 : 2), 2, 1);
+    var top = GY - G.height; g.fillStyle = '#000'; g.fillRect(2, top - 1, 5, GY - top + 1); for (var y = GY - 1, k = 0; y >= top; y -= 4, k++) { g.fillStyle = k % 2 ? '#000' : '#ffd166'; g.fillRect(3, Math.max(top, y - 3), 3, Math.min(4, y - top + 1)); }
+    var bx = 12; g.fillStyle = 'rgba(0,0,0,.45)'; g.beginPath(); if (g.ellipse) g.ellipse(bx + G.width / 2, GY + 1, G.width * .42, 2.2, 0, 0, Math.PI * 2); g.fill(); g.drawImage(G, bx, GY - G.height + 1); bx += G.width + 6;
+    buds.forEach(function (b) { g.fillStyle = 'rgba(0,0,0,.4)'; g.beginPath(); if (g.ellipse) g.ellipse(bx + b.c.width / 2, GY + 1, b.c.width * .42, 1.5, 0, 0, Math.PI * 2); g.fill(); g.drawImage(b.c, bx, GY - b.c.height + 1); bx += b.c.width + 4; });
+    if (bx + 14 <= W) { g.fillStyle = '#000'; g.fillRect(bx + 4, GY - 9, 4, 9); g.fillStyle = '#6b3f1d'; g.fillRect(bx + 5, GY - 8, 2, 8); g.fillStyle = '#000'; g.fillRect(bx, GY - 20, 12, 12); g.fillStyle = '#2f8f3a'; g.fillRect(bx + 1, GY - 19, 10, 10); g.fillStyle = '#49b04f'; g.fillRect(bx + 2, GY - 18, 4, 3); }
+    var wrap = document.createElement('div'); wrap.className = 'xg-strip-wrap'; wrap._k = key; wrap.appendChild(c);
+    var cap = document.createElement('div'); cap.className = 'xg-cap'; cap.textContent = 'GIANT: twice as tall as a normal pet' + (buds.length ? ' (next to ' + buds.map(function (b) { return '#' + b.p.id; }).join(' and ') + ')' : '');
+    wrap.appendChild(cap); c.setAttribute('role', 'img'); c.setAttribute('aria-label', 'This Giant on the grass next to normal pets: twice as tall');
+    if (old) old.parentNode.replaceChild(wrap, old); else box.parentNode.insertBefore(wrap, box.nextSibling); }
   function paint(c, img) { if (!img || !img.data || img.data.length !== 4096) { if (window.console) console.warn('paint: skipped a malformed frame'); return; } if (img.rareScene) {
       var rs=img.rareScene;
       if(!rs.data||rs.width!==64||rs.height!==64||rs.data.length!==16384)throw new Error('invalid expanded rare scene');
+      if(rs.kind==='giant'&&giantPaint(c,img,rs))return;
+      giantOff(c);
       if(!c._rareStyle){var cs=window.getComputedStyle?getComputedStyle(c):null;c._rareStyle={width:c.style.width,height:c.style.height,maxWidth:c.style.maxWidth};c._rareBasePx=(cs&&parseFloat(cs.width))||c.clientWidth||32;}
       c.width=c.height=64;c.style.width='min(100%, '+Math.round(c._rareBasePx*2)+'px)';c.style.height='auto';c.style.maxWidth='100%';
       c.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(rs.data),64,64),0,0);
       if(c._mfx)mythDetach(c);if(window.V2Looks&&(c._lkx||V2Looks.info(img)))V2Looks.attach(c,img);if(window.V2Weird&&(img.wl||c._wlx))V2Weird.attach(c,img); /* weird-looks-1128 */return;
     }
+    giantOff(c);
     if(c._rareStyle){c.style.width=c._rareStyle.width;c.style.height=c._rareStyle.height;c.style.maxWidth=c._rareStyle.maxWidth;c._rareStyle=null;c.width=c.height=32;}
     /* goobys-grid-1107: a card canvas that was a 64px rare scene, or that still holds a previous frame, must be cleared before the 32px sprite is drawn or the old pixels smear across the card */
     if (c.width !== 32 || c.height !== 32) { c.width = c.height = 32; }
@@ -1232,7 +1300,7 @@
     return out; }
   try { window.addEventListener('storage', function (e) { if (e.key === GS_KEY) { gsPref = null; frCache.clear(); } if (e.key === WD_KEY) { wdPref = null; wdVer++; frCache.clear(); } }); } catch (e) { }
   var frCache = new Map(), FR_MAX = 6000;
-  function frKey(p, w, extra) { return p.id + '|' + p.stage + '|' + shownWorn(w, p.id, p).map(function (g) { return g.item; }).join(',') + '|' + !!(p.blackEye || (extra && extra.blackEye)) + '|' + !!p.crowned + '|' + p.hatchBlock + '|' + JSON.stringify(p.art) + '|h' + (extra && extra.noHunger ? 0 : hungerDays(p, w)) + '|L' + looksOf(p, w, extra).map(function (L) { return L.id; }).join(','); }
+  function frKey(p, w, extra) { return p.id + '|' + p.stage + '|' + shownWorn(w, p.id, p).map(function (g) { return g.item; }).join(',') + '|' + !!(p.blackEye || (extra && extra.blackEye)) + '|' + !!p.crowned + '|' + p.hatchBlock + '|' + JSON.stringify(p.art) + '|h' + (extra && extra.noHunger ? 0 : hungerDays(p, w)) + '|L' + looksOf(p, w, extra).map(function (L) { return L.id; }).join(',') + '|S' + (setGlowOf(p, w) || ''); }
   function petFramesC(p, w, extra) { var k = frKey(p, w, extra), f = frCache.get(k); if (f) return f; f = petFrames(p, w, extra); if (frCache.size >= FR_MAX) frCache.clear(); frCache.set(k, f); return f; }
   /* page-unresponsive-fix (2026-10-27, owner: 'the arena freezes while picking fighters'): the observer used to paint EVERY sprite that came into view
    * in one task (a search in the Arena picker = dozens of Mythic sprites = 1.8 s on the owner's laptop). It now queues them and paints in ~12 ms
@@ -1610,6 +1678,7 @@
       fr = p && p.art && p.hatchBlock > cut ? fr.map(function (f, i) { return window.V2Bg ? V2Bg.apply(f, p.art, i, cpLogo) : cpLogo(f, p.art); }) : fr; } catch (e) { fr = null; if (window.console) console.warn('petFrames look step failed for #' + (p && p.id), e); }
     /* fail safe: if the hunger / background steps break a frame, draw the bare sprite instead of an empty (black) canvas */
     fr = okFrames(fr) ? fr : bare;
+    if (p.stage !== 5 && !(p.art && p.art.rareHatch) && !looksOf(p, w, extra).length) try { fr = setGlow(fr, p, w, keyed0); } catch (e) { if (window.console) console.warn('set glow failed #' + p.id, e); } /* GEAR SETS: a Mythic, a weird hatch (its own look) or a pet with looks keeps only that aura */
     if (MYTH_MODE && p && p.stage === 5 && !p.dead && !p.released && !(p.art && p.art.rareHatch && ['tiny','giant','two-headed','backwards'].indexOf(p.art.rareHatch.kind)>=0)) fr = mythFx(fr, function (bg) { var kf = keyed0(bg); return fr.length === kf.length ? kf : fr.map(function (_, i) { return kf[i % kf.length]; }); }); /* mythic-look options */
     if (p && p.art && p.art.rareHatch) fr = rareHatchFrames(fr, p, w, extra);
     var lk = looksOf(p, w, extra); /* looks-draw REAL (display only): realistic look overlays on top of the pixel sprite, see js/v2-looks.js */
@@ -1617,6 +1686,23 @@
       var A0 = lkKey('#ff00fe'), B0 = lkKey('#00ff01');if(p.art.rareHatch){A0=rareHatchFrames(A0,Object.assign({},p,{art:Object.assign({},p.art,{bgColor:'#ff00fe'})}),w,extra);B0=rareHatchFrames(B0,Object.assign({},p,{art:Object.assign({},p.art,{bgColor:'#00ff01'})}),w,extra);} window.V2Looks.attachInfo(fr, A0, B0, lk, p.id); } catch (e) { if (window.console) console.warn('looks failed #' + (p && p.id), e); }
     if (window.V2Weird) try { V2Weird.tag(fr, p, w); } catch (e) {} /* weird-looks-1128: card overlays for weird hatches, mutations and throwbacks (js/weird-looks.js) */
     return fr; }
+  /* GEAR SETS glow (Jake Nov 28 2026, display only): a pet that shows all 3 pieces of a set (V2Rules.GEAR_SETS) gets a 1-pixel rim in the set's colour
+   * just OUTSIDE its silhouette, blended into the background like the old Mythic rim, so it never covers the pet. Silhouette = pixels that are the same
+   * on the magenta and the green keyed render. Two sets: the first set's colour. Off before the gate (V2Rules.stashOn). */
+  function setGlowOf(p, w) { if (!V.setsIn || !V.stashOn || !w || !V.stashOn((w.tip || 0) + 1)) return null; var sh = {}; shownWorn(w, p.id, p).forEach(function (g) { sh[g.item] = 1; }); /* the set must be really worn (wardrobe looks are looks only, no bonus) AND shown */
+    var k = V.setsIn(worn(w, p.id)).filter(function (key) { return V.GEAR_SETS.some(function (S) { return S.key === key && S.items.every(function (id) { return sh[id]; }); }); })[0]; if (!k) return null;
+    var S = V.GEAR_SETS.filter(function (x) { return x.key === k; })[0]; return S ? S.glow : null; }
+  function setGlow(fr, p, w, keyed0) { var col = setGlowOf(p, w); if (!col || !okFrames(fr)) return fr; var A = keyed0('#ff00fe'), B = keyed0('#00ff01'); if (!okFrames(A) || !okFrames(B)) return fr;
+    var R = parseInt(col.slice(1, 3), 16), G = parseInt(col.slice(3, 5), 16), Bl = parseInt(col.slice(5, 7), 16);
+    return fr.map(function (f, i) { var a = A[i % A.length].data, b = B[i % B.length].data, pet = function (x, y) { if (x < 0 || y < 0 || x > 31 || y > 31) return false; var j = (y * 32 + x) * 4; return a[j] === b[j] && a[j + 1] === b[j + 1] && a[j + 2] === b[j + 2]; };
+      var d = Array.prototype.slice.call(f.data), any = false, out = new Uint8Array(1024), st = [], q0;
+      /* only the OUTSIDE: background reached from the frame edge, so holes between the body and a held piece stay clean */
+      for (q0 = 0; q0 < 32; q0++) st.push(q0, 992 + q0, q0 * 32, q0 * 32 + 31);
+      while (st.length) { var q1 = st.pop(), x1 = q1 % 32, y1 = (q1 / 32) | 0; if (out[q1] || pet(x1, y1)) continue; out[q1] = 1;
+        if (x1 > 0) st.push(q1 - 1); if (x1 < 31) st.push(q1 + 1); if (y1 > 0) st.push(q1 - 32); if (y1 < 31) st.push(q1 + 32); }
+      for (var y = 0; y < 32; y++) for (var x = 0; x < 32; x++) { if (!out[y * 32 + x]) continue; if (!(pet(x - 1, y) || pet(x + 1, y) || pet(x, y - 1) || pet(x, y + 1))) continue;
+        var q = (y * 32 + x) * 4; d[q] = Math.round(d[q] * 0.35 + R * 0.65); d[q + 1] = Math.round(d[q + 1] * 0.35 + G * 0.65); d[q + 2] = Math.round(d[q + 2] * 0.35 + Bl * 0.65); d[q + 3] = 255; any = true; }
+      if (!any) return f; var o = Object.assign({}, f); o.data = f.data && f.data.constructor === Uint8ClampedArray ? new Uint8ClampedArray(d) : d; o.setGlow = col; return o; }); }
   function looksOf(p, w, extra) { if (extra && extra.looks && window.V2Looks) return extra.looks; /* look picker previews: draw exactly these looks */
     if (!p || p.released || !w || (extra && extra.noLooks) || !window.V2Looks || !V.shownLooks || !(p.flameLooks || p.questLooks || p.earn || w.lookCopies)) return [];
     try { return V.shownLooks(w, p) || []; } catch (e) { return []; } }
@@ -1657,11 +1743,17 @@
         if (top >= 0 && Math.floor((x - minX) / 3 + fi) % 2 === 0) { /* droop in 3px chunks */ var q2 = (top * 32 + x) * 4, q3 = ((top + 1) * 32 + x) * 4; d[q2] = d[q3]; d[q2 + 1] = d[q3 + 1]; d[q2 + 2] = d[q3 + 2]; } }
       return o; }); }
   /* Explicit native scene boundary: legacy anatomy helpers remain 32px. */
+  var xgRM=null;function xgReduced(){if(xgRM==null)try{xgRM=!!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches);}catch(e){xgRM=false;}return xgRM;}
   function nativeFrame(f) { return f && (f.rareScene || f); }
   function exportFrame(f) { var a=nativeFrame(f),d=new Uint8ClampedArray(a.data),bg=[d[0],d[1],d[2]];for(var i=0;i<d.length;i+=4){var alpha=d[i+3]/255;if(alpha<1){for(var k=0;k<3;k++)d[i+k]=Math.round(d[i+k]*alpha+bg[k]*(1-alpha));d[i+3]=255;}}return {width:a.width||32,height:a.height||32,data:d}; }
-  function spriteCanvas(f,keyed) { var a=nativeFrame(f),c=document.createElement('canvas');c.width=a.width||32;c.height=a.height||32;var d=new Uint8ClampedArray(a.data);if(keyed)for(var i=0;i<d.length;i+=4)if((d[i]>240&&d[i+1]<16&&d[i+2]>240)||(d[i]===153&&d[i+1]===0&&d[i+2]===152))d[i+3]=0;c.getContext('2d').putImageData(new ImageData(d,c.width,c.height),0,0);return c; }
+  function spriteCanvas(f,keyed) { var a=nativeFrame(f),c=document.createElement('canvas');c.width=a.width||32;c.height=a.height||32;var d=new Uint8ClampedArray(a.data);if(keyed)for(var i=0;i<d.length;i+=4)if((d[i]>240&&d[i+1]<16&&d[i+2]>240)||(d[i]===153&&d[i+1]===0&&d[i+2]===152))d[i+3]=0;c.getContext('2d').putImageData(new ImageData(d,c.width,c.height),0,0);if(a.kind==='giant')c._xgKind='giant';return c; }
   function drawSprite(g,source,x,y,size,flip,bounds) { var c=source&&source.data&&typeof source.data!=='function'&&source.data.length?spriteCanvas(source,false):source;if(!c)return; /* a real canvas has no pixel buffer on .data; node-canvas exposes data() as a method */size=size||32;var n=(c.width||32)/32,sw=size*n,sh=size*((c.height||32)/32),dx=x+(size-sw)/2,dy=y+size-sh;
     if(n!==1){var b=bounds||{x:0,y:0,w:g.canvas.width,h:g.canvas.height},fit=Math.min(1,b.w/sw,b.h/sh);sw*=fit;sh*=fit;dx=Math.max(b.x,Math.min(b.x+b.w-sw,dx));dy=Math.max(b.y,Math.min(b.y+b.h-sh,dy));}
+    var xgK=n!==1&&(c._xgKind||(source&&source!==c&&nativeFrame(source).kind))==='giant'; /* giant-look-1128: a Giant in a scene stomps (lift, thud, dust) on a heavy shadow */
+    if(xgK){var xt=(typeof performance!=='undefined'?performance.now():Date.now())+(dx*37%1600),ph=xgReduced()?.5:(xt%1600)/1600,lift=ph<.12?Math.round(sh*.05*Math.sin(ph/.12*Math.PI)):0,fy=dy+sh;
+      g.save();g.fillStyle='rgba(0,0,0,.38)';g.beginPath();if(g.ellipse)g.ellipse(dx+sw/2,fy-sh*.03,sw*.36,Math.max(1.5,sh*.045),0,0,Math.PI*2);g.fill();
+      if(ph>=.12&&ph<.32){var k=(ph-.12)/.2,r=Math.max(1,Math.round(sw*.035));g.globalAlpha=1-k;g.fillStyle='#d9cfe9';[[-1,0],[1,0],[-1,-1],[1,-1]].forEach(function(o,j){g.fillRect(Math.round(dx+sw/2+o[0]*(sw*.3+k*sw*.18)-r/2),Math.round(fy-sh*.04+o[1]*(r+k*r*2)-r),r,r);});}
+      g.restore();dy-=lift;}
     g.save();g.imageSmoothingEnabled=false;if(flip){g.translate(dx+sw,dy);g.scale(-1,1);g.drawImage(c,0,0,sw,sh);}else g.drawImage(c,dx,dy,sw,sh);g.restore();return {x:dx,y:dy,w:sw,h:sh}; }
   function displayFramesWith(art, stage, ids, ov, cap, go) {
     var fr=framesWith(art,stage,ids,ov,cap,go);if(!art||!art.rareHatch)return fr;
@@ -1732,7 +1824,7 @@
       if(size===32)return {width:32,height:32,data:out,wlBox:wlBox};
       // Explicit expanded scene; legacy callers get a safe bounded thumbnail.
       var thumb=new Uint8ClampedArray(4096);for(y=0;y<32;y++)for(x=0;x<32;x++)thumb.set(out.slice((y*2*64+x*2)*4,(y*2*64+x*2)*4+4),(y*32+x)*4);
-      return {width:32,height:32,data:thumb,wlBox:wlBox,rareScene:{width:64,height:64,data:out,worldPixelScale:1,primaryHead:'left'}};
+      return {width:32,height:32,data:thumb,wlBox:wlBox,rareScene:{width:64,height:64,data:out,worldPixelScale:1,primaryHead:'left',kind:kind}};
     });
   }
   // ---------------------------------------------------------------- standalone gear icons (the piece alone, not on a pet)
@@ -2325,7 +2417,7 @@
   /** graveCount / graveLine (grave gear): a dead pet that kept its gear (the owner's on-chain choice). */
   function graveCount(w, p) { return p && p.dead ? V.wornOf(w, p.id).length : 0; }
   function graveLine(w, p) { var n = graveCount(w, p); return n ? '🪦 Buried with ' + n + ' gear piece' + (n === 1 ? '' : 's') : ''; }
-  window.V2Render = { lastColdName: lastColdName, communityGoal: communityGoal, communityGoalFill: communityGoalFill, eraChip: eraChip, eraChip0: eraChip0, rareInfo: rareInfo, rareChip: rareChip, RARE_LEG: RARE_LEG, RARE_WEIRD: RARE_WEIRD, anatomyFramesWith:framesWith,nativeFrame:nativeFrame,exportFrame:exportFrame,spriteCanvas:spriteCanvas,drawSprite:drawSprite, rareHatchFrames: rareHatchFrames, originOf: originOf, genOf: genOf, mutationChip: mutationChip, traitsOf: traitsOf, traitChips: traitChips, mutationTip: mutationTip, mutationOdds: mutationOdds, bornExtraRows: bornExtraRows, badgesOf: badgesOf, JACKPOT_ODDS: JACKPOT_ODDS, frKey: frKey, gearShow: { get: gsGet, set: gsSet, hidden: gsHidden, shownWorn: shownWorn, hasFeet: hasFeet, isShoe: isShoe }, wardrobe: { get: wdGet, save: wdSave, apply: wardrobe, map: wdMap, ver: function () { return wdVer; }, KEY: WD_KEY }, godBornChip: godBornChip, haloSvg: haloSvg, burnLordFx: burnLordFx, FACING: FACING, setNextNo: setNextNo, kekOn: kekOn, KEK_CARD: KEK_CARD, communityTipHtml: communityTipHtml, communityGap: communityGap, comingSoonFrames: comingSoonFrames, comingSoonText: comingSoonText, wizardTopHtml: wizardTopHtml, COMMUNITY_NEXT_NO: COMMUNITY_NEXT_NO, showEl: showEl, careTarget: careTarget, communityStats: communityStats, communityWearing: communityWearing, bindCommunityTip: bindCommunityTip, wizardGear: wizardGear, coldFrames: coldFrames, genChip: genChip, breedExtrasHtml: breedExtrasHtml, bredFrom: bredFrom, communityFrames: communityFrames, communityGearText: communityGearText, drawSnugBeanie: drawSnugBeanie, drawEyeGear: drawEyeGear, fitAnchors: fitAnchors, drawFace: drawFace, faceSpots: faceSpots, facePos: facePos, isV2Face: isV2Face, paint: paint, animate: animate, framesWith: displayFramesWith, petFrames: petFramesC, petFramesRaw: petFrames, revive: revive, mythFx: mythFx, MYTH_MODE: MYTH_MODE, MYTH_PREVIEW: MYTH_PREVIEW, hungerDays: hungerDays, worn: worn, lazy: lazy, itemIcon: itemIcon, cpLogo: cpLogo, iconCanvas: iconCanvas, gearPicker: gearPicker, starveInfo: starveInfo, starveHtml: starveHtml, bindStarve: bindStarve, starveChip: starveChip, graveCount: graveCount, graveLine: graveLine, esc: esc, TID: TID, familyHtml: familyHtml };
+  window.V2Render = { lastColdName: lastColdName, communityGoal: communityGoal, communityGoalFill: communityGoalFill, eraChip: eraChip, eraChip0: eraChip0, rareInfo: rareInfo, rareChip: rareChip, RARE_LEG: RARE_LEG, RARE_WEIRD: RARE_WEIRD, anatomyFramesWith:framesWith,nativeFrame:nativeFrame,exportFrame:exportFrame,spriteCanvas:spriteCanvas,drawSprite:drawSprite,giantStrip:giantStrip, rareHatchFrames: rareHatchFrames, originOf: originOf, genOf: genOf, mutationChip: mutationChip, traitsOf: traitsOf, traitChips: traitChips, mutationTip: mutationTip, mutationOdds: mutationOdds, bornExtraRows: bornExtraRows, badgesOf: badgesOf, JACKPOT_ODDS: JACKPOT_ODDS, frKey: frKey, gearShow: { get: gsGet, set: gsSet, hidden: gsHidden, shownWorn: shownWorn, hasFeet: hasFeet, isShoe: isShoe }, wardrobe: { get: wdGet, save: wdSave, apply: wardrobe, map: wdMap, ver: function () { return wdVer; }, KEY: WD_KEY }, godBornChip: godBornChip, haloSvg: haloSvg, burnLordFx: burnLordFx, FACING: FACING, setNextNo: setNextNo, kekOn: kekOn, KEK_CARD: KEK_CARD, communityTipHtml: communityTipHtml, communityGap: communityGap, comingSoonFrames: comingSoonFrames, comingSoonText: comingSoonText, wizardTopHtml: wizardTopHtml, COMMUNITY_NEXT_NO: COMMUNITY_NEXT_NO, showEl: showEl, careTarget: careTarget, communityStats: communityStats, communityWearing: communityWearing, bindCommunityTip: bindCommunityTip, wizardGear: wizardGear, coldFrames: coldFrames, genChip: genChip, breedExtrasHtml: breedExtrasHtml, bredFrom: bredFrom, communityFrames: communityFrames, communityGearText: communityGearText, drawSnugBeanie: drawSnugBeanie, drawEyeGear: drawEyeGear, fitAnchors: fitAnchors, drawFace: drawFace, faceSpots: faceSpots, facePos: facePos, isV2Face: isV2Face, paint: paint, animate: animate, framesWith: displayFramesWith, petFrames: petFramesC, petFramesRaw: petFrames, revive: revive, mythFx: mythFx, MYTH_MODE: MYTH_MODE, MYTH_PREVIEW: MYTH_PREVIEW, hungerDays: hungerDays, worn: worn, lazy: lazy, itemIcon: itemIcon, cpLogo: cpLogo, iconCanvas: iconCanvas, gearPicker: gearPicker, starveInfo: starveInfo, starveHtml: starveHtml, bindStarve: bindStarve, starveChip: starveChip, graveCount: graveCount, graveLine: graveLine, esc: esc, TID: TID, familyHtml: familyHtml };
 })();
 /* Launch (Jake 2026-10-14): "Share to Telegram" + branching family tree (parents + grandparents) on the pet detail dialog and pet page. Opens t.me/share with the pet's deep link (pet.html?id=N) and a short brag. */
 (function () {
