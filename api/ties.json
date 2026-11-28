@@ -1,6 +1,6 @@
 {
- "lastBlock": 977900,
- "count": 560,
+ "lastBlock": 977906,
+ "count": 561,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -6722,6 +6722,18 @@
    "speciesLabel": "Boking (hybrid)",
    "rarity": "Legendary",
    "stage": "Elder"
+  },
+  {
+   "id": 280662,
+   "asset": "A8497704314269048765",
+   "tiedBlock": 977905,
+   "tiedTx": "9e14bc04c613473aab43aade724a995a35034ebe3b9ea95cf76eb204e59f644f",
+   "kind": "deed",
+   "name": "Kafok",
+   "species": "nakamoto",
+   "speciesLabel": "Nakamoto",
+   "rarity": "Legendary",
+   "stage": "Hatchling"
   }
  ]
 }
