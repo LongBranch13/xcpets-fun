@@ -1,5 +1,5 @@
 {
- "lastBlock": 977928,
+ "lastBlock": 977929,
  "count": 561,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
@@ -6553,7 +6553,7 @@
    "species": "chud",
    "speciesLabel": "Chud",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 269625,
@@ -6565,7 +6565,7 @@
    "species": "wojak",
    "speciesLabel": "Wojak",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 269626,
@@ -6577,7 +6577,7 @@
    "species": "hyb:chud:dodo",
    "speciesLabel": "Chudo (hybrid)",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 269627,
@@ -6589,7 +6589,7 @@
    "species": "hyb:dodo:snibby",
    "speciesLabel": "Dosnib (hybrid)",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 269628,
@@ -6601,7 +6601,7 @@
    "species": "hyb:dodo:snibby",
    "speciesLabel": "Dosnib (hybrid)",
    "rarity": "Legendary",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 269629,
@@ -6613,7 +6613,7 @@
    "species": "sarutobi",
    "speciesLabel": "Sarutobi",
    "rarity": "Rare",
-   "stage": "Juvenile"
+   "stage": "Adult"
   },
   {
    "id": 269630,
@@ -6625,7 +6625,7 @@
    "species": "hyb:kevin:doge",
    "speciesLabel": "Kege (hybrid)",
    "rarity": "Legendary",
-   "stage": "Juvenile"
+   "stage": "Adult"
   },
   {
    "id": 271637,
@@ -6637,7 +6637,7 @@
    "species": "kek",
    "speciesLabel": "Lord Kek",
    "rarity": "Rare",
-   "stage": "Juvenile"
+   "stage": "Adult"
   },
   {
    "id": 271638,
@@ -6649,7 +6649,7 @@
    "species": "kevin",
    "speciesLabel": "KEVIN",
    "rarity": "Rare",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 271639,
@@ -6661,7 +6661,7 @@
    "species": "doge",
    "speciesLabel": "Doge",
    "rarity": "Uncommon",
-   "stage": "Adult"
+   "stage": "Elder"
   },
   {
    "id": 275645,
@@ -6673,7 +6673,7 @@
    "species": "hyb:pepe:snibby",
    "speciesLabel": "Pebby (hybrid)",
    "rarity": "Legendary",
-   "stage": "Juvenile"
+   "stage": "Adult"
   },
   {
    "id": 275646,
@@ -6685,7 +6685,7 @@
    "species": "mumu",
    "speciesLabel": "Mumu",
    "rarity": "Legendary",
-   "stage": "Juvenile"
+   "stage": "Adult"
   },
   {
    "id": 275648,
@@ -6697,7 +6697,7 @@
    "species": "hyb:snibby:mumu",
    "speciesLabel": "Snimu (hybrid)",
    "rarity": "Legendary",
-   "stage": "Juvenile"
+   "stage": "Adult"
   },
   {
    "id": 275649,
@@ -6709,7 +6709,7 @@
    "species": "hyb:kevin:homer",
    "speciesLabel": "Kemer (hybrid)",
    "rarity": "Legendary",
-   "stage": "Juvenile"
+   "stage": "Adult"
   },
   {
    "id": 218453,
