@@ -47,7 +47,7 @@ const ids = p => [].concat(...p.map(q => q.petIds || (q.petId != null ? [q.petId
 const dc = V.dailyChoresPlan(w, me, NB, {}), fq = V.feedQueue(w, me, null, NB), fr = V.feedRunsQueue(w, me, null, NB);
 ok(dc && !ids(dc.plans).includes(X.id), 'Daily chores ("Do it all in one burn") leaves it out');
 ok(!ids(fq).includes(X.id), 'Feed all (feedQueue) leaves it out');
-ok(fr && !ids(fr).includes(X.id), 'one-burn feed runs leave it out');
+ok(!ids(fr || []).includes(X.id), 'one-burn feed runs leave it out (' + (fr ? fr.length + ' burns' : 'no runs plan: the page uses pet-number burns') + ')');
 ok(dc.plans.every((p, i) => V.sendBlock(w, p, TIP, { me, pending: dc.plans.slice(0, i).map(q => q.tag) }) === null), 'no false alarm: every chores burn passes the check before signing');
 
 /* the old planner (no landing window) put X in; the check before signing now refuses that burn */

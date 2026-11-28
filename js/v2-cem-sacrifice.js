@@ -94,13 +94,18 @@
       if (add.length) { if (!L.length) { o.sel = sel; return open(o); } add.forEach(function (p) { seen[p.id] = 1; L.push(p); }); refreshMore(); }
       note(ls); if (ls.on && Date.now() - t0 < 600000) setTimeout(poll, 2500); else note({ on: false }); }
     var ls0 = loadState(); note(ls0); if (ls0.on) { if (window.xcpLivingRest) { try { window.xcpLivingRest(); } catch (e) { } } setTimeout(poll, 2500); }
-    function ids() { return Object.keys(sel).map(Number); }
+    var costT = 0; function ids() { return Object.keys(sel).map(Number); }
     function sum() { var I = ids(), n = I.length, go = bg.querySelector('#csacGo'), s = bg.querySelector('#csacSum'); confirm = false; go.classList.remove('warn');
       bg.querySelectorAll('.csac-t').forEach(function (t) { t.setAttribute('aria-pressed', sel[+t.getAttribute('data-id')] ? 'true' : 'false'); });
       if (!n) { go.disabled = true; go.textContent = halo ? '😇 Sacrifice' : '🍖 Feed'; s.textContent = 'Tick the pets to sacrifice.'; return; }
-      var PL = plans(o, I), amt = PL.reduce(function (a, p) { return a + Number(p.amount || 0); }, 0), pts = I.reduce(function (a, id) { return a + P[tierOf(w.byId[id])]; }, 0), big = I.filter(function (id) { var p = w.byId[id]; return tierOf(p) >= 3 || myth(p); }).length;
-      go.disabled = !PL.length; go.textContent = (halo ? '😇 Sacrifice ' : '🍖 Feed ') + n + ' pet' + (n === 1 ? '' : 's');
-      s.innerHTML = '<b>' + n + ' pet' + (n === 1 ? '' : 's') + '</b> gone for good · ' + (halo ? '+' + pts + ' halo points (' + (res.points + pts) + ' of ' + min + ') · ' : '') + fmt(Math.round(amt * 1e8) / 1e8) + ' XCPETS · ' + PL.length + ' burn' + (PL.length === 1 ? '' : 's') + (big ? '<br><span class="csac-warn">⚠ ' + big + ' Legendary or Mythic pet' + (big === 1 ? '' : 's') + ' ticked.</span>' : ''); }
+      var pts = I.reduce(function (a, id) { return a + P[tierOf(w.byId[id])]; }, 0), big = I.filter(function (id) { var p = w.byId[id]; return tierOf(p) >= 3 || myth(p); }).length;
+      go.disabled = false; go.textContent = (halo ? '😇 Sacrifice ' : '🍖 Feed ') + n + ' pet' + (n === 1 ? '' : 's');
+      /* tap-freeze (Nov 28 2026): the burn plan (cemRunsPlan walks the whole wallet) is priced 300 ms after the last tap, not on every tap; the
+       * button always signs from a fresh plans() */
+      var head = '<b>' + n + ' pet' + (n === 1 ? '' : 's') + '</b> gone for good · ' + (halo ? '+' + pts + ' halo points (' + (res.points + pts) + ' of ' + min + ') · ' : ''), tail = big ? '<br><span class="csac-warn">⚠ ' + big + ' Legendary or Mythic pet' + (big === 1 ? '' : 's') + ' ticked.</span>' : '';
+      s.innerHTML = head + '<span class="muted">counting the cost…</span>' + tail; clearTimeout(costT);
+      costT = setTimeout(function () { if (document.getElementById('cemSac') !== bg || ids().join() !== I.join()) return; var PL = plans(o, I), amt = PL.reduce(function (a, p) { return a + Number(p.amount || 0); }, 0);
+        go.disabled = !PL.length; s.innerHTML = head + fmt(Math.round(amt * 1e8) / 1e8) + ' XCPETS · ' + PL.length + ' burn' + (PL.length === 1 ? '' : 's') + tail; }, 300); }
     bg.addEventListener('click', function (e) { var t = e.target.closest('.csac-t'), q = e.target.closest('[data-q]');
       if (e.target.closest('.csac-x')) return close();
       if (e.target.closest('.csac-more')) return more();

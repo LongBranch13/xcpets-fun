@@ -73,7 +73,7 @@
   function bubbleTxt(x, s, cx, by) { x.font = '6px "Press Start 2P", monospace'; var words = String(s || '').split(' '), lines = [''], i;
     for (i = 0; i < words.length; i++) { var tl = lines[lines.length - 1] ? lines[lines.length - 1] + ' ' + words[i] : words[i]; if (x.measureText(tl).width > 118 && lines[lines.length - 1]) lines.push(words[i]); else lines[lines.length - 1] = tl; }
     lines = lines.slice(0, 2); var w = Math.ceil(Math.max.apply(null, lines.map(function (l) { return x.measureText(l).width; }))) + 8, h = lines.length * 9 + 4, bx = Math.round(Math.max(186, Math.min(W - w - 2, cx - w / 2))), y0 = Math.round(by - h);
-    px(x, '#000', bx + 1, y0 + 1, w, h); px(x, '#fff8e1', bx, y0, w, h); px(x, '#fff8e1', Math.round(cx) - 2, y0 + h, 4, 3); x.fillStyle = '#1b1b1b'; lines.forEach(function (l, n) { x.fillText(l, bx + 4, y0 + 9 + n * 9); }); }
+    px(x, '#000', bx + 1, y0 + 1, w, h); px(x, '#fff8e1', bx, y0, w, h); px(x, '#fff8e1', Math.round(cx) - 2, y0 + h, 4, 3); x.fillStyle = '#1b1b1b'; lines.forEach(function (l, n) { x.fillText(l, bx + 4, y0 + 9 + n * 9); }); return { x: bx, y: y0, w: w + 1, h: h + 3 }; }
   /* AMBIENT PETS (display only): up to 3 small pets hang around the room, drawn with the site renderer (V2Render.petFrames). The player's own living pets
    * when connected, otherwise 3 real pets picked by a fixed seed from the chain world. Frames are cached once per pet; reduced motion: no bob. */
   var AMB = [{ x: 66, y: 112, s: 18 }, { x: 92, y: 116, s: 18 }, { x: 118, y: 120, s: 16 }];
@@ -231,7 +231,8 @@
     var wl = st.phase === 'idle' && wheelOnNow(); if (wl) wheelGlow(x, WH.x, WH.y, WH.r, t); tapState(S.c && S.c.parentNode && S.c.parentNode.querySelector('.wh-tap'), st.phase); wheel(x, WH.x, WH.y, WH.r, S.ang, S.pepe); plate(x, st.caption, WH.x + 8, 148, 4);
     if (S.c && S.c._ph !== st.phase) { S.c._ph = st.phase; S.c.setAttribute('aria-label', st.phase === 'wait' ? 'The Rare Room. The Pepe Wheel is waiting for the next block. Your roll is in flight.' : st.phase === 'spin' ? 'The Rare Room. The Pepe Wheel is doing a short spin.' : 'The Rare Room: your gear framed on the gallery walls, the try-on mirror, and Captain Dan at the Pepe Wheel (tap the wheel to roll for gear)'); }
     drawAmb(x, t); danBody(x, DAN.x, DAN.y, t);
-    bubbleTxt(x, S.say || lineAt(S.line), DAN.x + 6, 92); /* rare-room-v2: tail ends 3px above Dan's hat (was touching at 95) */
+    var said = bubbleTxt(x, S.say || lineAt(S.line), DAN.x + 6, 92); /* rare-room-v2: tail ends 3px above Dan's hat (was touching at 95) */
+    if (window.V2Sharp && V2Sharp.top) V2Sharp.top(S.c, W, [said]); /* scene-top: Captain Dan's words stay above the decoration layers */
     if (!reduced() && !S.off) S.raf = requestAnimationFrame(function (n) { if (n - (S.lt || 0) > 3200) { S.lt = n; S.line++; S.say = null; } draw(n); }); else S.raf = 0; }
   function hang(x, t, it, ix, iy, slot) { var sel = S.sel && S.sel.gid === it.gid, hov = S.hov && S.hov.gid === it.gid, lift = sel || hov ? (reduced() ? 3 : 3 + (Math.floor(t / 200) % 2)) : 0;
     if (!reduced() && !lift) { x.fillStyle = 'rgba(255,236,170,.07)'; x.fillRect(ix - 2, iy - 6, 20, 30); }
