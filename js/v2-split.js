@@ -981,7 +981,13 @@
   }
   function petSig(p) {
     var z = p && p.zombie;
-    return [(p && p.care | 0), (p && p.owner) || '', p && p.dead ? 1 : 0, p && p.released ? 1 : 0, p && p.stage | 0, (p && p.deed) || '', (z && !z.end) ? (z.fedAt | 0) : 0, p && p.feral ? 1 : 0].join(':');
+    /* Nov 27 2026 (G Money: 'this burn would land on different pets than the ones you picked'): the sig left out the discard flag, so an open page
+   * never took in its own on-chain discards or add-backs (nor feeds, renames, fights, quests) until a reload. It planned the next discard / add-back
+   * from that old list and the pre-sign check refused it. These fields change with a burn; both copies (js/v2-split.js, js/v2-verify-worker.js)
+   * must stay the same. */
+  if (!p) return '';
+  return [p.care | 0, p.owner || '', p.dead ? 1 : 0, p.released ? 1 : 0, p.stage | 0, p.deed || '', (z && !z.end) ? (z.fedAt | 0) : 0, p.feral ? 1 : 0,
+    p.hd || '', p.hdH ? p.hdH.length : 0, p.lastFed | 0, p.deathBlock | 0, p.name || '', p.tier | 0, p.wins | 0, p.losses | 0, p.breeds | 0, p.quest ? 1 : 0, p.usedUp || ''].join(':');
   }
   function requestSync() {
     if (!worker || !ready) return;
@@ -1020,7 +1026,7 @@
     var scripts = scriptList();
     if (!scripts || typeof Worker === 'undefined') return Promise.resolve(null);
     readyP = new Promise(function (res) {
-      try { worker = new Worker(new URL('js/v2-verify-worker.js?v=follow1125b', location.href).href); }
+      try { worker = new Worker(new URL('js/v2-verify-worker.js?v=c425bf4f15', location.href).href); }
       catch (e) { res(null); return; }
       worker.onmessage = function (ev) {
         var m = ev.data || {};
