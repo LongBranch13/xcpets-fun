@@ -127,14 +127,82 @@
    * animate() is O(1) (Map), and the tick only repaints canvases that are connected AND on screen (IntersectionObserver), never when the tab is hidden. */
   var idCache = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
   function imgOf(img) { var d = idCache && idCache.get(img); if (!d) { d = new ImageData(new Uint8ClampedArray(img.data), 32, 32); if (idCache && img && typeof img === 'object') idCache.set(img, d); } return d; }
+  /* giant-look-1128 (Jake: 'giant pets dont actually look giant', picked all 3 looks). DISPLAY ONLY.
+   * A Giant's 64 px scene used to be squeezed back into the same box as a normal pet, so it looked normal-sized.
+   * Now any card canvas 48 px or wider keeps its box but the Giant is drawn 1.6x bigger from the box's bottom edge,
+   * so it bursts out over the top of its card, with a heavy shadow and an occasional stomp.
+   * The scene's background stays only inside the card's own box; outside it is see-through. Clicks pass through to the card.
+   * Smaller canvases (icons, table rows) keep the old squeezed view. A container with class xg-off opts out. */
+  var XG_MIN = 48, xgCache = typeof WeakMap !== 'undefined' ? new WeakMap() : null, xgCssOn = false;
+  function xgCss() { if (xgCssOn || typeof document === 'undefined') return; xgCssOn = true; var st = document.createElement('style'); st.id = 'xgGiantCss';
+    /* 1.6x from the box's bottom edge: about half again as tall as the pets around it, head over the card's top; the card's
+     * content-visibility (paint containment) would clip it, so a card holding a Giant paints normally (39 Giants: no cost). */
+    st.textContent = 'canvas.xg-giant{transform:scale(1.6);transform-origin:50% 100%;background:transparent!important;border-radius:0!important;box-shadow:none!important;outline:0!important;overflow:visible!important;pointer-events:none;position:relative;z-index:1;animation:xgStomp 7s ease-out infinite}'
+      + '*:has(>canvas.xg-giant){content-visibility:visible!important;contain:none!important;overflow:visible!important}'
+      + '.pet:has(>canvas.xg-giant){padding-top:max(8px,22%)}' /* a My Pets / breed card makes room so the head pops over its own top edge, not over the row above */
+      + '@keyframes xgStomp{0%,84%,100%{transform:scale(1.6)}87%{transform:translateY(-4%) scale(1.6)}90%{transform:translateY(0) scale(1.648,1.552)}92%{transform:translateX(-1.2%) scale(1.6)}94%{transform:translateX(1.2%) scale(1.6)}96%{transform:translateX(-.6%) scale(1.6)}98%{transform:scale(1.6)}}'
+      + '.pc-art:has(>canvas.xg-giant){overflow:visible!important;overflow-x:clip!important}.pc-art>canvas.xg-giant{transform:scale(1.2);animation-name:xgStompP}'
+      + '@keyframes xgStompP{0%,84%,100%{transform:scale(1.2)}87%{transform:translateY(-2%) scale(1.2)}90%{transform:translateY(0) scale(1.236,1.164)}92%{transform:translateX(-1.2%) scale(1.2)}94%{transform:translateX(1.2%) scale(1.2)}96%{transform:translateX(-.6%) scale(1.2)}98%{transform:scale(1.2)}}'
+      + '.xg-strip{display:block;width:100%!important;height:auto!important;aspect-ratio:auto!important;max-width:340px!important;margin:0 auto 8px;image-rendering:pixelated;border:3px solid #000;border-radius:4px;background:linear-gradient(#2a2346,#171329)}.xg-cap{text-align:center;font-size:12px;margin:-4px 0 8px;opacity:.9}'
+      + '@media (prefers-reduced-motion:reduce){canvas.xg-giant{animation:none}}';
+    (document.head || document.documentElement).appendChild(st); }
+  function xgData(rs) { var hit = xgCache && xgCache.get(rs); if (hit) return hit;
+    var d = new Uint8ClampedArray(rs.data), bg = [d[0], d[1], d[2]], x, y, i, x0 = 64, x1 = -1, y1 = -1;
+    var isBg = function (j) { return Math.abs(d[j] - bg[0]) + Math.abs(d[j + 1] - bg[1]) + Math.abs(d[j + 2] - bg[2]) < 24; };
+    for (y = 0; y < 64; y++) for (x = 0; x < 64; x++) if (!isBg((y * 64 + x) * 4)) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y > y1) y1 = y; }
+    if (x1 >= 0) { /* heavy ground shadow + floor cracks, inside the card's own box (columns 16-47, rows 32-63) */
+      var cx = (x0 + x1 + 1) / 2, hw = Math.min(17, (x1 - x0 + 1) / 2 + 3), sy = Math.min(62, y1);
+      for (y = sy - 1; y < 64; y++) for (x = 16; x < 48; x++) { var ex = (x + .5 - cx) / hw, ey = (y + .5 - (sy + 1.5)) / 2.6; i = (y * 64 + x) * 4;
+        if (ex * ex + ey * ey <= 1 && isBg(i)) { d[i] = Math.round(d[i] * .35); d[i + 1] = Math.round(d[i + 1] * .35); d[i + 2] = Math.round(d[i + 2] * .35); } }
+      [[17, 63], [18, 62], [19, 62], [20, 61], [21, 61], [46, 63], [45, 62], [44, 62], [43, 61], [42, 61]].forEach(function (q) { i = (q[1] * 64 + q[0]) * 4; if (isBg(i)) { d[i] = 10; d[i + 1] = 8; d[i + 2] = 14; } }); }
+    for (y = 0; y < 64; y++) for (x = 0; x < 64; x++) { if (x >= 16 && x < 48 && y >= 32) continue; i = (y * 64 + x) * 4; if (isBg(i)) d[i + 3] = 0; }
+    var out = typeof ImageData !== 'undefined' ? new ImageData(d, 64, 64) : { data: d, width: 64, height: 64 }; if (xgCache) xgCache.set(rs, out); return out; }
+  function giantOff(c) { if (!c._xg) return; c._xg = 0; c.classList.remove('xg-giant'); c.style.animationDelay = ''; }
+  function giantPaint(c, img, rs) {
+    if (c._xgSmall || (c.closest && c.closest('.xg-off'))) return false;
+    var w0 = c.offsetWidth; if (w0 && w0 < XG_MIN) { c._xgSmall = 1; return false; }
+    if (c._rareStyle) { c.style.width = c._rareStyle.width; c.style.height = c._rareStyle.height; c.style.maxWidth = c._rareStyle.maxWidth; c._rareStyle = null; }
+    xgCss(); if (c.width !== 64 || c.height !== 64) c.width = c.height = 64;
+    c.getContext('2d').putImageData(xgData(rs), 0, 0);
+    if (!c._xg) { c._xg = 1; c.classList.add('xg-giant'); c.style.animationDelay = (-Math.random() * 7).toFixed(2) + 's'; /* giants never stomp in step */
+      if (!w0 && typeof requestAnimationFrame !== 'undefined') requestAnimationFrame(function () { var w1 = c.offsetWidth; if (c._xg && w1 && w1 < XG_MIN) { c._xgSmall = 1; giantOff(c); paint(c, img); } }); }
+    if (c._mfx) mythDetach(c); if (window.V2Looks && (c._lkx || V2Looks.info(img))) V2Looks.attach(c, img); if (window.V2Weird && (img.wl || c._wlx)) V2Weird.attach(c, img);
+    return true; }
+  /* giant-look-1128 pet page: the Giant on a strip of grass next to two normal pets (the owner's own when it has some) and a tree,
+   * all at the same pixel size, with a height ruler, so 'twice as tall' is plain to see. Display only; nothing here touches the rules. */
+  function xgCut(p, w) { var mk = function (bg) { var q = Object.assign({}, p, { art: Object.assign({}, p.art, { background: 'solid', bgColor: bg, pattern: 'none' }) }); var f = petFrames(q, w, { noHunger: true }); return f && f[0] ? nativeFrame(f[0]) : null; };
+    var A = mk('#ff00fe'), B = mk('#00ff01'); if (!A || !B || (A.width || 32) !== (B.width || 32)) return null; var S = A.width || 32, d = new Uint8ClampedArray(A.data), x0 = S, y0 = S, x1 = -1, y1 = -1, x, y, i;
+    for (y = 0; y < S; y++) for (x = 0; x < S; x++) { i = (y * S + x) * 4; if (Math.abs(A.data[i] - B.data[i]) + Math.abs(A.data[i + 1] - B.data[i + 1]) + Math.abs(A.data[i + 2] - B.data[i + 2]) > 60 || (S === 32 && x >= 27 && y < 5)) d[i + 3] = 0; else { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; } }
+    if (x1 < 0) return null; var c = document.createElement('canvas'); c.width = x1 - x0 + 1; c.height = y1 - y0 + 1; c.getContext('2d').putImageData(new ImageData(d, S, S), -x0, -y0, x0, y0, c.width, c.height); return c; }
+  function xgBuddies(p, w) { var list = (w && w.pets) || [], same = [], any = [], n = 0;
+    for (var i = list.length - 1; i >= 0 && n < 60000 && (same.length < 2); i--, n++) { var q = list[i]; if (!q || q === p || !q.art || q.dead || q.released || q.zombie || (q.art.rareHatch) || (q.stage || 0) < 3 || q.owner !== p.owner) continue; if (q.species === p.species) same.push(q); else if (any.length < 2) any.push(q); }
+    var out = same.concat(any).slice(0, 2); if (out.length < 2) for (var j = list.length - 1; j >= 0 && out.length < 2 && j > list.length - 4000; j--) { var r = list[j]; if (r && r !== p && r.art && !r.art.rareHatch && !r.dead && !r.zombie && (r.stage || 0) >= 3 && out.indexOf(r) < 0) out.push(r); }
+    return out; }
+  function giantStrip(box, p, w) { if (!box || !box.parentNode) return; var old = box.parentNode.querySelector('.xg-strip-wrap'), rh = p && p.art && p.art.rareHatch;
+    if (!rh || rh.version !== 1 || rh.kind !== 'giant' || !p.stage || p.dead) { if (old) old.parentNode.removeChild(old); return; }
+    var key = p.id + ':' + p.stage + ':' + (w && w.tip); if (old && old._k === key) return;
+    var G = xgCut(p, w); if (!G) return; xgCss(); var buds = xgBuddies(p, w).map(function (q) { return { p: q, c: xgCut(q, w) }; }).filter(function (b) { return b.c; });
+    var GY = 54, H = 62, W = 156, c = document.createElement('canvas'); c.width = W; c.height = H; c.className = 'xg-strip'; var g = c.getContext('2d');
+    g.fillStyle = '#3c7a3a'; g.fillRect(0, GY, W, H - GY); g.fillStyle = '#000'; g.fillRect(0, GY, W, 1); g.fillStyle = '#2f6430'; for (var x = 1; x < W; x += 4) g.fillRect(x, GY + 3 + (x % 8 ? 0 : 2), 2, 1);
+    var top = GY - G.height; g.fillStyle = '#000'; g.fillRect(2, top - 1, 5, GY - top + 1); for (var y = GY - 1, k = 0; y >= top; y -= 4, k++) { g.fillStyle = k % 2 ? '#000' : '#ffd166'; g.fillRect(3, Math.max(top, y - 3), 3, Math.min(4, y - top + 1)); }
+    var bx = 12; g.fillStyle = 'rgba(0,0,0,.45)'; g.beginPath(); if (g.ellipse) g.ellipse(bx + G.width / 2, GY + 1, G.width * .42, 2.2, 0, 0, Math.PI * 2); g.fill(); g.drawImage(G, bx, GY - G.height + 1); bx += G.width + 6;
+    buds.forEach(function (b) { g.fillStyle = 'rgba(0,0,0,.4)'; g.beginPath(); if (g.ellipse) g.ellipse(bx + b.c.width / 2, GY + 1, b.c.width * .42, 1.5, 0, 0, Math.PI * 2); g.fill(); g.drawImage(b.c, bx, GY - b.c.height + 1); bx += b.c.width + 4; });
+    if (bx + 14 <= W) { g.fillStyle = '#000'; g.fillRect(bx + 4, GY - 9, 4, 9); g.fillStyle = '#6b3f1d'; g.fillRect(bx + 5, GY - 8, 2, 8); g.fillStyle = '#000'; g.fillRect(bx, GY - 20, 12, 12); g.fillStyle = '#2f8f3a'; g.fillRect(bx + 1, GY - 19, 10, 10); g.fillStyle = '#49b04f'; g.fillRect(bx + 2, GY - 18, 4, 3); }
+    var wrap = document.createElement('div'); wrap.className = 'xg-strip-wrap'; wrap._k = key; wrap.appendChild(c);
+    var cap = document.createElement('div'); cap.className = 'xg-cap'; cap.textContent = 'GIANT: twice as tall as a normal pet' + (buds.length ? ' (next to ' + buds.map(function (b) { return '#' + b.p.id; }).join(' and ') + ')' : '');
+    wrap.appendChild(cap); c.setAttribute('role', 'img'); c.setAttribute('aria-label', 'This Giant on the grass next to normal pets: twice as tall');
+    if (old) old.parentNode.replaceChild(wrap, old); else box.parentNode.insertBefore(wrap, box.nextSibling); }
   function paint(c, img) { if (!img || !img.data || img.data.length !== 4096) { if (window.console) console.warn('paint: skipped a malformed frame'); return; } if (img.rareScene) {
       var rs=img.rareScene;
       if(!rs.data||rs.width!==64||rs.height!==64||rs.data.length!==16384)throw new Error('invalid expanded rare scene');
+      if(rs.kind==='giant'&&giantPaint(c,img,rs))return;
+      giantOff(c);
       if(!c._rareStyle){var cs=window.getComputedStyle?getComputedStyle(c):null;c._rareStyle={width:c.style.width,height:c.style.height,maxWidth:c.style.maxWidth};c._rareBasePx=(cs&&parseFloat(cs.width))||c.clientWidth||32;}
       c.width=c.height=64;c.style.width='min(100%, '+Math.round(c._rareBasePx*2)+'px)';c.style.height='auto';c.style.maxWidth='100%';
       c.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(rs.data),64,64),0,0);
       if(c._mfx)mythDetach(c);if(window.V2Looks&&(c._lkx||V2Looks.info(img)))V2Looks.attach(c,img);if(window.V2Weird&&(img.wl||c._wlx))V2Weird.attach(c,img); /* weird-looks-1128 */return;
     }
+    giantOff(c);
     if(c._rareStyle){c.style.width=c._rareStyle.width;c.style.height=c._rareStyle.height;c.style.maxWidth=c._rareStyle.maxWidth;c._rareStyle=null;c.width=c.height=32;}
     /* goobys-grid-1107: a card canvas that was a 64px rare scene, or that still holds a previous frame, must be cleared before the 32px sprite is drawn or the old pixels smear across the card */
     if (c.width !== 32 || c.height !== 32) { c.width = c.height = 32; }
@@ -891,6 +959,26 @@
       if (my >= 0) { var runs = [], prev = false; for (x = 0; x < 32; x++) { var o = on(x, my); if (o && !prev) runs.push([x, x]); else if (o) runs[runs.length - 1][1] = x; prev = o; }
         var span = runs.length ? runs[runs.length - 1][1] - runs[0][0] + 1 : 0, widest = runs.reduce(function (m, r) { return Math.max(m, r[1] - r[0] + 1); }, 0); v = runs.length >= 2 && widest <= 0.6 * span; /* a tail tip beside a solid bottom (Doge) is not a pair of feet */ } } catch (e) { v = true; }
     if (feetMemo.size > 400) feetMemo.clear(); feetMemo.set(k, v); return v; }
+  /* rides (Jake Nov 28 2026, gear plan "Footwear becomes Ride", display only): ground pieces (skateboard, lily pad, coin) used to go through
+   * BonusGear feetBoth, which stamps the map once per foot, so a skateboard came out as two half boards. A ride is now drawn ONCE, under the whole
+   * body: as wide as the body's lowest rows plus 2 px each side (12-30 px), its deck on the row just under the body, so any body (bust or legs)
+   * stands on it. The map is built for that width (ends kept, middle repeated). Same palette and ink outline as BonusGear; the body is never painted
+   * over. FUNTRUMP and Groyper draw their own board / pad in their sprites (RIDE_OWN). Nothing in the rules changes: the piece, its slot and its power are the same. */
+  var RIDES = { 'ft-skateboard': 1, 'gp-lily-pad': 1, 'xcp-coin': 1 }, RIDE_OWN = { funtrump: 1, groyper: 1 };
+  function rideMap(id, W) { var r = function (c, n) { return new Array(Math.max(0, n) + 1).join(c); }, k, deck = '';
+    if (id === 'ft-skateboard') { for (k = 0; k < W - 2; k++) deck += (k % 4 === 2 ? 'y' : 'i'); return { deck: 1, map: ['i' + r('.', W - 2) + 'i', 'i' + deck + 'i', '.' + 'dd' + r('.', W - 6) + 'dd' + '.'] }; }
+    if (id === 'gp-lily-pad') { var top = '.' + r('m', W - 2) + '.', n = Math.max(2, Math.floor(W / 3)); top = top.slice(0, n) + '..' + top.slice(n + 2); top = top.slice(0, W - 4) + 'pi' + top.slice(W - 2);
+      for (k = 0; k < W - 2; k++) deck += (k % 5 === 3 ? 'm' : 'M'); return { deck: 1, map: [top, 'm' + deck + 'm', '..' + r('m', W - 4) + '..'] }; }
+    for (k = 0; k < W - 2; k++) deck += (k % 3 === 1 ? 'G' : 'g'); return { deck: 0, map: ['.' + r('g', W - 2) + '.', 'G' + deck + 'G', '.' + r('G', W - 2) + '.'] }; }
+  function drawRide(img, a, id) { if (!a || !a.isSil || a.maxY < 0) return false; var x, y, lo = 99, hi = -1, C = BonusGear.COLORS, INK = [26, 16, 32];
+    for (y = Math.max(0, a.maxY - 2); y <= a.maxY; y++) for (x = 0; x < 32; x++) if (a.isSil(x, y)) { lo = Math.min(lo, x); hi = Math.max(hi, x); }
+    if (hi < 0) return false; var W = Math.max(12, Math.min(30, hi - lo + 1 + 4)), x0 = Math.round((lo + hi + 1) / 2 - W / 2); x0 = Math.max(1, Math.min(31 - W, x0));
+    var R0 = rideMap(id, W), m = R0.map, y0 = Math.min(a.maxY + 1 - R0.deck, 31 - m.length) /* last row at 30: its ink stays on the canvas; a tall body overlaps the deck and stays in front */, L = {}, hexOf = function (h) { h = h.replace('#', ''); return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)]; };
+    m.forEach(function (row, j) { for (var i = 0; i < row.length; i++) if (row[i] !== '.' && C[row[i]]) L[(y0 + j) * 32 + x0 + i] = row[i]; });
+    var has = function (x2, y2) { return x2 >= 0 && y2 >= 0 && x2 < 32 && y2 < 32 && !!L[y2 * 32 + x2]; };
+    for (y = 0; y < 32; y++) for (x = 0; x < 32; x++) { if (a.isSil(x, y)) continue; var k2 = L[y * 32 + x];
+      if (k2) paintHex(img, x, y, hexOf(C[k2])); else if (has(x + 1, y) || has(x - 1, y) || has(x, y + 1) || has(x, y - 1)) paintHex(img, x, y, INK); }
+    return true; }
   function shoesOff(art, stage, ids) { if (!art || !stage || !ids || !ids.length || !ids.some(isShoe)) return ids; return hasFeet(art, stage) ? ids : ids.filter(function (id) { return !isShoe(id); }); }
   function framesWith(art, stage, itemIds, extraOv, cap, baseGo) { itemIds = shoesOff(art, stage, itemIds); var fr = framesWithB(art, stage, itemIds, extraOv, cap, baseGo); if (!(art && art.cross && art.cross.body && window.ContestSprite && ContestSprite.CROSS)) { /* 1 OF 1 CROSS body already carries its look */ if (art && art.boMark && !art.boLook) fr = boMarkFrames(fr, art, stage); if (art && art.rpMark && !art.rpLook) fr = rpMarkFrames(fr, art, stage); if (art && (art.rpLook || art.boLook)) fr = oneOfOneLookFrames(fr, art, stage); if (art && art.rareTier) fr = rareTierFrames(fr, art, stage, itemIds, extraOv, cap, baseGo); if (art && !stage && art.rareHatch) fr = rareEggFrames(fr, art, itemIds, extraOv, cap, baseGo); }
     if (window.V2ClownHair && stage && clownWanted(itemIds, extraOv)) fr = window.V2ClownHair.apply(fr, art, stage | 0);
@@ -1149,7 +1237,7 @@
         function restoreEyes() { if (!headSnap) return; eyePx.forEach(function (q) { var i = (q[1] * 32 + q[0]) * 4; img.data[i] = headSnap[i]; img.data[i + 1] = headSnap[i + 1]; img.data[i + 2] = headSnap[i + 2]; }); headSnap = null; }
         ov.forEach(function (id) { if (slotOf(id) === 'head' && !headSnap) headSnap = new Uint8ClampedArray(img.data); else if (slotOf(id) !== 'head' && headSnap) restoreEyes();
           try { var d = BonusGear.DEFS[id], it = V.GEAR_BY_ID[id] || {}, feetSnap = slotOf(id) === 'feet' ? new Uint8ClampedArray(img.data) : null;
-          rigidDraw(id, function () { if (id === 'dj-headphones' && drawStudioPhones(img, a)) return; if (id === 'dj-flat-cap') { if (!BonusGear.DEFS['dj-flat-cap~v2']) BonusGear.DEFS['dj-flat-cap~v2'] = Object.assign({}, BonusGear.DEFS['dj-flat-cap'], { dy: 2, map: FLAT_CAP }); id = 'dj-flat-cap~v2'; d = BonusGear.DEFS[id]; }
+          rigidDraw(id, function () { if (RIDES[id] && !RIDE_OWN[art.species] && drawRide(img, a, id)) return; if (id === 'dj-headphones' && drawStudioPhones(img, a)) return; if (id === 'dj-flat-cap') { if (!BonusGear.DEFS['dj-flat-cap~v2']) BonusGear.DEFS['dj-flat-cap~v2'] = Object.assign({}, BonusGear.DEFS['dj-flat-cap'], { dy: 2, map: FLAT_CAP }); id = 'dj-flat-cap~v2'; d = BonusGear.DEFS[id]; }
           if (F && it.slot === 'body' && d && d.map && d.at === 'chest' && !d.fitSil) F.outfit(img, a, d.map, BonusGear.COLORS); else if (isV2Face(id)) drawFace(id, img, faceSpots(bare, a, art.species), a); else if (d && d.at === 'mouth' && d.map && d.slot !== 'face') drawMouthHeld(d, img, faceSpots(bare, a, art.species), a); else if (d && d.v2snug) drawSnugBeanie(img, a); else if (d && d.kind === 'band' && d.at === 'head' && d.map && (BROW[a.spId] ? drawBrowBand(img, a, d, BROW[a.spId]) : bandLikeRed(img, key, stage, f, bare, d))) { /* brow, or the red headband footprint */ } else if (d && d.v2eye && drawEyeGear(img, a, d, d.v2eye.s === 'ninja' ? faceSpots(bare, a, art.species) : null) !== false) { /* traced */ } else { var fid = facedId(id, art), fa, placed = a.spId === 'peepo' ? placePeepoHead(fid, a) : null;
             if (!placed && BonusGear.DEFS[fid] && BonusGear.DEFS[fid].at === 'head' && (a.spId === 'sarutobi' || a.spId === 'wojak' || a.spId === 'mumu')) { var hd = BonusGear.DEFS[fid], fa0 = fitAnchors(fid, a), hh = hd.map ? hd.map.length : 0, htop = fa0.minY - hh + 1 + (hd.dy || 0); /* gear-sprites 2026-11-22: shrink a hat only when it would leave the canvas, and only as much as needed (a fixed 58%/85% shrink turned hats into smudges and broke lettering) */ if (hh && htop < 0) { var tid = placeScaled(fid, Math.max(0.6, (hh + htop) / hh)); if (tid) fid = tid; } }
             fa = placed ? placed.a : fitAnchors(fid, a); if (placed) fid = placed.id; if (isBoard(fid)) fa = boardOut(fid, fa); else fa = inFrame(fid, fa); var nk = neckFit(fid, fa), nkSnap = null; if (nk) { fid = nk.id; fa = nk.a; } if (nk || isNeckFront(fid)) nkSnap = new Uint8ClampedArray(img.data); BonusGear.apply(fid, img, fa, f); if (nkSnap) onBodyOnly(img, nkSnap, fa); } if (d && d.v2cig && ov.indexOf('v2-wojak-cig') < 0) { restoreEyes(); drawFace(d.v2cig, img, faceSpots(bare, a, art.species), a); } }); if (feetSnap) { var fL = grab(feetSnap, img.data); (feetKeep[id] = feetKeep[id] || [])[f] = { L: fL, n: fL.length / 5, bare: bd, post: new Uint8ClampedArray(img.data), img: img }; } } catch (e) {} }); restoreEyes(); injureAfter(img, a); });
@@ -1655,11 +1743,17 @@
         if (top >= 0 && Math.floor((x - minX) / 3 + fi) % 2 === 0) { /* droop in 3px chunks */ var q2 = (top * 32 + x) * 4, q3 = ((top + 1) * 32 + x) * 4; d[q2] = d[q3]; d[q2 + 1] = d[q3 + 1]; d[q2 + 2] = d[q3 + 2]; } }
       return o; }); }
   /* Explicit native scene boundary: legacy anatomy helpers remain 32px. */
+  var xgRM=null;function xgReduced(){if(xgRM==null)try{xgRM=!!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches);}catch(e){xgRM=false;}return xgRM;}
   function nativeFrame(f) { return f && (f.rareScene || f); }
   function exportFrame(f) { var a=nativeFrame(f),d=new Uint8ClampedArray(a.data),bg=[d[0],d[1],d[2]];for(var i=0;i<d.length;i+=4){var alpha=d[i+3]/255;if(alpha<1){for(var k=0;k<3;k++)d[i+k]=Math.round(d[i+k]*alpha+bg[k]*(1-alpha));d[i+3]=255;}}return {width:a.width||32,height:a.height||32,data:d}; }
-  function spriteCanvas(f,keyed) { var a=nativeFrame(f),c=document.createElement('canvas');c.width=a.width||32;c.height=a.height||32;var d=new Uint8ClampedArray(a.data);if(keyed)for(var i=0;i<d.length;i+=4)if((d[i]>240&&d[i+1]<16&&d[i+2]>240)||(d[i]===153&&d[i+1]===0&&d[i+2]===152))d[i+3]=0;c.getContext('2d').putImageData(new ImageData(d,c.width,c.height),0,0);return c; }
+  function spriteCanvas(f,keyed) { var a=nativeFrame(f),c=document.createElement('canvas');c.width=a.width||32;c.height=a.height||32;var d=new Uint8ClampedArray(a.data);if(keyed)for(var i=0;i<d.length;i+=4)if((d[i]>240&&d[i+1]<16&&d[i+2]>240)||(d[i]===153&&d[i+1]===0&&d[i+2]===152))d[i+3]=0;c.getContext('2d').putImageData(new ImageData(d,c.width,c.height),0,0);if(a.kind==='giant')c._xgKind='giant';return c; }
   function drawSprite(g,source,x,y,size,flip,bounds) { var c=source&&source.data&&typeof source.data!=='function'&&source.data.length?spriteCanvas(source,false):source;if(!c)return; /* a real canvas has no pixel buffer on .data; node-canvas exposes data() as a method */size=size||32;var n=(c.width||32)/32,sw=size*n,sh=size*((c.height||32)/32),dx=x+(size-sw)/2,dy=y+size-sh;
     if(n!==1){var b=bounds||{x:0,y:0,w:g.canvas.width,h:g.canvas.height},fit=Math.min(1,b.w/sw,b.h/sh);sw*=fit;sh*=fit;dx=Math.max(b.x,Math.min(b.x+b.w-sw,dx));dy=Math.max(b.y,Math.min(b.y+b.h-sh,dy));}
+    var xgK=n!==1&&(c._xgKind||(source&&source!==c&&nativeFrame(source).kind))==='giant'; /* giant-look-1128: a Giant in a scene stomps (lift, thud, dust) on a heavy shadow */
+    if(xgK){var xt=(typeof performance!=='undefined'?performance.now():Date.now())+(dx*37%1600),ph=xgReduced()?.5:(xt%1600)/1600,lift=ph<.12?Math.round(sh*.05*Math.sin(ph/.12*Math.PI)):0,fy=dy+sh;
+      g.save();g.fillStyle='rgba(0,0,0,.38)';g.beginPath();if(g.ellipse)g.ellipse(dx+sw/2,fy-sh*.03,sw*.36,Math.max(1.5,sh*.045),0,0,Math.PI*2);g.fill();
+      if(ph>=.12&&ph<.32){var k=(ph-.12)/.2,r=Math.max(1,Math.round(sw*.035));g.globalAlpha=1-k;g.fillStyle='#d9cfe9';[[-1,0],[1,0],[-1,-1],[1,-1]].forEach(function(o,j){g.fillRect(Math.round(dx+sw/2+o[0]*(sw*.3+k*sw*.18)-r/2),Math.round(fy-sh*.04+o[1]*(r+k*r*2)-r),r,r);});}
+      g.restore();dy-=lift;}
     g.save();g.imageSmoothingEnabled=false;if(flip){g.translate(dx+sw,dy);g.scale(-1,1);g.drawImage(c,0,0,sw,sh);}else g.drawImage(c,dx,dy,sw,sh);g.restore();return {x:dx,y:dy,w:sw,h:sh}; }
   function displayFramesWith(art, stage, ids, ov, cap, go) {
     var fr=framesWith(art,stage,ids,ov,cap,go);if(!art||!art.rareHatch)return fr;
@@ -1730,7 +1824,7 @@
       if(size===32)return {width:32,height:32,data:out,wlBox:wlBox};
       // Explicit expanded scene; legacy callers get a safe bounded thumbnail.
       var thumb=new Uint8ClampedArray(4096);for(y=0;y<32;y++)for(x=0;x<32;x++)thumb.set(out.slice((y*2*64+x*2)*4,(y*2*64+x*2)*4+4),(y*32+x)*4);
-      return {width:32,height:32,data:thumb,wlBox:wlBox,rareScene:{width:64,height:64,data:out,worldPixelScale:1,primaryHead:'left'}};
+      return {width:32,height:32,data:thumb,wlBox:wlBox,rareScene:{width:64,height:64,data:out,worldPixelScale:1,primaryHead:'left',kind:kind}};
     });
   }
   // ---------------------------------------------------------------- standalone gear icons (the piece alone, not on a pet)
@@ -2323,7 +2417,7 @@
   /** graveCount / graveLine (grave gear): a dead pet that kept its gear (the owner's on-chain choice). */
   function graveCount(w, p) { return p && p.dead ? V.wornOf(w, p.id).length : 0; }
   function graveLine(w, p) { var n = graveCount(w, p); return n ? '🪦 Buried with ' + n + ' gear piece' + (n === 1 ? '' : 's') : ''; }
-  window.V2Render = { lastColdName: lastColdName, communityGoal: communityGoal, communityGoalFill: communityGoalFill, eraChip: eraChip, eraChip0: eraChip0, rareInfo: rareInfo, rareChip: rareChip, RARE_LEG: RARE_LEG, RARE_WEIRD: RARE_WEIRD, anatomyFramesWith:framesWith,nativeFrame:nativeFrame,exportFrame:exportFrame,spriteCanvas:spriteCanvas,drawSprite:drawSprite, rareHatchFrames: rareHatchFrames, originOf: originOf, genOf: genOf, mutationChip: mutationChip, traitsOf: traitsOf, traitChips: traitChips, mutationTip: mutationTip, mutationOdds: mutationOdds, bornExtraRows: bornExtraRows, badgesOf: badgesOf, JACKPOT_ODDS: JACKPOT_ODDS, frKey: frKey, gearShow: { get: gsGet, set: gsSet, hidden: gsHidden, shownWorn: shownWorn, hasFeet: hasFeet, isShoe: isShoe }, wardrobe: { get: wdGet, save: wdSave, apply: wardrobe, map: wdMap, ver: function () { return wdVer; }, KEY: WD_KEY }, godBornChip: godBornChip, haloSvg: haloSvg, burnLordFx: burnLordFx, FACING: FACING, setNextNo: setNextNo, kekOn: kekOn, KEK_CARD: KEK_CARD, communityTipHtml: communityTipHtml, communityGap: communityGap, comingSoonFrames: comingSoonFrames, comingSoonText: comingSoonText, wizardTopHtml: wizardTopHtml, COMMUNITY_NEXT_NO: COMMUNITY_NEXT_NO, showEl: showEl, careTarget: careTarget, communityStats: communityStats, communityWearing: communityWearing, bindCommunityTip: bindCommunityTip, wizardGear: wizardGear, coldFrames: coldFrames, genChip: genChip, breedExtrasHtml: breedExtrasHtml, bredFrom: bredFrom, communityFrames: communityFrames, communityGearText: communityGearText, drawSnugBeanie: drawSnugBeanie, drawEyeGear: drawEyeGear, fitAnchors: fitAnchors, drawFace: drawFace, faceSpots: faceSpots, facePos: facePos, isV2Face: isV2Face, paint: paint, animate: animate, framesWith: displayFramesWith, petFrames: petFramesC, petFramesRaw: petFrames, revive: revive, mythFx: mythFx, MYTH_MODE: MYTH_MODE, MYTH_PREVIEW: MYTH_PREVIEW, hungerDays: hungerDays, worn: worn, lazy: lazy, itemIcon: itemIcon, cpLogo: cpLogo, iconCanvas: iconCanvas, gearPicker: gearPicker, starveInfo: starveInfo, starveHtml: starveHtml, bindStarve: bindStarve, starveChip: starveChip, graveCount: graveCount, graveLine: graveLine, esc: esc, TID: TID, familyHtml: familyHtml };
+  window.V2Render = { lastColdName: lastColdName, communityGoal: communityGoal, communityGoalFill: communityGoalFill, eraChip: eraChip, eraChip0: eraChip0, rareInfo: rareInfo, rareChip: rareChip, RARE_LEG: RARE_LEG, RARE_WEIRD: RARE_WEIRD, anatomyFramesWith:framesWith,nativeFrame:nativeFrame,exportFrame:exportFrame,spriteCanvas:spriteCanvas,drawSprite:drawSprite,giantStrip:giantStrip, rareHatchFrames: rareHatchFrames, originOf: originOf, genOf: genOf, mutationChip: mutationChip, traitsOf: traitsOf, traitChips: traitChips, mutationTip: mutationTip, mutationOdds: mutationOdds, bornExtraRows: bornExtraRows, badgesOf: badgesOf, JACKPOT_ODDS: JACKPOT_ODDS, frKey: frKey, gearShow: { get: gsGet, set: gsSet, hidden: gsHidden, shownWorn: shownWorn, hasFeet: hasFeet, isShoe: isShoe }, wardrobe: { get: wdGet, save: wdSave, apply: wardrobe, map: wdMap, ver: function () { return wdVer; }, KEY: WD_KEY }, godBornChip: godBornChip, haloSvg: haloSvg, burnLordFx: burnLordFx, FACING: FACING, setNextNo: setNextNo, kekOn: kekOn, KEK_CARD: KEK_CARD, communityTipHtml: communityTipHtml, communityGap: communityGap, comingSoonFrames: comingSoonFrames, comingSoonText: comingSoonText, wizardTopHtml: wizardTopHtml, COMMUNITY_NEXT_NO: COMMUNITY_NEXT_NO, showEl: showEl, careTarget: careTarget, communityStats: communityStats, communityWearing: communityWearing, bindCommunityTip: bindCommunityTip, wizardGear: wizardGear, coldFrames: coldFrames, genChip: genChip, breedExtrasHtml: breedExtrasHtml, bredFrom: bredFrom, communityFrames: communityFrames, communityGearText: communityGearText, drawSnugBeanie: drawSnugBeanie, drawEyeGear: drawEyeGear, fitAnchors: fitAnchors, drawFace: drawFace, faceSpots: faceSpots, facePos: facePos, isV2Face: isV2Face, paint: paint, animate: animate, framesWith: displayFramesWith, petFrames: petFramesC, petFramesRaw: petFrames, revive: revive, mythFx: mythFx, MYTH_MODE: MYTH_MODE, MYTH_PREVIEW: MYTH_PREVIEW, hungerDays: hungerDays, worn: worn, lazy: lazy, itemIcon: itemIcon, cpLogo: cpLogo, iconCanvas: iconCanvas, gearPicker: gearPicker, starveInfo: starveInfo, starveHtml: starveHtml, bindStarve: bindStarve, starveChip: starveChip, graveCount: graveCount, graveLine: graveLine, esc: esc, TID: TID, familyHtml: familyHtml };
 })();
 /* Launch (Jake 2026-10-14): "Share to Telegram" + branching family tree (parents + grandparents) on the pet detail dialog and pet page. Opens t.me/share with the pet's deep link (pet.html?id=N) and a short brag. */
 (function () {

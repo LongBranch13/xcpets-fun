@@ -73,7 +73,7 @@
   function bubbleTxt(x, s, cx, by) { x.font = '6px "Press Start 2P", monospace'; var words = String(s || '').split(' '), lines = [''], i;
     for (i = 0; i < words.length; i++) { var tl = lines[lines.length - 1] ? lines[lines.length - 1] + ' ' + words[i] : words[i]; if (x.measureText(tl).width > 118 && lines[lines.length - 1]) lines.push(words[i]); else lines[lines.length - 1] = tl; }
     lines = lines.slice(0, 2); var w = Math.ceil(Math.max.apply(null, lines.map(function (l) { return x.measureText(l).width; }))) + 8, h = lines.length * 9 + 4, bx = Math.round(Math.max(186, Math.min(W - w - 2, cx - w / 2))), y0 = Math.round(by - h);
-    px(x, '#000', bx + 1, y0 + 1, w, h); px(x, '#fff8e1', bx, y0, w, h); px(x, '#fff8e1', Math.round(cx) - 2, y0 + h, 4, 3); x.fillStyle = '#1b1b1b'; lines.forEach(function (l, n) { x.fillText(l, bx + 4, y0 + 9 + n * 9); }); }
+    px(x, '#000', bx + 1, y0 + 1, w, h); px(x, '#fff8e1', bx, y0, w, h); px(x, '#fff8e1', Math.round(cx) - 2, y0 + h, 4, 3); x.fillStyle = '#1b1b1b'; lines.forEach(function (l, n) { x.fillText(l, bx + 4, y0 + 9 + n * 9); }); return { x: bx, y: y0, w: w + 1, h: h + 3 }; }
   /* AMBIENT PETS (display only): up to 3 small pets hang around the room, drawn with the site renderer (V2Render.petFrames). The player's own living pets
    * when connected, otherwise 3 real pets picked by a fixed seed from the chain world. Frames are cached once per pet; reduced motion: no bob. */
   var AMB = [{ x: 66, y: 112, s: 18 }, { x: 92, y: 116, s: 18 }, { x: 118, y: 120, s: 16 }];
@@ -145,7 +145,7 @@
   function slotOfG(g) { var V = window.V2Rules, it = V && (V.GEAR_BY_ID || {})[g.item], sl = (it && it.slot) || g.slot; return sl === 'weapon' ? 'hand' : sl; }
   /* rare-room-simple (owner Nov 22 2026 picked the meme slot names everywhere): short forms of the slot names (Headwear, Grip, Armor = body, Drip = back, Guise, Footwear).
    * The old plates had body/back swapped (body said DRIP, back said OUTFIT). */
-  var SLOT_SHORT = { head: 'HEAD', hand: 'GRIP', body: 'ARMOR', back: 'DRIP', face: 'GUISE', feet: 'FEET' }; /* slot-names: body shows as Armor, back keeps Drip (owner Nov 22 2026) */
+  var SLOT_SHORT = { head: 'HEAD', hand: 'GRIP', body: 'ARMOR', back: 'DRIP', face: 'GUISE', feet: 'RIDE' }; /* slot-names: body shows as Armor, back keeps Drip (owner Nov 22 2026) */
   function featured(n) { var w = window.V2UI && V2UI.world(), pid = S.pet != null ? S.pet : S.rollPet, L = S.all || [], a = L.filter(function (g) { return pid != null && g.on === pid; }), b = L.filter(function (g) { return a.indexOf(g) < 0; }).sort(function (p, q) { return tierOfG(q) - tierOfG(p); }); return a.concat(b).slice(0, n); }
   function bySlot() { var by = {}; (S.all || []).forEach(function (g) { var sl = slotOfG(g); (by[sl] = by[sl] || []).push(g); }); SLOT_ORDER.forEach(function (sl) { (by[sl] = by[sl] || []).sort(function (a, b) { return tierOfG(b) - tierOfG(a) || (a.on == null ? 1 : -1); }); }); return by; }
   var RR = { wall: '#2a0f4a', wall2: '#3b1766', velvet: '#9b1035', velvetHi: '#d0284f', velvetLo: '#5a0820', gold: '#e8b84a', goldHi: '#fff1a8', goldLo: '#8a5a12', teal: '#1fb5a5', emerald: '#0f6b55', floorA: '#efe8f6', floorB: '#1c0f33', vein: '#c9b8e0', sky: '#8fe3ff', jewel: ['#d0284f', '#1fb5a5', '#e8b84a', '#7b3fe4', '#2f6fe0'] };
@@ -231,7 +231,8 @@
     var wl = st.phase === 'idle' && wheelOnNow(); if (wl) wheelGlow(x, WH.x, WH.y, WH.r, t); tapState(S.c && S.c.parentNode && S.c.parentNode.querySelector('.wh-tap'), st.phase); wheel(x, WH.x, WH.y, WH.r, S.ang, S.pepe); plate(x, st.caption, WH.x + 8, 148, 4);
     if (S.c && S.c._ph !== st.phase) { S.c._ph = st.phase; S.c.setAttribute('aria-label', st.phase === 'wait' ? 'The Rare Room. The Pepe Wheel is waiting for the next block. Your roll is in flight.' : st.phase === 'spin' ? 'The Rare Room. The Pepe Wheel is doing a short spin.' : 'The Rare Room: your gear framed on the gallery walls, the try-on mirror, and Captain Dan at the Pepe Wheel (tap the wheel to roll for gear)'); }
     drawAmb(x, t); danBody(x, DAN.x, DAN.y, t);
-    bubbleTxt(x, S.say || lineAt(S.line), DAN.x + 6, 92); /* rare-room-v2: tail ends 3px above Dan's hat (was touching at 95) */
+    var said = bubbleTxt(x, S.say || lineAt(S.line), DAN.x + 6, 92); /* rare-room-v2: tail ends 3px above Dan's hat (was touching at 95) */
+    if (window.V2Sharp && V2Sharp.top) V2Sharp.top(S.c, W, [said]); /* scene-top: Captain Dan's words stay above the decoration layers */
     if (!reduced() && !S.off) S.raf = requestAnimationFrame(function (n) { if (n - (S.lt || 0) > 3200) { S.lt = n; S.line++; S.say = null; } draw(n); }); else S.raf = 0; }
   function hang(x, t, it, ix, iy, slot) { var sel = S.sel && S.sel.gid === it.gid, hov = S.hov && S.hov.gid === it.gid, lift = sel || hov ? (reduced() ? 3 : 3 + (Math.floor(t / 200) % 2)) : 0;
     if (!reduced() && !lift) { x.fillStyle = 'rgba(255,236,170,.07)'; x.fillRect(ix - 2, iy - 6, 20, 30); }
@@ -366,7 +367,7 @@
     el.innerHTML = '<div class="cr"><div class="cr-top"><b class="cr-h">🏷️ CLEARANCE RACK</b> <span class="cr-pv">Preview, not active</span></div>' +
       '<div class="cr-row">' + L.map(function (it) { var src = ''; try { src = R.iconCanvas(it.id).toDataURL(); } catch (e) { } return '<div class="cr-it t' + it.tier + '"><span class="cr-tag">SALE</span>' + (src ? '<img alt="" src="' + src + '">' : '') + '<b>' + esc(it.label) + '</b><small>' + esc(lword(it.slot) + ' · ' + (T[it.tier] || '')) + '</small><button type="button" class="q" disabled>Not for sale yet</button></div>'; }).join('') + '</div>' +
       '<div class="cr-hint small">New rack in ' + left + ' blocks · picked from block ' + hb + '’s hash</div><details class="small muted"><summary>How the rack is picked</summary>Each chain day (144 blocks) the hash of the day’s first block picks 4 pieces from the gear catalog (no signature pieces). Anyone can check it. Buying isn’t wired yet: what each piece costs and the rules are still the owner’s call.</details></div>'; }
-  var LW = { Headwear: 'Locks', Grip: 'Leverage', Outfits: 'Layers', Armor: 'Layers', Drip: 'Luster', Guise: 'Looks', Footwear: 'Leathers' };
+  var LW = { Headwear: 'Locks', Grip: 'Leverage', Outfits: 'Layers', Armor: 'Layers', Drip: 'Luster', Guise: 'Looks', Footwear: 'Leathers', Ride: 'Rollers' }; /* rides (Nov 28 2026): feet shows as Ride */
   function lword(sl) { var V = window.V2Rules, l = V && V.slotLabel ? V.slotLabel(sl) : sl; return LW[l] ? LW[l] + ' \u00b7 ' + l : l; }
   function hitAt(c, e) { var r = c.getBoundingClientRect(), mx = (e.clientX - r.left) * W / r.width, my = (e.clientY - r.top) * H / r.height; return S.hits.filter(function (q) { return mx >= q.x && mx < q.x + q.w && my >= q.y && my < q.y + q.h; })[0]; }
   function say(g) { } /* Dan keeps his own lines at the wheel; the price-tag sign shows the piece */
