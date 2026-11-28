@@ -966,6 +966,11 @@
     if (rev) rev._g = null; /* keep-pick: protected-pet answers are cached for one draw (taps reuse them) */
     $('packBox').classList.toggle('pkintro', !!(rev.kind === 'eggs' && rev.intro));
     if (rev.kind === 'eggs' && rev.intro) { var wi = world(); if (rev.eggs.some(function (id) { return wi.byId[id]; })) return drawIntro(wi); rev.intro = false; }
+    /* gear-crate (Jake Nov 28 2026): a small batch of your own new gear opens as a crate, one piece at a time, with Wear / Keep / Smash (js/v2-gear-crate.js).
+     * Wear and Smash build their burns with V2Rules.forgePlan and go through confirmPlans (sendBlock again before signing). See all = this list. */
+    $('packBox').classList.remove('gcrate');
+    if (rev.kind === 'gear' && !rev.gcList && window.V2GearCrate && V2GearCrate.fits(rev.wins, world(), ME)) { var rv = rev; return V2GearCrate.draw({ rev: rv, world: world, ME: ME, $: $, paint: paint, R: R, sendWhy: sendWhy, confirmPlans: confirmPlans, reduced: lifeReduced,
+      list: function () { if (rev !== rv) return; rv.gcList = 1; rv.page = 0; drawReveal(); }, close: function () { if (rev === rv) closeReveal(); } }); }
     var w = world(), gear = rev.kind === 'gear', list = gear ? rev.wins : rev.eggs.map(function (id) { return w.byId[id]; }).filter(Boolean), tiers = [0, 0, 0, 0];
     if (gear) list = list.slice().sort(function (a, b) { return (b.legendary ? 4 : b.tier || 0) - (a.legendary ? 4 : a.tier || 0); }); /* gear best first (Nov 26 2026): a 400-piece batch opens on its Legendaries, not on page after page of Commons. Display order only. */
     if (!gear) list = sortEggs(w, list, rev.sort); /* egg-review-sort 2026-10-24: display order only; rev.sel is keyed by pet id, so ticks survive re-sorting */
@@ -1062,7 +1067,7 @@
   var GEAR_CAPS = [['gm. it\'s something.', 'ser, this is a Common.', 'it\'s honest work.'], ['not bad, anon.', 'a little drip never hurt.', 'up only (slightly).'], ['wen moon? now.', 'rare drip acquired.', 'number go up.'], ['MUCH WOW. VERY RARE.', 'GIGABRAIN DROP.', 'WAGMI. legendary pull.']];
   function UXB_CAP(list) { var best = null; list.forEach(function (x) { var t = x.legendary ? 3 : x.tier || 0; if (!best || t > best.t) best = { t: t, x: x }; });
     return best ? GEAR_CAPS[best.t][(String(best.x.gid || best.x.item).length + best.t) % 3] : ''; }
-  function closeReveal() { if (rev && rev.kind === 'eggs') uDel(rev.all || rev.eggs); setTimeout(hdFlush, 400); var toInv = rev && rev.kind === 'gear', toPets = rev && rev.kind === 'eggs' && lastHatchN > 1; if (toPets && window.UXB && UXB.afterHatch) UXB.afterHatch(); if (!revealQ.length) packY = null; close('packBox'); rev = null; render(); setTimeout(nextReveal, 250);
+  function closeReveal() { if (rev && rev.kind === 'eggs') uDel(rev.all || rev.eggs); setTimeout(hdFlush, 400); var toInv = rev && rev.kind === 'gear', toPets = rev && rev.kind === 'eggs' && lastHatchN > 1; if (toPets && window.UXB && UXB.afterHatch) UXB.afterHatch(); if (!revealQ.length) packY = null; $('packBox').classList.remove('gcrate'); $('packBox').style.removeProperty('--gc'); /* gear-crate */ close('packBox'); rev = null; render(); setTimeout(nextReveal, 250);
     if (toPets && $('petsPanel')) setTimeout(function () { if (!$('packBox').classList.contains('on')) try { $('petsPanel').scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) { } }, 300);
     if (toInv && $('invPanel')) setTimeout(function () { if (!$('packBox').classList.contains('on')) try { $('invPanel').scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) { } }, 300); }
   /* pet total near the hatch buttons (2026-10-19, display only): every pet in the replayed world (w.pets.length, same as the top 'pets hatched'),
