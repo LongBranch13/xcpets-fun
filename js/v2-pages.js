@@ -154,7 +154,7 @@
     }
     fill(); setInterval(fill, 4200); }
   /* THE gravestone (option C): the dead pet's own stone, drawn at the top of its death note and in the old grave list */
-  function withStone(cb) { if (window.V2Gravestone) return cb(); var q = withStone.q = withStone.q || []; q.push(cb); if (q.length > 1) return; var t = document.createElement('script'); t.src = 'js/v2-gravestone.js?v=e6db15afb2'; t.onload = function () { withStone.q = []; q.forEach(function (f) { f(); }); }; t.onerror = function () { withStone.q = []; }; document.body.appendChild(t); }
+  function withStone(cb) { if (window.V2Gravestone) return cb(); var q = withStone.q = withStone.q || []; q.push(cb); if (q.length > 1) return; var t = document.createElement('script'); t.src = 'js/v2-gravestone.js?v=e1128f0b5e'; t.onload = function () { withStone.q = []; q.forEach(function (f) { f(); }); }; t.onerror = function () { withStone.q = []; }; document.body.appendChild(t); }
   function withReturn(cb) { if (window.V2Return) return cb(); var t = document.createElement('script'); t.src = 'js/v2-return.js?v=e6db15afb2'; t.onload = cb; document.body.appendChild(t); }
   /* Community Pets Archive (archive.html, Jake 2026-10-14): one box per COMPLETED community pet, from chain state. Registry: each community pet
    * brings its own Mythic sprite + Return animation; future pets (e.g. the next one) append an entry. Spoiler-free: empty until a cycle completes

@@ -249,6 +249,16 @@
 
   /* ------------------------------------------------------------------ the list ------------------------------------------------------------------ */
   var TL = ['Common', 'Uncommon', 'Rare', 'Legendary'], TID = ['common', 'uncommon', 'rare', 'legendary'];
+  /* grave-engrave (Nov 28 2026): a short meme epitaph carved on each stone, the same one every time for a grave (picked by its number).
+   * Half the graves of a species with its own lines use one of those; a Legendary often gets "here lies a legend". Display only. */
+  var EPI = ['ngmi', 'probably nothing', 'gone but not fud', 'forgot to feed', 'rekt', 'gm forever', 'wen resurrection?', 'still bullish', 'hodl’d too long',
+    'paper hands, big heart', 'brb, respawning', 'feed me, ser', 'touched grass, finally', 'it’s over (for now)', 'few understood', 'skill issue', 'down bad', 'not financial advice'],
+    EPI_SP = { pepe: ['feels bad man'], wojak: ['i know that feel'], chud: ['NO.'], bobo: ['bear market got me'], mumu: ['moooo (rip)'], snibby: ['too slow'], dodo: ['extinct, again'],
+      kevin: ['kevin.'], peepo: ['peepoSad'], sarutobi: ['ninja vanish'], doge: ['much dead. wow'], lenny: ['( ͡° ͜ʖ ͡°) rip'], chad: ['died based'], homer: ['d’oh'], funtrump: ['tremendous grave, the best'],
+      groyper: ['comfy forever'], rabbit: ['late, forever'], kek: ['kek.'], wizard: ['out of mana'], nakamoto: ['vanished, as is tradition'], aspie: ['ground up'], gooby: ['gooby pls'] };
+  function epitaph(p) { var id = +p.id || 0, h = Math.abs((id * 2654435761) | 0), sp = String(p.species || '').toLowerCase().split(/[^a-z]/)[0], own = EPI_SP[sp];
+    if (own && h % 2) return own[(h >> 3) % own.length]; if ((p.tier | 0) === 3 && h % 3 === 0) return 'here lies a legend'; return EPI[(h >> 2) % EPI.length]; }
+  function nameSize(n) { n = String(n || '').length; return n <= 9 ? '' : n <= 13 ? ' gs-n2' : ' gs-n3'; }
   /* grave finder: sort and filter run on the compact index (one page painted). Opening a grave loads V.cemView for that pet.
    * cemetery-rarity-1103: each sort does what its label says. Rarity score is filled in when that grave is opened.
    * "⚡ Most powerful" (was "Most power at death") is the power sort. */
@@ -362,6 +372,11 @@
     function graveCount() { return st.total || (st.index ? st.index.length : 0); }
     function status() { $('status').textContent = fmt(graveCount()) + ' grave' + (graveCount() === 1 ? '' : 's') + ' from every player. Any of them can be raised as your zombie.' + gateLine() + (V.retireDeadBanner ? ' ' + V.retireDeadBanner() : ''); }
     function canRaise(p) { if (!on || !p || !p.raisable) return false; var wp = w.byId && w.byId[p.id]; if (p.restOwner) return !!(ME === p.restOwner && wp && !V.cemGraveWhy(w, wp, ME, b)); if (!pub) return p.id === CE.OWNER_GRAVE && ME === CE.OWNER; if (wp && V.cemGraveWhy && V.cemGraveWhy(w, wp, ME, b)) return false; return true; }
+    /* grave-engrave: "you can afford it" = you can raise this grave and your Discard pile holds a living pet of the rarity it needs.
+     * The pile's best rarity is worked out once per page paint (myBest), never per card. */
+    function myBest() { var best = -1; if (!ME || !window.V2Own || !V2Own.discardSet) return best; var H = V2Own.discardSet(w, ME) || {}, k, q;
+      for (k in H) { q = w.byId && w.byId[k]; if (q && (q.tier | 0) > best && V2Own.isLiving(q, ME, { zombies: false })) { best = q.tier | 0; if (best >= 3) break; } } return best; }
+    function ready(p) { if (!canRaise(p) || p.state) return false; var nd = p.need != null ? +p.need : Math.max(0, (p.tier | 0) - 1); return st.best != null && st.best >= nd; }
     function headStart(wp) { return wp && V.mythicHeadStart ? V.mythicHeadStart(w, wp, b) : null; }
     function hsText(hs) { return 'Owner\'s head start: only the last owner ' + esc(sa(hs.owner)) + (ME && ME === hs.owner ? ' (you)' : '') + ' can raise this Mythic for ' + tm(hs.left) + ' more.'; }
     function hsHtml(hs) { if (!hs) return ''; var mine = ME && ME === hs.owner; return '<div class="cv2-hs" role="status">' + hsText(hs) + (mine ? '' : ' <span class="cv2-hs-stop">A seance from another wallet does not count, so this page will not send one.</span>') + '</div>'; }
@@ -370,11 +385,15 @@
       /* cem-raise-easy (Nov 24 2026): one look per card: the stone, the name, what it needs, its power, and one big Raise button.
        * Rarity score, owner, lived/hatched/died blocks and the burial line moved under "More about this grave". */
       var need = p.state ? badge : '<span class="cv2-need d-' + p.diff + '" title="Sacrifice at least 1 ' + esc(p.needLabel) + ' pet to start raising it">' + art(p.diff, 12) + ' Needs 1 <b>' + esc(p.needLabel) + '</b> sacrifice</span>';
-      return '<div class="tomb gtomb' + (p.mythic ? ' tomb-mythic' : '') + (p.state ? ' tomb-' + p.state : '') + (p.open ? ' tomb-open' : '') + '" id="tomb-' + p.id + '"><canvas class="gstone" width="52" height="62" data-id="' + p.id + '" role="img" aria-label="gravestone of #' + p.id + (p.state ? ', ' + esc(STATE[p.state]) : '') + '"></canvas>' +
-        '<h4><a href="pet.html?id=' + p.id + '">' + esc(p.name) + '</a> <span class="muted">#' + p.id + '</span></h4>' +
-        '<div class="small">' + esc(p.spl) + ' · <span class="pill tier tier-' + (p.resurrected ? 'god' : TID[p.tier]) + '">' + (p.resurrected ? 'God' : p.rank === 4 ? 'Mythic' : TL[p.tier]) + '</span>' + (p.mythic ? ' · 💜 Mythic grave' : '') + '</div>' +
-        '<div class="cv2-power">⚡ ' + fmt(p.power) + ' <small>power</small> · 💀 ' + fmt(p.days) + ' <small>day' + (p.days === 1 ? '' : 's') + ' dead</small></div>' +
-        '<div class="small cv2-badges">' + need + '</div>' +
+      /* grave-engrave (Nov 28 2026, Jake: "all the info would look cooler on the stone"): name, number, species, power and an epitaph are
+       * carved into the stone (real text laid over the pixel slab, so it stays sharp and readable); rarity and days dead sit under it. */
+      var rd = ready(p);
+      return '<div class="tomb gtomb' + (p.mythic ? ' tomb-mythic' : '') + (p.state ? ' tomb-' + p.state : '') + (p.open ? ' tomb-open' : '') + (rd ? ' tomb-ready' : '') + '" id="tomb-' + p.id + '">' +
+        '<div class="gs-wrap gs-t' + (p.tier | 0) + '"><canvas class="gstone gs-card" width="64" height="108" data-id="' + p.id + '" role="img" aria-label="gravestone of ' + esc(p.name) + ' #' + p.id + (p.state ? ', ' + esc(STATE[p.state]) : '') + '"></canvas>' +
+        '<div class="gs-eng gs-top"><a class="gs-name' + nameSize(p.name) + '" href="pet.html?id=' + p.id + '">' + esc(p.name) + '</a><span class="gs-no">#' + p.id + '</span></div>' +
+        '<div class="gs-eng gs-bot"><span class="gs-sp">' + esc(p.spl) + '</span><span class="gs-pw">⚡ ' + fmt(p.power) + '</span><span class="gs-epi">“' + esc(epitaph(p)) + '”</span></div></div>' +
+        '<div class="small cv2-sub"><span class="pill tier tier-' + (p.resurrected ? 'god' : TID[p.tier]) + '">' + (p.resurrected ? 'God' : p.rank === 4 ? 'Mythic' : TL[p.tier]) + '</span>' + (p.mythic ? ' 💜 Mythic grave' : '') + ' <span class="cv2-dead">💀 <b>' + fmt(p.days) + '</b> day' + (p.days === 1 ? '' : 's') + ' dead</span></div>' +
+        '<div class="small cv2-badges">' + need + (rd ? '<div class="cv2-have">✓ You have a pet to raise it</div>' : '') + '</div>' +
         (v && v.altar && !v.altar.seance ? '<div class="small cv2-pool">' + art('candle', 12) + ' Altar open · closes in ' + tm(v.altar.closesIn) + ' · top giver ' + esc(sa(v.altar.top || '')) + (v.altar.top === ME ? ' (you)' : '') + '</div>' : '') +
         hsHtml(hs) +
         (canRaise(p) ? '<button type="button" class="btn cv2-raise" data-raise="' + p.id + '">' + art('shovel', 12) + ' ' + (p.open ? 'Join the raising' : 'Raise it') + '</button>' : p.raisable && on && !pub ? '<div class="small muted cv2-lock">🧪 Owner test: ' + (p.id === CE.OWNER_GRAVE ? 'only the owner wallet can raise this grave' : 'only grave #' + CE.OWNER_GRAVE + ' can be raised for now') + '</div>' : '') +
@@ -465,8 +484,8 @@
     function pager(el, pages) { if (pages <= 1) { el.innerHTML = ''; return; } var bt = function (k, t, dis) { return '<button type="button" class="q" data-pg="' + k + '"' + (dis ? ' disabled' : '') + '>' + t + '</button>'; };
       el.innerHTML = bt('first', '⏮ First', !st.page) + bt('prev', '◀ Prev', !st.page) + '<label class="small">Page <input type="number" min="1" max="' + pages + '" value="' + (st.page + 1) + '" data-pgin aria-label="Page number"> of ' + fmt(pages) + '</label>' + bt('next', 'Next ▶', st.page >= pages - 1) + bt('last', 'Last ⏭', st.page >= pages - 1); }
     function paint() { var pages = Math.max(1, Math.ceil((st.matched || 0) / PER)); st.page = Math.max(0, Math.min(st.page, pages - 1)); var L = st.list || [];
-      tombs.innerHTML = L.length ? L.map(tomb).join('') : '<p class="muted small">No grave matches. Try a pet number, a name, a species or a full owner address, or clear a filter.</p>';
-      stoneJs(function () { L.forEach(function (p) { var wp = w.byId && w.byId[p.id], c = tombs.querySelector('canvas[data-id="' + p.id + '"]'); if (c && c.isConnected) window.V2Gravestone.draw(c, { art: wp && wp.art, stage: wp ? wp.stage : p.stage, tier: p.tier, state: p.state, crumbles: p.crumbles, open: !!p.open, mythic: !!p.mythic }); }); });
+      st.best = myBest(); tombs.innerHTML = L.length ? L.map(tomb).join('') : '<p class="muted small">No grave matches. Try a pet number, a name, a species or a full owner address, or clear a filter.</p>';
+      stoneJs(function () { L.forEach(function (p) { var wp = w.byId && w.byId[p.id], c = tombs.querySelector('canvas[data-id="' + p.id + '"]'); if (c && c.isConnected) window.V2Gravestone.draw(c, { id: p.id, art: (wp && wp.art) || (p.species ? { species: p.species } : null), stage: wp ? wp.stage : p.stage, tier: p.tier, state: p.state, crumbles: p.crumbles, open: !!p.open, mythic: !!p.mythic, engrave: true, days: p.days, ghost: true, ready: ready(p) }); }); });
       pager(pTop, pages); pager(pBot, pages); }
     function ask() { var dd = st.days ? st.days.split('-') : null, q = { page: st.page, per: PER, sort: st.sort, tier: st.tier, stage: st.stage, diff: st.diff, raisable: !!st.raisable, open: !!st.open, mine: !!st.mine, owner: ME || '', sp: st.sp, meals: st.q.trim() ? '' : st.meals, text: st.q };
       if (dd) { q.minDays = +dd[0]; if (dd[1] !== '') q.maxDays = +dd[1]; } return q; }
