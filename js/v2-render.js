@@ -133,12 +133,12 @@
       if(!c._rareStyle){var cs=window.getComputedStyle?getComputedStyle(c):null;c._rareStyle={width:c.style.width,height:c.style.height,maxWidth:c.style.maxWidth};c._rareBasePx=(cs&&parseFloat(cs.width))||c.clientWidth||32;}
       c.width=c.height=64;c.style.width='min(100%, '+Math.round(c._rareBasePx*2)+'px)';c.style.height='auto';c.style.maxWidth='100%';
       c.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(rs.data),64,64),0,0);
-      if(c._mfx)mythDetach(c);if(window.V2Looks&&(c._lkx||V2Looks.info(img)))V2Looks.attach(c,img);return;
+      if(c._mfx)mythDetach(c);if(window.V2Looks&&(c._lkx||V2Looks.info(img)))V2Looks.attach(c,img);if(window.V2Weird&&(img.wl||c._wlx))V2Weird.attach(c,img); /* weird-looks-1128 */return;
     }
     if(c._rareStyle){c.style.width=c._rareStyle.width;c.style.height=c._rareStyle.height;c.style.maxWidth=c._rareStyle.maxWidth;c._rareStyle=null;c.width=c.height=32;}
     /* goobys-grid-1107: a card canvas that was a 64px rare scene, or that still holds a previous frame, must be cleared before the 32px sprite is drawn or the old pixels smear across the card */
     if (c.width !== 32 || c.height !== 32) { c.width = c.height = 32; }
-    var pg = c.getContext('2d'); pg.setTransform(1, 0, 0, 1, 0, 0); pg.clearRect(0, 0, c.width, c.height); pg.putImageData(imgOf(img), 0, 0); if (MYTH_MODE || c._mfx) mythAttach(c, img); if (window.V2Looks && (c._lkx || V2Looks.info(img))) V2Looks.attach(c, img); } /* wiz-black-fix: never throw on a bad frame */
+    var pg = c.getContext('2d'); pg.setTransform(1, 0, 0, 1, 0, 0); pg.clearRect(0, 0, c.width, c.height); pg.putImageData(imgOf(img), 0, 0); if (MYTH_MODE || c._mfx) mythAttach(c, img); if (window.V2Looks && (c._lkx || V2Looks.info(img))) V2Looks.attach(c, img); if (window.V2Weird && (img.wl || c._wlx)) V2Weird.attach(c, img); /* weird-looks-1128 */ } /* wiz-black-fix: never throw on a bad frame */
   var animated = new Map(), seen = typeof IntersectionObserver !== 'undefined' ? new IntersectionObserver(function (es) { es.forEach(function (e) { var a = animated.get(e.target); if (!a) return; var was = a.vis; a.vis = e.isIntersecting; if (a.vis && !was) ensureOutline(e.target); }); }) : null;
   /* shared clock (Nov 26 2026, smooth): the 300 ms sprite step runs inside requestAnimationFrame, so every pet flips in the same frame the browser
    * paints anyway (and the same frame the Mythic outlines draw in), instead of a separate timer that forced its own extra paint between frames. */
@@ -1578,6 +1578,7 @@
     var lk = looksOf(p, w, extra); /* looks-draw REAL (display only): realistic look overlays on top of the pixel sprite, see js/v2-looks.js */
     if (lk.length) try { var lkKey = function (bg) { var kf = keyed0(bg); return fr.map(function (_, i) { return kf[i % kf.length]; }); };
       var A0 = lkKey('#ff00fe'), B0 = lkKey('#00ff01');if(p.art.rareHatch){A0=rareHatchFrames(A0,Object.assign({},p,{art:Object.assign({},p.art,{bgColor:'#ff00fe'})}),w,extra);B0=rareHatchFrames(B0,Object.assign({},p,{art:Object.assign({},p.art,{bgColor:'#00ff01'})}),w,extra);} window.V2Looks.attachInfo(fr, A0, B0, lk, p.id); } catch (e) { if (window.console) console.warn('looks failed #' + (p && p.id), e); }
+    if (window.V2Weird) try { V2Weird.tag(fr, p, w); } catch (e) {} /* weird-looks-1128: card overlays for weird hatches, mutations and throwbacks (js/weird-looks.js) */
     return fr; }
   function looksOf(p, w, extra) { if (extra && extra.looks && window.V2Looks) return extra.looks; /* look picker previews: draw exactly these looks */
     if (!p || p.released || !w || (extra && extra.noLooks) || !window.V2Looks || !V.shownLooks || !(p.flameLooks || p.questLooks || p.earn || w.lookCopies)) return [];
@@ -1662,7 +1663,12 @@
       }
       if (!p.stage || ['god','djpepe','wizard','kek','wrong-egg'].indexOf(kind)>=0) return f;
       if (kind==='inverted') { body.forEach(function(q){var i=q*4;data[i]=255-data[i];data[i+1]=255-data[i+1];data[i+2]=255-data[i+2];});return {width:32,height:32,data:data}; }
-      if (kind==='ghost') { body.forEach(function(q){data[q*4+3]=Math.round(data[q*4+3]*.38);});return {width:32,height:32,data:data}; }
+      if (kind==='ghost') { /* weird-looks-1128: see-through and pale blue (blended into the backdrop, not just faded), the feet fade into a wispy tail, a faint afterimage trails behind */
+        var gbg=[f.data[0],f.data[1],f.data[2]],gin={},gmk={},gy1=-1;mask.forEach(function(q){gmk[q]=1;});body.forEach(function(q){gin[q]=1;gy1=Math.max(gy1,Math.floor(q/32));});
+        body.forEach(function(q){var i=q*4,yy=Math.floor(q/32),xx=q%32,l=(f.data[i]*.3+f.data[i+1]*.59+f.data[i+2]*.11),tc=[l*.55+95,l*.62+120,l*.5+150],k=.52;
+          var up=gy1-yy;if(up<5){k*=up/5;if((xx+yy)%2&&up<3)k=0;}for(var c3=0;c3<3;c3++)data[i+c3]=Math.round(gbg[c3]+(tc[c3]-gbg[c3])*k);});
+        body.forEach(function(q){var xx=q%32,yy=Math.floor(q/32),t=q-2;if(xx<2||gin[t]||gin[t+1]||gmk[t]||gy1-yy<4)return;var i=t*4,l=(f.data[q*4]*.3+f.data[q*4+1]*.59+f.data[q*4+2]*.11);for(var c3=0;c3<3;c3++)data[i+c3]=Math.round(data[i+c3]+([l*.55+95,l*.62+120,l*.5+150][c3]-data[i+c3])*.16);});
+        return {width:32,height:32,data:data}; }
       var x0=32,y0=32,x1=-1,y1=-1;mask.forEach(function(q){x0=Math.min(x0,q%32);x1=Math.max(x1,q%32);y0=Math.min(y0,Math.floor(q/32));y1=Math.max(y1,Math.floor(q/32));});
       if(x1<0)return f;
       var bg = [f.data[0],f.data[1],f.data[2],255];
@@ -1672,19 +1678,24 @@
       if(size===32)out.set(data);else for(y=0;y<64;y++)for(x=0;x<64;x++){q=(y*64+x)*4;for(var k=0;k<4;k++)out[q+k]=bg[k];}
       var cx=(x0+x1+1)/2,baseline=y1+1,scale=kind==='tiny'?.5:kind==='giant'?2:1;
       function put(px,py,rgba){if(px<0||py<0||px>=size||py>=size)return;out.set(rgba,(py*size+px)*4);}
-      function stamp(points,sc,dx,source,headOnly){points.forEach(function(q){var sx=q%32,sy=Math.floor(q/32),flip=kind==='backwards',tx=flip?x0+x1-sx:sx;
-        var xx=Math.floor((tx-cx)*sc+size/2+dx),yy=Math.floor((sy-baseline)*sc+(size===64?62:baseline));
-        var pixel=Array.prototype.slice.call(source,q*4,q*4+4),n=sc===2?2:1;for(var oy=0;oy<n;oy++)for(var ox=0;ox<n;ox++)put(xx+ox,yy+oy,pixel);
+      var bx0=size,by0=size,bx1=-1,by1=-1; /* weird-looks-1128: where the stamped pet sits (frame.wlBox) */
+      /* weird-looks-1128: any scale (Two-headed is stamped bigger now); a source pixel fills [floor(a*sc), floor((a+1)*sc)), at least 1 px: same pixels as before for 0.5x and 2x */
+      function stamp(points,sc,dx,source,headOnly){var by=size===64?62:baseline;points.forEach(function(q){var sx=q%32,sy=Math.floor(q/32),flip=kind==='backwards',tx=flip?x0+x1-sx:sx;
+        var ax=(tx-cx)*sc+size/2+dx,ay=(sy-baseline)*sc+by,xx=Math.floor(ax),yy=Math.floor(ay),nx=Math.max(1,Math.floor(ax+sc)-xx),ny=Math.max(1,Math.floor(ay+sc)-yy);
+        var pixel=Array.prototype.slice.call(source,q*4,q*4+4);for(var oy=0;oy<ny;oy++)for(var ox=0;ox<nx;ox++)put(xx+ox,yy+oy,pixel);
+        bx0=Math.min(bx0,xx);by0=Math.min(by0,yy);bx1=Math.max(bx1,xx+nx-1);by1=Math.max(by1,yy+ny-1);
       });}
       if(kind==='two-headed'){
         var split=Math.max(y0+1,y1-4),head=mask.filter(function(q){return Math.floor(q/32)<split;}),torso=mask.filter(function(q){return Math.floor(q/32)>=split;});
-        var headOffset=Math.ceil((x1-x0+1)/2);stamp(torso,1,0,f.data);stamp(head,1,-headOffset,f.data); // primary = LEFT, receives the one headgear slot
-        var secondary=nakedBody.filter(function(q){return Math.floor(q/32)<split;});stamp(secondary,1,headOffset,nakedReal[fi%nakedReal.length].data);
+        var headOffset=Math.ceil((x1-x0+1)*.36),span=(x1-x0+1)+2*headOffset,ths=Math.min(2,Math.floor(58/span*8)/8,Math.floor(56/(y1-y0+1)*8)/8); /* leaves 3 px around it for the Mythic aura */ /* weird-looks-1128: heads closer together and the whole pet stamped big enough to fill its card (was 1x in the 64 px scene, so it showed as two tiny twins) */
+        stamp(torso,ths,0,f.data);stamp(head,ths,-headOffset*ths,f.data); // primary = LEFT, receives the one headgear slot
+        var secondary=nakedBody.filter(function(q){return Math.floor(q/32)<split;});stamp(secondary,ths,headOffset*ths,nakedReal[fi%nakedReal.length].data);
       } else stamp(mask,scale,0,f.data);
-      if(size===32)return {width:32,height:32,data:out};
+      var wlBox=bx1<0?null:[bx0/size,by0/size,(bx1+1)/size,(by1+1)/size];
+      if(size===32)return {width:32,height:32,data:out,wlBox:wlBox};
       // Explicit expanded scene; legacy callers get a safe bounded thumbnail.
       var thumb=new Uint8ClampedArray(4096);for(y=0;y<32;y++)for(x=0;x<32;x++)thumb.set(out.slice((y*2*64+x*2)*4,(y*2*64+x*2)*4+4),(y*32+x)*4);
-      return {width:32,height:32,data:thumb,rareScene:{width:64,height:64,data:out,worldPixelScale:1,primaryHead:'left'}};
+      return {width:32,height:32,data:thumb,wlBox:wlBox,rareScene:{width:64,height:64,data:out,worldPixelScale:1,primaryHead:'left'}};
     });
   }
   // ---------------------------------------------------------------- standalone gear icons (the piece alone, not on a pet)
