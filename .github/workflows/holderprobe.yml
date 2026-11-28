@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
   push:
     paths: ['.github/workflows/holderprobe.yml']
-permissions: { contents: read }
+permissions: { contents: write }
 jobs:
   probe:
     runs-on: ubuntu-latest
@@ -52,6 +52,8 @@ jobs:
             console.log('--- burners (all) with current balance, days since last burn');
             for (const [a, b] of Object.entries(burn).sort((x, y) => y[1].q - x[1].q)) console.log(s(a), 'burns', b.n, 'burned', Math.round(b.q), 'daysIdle', ((tip - b.last) / 144).toFixed(1), 'holds', Math.round(hold[a] || 0));
             console.log('NEVERLIST ' + JSON.stringify(never.filter(a => !/^1CounterpartyXXX/.test(a)).sort().map(a => [a, hold[a]])));
+            const lastB = await fetch(HOSTS[0] + '/v2/blocks?limit=1').then(r => r.json()).then(j => j.result[0].block_index).catch(() => null);
+            fs.writeFileSync('welcome-snapshot.json', JSON.stringify({ chainTip: lastB, feedTip: tip, at: new Date().toISOString(), never: never.filter(a => !/^1CounterpartyXXX/.test(a)).sort().map(a => [a, hold[a]]) }, null, 1));
             console.log('--- top 60 never-burned holders');
             never.sort((x, y) => hold[y] - hold[x]).slice(0, 60).forEach(a => console.log(s(a), Math.round(hold[a])));
             // how did holders get XCPETS: credits by type
@@ -71,3 +73,8 @@ jobs:
           })();
           JS
           node /tmp/p.js
+      - name: Save the snapshot to this branch
+        run: |
+          git config user.name github-actions; git config user.email github-actions@users.noreply.github.com
+          mkdir -p tools/fixtures && mv welcome-snapshot.json tools/fixtures/welcome-snapshot.json
+          git add tools/fixtures/welcome-snapshot.json && git commit -m "welcome snapshot (holderprobe)" && git push origin HEAD:${GITHUB_REF_NAME}
