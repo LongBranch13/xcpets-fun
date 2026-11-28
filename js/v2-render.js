@@ -1573,6 +1573,7 @@
       fr = p && p.art && p.hatchBlock > cut ? fr.map(function (f, i) { return window.V2Bg ? V2Bg.apply(f, p.art, i, cpLogo) : cpLogo(f, p.art); }) : fr; } catch (e) { fr = null; if (window.console) console.warn('petFrames look step failed for #' + (p && p.id), e); }
     /* fail safe: if the hunger / background steps break a frame, draw the bare sprite instead of an empty (black) canvas */
     fr = okFrames(fr) ? fr : bare;
+    if (p.stage !== 5 && !(p.art && p.art.rareHatch) && !looksOf(p, w, extra).length) try { fr = setGlow(fr, p, w, keyed0); } catch (e) { if (window.console) console.warn('set glow failed #' + p.id, e); } /* GEAR SETS: a Mythic, a weird hatch (its own look) or a pet with looks keeps only that aura */
     if (MYTH_MODE && p && p.stage === 5 && !p.dead && !p.released && !(p.art && p.art.rareHatch && ['tiny','giant','two-headed','backwards'].indexOf(p.art.rareHatch.kind)>=0)) fr = mythFx(fr, function (bg) { var kf = keyed0(bg); return fr.length === kf.length ? kf : fr.map(function (_, i) { return kf[i % kf.length]; }); }); /* mythic-look options */
     if (p && p.art && p.art.rareHatch) fr = rareHatchFrames(fr, p, w, extra);
     var lk = looksOf(p, w, extra); /* looks-draw REAL (display only): realistic look overlays on top of the pixel sprite, see js/v2-looks.js */
@@ -1580,6 +1581,18 @@
       var A0 = lkKey('#ff00fe'), B0 = lkKey('#00ff01');if(p.art.rareHatch){A0=rareHatchFrames(A0,Object.assign({},p,{art:Object.assign({},p.art,{bgColor:'#ff00fe'})}),w,extra);B0=rareHatchFrames(B0,Object.assign({},p,{art:Object.assign({},p.art,{bgColor:'#00ff01'})}),w,extra);} window.V2Looks.attachInfo(fr, A0, B0, lk, p.id); } catch (e) { if (window.console) console.warn('looks failed #' + (p && p.id), e); }
     if (window.V2Weird) try { V2Weird.tag(fr, p, w); } catch (e) {} /* weird-looks-1128: card overlays for weird hatches, mutations and throwbacks (js/weird-looks.js) */
     return fr; }
+  /* GEAR SETS glow (Jake Nov 28 2026, display only): a pet that shows all 3 pieces of a set (V2Rules.GEAR_SETS) gets a 1-pixel rim in the set's colour
+   * just OUTSIDE its silhouette, blended into the background like the old Mythic rim, so it never covers the pet. Silhouette = pixels that are the same
+   * on the magenta and the green keyed render. Two sets: the first set's colour. Off before the gate (V2Rules.stashOn). */
+  function setGlowOf(p, w) { if (!V.setsIn || !V.stashOn || !w || !V.stashOn((w.tip || 0) + 1)) return null; var k = V.setsIn(shownWorn(w, p.id))[0]; if (!k) return null;
+    var S = V.GEAR_SETS.filter(function (x) { return x.key === k; })[0]; return S ? S.glow : null; }
+  function setGlow(fr, p, w, keyed0) { var col = setGlowOf(p, w); if (!col || !okFrames(fr)) return fr; var A = keyed0('#ff00fe'), B = keyed0('#00ff01'); if (!okFrames(A) || !okFrames(B)) return fr;
+    var R = parseInt(col.slice(1, 3), 16), G = parseInt(col.slice(3, 5), 16), Bl = parseInt(col.slice(5, 7), 16);
+    return fr.map(function (f, i) { var a = A[i % A.length].data, b = B[i % B.length].data, pet = function (x, y) { if (x < 0 || y < 0 || x > 31 || y > 31) return false; var j = (y * 32 + x) * 4; return a[j] === b[j] && a[j + 1] === b[j + 1] && a[j + 2] === b[j + 2]; };
+      var d = Array.prototype.slice.call(f.data), any = false;
+      for (var y = 0; y < 32; y++) for (var x = 0; x < 32; x++) { if (pet(x, y)) continue; if (!(pet(x - 1, y) || pet(x + 1, y) || pet(x, y - 1) || pet(x, y + 1))) continue;
+        var q = (y * 32 + x) * 4; d[q] = Math.round(d[q] * 0.35 + R * 0.65); d[q + 1] = Math.round(d[q + 1] * 0.35 + G * 0.65); d[q + 2] = Math.round(d[q + 2] * 0.35 + Bl * 0.65); d[q + 3] = 255; any = true; }
+      if (!any) return f; var o = Object.assign({}, f); o.data = f.data && f.data.constructor === Uint8ClampedArray ? new Uint8ClampedArray(d) : d; o.setGlow = col; return o; }); }
   function looksOf(p, w, extra) { if (extra && extra.looks && window.V2Looks) return extra.looks; /* look picker previews: draw exactly these looks */
     if (!p || p.released || !w || (extra && extra.noLooks) || !window.V2Looks || !V.shownLooks || !(p.flameLooks || p.questLooks || p.earn || w.lookCopies)) return [];
     try { return V.shownLooks(w, p) || []; } catch (e) { return []; } }
