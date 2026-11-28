@@ -279,7 +279,7 @@
         if (m > 0) ps.push({ z: z, m: m, last: z.lastFed != null ? z.lastFed : z.hatchBlock }); });
       ps.sort(function (x, y) { return x.last - y.last || x.z.id - y.z.id; });
       ps.forEach(function (q) { var z = q.z, c = mealCost(w, z, q.m, fb); if (P.bal + 1e-9 < c) { short++; return; }
-        P.bal = r8(P.bal - c); cost += c; z.care += q.m; noteOwnCare(w, z, q.m); z.feedDays[d] = 1; z.lastFed = fb; liveAt(w, z, fb); streakFeed(w, a, z, fb, null); fed.push(z.id); });
+        P.bal = r8(P.bal - c); cost += c; var hf0 = hatchMealFree(w, z, fb); z.care += q.m; noteOwnCare(w, z, q.m); if (!hf0) z.feedDays[d] = 1; z.lastFed = fb; liveAt(w, z, fb); streakFeed(w, a, z, fb, null); fed.push(z.id); });
       if (!fed.length && !short) return;
       P.spent = r8(P.spent + cost); P.meals += fed.length; P.last = { day: d, block: fb, fed: fed.length, cost: r8(cost), short: short };
       (w.pantryLog || (w.pantryLog = [])).push({ block: fb, day: d, owner: a, petIds: fed, cost: r8(cost), short: short, bal: P.bal }); }); }
@@ -464,6 +464,19 @@
    * "Spare" = owned, not worn, not in a pet's bag, not pledged or grave-locked, not a Rumble trophy. Smashed / fused pieces end like spent seance gear
    * (owner null, spent = { block, why, from }). Before the gate these four are unknown tags (community food), replay unchanged.
    * Switched on Nov 26, 2026 (Jake picked "Wear for real + Smash + Fuse"): block 977,675, about 4 hours after the merge. */
+  /* EGG HATCH (Jake, Nov 28 2026: "you're buying the eggs and then feeding them once to hatch"). From the gate every pet a burn buys (pet:hatch,
+   * packs, Electric boxes, Shock Boxes, Grinder sausage eggs, a Wizard hatch, Season bonus and gift eggs) arrives as an EGG: care 0, stage 0. It used
+   * to arrive as a Hatchling, the hatch price counted as its first meal (care COSTS.hatch = 69). One meal (mealFor(0) = the Hatchling threshold, the
+   * same XCPETS as the hatch price) hatches it. THE HATCHING MEAL IS FREE OF THE DAILY LIMIT: a meal that takes a pet from below the Hatchling
+   * threshold (bought or bred eggs) does not stamp the chain day (feedDays), so the new Hatchling can eat again that day and the road to Mythic is
+   * as long as before (Jake chose this, Nov 28 2026). Discarded eggs never cost a meal. Before the gate hatches start at 69 and an egg's first meal
+   * stamps the day as before: replay unchanged. */
+  var ACTIVATE_EGG_HATCH_BLOCK = 977944; /* <<< EGG HATCH GATE: 24 blocks after the Gear Stash gate (977,920) */
+  function eggHatchOn(b) { return ACTIVATE_EGG_HATCH_BLOCK != null && b != null && Number(b) >= ACTIVATE_EGG_HATCH_BLOCK; }
+  /** bornCare(b): the care a bought pet is born with (0 = an Egg from the EGG HATCH gate, else the hatch price as its first meal). */
+  function bornCare(b) { return eggHatchOn(b) ? 0 : COSTS.hatch; }
+  /** hatchMealFree(w, p, b): true when a meal at block b would hatch this egg and so does not use up its meal for the day (EGG HATCH). Read before the meal is added. */
+  function hatchMealFree(w, p, b) { if (!eggHatchOn(b) || !p || p.community) return false; var th = petThresholds(w, p, b); if (th && th.meal) th = th.meal; return !!th && (p.care || 0) < th[1]; }
   var ACTIVATE_GEAR_FORGE_BLOCK = 977675;
   var FORGE_COST = HD_COST, DUST_OF = [1, 3, 9, 27], DUST_ROLL = 100, FUSE_N = 3, FUSE_MAX = 100, GEARUP_MAX_IDS = 3, SMASH_TOP = { C: 0, U: 1, R: 2, L: 3 };
   var FORGE_ACTIONS = { gearup: 1, smash: 1, fuse: 1, dustroll: 1 };
@@ -3767,7 +3780,7 @@
       Z.order.forEach(function (a) { var t = seasonTier(Z.pts[a]); if (!t) return; Z.tiers[a] = t;
         if (t >= 2 && spinsOn(at)) earnSpin(w, a, at, 'season:' + Z.n + ':' + a, 'season', SEASON_SILVER_SPINS);
         if (t >= 3) Z.trophies.push(a);
-        if (t >= 4) { var ft = sha('XCPETS:season:gift:' + Z.n + ':' + a), fp = mk(w, a, noBornShades(hatchArt(h, ft, at)), at, COSTS.hatch, ft); fp.season = Z.n; fp.seasonGift = 1; Z.freeEggs.push(fp.id); } });
+        if (t >= 4) { var ft = sha('XCPETS:season:gift:' + Z.n + ':' + a), fp = mk(w, a, noBornShades(hatchArt(h, ft, at)), at, bornCare(at), ft); fp.season = Z.n; fp.seasonGift = 1; Z.freeEggs.push(fp.id); } });
       Z.champions = rk.slice(0, 3);
       w.log.push({ block: at, tx: 'season:' + Z.n, kind: 'season', msg: 'Season ' + Z.n + ' is over: ' + Z.order.length + ' wallet' + (Z.order.length === 1 ? '' : 's') + ' played, ' + Object.keys(Z.tiers).length + ' reached a reward tier, ' + Z.sold + ' season eggs hatched' + (Z.champions.length ? ' · champions: ' + Z.champions.length : ''), season: Z.n }); }); }
   /** seasonInfo(w, b, me): display only. The season running at b (else the next one in the table), its supply and the leaderboard. */
@@ -4604,7 +4617,7 @@
         if (below(w, amt, COSTS.hatch, b)) return L(r, 'rejected', 'below hatch cost ' + costAt(w, COSTS.hatch, b));
         if (!bh) return L(r, 'rejected', 'block hash pending');
         var art = hatchArt(bh, r.tx_hash, b), sp = art.species;
-        var p = mk(w, src, noBornShades(art), b, COSTS.hatch, r.tx_hash);
+        var p = mk(w, src, noBornShades(art), b, bornCare(b), r.tx_hash);
         var hl = L(r, 'hatch', 'hatched #' + p.id + ' ' + sp, { petId: p.id }); token(p, 'stageUp'); return hl;
       }
       case 'shatch': {
@@ -4613,7 +4626,7 @@
         if (!bh) return L(r, 'rejected', 'block hash pending');
         var SZ = seasonRec(w, SS), sLeft = SEASON_EGG_SUPPLY - SZ.sold, sMine = SEASON_WALLET_CAP - (SZ.bought[src] || 0), sk = Math.min(t.n, sLeft, sMine);
         if (sk <= 0) return L(r, 'rejected', sLeft <= 0 ? 'season egg: sold out' : 'season egg: wallet limit of ' + SEASON_WALLET_CAP + ' reached');
-        var sf = w.nextPet; for (var si = 0; si < sk; si++) { var sx = r.tx_hash + ':' + (77000 + si) /* own sub-ids: packs use 0-143, Electric 0-999 */, sp2 = mk(w, src, noBornShades(hatchArt(bh, sx, b)), b, COSTS.hatch, sx); sp2.season = SS.n;
+        var sf = w.nextPet; for (var si = 0; si < sk; si++) { var sx = r.tx_hash + ':' + (77000 + si) /* own sub-ids: packs use 0-143, Electric 0-999 */, sp2 = mk(w, src, noBornShades(hatchArt(bh, sx, b)), b, bornCare(b), sx); sp2.season = SS.n;
           if (seasonRoll(bh + sx + 'XCPETS:season:legend', SEASON_LEGEND_ODDS)) { sp2.seasonLegend = SS.n; SZ.legends.push(sp2.id); } }
         SZ.sold += sk; SZ.bought[src] = (SZ.bought[src] || 0) + sk;
         var ssl = L(r, 'hatch', 'Season ' + SS.n + ' egg' + (sk > 1 ? 's' : '') + ' hatched #' + sf + (sk > 1 ? '-#' + (w.nextPet - 1) : '') + (sk < t.n ? ' (' + (t.n - sk) + ' not filled: ' + (sLeft < t.n ? 'sold out' : 'wallet limit') + ')' : ''), { petId: sf, seasonEggs: sk });
@@ -4622,14 +4635,14 @@
       case 'pack': {
         if (below(w, amt, t.cost, b)) return L(r, 'rejected', 'below pack price ' + costAt(w, t.cost, b));
         if (!bh) return L(r, 'rejected', 'block hash pending');
-        var first = w.nextPet; for (var i = 0; i < t.n; i++) { var a2 = hatchArt(bh, r.tx_hash + ':' + i, b); mk(w, src, noBornShades(a2), b, COSTS.hatch, r.tx_hash + ':' + i); }
+        var first = w.nextPet; for (var i = 0; i < t.n; i++) { var a2 = hatchArt(bh, r.tx_hash + ':' + i, b); mk(w, src, noBornShades(a2), b, bornCare(b), r.tx_hash + ':' + i); }
         var pl = L(r, 'hatch', 'pack hatched #' + first + '-#' + (w.nextPet - 1)); for (var pi = first; pi < w.nextPet; pi++) token(w.byId[pi], 'stageUp'); return pl;
       }
       case 'zap': {
         if (!electricOn(b)) return L(r, 'plain', 'plain burn (community food)'); /* exactly the old unknown-tag result */
         if (below(w, amt, t.cost, b)) return L(r, 'rejected', 'below Electric Egg case cost ' + costAt(w, t.cost, b));
         if (!bh) return L(r, 'rejected', 'block hash pending');
-        var zf = w.nextPet; for (var zi = 0; zi < t.n; zi++) { var za = electricArt(bh, r.tx_hash + ':' + zi, b); var zp = mk(w, src, noBornShades(za), b, COSTS.hatch, r.tx_hash + ':' + zi); zp.electric = 1; }
+        var zf = w.nextPet; for (var zi = 0; zi < t.n; zi++) { var za = electricArt(bh, r.tx_hash + ':' + zi, b); var zp = mk(w, src, noBornShades(za), b, bornCare(b), r.tx_hash + ':' + zi); zp.electric = 1; }
         var zl = L(r, 'hatch', 'Electric Egg case hatched #' + zf + '-#' + (w.nextPet - 1)); for (var zj = zf; zj < w.nextPet; zj++) token(w.byId[zj], 'stageUp'); return zl;
       }
       case 'cfeed': {
@@ -4640,7 +4653,7 @@
       case 'feed': {
         var q = pet(t.petId), why = !q ? 'no such pet' : q.released ? 'released' : q.owner !== src ? 'owner only' : q.dead ? 'dead (Pet Cemetery)' : hdHidden(q, src, b) ? 'discarded' : q.feedDays[day(b)] ? 'already fed this day' : mealFor(q.care, q.species, b, petThresholds(w, q, b)) === 0 ? 'fully fed' : (function (mc) { return eraAt(w, b) || saleAt(w, b) ? amt + 5e-9 < mc : amt < mc; })(mealCost(w, q, mealFor(q.care, q.species, b, petThresholds(w, q, b)), b)) ? 'below meal ' + mealCost(w, q, mealFor(q.care, q.species, b, petThresholds(w, q, b)), b) : null;
         if (why) return L(r, 'rejected', why);
-        w._fireFull = mealCost(w, q, mealFor(q.care, q.species, b, petThresholds(w, q, b)), b, true); var qs = dropStage(w, q, b), qm = mealFor(q.care, q.species, b, petThresholds(w, q, b)); q.care += qm; noteOwnCare(w, q, qm); q.feedDays[day(b)] = 1; q.lastFed = b; liveAt(w, q, b); streakFeed(w, src, q, b, r.tx_hash);
+        w._fireFull = mealCost(w, q, mealFor(q.care, q.species, b, petThresholds(w, q, b)), b, true); var qs = dropStage(w, q, b), qm = mealFor(q.care, q.species, b, petThresholds(w, q, b)); var hf1 = hatchMealFree(w, q, b); q.care += qm; noteOwnCare(w, q, qm); if (!hf1) q.feedDays[day(b)] = 1; q.lastFed = b; liveAt(w, q, b); streakFeed(w, src, q, b, r.tx_hash);
         var fl = L(r, 'feed', 'fed #' + q.id + ' (care ' + q.care + ')', { petId: q.id }); token(q, dropStage(w, q, b) > qs ? 'stageUp' : 'meal'); return fl;
       }
       case 'grind': { /* THE MEAT GRINDER (see ACTIVATE_GRIND_BLOCK) */
@@ -4652,10 +4665,10 @@
         gR.meat = gB + gMeat; gR.ground += gIds.length; gR.grinds++;
         var gSpins = Math.floor(gR.meat / GRIND_SPIN_EVERY) - Math.floor(gB / GRIND_SPIN_EVERY), gEggs = Math.floor(gR.meat / GRIND_EGG_EVERY) - Math.floor(gB / GRIND_EGG_EVERY), gNew = [];
         if (gSpins > 0 && spinsOn(b)) { earnSpin(w, src, b, r.tx_hash, 'grind', gSpins); gR.spins += gSpins; }
-        for (var ge = 0; ge < gEggs; ge++) { var gx = r.tx_hash + ':' + (88000 + ge), gp2 = mk(w, src, noBornShades(sausageSpecial(bh, gx, b) ? sausageSpecialArt(bh, gx, b) : grindArt(bh, gx, b, sausageTier(bh, gx, b))), b, COSTS.hatch, gx); gp2.sausage = 1; gNew.push(gp2.id); }
+        for (var ge = 0; ge < gEggs; ge++) { var gx = r.tx_hash + ':' + (88000 + ge), gp2 = mk(w, src, noBornShades(sausageSpecial(bh, gx, b) ? sausageSpecialArt(bh, gx, b) : grindArt(bh, gx, b, sausageTier(bh, gx, b))), b, bornCare(b), gx); gp2.sausage = 1; gNew.push(gp2.id); }
         gR.eggs += gEggs;
         var gGold = parseInt(sha(bh + r.tx_hash + 'XCPETS:v2:golden-sausage').slice(0, 12), 16) % 1000000 < grindGoldOdds(gIds.length, b);
-        if (gGold) { var gx2 = r.tx_hash + ':88999', gArt = grind2On(b) ? setArtTier(grinderSpecialArt(bh, gx2, b), 3) : grindArt(bh, gx2, b, 3); var gp3 = mk(w, src, noBornShades(gArt), b, COSTS.hatch, gx2); gp3.sausage = 1; gp3.golden = 1; gNew.push(gp3.id); gR.golden++; }
+        if (gGold) { var gx2 = r.tx_hash + ':88999', gArt = grind2On(b) ? setArtTier(grinderSpecialArt(bh, gx2, b), 3) : grindArt(bh, gx2, b, 3); var gp3 = mk(w, src, noBornShades(gArt), b, bornCare(b), gx2); gp3.sausage = 1; gp3.golden = 1; gNew.push(gp3.id); gR.golden++; }
         gR.last = { block: b, n: gIds.length, meat: gMeat, spins: gSpins, eggs: gEggs, golden: gGold, newPets: gNew };
         var gl = L(r, 'grind', 'Meat Grinder: ground ' + gIds.length + ' pet' + (gIds.length === 1 ? '' : 's') + ' into ' + gMeat + ' meat (meter ' + gR.meat + ')' + (gSpins ? ' · +' + gSpins + ' spin' + (gSpins === 1 ? '' : 's') : '') + (gEggs ? ' · ' + gEggs + ' Sausage Egg' + (gEggs === 1 ? '' : 's') : '') + (gGold ? ' · GOLDEN SAUSAGE' : ''),
           { petIds: gIds, petId: gIds[0], meat: gMeat, spins: gSpins, newPets: gNew, golden: gGold });
@@ -4722,7 +4735,7 @@
           if (feedAllLiveOn(b)) liveAt(w, z, b); /* FEED ALL LIVE CHECK: refresh death before the dead check (pet() does this for every other feed) */
           var m = mealFor(z.care, z.species, b, petThresholds(w, z, b));
           if (z.released || z.dead || isZ(z) || z.feedDays[day(b)] || m === 0 || (questOn(b) && questAway(z, b)) || aleft + 1e-9 < mealCost(w, z, m, b)) { askip++; return; }
-          var zs = dropStage(w, z, b); aleft -= mealCost(w, z, m, b); w._fireFullM = (w._fireFullM || 0) + mealCost(w, z, m, b, true); z.care += m; noteOwnCare(w, z, m); z.feedDays[day(b)] = 1; z.lastFed = b; liveAt(w, z, b); streakFeed(w, src, z, b, r.tx_hash); aup[z.id] = dropStage(w, z, b) > zs; afed.push(z.id); });
+          var zs = dropStage(w, z, b); aleft -= mealCost(w, z, m, b); w._fireFullM = (w._fireFullM || 0) + mealCost(w, z, m, b, true); var hf2 = hatchMealFree(w, z, b); z.care += m; noteOwnCare(w, z, m); if (!hf2) z.feedDays[day(b)] = 1; z.lastFed = b; liveAt(w, z, b); streakFeed(w, src, z, b, r.tx_hash); aup[z.id] = dropStage(w, z, b) > zs; afed.push(z.id); });
         w._fireFull = w._fireFullM || null; w._fireFullM = 0; if (!afed.length) return L(r, 'rejected', 'feed-all fed nobody (' + askip + ' pets not feedable or burn too small)');
         var aml = L(r, 'feed', 'fed ' + afed.length + ' pets #' + afed.join(', #') + (askip ? ' · ' + askip + ' not fed' : ''), { petIds: afed, petId: afed[0] });
         afed.forEach(function (id) { token(w.byId[id], aup[id] ? 'stageUp' : 'meal'); }); return aml;
@@ -4764,7 +4777,7 @@
         t.ids.forEach(function (id) { var z = pet(id), m = z ? mealFor(z.care, z.species, b, petThresholds(w, z, b)) : 0,
             no = !z ? 'no such pet' : z.released ? 'released' : z.owner !== src ? 'owner only' : z.dead ? 'dead (Pet Cemetery)' : hdHidden(z, src, b) ? 'discarded' : isZ(z) ? 'zombie (eats pets)' : t.fr && (z.ascended || z.mythicCare || z.stage === 5) ? 'Mythic (does not eat)' : t.fr && questOn(b) && questAway(z, b) ? 'away on a quest' : z.feedDays[day(b)] ? 'already fed this day' : m === 0 ? 'fully fed' : left + 1e-9 < mealCost(w, z, m, b) ? 'burn too small for meal ' + mealCost(w, z, m, b) : null;
           if (no) { skip.push('#' + id + ' ' + no); return; }
-          var zs = dropStage(w, z, b); left -= mealCost(w, z, m, b); w._fireFullM = (w._fireFullM || 0) + mealCost(w, z, m, b, true); z.care += m; noteOwnCare(w, z, m); z.feedDays[day(b)] = 1; z.lastFed = b; liveAt(w, z, b); streakFeed(w, src, z, b, r.tx_hash); up[z.id] = dropStage(w, z, b) > zs; fed.push(z.id); });
+          var zs = dropStage(w, z, b); left -= mealCost(w, z, m, b); w._fireFullM = (w._fireFullM || 0) + mealCost(w, z, m, b, true); var hf2 = hatchMealFree(w, z, b); z.care += m; noteOwnCare(w, z, m); if (!hf2) z.feedDays[day(b)] = 1; z.lastFed = b; liveAt(w, z, b); streakFeed(w, src, z, b, r.tx_hash); up[z.id] = dropStage(w, z, b) > zs; fed.push(z.id); });
         w._fireFull = w._fireFullM || null; w._fireFullM = 0; if (!fed.length) return L(r, 'rejected', 'multi-feed fed nobody: ' + skip.join(', '));
         var ml = L(r, 'feed', 'fed ' + fed.length + ' pets #' + fed.join(', #') + (skip.length ? ' · skipped ' + skip.join(', ') : ''), { petIds: fed, petId: fed[0] });
         fed.forEach(function (id) { token(w.byId[id], up[id] ? 'stageUp' : 'meal'); }); return ml;
@@ -4876,7 +4889,7 @@
         if (!wizColdOn(w, b) || b >= ACTIVATE_WIZ_PRIORITY_BLOCK) return L(r, 'rejected', 'unknown pet: tag (community food)'); /* exactly the old 'invalid' outcome; CLOSED from ACTIVATE_WIZ_PRIORITY_BLOCK (owner Oct 20 2026: Wizard is roll-only, 1 in 777) */
         if (amt < WIZ_EGG_COST) return L(r, 'rejected', 'below Wizard egg cost ' + WIZ_EGG_COST);
         if (!bh) return L(r, 'rejected', 'block hash pending');
-        var wa = wizardArt(bh, r.tx_hash, b), wp = mk(w, src, wa, b, COSTS.hatch, r.tx_hash);
+        var wa = wizardArt(bh, r.tx_hash, b), wp = mk(w, src, wa, b, bornCare(b), r.tx_hash);
         var wl = L(r, 'hatch', 'hatched #' + wp.id + ' Bitcoin Wizard', { petId: wp.id }); token(wp, 'stageUp'); return wl;
       }
       case 'wsign': {  /* JOIN US SIGN: one free claim per wallet that fed the Wizard (any amount); worn at once if pet:sign:ID names your Wizard with Grip open */
@@ -6393,7 +6406,7 @@
     return ranked.filter(function (r) { return r.p.owner === owner; }).map(function (r) {
       var top = r.rank <= n - r.rank + 1, pct = Math.max(1, Math.ceil((top ? r.rank : n - r.rank + 1) / n * 100));
       return { rank: r.rank, total: n, id: r.p.id, name: r.p.name, half: top ? 'top' : 'bottom', pct: pct, label: '#' + r.rank + ' of ' + n, note: (top ? 'top ' : 'bottom ') + pct + '%' }; }); }
-  return { ACTIVATE_GEAR_STASH_BLOCK: ACTIVATE_GEAR_STASH_BLOCK, GEAR_SETS: GEAR_SETS, SET_BONUS: SET_BONUS, setOfItem: setOfItem, setsIn: setsIn, setsOf: setsOf, stashGate: function () { return ACTIVATE_GEAR_STASH_BLOCK; }, _setGearStash: function (b) { ACTIVATE_GEAR_STASH_BLOCK = b == null ? null : Number(b); }, stashOn: stashOn, stashPreview: stashPreview, stashPlan: stashPlan, gearOffList: gearOffList, wearCheck: wearCheck, gidCode: gidCode, GEAROFF_MAX_IDS: GEAROFF_MAX_IDS, WEAR_MAX: WEAR_MAX, ACTIVATE_GEAR_FORGE_BLOCK: ACTIVATE_GEAR_FORGE_BLOCK, forgeGate: function () { return ACTIVATE_GEAR_FORGE_BLOCK; }, _setGearForge: function (b) { ACTIVATE_GEAR_FORGE_BLOCK = b; }, forgeOn: forgeOn, forgePreview: forgePreview, forgePlan: forgePlan, gearUpMoves: gearUpMoves, dustOf: dustOf, FORGE_COST: FORGE_COST, DUST_ROLL: DUST_ROLL, DUST_OF: DUST_OF, FUSE_N: FUSE_N, ACTIVATE_TRANSFER_GAPS_BLOCK: ACTIVATE_TRANSFER_GAPS_BLOCK, transferGapsGate: function () { return ACTIVATE_TRANSFER_GAPS_BLOCK; }, xferOn: xferOn, _setTransferGaps: function (b) { ACTIVATE_TRANSFER_GAPS_BLOCK = b == null ? null : Number(b); }, ACTIVATE_CARRYPICK_BLOCK: ACTIVATE_CARRYPICK_BLOCK, carryPickGate: function () { return ACTIVATE_CARRYPICK_BLOCK; }, carryPickOn: carryPickOn, _setCarryPick: function (b) { ACTIVATE_CARRYPICK_BLOCK = b == null ? null : Number(b); }, ACTIVATE_SPIN_TARGET_BLOCK: ACTIVATE_SPIN_TARGET_BLOCK, spinTargetGate: function () { return ACTIVATE_SPIN_TARGET_BLOCK; }, spinTargetOn: spinTargetOn, _setSpinTargetActivation: function (b) { ACTIVATE_SPIN_TARGET_BLOCK = b; }, spinList: spinList, spinTargetPlans: spinTargetPlans, REWEAR_GRANTS: REWEAR_GRANTS, rewearGrant: rewearGrant, rewearPlan: rewearPlan, rewearPlans: rewearPlans,
+  return { ACTIVATE_EGG_HATCH_BLOCK: ACTIVATE_EGG_HATCH_BLOCK, eggHatchOn: eggHatchOn, bornCare: bornCare, hatchMealFree: hatchMealFree, eggHatchGate: function () { return ACTIVATE_EGG_HATCH_BLOCK; }, _setEggHatch: function (b) { ACTIVATE_EGG_HATCH_BLOCK = b == null ? null : Number(b); }, ACTIVATE_GEAR_STASH_BLOCK: ACTIVATE_GEAR_STASH_BLOCK, GEAR_SETS: GEAR_SETS, SET_BONUS: SET_BONUS, setOfItem: setOfItem, setsIn: setsIn, setsOf: setsOf, stashGate: function () { return ACTIVATE_GEAR_STASH_BLOCK; }, _setGearStash: function (b) { ACTIVATE_GEAR_STASH_BLOCK = b == null ? null : Number(b); }, stashOn: stashOn, stashPreview: stashPreview, stashPlan: stashPlan, gearOffList: gearOffList, wearCheck: wearCheck, gidCode: gidCode, GEAROFF_MAX_IDS: GEAROFF_MAX_IDS, WEAR_MAX: WEAR_MAX, ACTIVATE_GEAR_FORGE_BLOCK: ACTIVATE_GEAR_FORGE_BLOCK, forgeGate: function () { return ACTIVATE_GEAR_FORGE_BLOCK; }, _setGearForge: function (b) { ACTIVATE_GEAR_FORGE_BLOCK = b; }, forgeOn: forgeOn, forgePreview: forgePreview, forgePlan: forgePlan, gearUpMoves: gearUpMoves, dustOf: dustOf, FORGE_COST: FORGE_COST, DUST_ROLL: DUST_ROLL, DUST_OF: DUST_OF, FUSE_N: FUSE_N, ACTIVATE_TRANSFER_GAPS_BLOCK: ACTIVATE_TRANSFER_GAPS_BLOCK, transferGapsGate: function () { return ACTIVATE_TRANSFER_GAPS_BLOCK; }, xferOn: xferOn, _setTransferGaps: function (b) { ACTIVATE_TRANSFER_GAPS_BLOCK = b == null ? null : Number(b); }, ACTIVATE_CARRYPICK_BLOCK: ACTIVATE_CARRYPICK_BLOCK, carryPickGate: function () { return ACTIVATE_CARRYPICK_BLOCK; }, carryPickOn: carryPickOn, _setCarryPick: function (b) { ACTIVATE_CARRYPICK_BLOCK = b == null ? null : Number(b); }, ACTIVATE_SPIN_TARGET_BLOCK: ACTIVATE_SPIN_TARGET_BLOCK, spinTargetGate: function () { return ACTIVATE_SPIN_TARGET_BLOCK; }, spinTargetOn: spinTargetOn, _setSpinTargetActivation: function (b) { ACTIVATE_SPIN_TARGET_BLOCK = b; }, spinList: spinList, spinTargetPlans: spinTargetPlans, REWEAR_GRANTS: REWEAR_GRANTS, rewearGrant: rewearGrant, rewearPlan: rewearPlan, rewearPlans: rewearPlans,
     ACTIVATE_BORP_BLOCK: ACTIVATE_BORP_BLOCK, borpGate: function () { return ACTIVATE_BORP_BLOCK; }, borpOn: borpOn, isBorpPair: isBorpPair, _setBorp: function (b) { ACTIVATE_BORP_BLOCK = b == null ? null : Number(b); },
     ACTIVATE_TWIN_ALIKE_BLOCK: ACTIVATE_TWIN_ALIKE_BLOCK, twinAlikeGate: function () { return ACTIVATE_TWIN_ALIKE_BLOCK; }, twinAlikeOn: twinAlikeOn, twinAlike: twinAlike, _setTwinAlike: function (b) { ACTIVATE_TWIN_ALIKE_BLOCK = b == null ? null : Number(b); },
     ACTIVATE_ONEOFONE_CROSS_BLOCK: ACTIVATE_ONEOFONE_CROSS_BLOCK, crossGate: function () { return ACTIVATE_ONEOFONE_CROSS_BLOCK; }, crossOn: crossOn, crossOf: crossOf, crossLabel: crossLabel, petSpeciesLabel: petSpeciesLabel, ACTIVATE_SPECIAL_PAIR_BLOCK: ACTIVATE_SPECIAL_PAIR_BLOCK, specialPairOn: specialPairOn, specialPairOf: specialPairOf, _setSpecialPair: function (b) { ACTIVATE_SPECIAL_PAIR_BLOCK = b; }, ACTIVATE_SPECIAL_PAIR_RETRO_BLOCK: ACTIVATE_SPECIAL_PAIR_RETRO_BLOCK, ACTIVATE_WAGMI_DAYS_FIX_BLOCK: ACTIVATE_WAGMI_DAYS_FIX_BLOCK, wagmiFixOn: wagmiFixOn, SP_PAIR_RETRO: SP_PAIR_RETRO, spPairRetro: spPairRetro, ACTIVATE_RAGNAR_GIFT_BLOCK: ACTIVATE_RAGNAR_GIFT_BLOCK, RAGNAR_GIFT: RAGNAR_GIFT, ragnarGift: ragnarGift, _setRagnarGift: function (b) { ACTIVATE_RAGNAR_GIFT_BLOCK = b; }, _setSpecialPairRetro: function (b) { ACTIVATE_SPECIAL_PAIR_RETRO_BLOCK = b; }, CROSS_PLANS: CROSS_PLANS, _jackpotEgg: jackpotEgg, _setOneOfOneCross: function (b) { ACTIVATE_ONEOFONE_CROSS_BLOCK = b == null ? null : Number(b); },
