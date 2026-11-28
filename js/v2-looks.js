@@ -68,6 +68,8 @@
     fr.forEach(function (f, i) { var g = gs[i % gs.length]; if (g && f && typeof f === 'object') INFO.set(f, { by: by, key: key, g: g, seed: (seed | 0) % 997 }); });
     return fr; }
   function infoOf(img) { return INFO && img ? INFO.get(img) || null : null; }
+  /* carry(from, to): a frame rebuilt by another effect (js/mythic-sig.js makes new frame objects) keeps the looks of the frame it was made from */
+  function carry(from, to) { var i = infoOf(from); if (i && to && typeof to === 'object') INFO.set(to, i); return to; }
   function sdAt(g, X, Y) { /* bilinear signed distance at sprite coords (pixel centre = i + 0.5) */ var x = clamp(X - 0.5, -1, 32), y = clamp(Y - 0.5, -1, 32), xi = Math.floor(x), yi = Math.floor(y), fx = x - xi, fy = y - yi;
     var i = (yi + 1) * 34 + xi + 1, s = g.sd; if (xi < -1 || yi < -1 || xi > 31 || yi > 31) return 9; var a = s[i], b = s[i + 1], c = s[i + 34], d = s[i + 35]; return (a + (b - a) * fx) * (1 - fy) + (c + (d - c) * fx) * fy; }
   var tmp = [0, 0, 0], tmp2 = [0, 0, 0];
@@ -249,5 +251,5 @@
     if (my) electric(out, S, my.rim, t, my.seed || 0, my.sick); return out; }
   function hasFx(img) { return !!(infoOf(img) || (API.myth && API.myth(img))); }
   function bakeAll(img, size, t) { if (!hasFx(img)) return null; return compose(img, size || 128, t == null ? 1.3 : t, t == null ? [0.42, 0.35] : null); }
-  var API = root.V2Looks = { attachInfo: attachInfo, info: infoOf, attach: attach, detach: detach, render: render, bake: bake, STILL: STILL, electric: electric, compose: compose, hasFx: hasFx, bakeAll: bakeAll, myth: null };
+  var API = root.V2Looks = { attachInfo: attachInfo, info: infoOf, carry: carry, attach: attach, detach: detach, render: render, bake: bake, STILL: STILL, electric: electric, compose: compose, hasFx: hasFx, bakeAll: bakeAll, myth: null };
 })(typeof window !== 'undefined' ? window : this);
