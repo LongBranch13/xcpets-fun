@@ -8,6 +8,9 @@
  * and the sales cursor (_dexPos, _grand); those are rebuilt with reindex() and copied back,
  * which is the same restore the rules already describe for a structured clone.
  * Callers still compare a forked replay with a full one, so a bad checkpoint fails the test.
+ * The checkpoint holds the past as replayed under the gates set when it was saved. A test that then moves a gate which is
+ * already mined (at or below the tip) replays the past differently in a full replay than in the fork: compare forked vs full
+ * only under the gates the checkpoint was saved with (dip-test went red at block 977,843 when a real dip changed a later breed).
  */
 'use strict';
 const fs = require('fs'), path = require('path'), vm = require('vm');
