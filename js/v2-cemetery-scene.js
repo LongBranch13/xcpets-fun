@@ -392,7 +392,7 @@
         '<div class="gs-eng gs-top"><a class="gs-name' + nameSize(p.name) + '" href="pet.html?id=' + p.id + '">' + esc(p.name) + '</a><span class="gs-no">#' + p.id + '</span></div>' +
         '<div class="gs-eng gs-bot"><span class="gs-sp">' + esc(p.spl) + '</span><span class="gs-pw">⚡ ' + fmt(p.power) + '</span><span class="gs-epi">“' + esc(epitaph(p)) + '”</span></div></div>' +
         '<div class="small cv2-sub"><span class="pill tier tier-' + (p.resurrected ? 'god' : TID[p.tier]) + '">' + (p.resurrected ? 'God' : p.rank === 4 ? 'Mythic' : TL[p.tier]) + '</span>' + (p.mythic ? ' 💜 Mythic grave' : '') + ' <span class="cv2-dead">💀 <b>' + fmt(p.days) + '</b> day' + (p.days === 1 ? '' : 's') + ' dead</span></div>' +
-        '<div class="small cv2-badges">' + need + (rd ? '<div class="cv2-have">✓ Your Discard pile has one: raise it now</div>' : '') + '</div>' +
+        '<div class="small cv2-badges">' + need + (rd ? '<div class="cv2-have">✓ You have a pet to raise it</div>' : '') + '</div>' +
         (v && v.altar && !v.altar.seance ? '<div class="small cv2-pool">' + art('candle', 12) + ' Altar open · closes in ' + tm(v.altar.closesIn) + ' · top giver ' + esc(sa(v.altar.top || '')) + (v.altar.top === ME ? ' (you)' : '') + '</div>' : '') +
         hsHtml(hs) +
         (canRaise(p) ? '<button type="button" class="btn cv2-raise" data-raise="' + p.id + '">' + art('shovel', 12) + ' ' + (p.open ? 'Join the raising' : 'Raise it') + '</button>' : p.raisable && on && !pub ? '<div class="small muted cv2-lock">🧪 Owner test: ' + (p.id === CE.OWNER_GRAVE ? 'only the owner wallet can raise this grave' : 'only grave #' + CE.OWNER_GRAVE + ' can be raised for now') + '</div>' : '') +
