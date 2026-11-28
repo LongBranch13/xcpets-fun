@@ -1,6 +1,6 @@
 {
- "lastBlock": 977929,
- "count": 561,
+ "lastBlock": 977931,
+ "count": 566,
  "url": "https://xcpets.fun/t/<id>.json",
  "ties": [
   {
@@ -6734,6 +6734,66 @@
    "speciesLabel": "Nakamoto",
    "rarity": "Legendary",
    "stage": "Hatchling"
+  },
+  {
+   "id": 280657,
+   "asset": "A5218017458063291998",
+   "tiedBlock": 977930,
+   "tiedTx": "89f7f6e0c574fa368a7bb86cad114dd9dfb140616552e651aaf1ffe5f6097cf6",
+   "kind": "deed",
+   "name": "Papen",
+   "species": "hyb:dodo:pepe",
+   "speciesLabel": "Dopep (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Juvenile"
+  },
+  {
+   "id": 280658,
+   "asset": "A15657818522676828039",
+   "tiedBlock": 977930,
+   "tiedTx": "c60d99d8f4ac0c3e304c1c011716b2c868660f8ac02b9b4dbb7bb9b9d70f268b",
+   "kind": "deed",
+   "name": "Watooshepop",
+   "species": "hyb:dodo:pepe",
+   "speciesLabel": "Dopep (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Juvenile"
+  },
+  {
+   "id": 280659,
+   "asset": "A17386695949675361304",
+   "tiedBlock": 977930,
+   "tiedTx": "1175431164cd5f347563bd929da14da0195d9466197419d6a0e0be48659a8f1c",
+   "kind": "deed",
+   "name": "Lapob",
+   "species": "hyb:snibby:dodo",
+   "speciesLabel": "Snido (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Juvenile"
+  },
+  {
+   "id": 280660,
+   "asset": "A14619005092208082372",
+   "tiedBlock": 977930,
+   "tiedTx": "a2637b710cea8603f2d3a04779925c165789de277c5e675f824f0b0b0af060fc",
+   "kind": "deed",
+   "name": "Suyopip",
+   "species": "hyb:snibby:dodo",
+   "speciesLabel": "Snido (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Juvenile"
+  },
+  {
+   "id": 280661,
+   "asset": "A12412888361620599227",
+   "tiedBlock": 977930,
+   "tiedTx": "f8af8a9c1a95fa746f50dfc5d4e158facbe22ab6298f3248fc3dba99ef3cbb35",
+   "kind": "deed",
+   "name": "Yunabop",
+   "species": "hyb3:chad:dodo:snibby",
+   "speciesLabel": "Chadoby (hybrid)",
+   "rarity": "Legendary",
+   "stage": "Juvenile"
   }
  ]
 }
