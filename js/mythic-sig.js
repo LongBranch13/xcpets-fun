@@ -9,7 +9,8 @@
   function hex(h) { h = h.replace('#', ''); return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)]; }
   function mix(a, b, t) { return [Math.round(a[0] + (b[0] - a[0]) * t), Math.round(a[1] + (b[1] - a[1]) * t), Math.round(a[2] + (b[2] - a[2]) * t)]; }
   function hsh(a, b) { var h = (a * 374761393 + b * 668265263) >>> 0; h = (h ^ (h >>> 13)) * 1274126177 >>> 0; return (h ^ (h >>> 16)) >>> 0; }
-  function kind(p) { if (!p || p.stage !== 5 || p.dead || p.released) return null; var sp = String(p.species || ''), a = p.art || {}, h = a.hybrid || p.hybrid;
+  function kind(p) { if (!p || p.stage !== 5 || p.dead || p.released) return null; var sp = String(p.species || ''), a = p.art || {}, h = a.hybrid || p.hybrid, rh = a.rareHatch;
+    if (rh && rh.version === 1 && WEIRD.hasOwnProperty(rh.kind)) return WEIRD[rh.kind]; /* weird Mythics: their weirdness is the aura (wins over a species signature) */
     if (sp === 'hyb3:nakamoto:wizard:kek') return 'kekamozard'; if (sp === 'hyb3:nakamoto:kek:funtrump' && p.supreme) return 'don';
     if (a.species === 'funtrump' || sp === 'funtrump' || (h && h.shape === 'funtrump')) return 'goldshine';
     if (sp === 'nakamoto' || a.species === 'nakamoto') return 'matrix';
@@ -94,8 +95,84 @@
   FX.spam = function (o, M, f) { glow(o, M, '#ff7eb6', pul(f, 0.3, 0.55), 0.12); for (var i = 0; i < 4; i++) { var x = 2 + hsh(i, 14) % 26, y = 31 - ((f * 2 + hsh(i, 15)) % 34); [[0, 0], [1, 0], [2, 0], [0, 1], [2, 1]].forEach(function (d) { put(o, M, x + d[0], y + d[1], '#ffffff'); }); put(o, M, x + 1, y + 1, '#ff5a8a'); } };
   /* Don Kekamoto (Top Holder): the FUNTRUMP gold shine plus gold coins raining */
   FX.don = function (o, M, f) { FX.goldshine(o, M, f); for (var i = 0; i < 4; i++) { var x = 2 + hsh(i, 16) % 27, y = (hsh(i, 17) % 32 + f * 3) % 35 - 2; put(o, M, x, y, '#ffd23f'); put(o, M, x + 1, y, '#ffb300'); put(o, M, x, y + 1, '#ffb300'); put(o, M, x + 1, y + 1, '#c48a00'); } };
+  /* WEIRD MYTHICS (owner Nov 28 2026: 'weird mythic pets need individual auras'). A weird hatch (Tiny, Giant, Two-headed, Inverted, Ghost, Backwards,
+   * Wrong egg; js/v2-render.js rareHatchFrames) that reaches Mythic used to get no aura at all (Tiny, Giant, Two-headed, Backwards: skipped; Inverted,
+   * Ghost: dropped when the shape was redrawn) or the plain electric one (Wrong egg). Each now has its own, drawn on the background around the
+   * pet's real (reshaped) outline, so it never covers the pet: the masks come from the same weird render on two keyed backdrops. Giant and Two-headed
+   * draw on their 64 px scene (and the 32 px thumbnail is rebuilt from it). Mythic gold + the weirdness's own colours. 8 frames, made once per pet. */
+  var WEIRD = { tiny: 'wtiny', giant: 'wgiant', 'two-headed': 'wtwin', inverted: 'winvert', ghost: 'wghost', backwards: 'wrewind', 'wrong-egg': 'wegg' };
+  /* masks for any size S: pet (same pixel on both backdrops), dist = steps from the pet (1..4, 0 = pet or far), bb */
+  function masksN(A, B, S) { var n = S * S, pet = new Uint8Array(n), dist = new Uint8Array(n), bb = { x0: S, x1: -1, y0: S, y1: -1 }, p, x, y, q = [];
+    for (p = 0; p < n; p++) { var i = p * 4; if (A[i] === B[i] && A[i + 1] === B[i + 1] && A[i + 2] === B[i + 2]) { pet[p] = 1; x = p % S; y = (p / S) | 0; if (x < bb.x0) bb.x0 = x; if (x > bb.x1) bb.x1 = x; if (y < bb.y0) bb.y0 = y; if (y > bb.y1) bb.y1 = y; q.push(p); } }
+    for (var d = 1; d <= 4; d++) { var nx = []; q.forEach(function (p0) { var x0 = p0 % S, y0 = (p0 / S) | 0; [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(function (o) { var X = x0 + o[0], Y = y0 + o[1]; if (X < 0 || Y < 0 || X >= S || Y >= S) return; var r = Y * S + X; if (pet[r] || dist[r]) return; dist[r] = d; nx.push(r); }); }); q = nx; }
+    return { S: S, pet: pet, dist: dist, bb: bb, cx: (bb.x0 + bb.x1) / 2, cy: (bb.y0 + bb.y1) / 2, hw: (bb.x1 - bb.x0) / 2, hh: (bb.y1 - bb.y0) / 2 }; }
+  /* px: one background pixel (never the pet), a = blend 0..1 */
+  function px(o, M, x, y, col, a) { x = Math.round(x); y = Math.round(y); if (x < 0 || y < 0 || x >= M.S || y >= M.S) return; var p = y * M.S + x; if (M.pet[p]) return; var q = p * 4, c = typeof col === 'string' ? hex(col) : col; a = a == null ? 1 : a;
+    o[q] = Math.round(o[q] + (c[0] - o[q]) * a); o[q + 1] = Math.round(o[q + 1] + (c[1] - o[q + 1]) * a); o[q + 2] = Math.round(o[q + 2] + (c[2] - o[q + 2]) * a); }
+  function star(o, M, x, y, col, s) { px(o, M, x, y, '#ffffff'); for (var i = 1; i <= (s || 1); i++) { px(o, M, x + i, y, col); px(o, M, x - i, y, col); px(o, M, x, y + i, col); px(o, M, x, y - i, col); } }
+  function halo(o, M, colOf, a1, a2, a3) { for (var p = 0; p < M.S * M.S; p++) { var d = M.dist[p], t = d === 1 ? a1 : d === 2 ? a2 : d === 3 ? (a3 || 0) : 0; if (!t) continue; var x = p % M.S, y = (p / M.S) | 0; px(o, M, x, y, colOf(x, y), t); } }
+  function ring(o, M, rx, ry, col, a, step) { var n = Math.max(24, Math.round((rx + ry) * 3.2)); for (var i = 0; i < n; i++) { if (step && i % step) continue; var t = i / n * 6.283; px(o, M, M.cx + Math.cos(t) * rx, M.cy + Math.sin(t) * ry, col, a); } }
+  /* open background spots (w x h free of the pet and its glow), fixed per seed */
+  function spotsN(M, n, seed, w, h, top) { var out = [], tries = 0, S = M.S; w = w || 1; h = h || 1;
+    while (out.length < n && tries++ < 600) { var x = 1 + hsh(seed, tries) % (S - w - 1), y = 1 + hsh(tries, seed) % (S - h - 1), ok = !(top && tries < 400 && y > M.cy); /* top: prefer above the middle */
+      for (var yy = 0; yy < h && ok; yy++) for (var xx = 0; xx < w && ok; xx++) { var p = (y + yy) * S + x + xx; if (M.pet[p] || (M.dist[p] && M.dist[p] < 3) || (S === 32 && x + xx >= 26 && y + yy < 6)) ok = false; } /* never by the corner badge */
+      if (!ok || out.some(function (q) { return Math.abs(q[0] - x) + Math.abs(q[1] - y) < S / 5; })) continue; out.push([x, y]); } return out; }
+  function glyph(o, M, x, y, rows, cols) { rows.forEach(function (r, j) { for (var i = 0; i < r.length; i++) { var ch = r.charAt(i); if (cols[ch]) px(o, M, x + i, y + j, cols[ch]); } }); }
+  var WFX = {};
+  /* Tiny: SMOL BUT MIGHTY. Gold shrink-ray rings close in on the little guy, a gold glow, sparkles. */
+  WFX.wtiny = function (o, M, f) { halo(o, M, function () { return '#ffd23f'; }, pul(f, 0.45, 0.8), pul(f, 0.15, 0.35));
+    for (var k = 0; k < 2; k++) { var t = ((f / NF) + k / 2) % 1, g = 1 - t; ring(o, M, M.hw + 2.5 + g * 9, M.hh + 2 + g * 8, t > 0.7 ? '#fff6c8' : '#ffd23f', 0.35 + 0.6 * t, g > 0.6 ? 2 : 0); }
+    spotsN(M, 4, 21).forEach(function (s, i) { var ph = (f + i * 2) % NF; if (ph < 2) star(o, M, s[0], s[1], '#ffe9a8', ph ? 0 : 1); }); };
+  /* Giant: GROUND POUND. Every loop he stomps: the gold glow flares, a shockwave runs out along the ground, dust puffs and rocks fly. */
+  WFX.wgiant = function (o, M, f) { var t = f / NF, gy = Math.min(M.S - 1, M.bb.y1 + 1), u = M.S / 32, i, k;
+    halo(o, M, function () { return f < 2 ? '#fff1a8' : '#ffb300'; }, f < 2 ? 0.85 : pul(f, 0.35, 0.6), f < 2 ? 0.5 : 0.2, f < 2 ? 0.2 : 0);
+    [-1, 1].forEach(function (sd) { var edge = sd < 0 ? M.bb.x0 : M.bb.x1, fx = edge + sd * (2 + t * 16 * u);
+      for (k = 0; k < 4 * u; k++) { px(o, M, fx - sd * k, gy, k < u ? '#ffffff' : '#ffd23f', 1 - k / (5 * u)); px(o, M, fx - sd * k, gy - 1, '#ffd23f', 0.4 * (1 - k / (4 * u))); }
+      for (i = 0; i < 3; i++) { var r = (1 + t * 3 + i * 0.6) * u * 0.8, px0 = edge + sd * (3 + i * 4) * u * 0.6, py0 = gy - 1 - t * 4 * u - i; /* dust puffs */
+        for (var a = 0; a < 10; a++) { var an = a / 10 * 6.283; px(o, M, px0 + Math.cos(an) * r, py0 + Math.sin(an) * r * 0.7, '#efe2c4', 0.95 * (1 - t * 0.8)); } }
+      var ry = gy - 2 - Math.round(Math.sin(t * 3.1416) * 8 * u), rx = edge + sd * (4 + t * 10) * u; /* a rock in the air */
+      px(o, M, rx, ry, '#8a7a66'); px(o, M, rx + 1, ry, '#6a5a48'); px(o, M, rx, ry + 1, '#6a5a48'); }); };
+  /* Two-headed: DOUBLE TROUBLE. One head glows magenta, the other cyan (they swap), and each head has its own spinning star. */
+  WFX.wtwin = function (o, M, f) { var sw = f >= NF / 2, L = sw ? '#5ad6ff' : '#ff5ad6', R = sw ? '#ff5ad6' : '#5ad6ff';
+    halo(o, M, function (x) { return x < M.cx ? L : R; }, pul(f, 0.5, 0.8), pul(f, 0.2, 0.4), 0.12);
+    [[(M.bb.x0 + M.cx) / 2, -1], [(M.cx + M.bb.x1) / 2, 1]].forEach(function (h, i) { var a = f / NF * 6.283 * h[1] + i * 3.1416, r = Math.max(4, M.hw * 0.55);
+      star(o, M, h[0] + Math.cos(a) * r, M.bb.y0 + 2 + Math.sin(a) * 3, i ? R : L, 1); }); };
+  /* Inverted: UPSIDE-DOWN WORLD. The world around him turns to negative (a halo of inverted backdrop), an electric blue rim, and a VHS glitch line. */
+  WFX.winvert = function (o, M, f) { var S = M.S, p, q;
+    for (p = 0; p < S * S; p++) { var d = M.dist[p]; if (!d || d > (f % 4 === 2 ? 4 : 3)) continue; q = p * 4; o[q] = 255 - o[q]; o[q + 1] = 255 - o[q + 1]; o[q + 2] = 255 - o[q + 2]; }
+    halo(o, M, function () { return '#3a6bff'; }, pul(f, 0.55, 0.85), 0, 0);
+    if (f % 3 !== 1) { var y = M.bb.y0 + hsh(f, 5) % Math.max(1, M.bb.y1 - M.bb.y0), sh = 1 + f % 2, row = []; for (var x = 0; x < S; x++) { q = (y * S + x) * 4; row.push([o[q], o[q + 1], o[q + 2]]); }
+      for (x = 0; x < S; x++) { var src = row[Math.min(S - 1, Math.max(0, x - sh))]; px(o, M, x, y, [Math.min(255, src[0] + 70), src[1], Math.min(255, src[2] + 70)], 0.8); } } };
+  /* Ghost: BOO. A pale ectoplasm glow, wisps drifting up off him, and two little 8-bit ghosts bobbing around. */
+  WFX.wghost = function (o, M, f) { var S = M.S, i;
+    halo(o, M, function () { return '#b8fff0'; }, pul(f, 0.35, 0.6), pul(f, 0.12, 0.25), 0.06);
+    for (i = 0; i < 7; i++) { var x = M.bb.x0 + hsh(i, 31) % Math.max(1, M.bb.x1 - M.bb.x0 + 1), life = ((f + hsh(i, 32) % NF) % NF) / NF, y = M.bb.y0 + 3 + (hsh(i, 33) % 6) - life * 10, sx = Math.sin(life * 6.283 + i) * 1.2;
+      px(o, M, x + sx, y, '#e8fff8', 0.85 * (1 - life)); px(o, M, x + sx, y + 1, '#9fe8d8', 0.55 * (1 - life)); }
+    var G = f % 2 ? ['.XX.', 'XoXo', 'XXXX', 'X.X.'] : ['.XX.', 'oXoX', 'XXXX', '.X.X'];
+    spotsN(M, 2, 57, 4, 5).forEach(function (s, k) { var bob = Math.round(Math.sin((f + k * 4) / NF * 6.283)); if ((f + k * 3) % NF < 6) glyph(o, M, s[0], s[1] + bob, G, { X: '#effff9', o: '#1a2030' }); }); };
+  /* Backwards: REWIND. Magenta and cyan after-images trail him like a moonwalk, and a blinking rewind sign. */
+  WFX.wrewind = function (o, M, f) { var S = M.S, p, x, y, sh = 2 + (f % 2), cols = [['#ff5ad6', 0.6], ['#5ad6ff', 0.4], ['#ffd23f', 0.25]];
+    halo(o, M, function () { return '#ffd23f'; }, pul(f, 0.3, 0.55), 0, 0);
+    for (p = 0; p < S * S; p++) { if (M.pet[p] || M.dist[p] === 1) continue; x = p % S; y = (p / S) | 0;
+      for (var k = 0; k < cols.length; k++) { var X = x - sh * (k + 1); if (X >= 0 && M.pet[y * S + X]) { px(o, M, x, y, cols[k][0], cols[k][1]); break; } } }
+    if (f < NF / 2) { var sp = spotsN(M, 1, 88, 7, 3)[0]; if (sp) glyph(o, M, sp[0], sp[1], ['..X..X', '.XX.XX', '..X..X'], { X: f % 2 ? '#ffffff' : '#ffd23f' }); } };
+  /* Wrong egg: NOT MY EGG. Cracked eggshell pieces orbit him and a gold question mark pops up. */
+  WFX.wegg = function (o, M, f) { halo(o, M, function () { return '#ffd23f'; }, pul(f, 0.35, 0.65), pul(f, 0.1, 0.25), 0);
+    for (var i = 0; i < 3; i++) { var a = f / NF * 6.283 + i * 2.094, x = M.cx + Math.cos(a) * (M.hw + 3), y = M.cy + Math.sin(a) * (M.hh * 0.75 + 2), up = i % 2;
+      glyph(o, M, Math.round(x) - 1, Math.round(y) - 1, up ? ['X.X.', 'XsXX', '.XX.'] : ['.XX.', 'XXsX', '.X.X'], { X: '#fff3d6', s: '#c9a36b' }); }
+    var q = spotsN(M, 1, 61, 3, 5, true)[0]; if (q && f % NF < 6) glyph(o, M, q[0], q[1] - (f % 2), ['XXX', '..X', '.XX', '...', '.X.'], { X: f % 4 < 2 ? '#ffd23f' : '#fff6c8' }); };
+  /* applyW: 8 frames; a 64 px scene is drawn on its own pixels and its 32 px thumbnail rebuilt (same sampling as rareHatchFrames) */
+  function applyW(fr, A, B, k) { if (!fr || !fr.length) return fr; var out = [], MS = {};
+    for (var f = 0; f < NF; f++) { var i = f % fr.length, src = fr[i], a = A[i] || A[0], b = B[i] || B[0], sc = src.rareScene, big = !!(sc && a.rareScene && b.rareScene && sc.width === 64),
+        S = big ? 64 : N, M = MS[i] || (MS[i] = masksN((big ? a.rareScene : a).data, (big ? b.rareScene : b).data, S)), d = (big ? sc : src).data, o = new Uint8ClampedArray(d.length);
+      for (var q = 0; q < d.length; q++) o[q] = d[q];
+      if (M.bb.x1 >= 0) WFX[k](o, M, f);
+      if (!big) { out.push({ width: N, height: N, data: Array.prototype.slice.call(o) }); continue; }
+      var th = new Array(N * N * 4); for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) for (var c = 0; c < 4; c++) th[(y * N + x) * 4 + c] = o[(y * 2 * 64 + x * 2) * 4 + c];
+      out.push({ width: N, height: N, data: th, rareScene: { width: 64, height: 64, data: o, worldPixelScale: sc.worldPixelScale, primaryHead: sc.primaryHead } }); }
+    return out; }
   /* apply(frames, A, B, k): 8 frames with the effect (base frames repeat; their bob keeps its timing). A/B = the same frames on #ff00fe / #00ff01. */
-  function apply(fr, A, B, k) { if (!FX[k] || !fr || !fr.length) return fr; var out = [];
+  function apply(fr, A, B, k) { if (WFX[k]) return applyW(fr, A, B, k); if (!FX[k] || !fr || !fr.length) return fr; var out = [];
     for (var f = 0; f < NF; f++) { var i = f % fr.length, src = fr[i].data, M = masks((A[i] || A[0]).data, (B[i] || B[0]).data), o = new Uint8ClampedArray(src.length); for (var q = 0; q < src.length; q++) o[q] = src[q];
       FX[k](o, M, f); out.push({ width: N, height: N, data: Array.prototype.slice.call(o) }); }
     return out; }
@@ -105,8 +182,14 @@
     R.petFrames = function (p, w, extra) { var fr = base(p, w, extra), k = kind(p); if (!k) return fr; var key = p.id + '|' + k + '|' + (fr && fr.length) + '|' + (p.art && p.art.bgColor);
       var hit = cache.get(fr); if (hit) return hit;
       try { var kfm = {}, kf = function (bg) { return kfm[bg] || (kfm[bg] = raw(Object.assign({}, p, { mutation: null, shows: null, art: Object.assign({}, p.art, { background: 'solid', bgColor: bg, pattern: 'none' }) }), w, Object.assign({}, extra || {}, { noHunger: true }))); }; /* each backdrop drawn once: apply and mythFx ask for the same two (a Mythic hybrid's drawing is ~0.4 s each) */
-        var out = apply(fr, kf('#ff00fe'), kf('#00ff01'), k); /* one aura per pet (owner Nov 27 2026): the signature IS this pet's Mythic aura, no electric outline on top */
+        var L = root.V2Looks, li = L && L.info ? L.info(fr[0]) : null, paid = !!(li && li.by && li.by.aura);
+        /* one aura per pet (owner Nov 27 2026): the signature IS this pet's Mythic aura, no electric outline on top. A pet whose owner placed an aura
+         * look (pet:aura, quest) shows that one instead. New frame objects drop the electric outline info, so the looks info (wings, skin, foil...) is
+         * carried over by hand (before Nov 28 2026 it was dropped too: 79 Nakamoto / FUNTRUMP Mythics lost their earned Wings on cards). */
+        var out = paid ? fr.map(function (f) { var g = { width: f.width || N, height: f.height || N, data: f.data }; if (f.rareScene) g.rareScene = f.rareScene; return g; }) : apply(fr, kf('#ff00fe'), kf('#00ff01'), k);
+        out.forEach(function (g, i) { var src = fr[i % fr.length]; if (L && L.carry) L.carry(src, g); /* plain tags other effects put on a frame (weird-looks f.wl / f.wlBox ...) ride along too */
+          if (src && g !== src) Object.keys(src).forEach(function (key) { if (key !== 'data' && key !== 'rareScene' && key !== 'width' && key !== 'height' && !(key in g)) g[key] = src[key]; }); });
         cache.set(fr, out); return out; } catch (e) { return fr; } }; }
-  root.MythSig = { kind: kind, apply: apply, masks: masks, FX: FX, NF: NF, hook: hook };
+  root.MythSig = { kind: kind, apply: apply, masks: masks, FX: FX, WFX: WFX, WEIRD: WEIRD, NF: NF, hook: hook };
   if (root.V2Render) hook(); else if (root.addEventListener) root.addEventListener('DOMContentLoaded', hook);
 })(typeof window !== 'undefined' ? window : this);

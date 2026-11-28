@@ -135,35 +135,37 @@ function start(root, api) {
   var open = null;
   function close() { if (!open) return; var o = open; open = null; if (o.url) setTimeout(function () { URL.revokeObjectURL(o.url); }, 30000); if (o.gifUrl) setTimeout(function () { URL.revokeObjectURL(o.gifUrl); }, 30000); o.el.remove(); d.removeEventListener('keydown', o.key, true); if (o.back) try { o.back.focus(); } catch (e) { } }
   function el(tag, cls, txt) { var e = d.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
-  function sheet(id, back) {
-    close(); css();
-    var p = petOf(id), st = { id: id, link: api.pageUrl(id), blob: null, server: false, back: back };
+  /* opts (gear-closet Nov 28 2026, 📸 Fit check): { card: Promise<Blob> drawn by the caller instead of the pet card, title, text, name, noGif } */
+  function sheet(id, back, opts) {
+    close(); css(); opts = opts || {};
+    var p = petOf(id), st = { id: id, link: api.pageUrl(id), blob: null, server: false, back: back }, fname = opts.name || ('xcpets-' + id + '.png');
     var ov = el('div', 'sh-ov'); ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true'); ov.setAttribute('aria-label', 'Share ' + (p.name || 'pet') + ' #' + id);
     var box = el('div', 'sh-sheet'), head = el('div', 'sh-head');
-    head.appendChild(el('span', 'sh-title', 'Share #' + id + (p.name ? ' ' + p.name : '')));
+    head.appendChild(el('span', 'sh-title', opts.title || ('Share #' + id + (p.name ? ' ' + p.name : ''))));
     var x = el('button', 'sh-x', '×'); x.type = 'button'; x.setAttribute('aria-label', 'Close'); x.onclick = close; head.appendChild(x);
     box.appendChild(head);
     var pic = el('div', 'sh-pic'), img = el('img'); img.alt = 'Pet card for #' + id; pic.appendChild(img); pic.classList.add('loading'); box.appendChild(pic);
     var hint = el('p', 'sh-hint'); hint.hidden = true; box.appendChild(hint);
     var list = el('div', 'sh-list'); box.appendChild(list);
     function act(label, sub, fn, cls) { var b = el('button', 'sh-act' + (cls ? ' ' + cls : '')); b.type = 'button'; b.appendChild(el('b', null, label)); if (sub) b.appendChild(el('small', null, sub)); b.onclick = function (e) { e.stopPropagation(); fn(b); }; list.appendChild(b); return b; }
-    var tx = function () { return api.text(p) + (p.dead ? ' 🪦' : ' 🔥') + ' @XCPets'; };
+    var tx = function () { return opts.text || (api.text(p) + (p.dead ? ' 🪦' : ' 🔥') + ' @XCPets'); };
     var native = act('Share card', 'Pick Telegram, X or any app', function () {
       if (!st.blob) { toast('The card is still loading'); return; }
-      var f = fileOf(st.blob, 'xcpets-' + id + '.png', 'image/png');
+      var f = fileOf(st.blob, fname, 'image/png');
       nav.share({ files: [f], text: tx() + ' ' + st.link }).catch(function (e) { if (e && e.name !== 'AbortError') toast('Could not open sharing. Try Save image.'); });
     }, 'sh-main');
     native.hidden = true;
-    act('Post on X', 'The link shows the card', function () { openUrl(api.xIntent(tx(), st.link)); });
-    act('Send on Telegram', 'The link shows the card', function () { openUrl(api.tgIntent(tx(), st.link)); });
+    var linkSub = opts.card ? 'With a link to the pet' : 'The link shows the card';
+    act('Post on X', linkSub, function () { openUrl(api.xIntent(tx(), st.link)); });
+    act('Send on Telegram', linkSub, function () { openUrl(api.tgIntent(tx(), st.link)); });
     act('Save image', null, function () { save(st.blob, 'png'); });
-    act('Save GIF', 'Dancing pet', function (b) {
+    if (!opts.noGif) act('Save GIF', 'Dancing pet', function (b) {
       b.disabled = true; gifOf(id).then(function (g) { b.disabled = false; if (!g) { toast('Could not make the GIF'); return; } save(g, 'gif'); });
     });
     act('Copy link', null, function () { copyText(st.link, function (ok) { toast(ok ? 'Link copied' : 'Copy this link', st.link); }); });
     function save(blob, kind) {
       if (!blob) { toast('The card is still loading'); return; }
-      var name = 'xcpets-' + id + '.' + kind, type = kind === 'gif' ? 'image/gif' : 'image/png', T = tgApp();
+      var name = kind === 'png' ? fname : 'xcpets-' + id + '.' + kind, type = kind === 'gif' ? 'image/gif' : 'image/png', T = tgApp();
       if (T && kind === 'png' && st.server && T.downloadFile && T.isVersionAtLeast && T.isVersionAtLeast('8.0')) { try { T.downloadFile({ url: api.cardUrl(id) + '.png', file_name: name }); return; } catch (e) { } }
       if (canDownload()) {
         var u = URL.createObjectURL(blob), a = d.createElement('a'); a.href = u; a.download = name; d.body.appendChild(a); a.click(); a.remove();
@@ -184,14 +186,14 @@ function start(root, api) {
     open = { el: ov, key: key, back: back, url: null }; st.el = ov;
     var me = open;
     try { x.focus(); } catch (e) { }
-    serverCard(id).then(function (b) {
+    (opts.card ? Promise.resolve(opts.card) : serverCard(id).then(function (b) {
       if (b) { st.server = true; st.link = api.cardUrl(id); return b; }
       return localCard(id);
-    }).then(function (b) {
+    })).then(function (b) {
       if (open !== me) return;
       st.blob = b; pic.classList.remove('loading');
       if (b) { me.url = URL.createObjectURL(b); img.src = me.url; } else pic.classList.add('none');
-      if (b && canShareFile(fileOf(b, 'xcpets-' + id + '.png', 'image/png'))) native.hidden = false;
+      if (b && canShareFile(fileOf(b, fname, 'image/png'))) native.hidden = false;
     });
   }
   function row(id, where) {
