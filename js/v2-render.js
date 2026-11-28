@@ -1793,7 +1793,10 @@
       if (!p.stage || ['god','djpepe','wizard','kek','wrong-egg'].indexOf(kind)>=0) return f;
       if (kind==='inverted') { body.forEach(function(q){var i=q*4;data[i]=255-data[i];data[i+1]=255-data[i+1];data[i+2]=255-data[i+2];});return {width:32,height:32,data:data}; }
       if (kind==='ghost') { /* weird-looks-1128: see-through and pale blue (blended into the backdrop, not just faded), the feet fade into a wispy tail, a faint afterimage trails behind */
-        var gbg=[f.data[0],f.data[1],f.data[2]],gin={},gmk={},gy1=-1;mask.forEach(function(q){gmk[q]=1;});body.forEach(function(q){gin[q]=1;gy1=Math.max(gy1,Math.floor(q/32));});
+        var gbg=[f.data[0],f.data[1],f.data[2]],gin={},gmk={},gy1=-1;
+        /* a sprite drawn on a key colour (magenta / green) is cut out by its caller (cemetery, movies, scenes): blending into the key would
+         * tint the ghost pink once cut out, so there it stays see-through the old way, by its alpha */
+        if((gbg[0]>240&&gbg[1]<16&&gbg[2]>240)||(gbg[0]<16&&gbg[1]>240&&gbg[2]<16)){body.forEach(function(q){data[q*4+3]=Math.round(data[q*4+3]*.38);});return {width:32,height:32,data:data};}mask.forEach(function(q){gmk[q]=1;});body.forEach(function(q){gin[q]=1;gy1=Math.max(gy1,Math.floor(q/32));});
         body.forEach(function(q){var i=q*4,yy=Math.floor(q/32),xx=q%32,l=(f.data[i]*.3+f.data[i+1]*.59+f.data[i+2]*.11),tc=[l*.55+95,l*.62+120,l*.5+150],k=.52;
           var up=gy1-yy;if(up<5){k*=up/5;if((xx+yy)%2&&up<3)k=0;}for(var c3=0;c3<3;c3++)data[i+c3]=Math.round(gbg[c3]+(tc[c3]-gbg[c3])*k);});
         body.forEach(function(q){var xx=q%32,yy=Math.floor(q/32),t=q-2;if(xx<2||gin[t]||gin[t+1]||gmk[t]||gy1-yy<4)return;var i=t*4,l=(f.data[q*4]*.3+f.data[q*4+1]*.59+f.data[q*4+2]*.11);for(var c3=0;c3<3;c3++)data[i+c3]=Math.round(data[i+c3]+([l*.55+95,l*.62+120,l*.5+150][c3]-data[i+c3])*.16);});
