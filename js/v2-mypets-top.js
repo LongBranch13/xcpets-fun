@@ -30,7 +30,7 @@
   function stat() { var el = $('mptStat'), u = U(); if (!el || !u || !u.world) return; var me = u.ME; try { me = me || localStorage.getItem('xcpets-v2-me'); } catch (e) { }
     var w = u.world(); if (!w || !me) { el.textContent = ''; return; } var L = V2Own.living(w, me);
     var k = new Set(((u.S && u.S().sel) || []).map(Number)), kept = L.filter(function (p) { return k.has(p.id); }).length, hungry = L.filter(function (p) { return V2Own.canEat(p, me); }).length;
-    var urg = L.filter(function (p) { return p.neglected && !p.mythicCare && p.deathBlock != null && p.deathBlock > w.tip; });
+    var urg = V2Own.riskList(w, me); /* Nov 28 2026: discarded pets are not "in danger" (V2Own.atRisk) */
     var h = '<b>' + fmt(L.length) + '</b> pet' + (L.length === 1 ? '' : 's') + ' · ☑ <b>' + fmt(kept) + '</b> selected · 🍽️ <b>' + fmt(hungry) + '</b> hungry';
     if (urg.length) h += ' · <span class="warn">🪦 ' + fmt(urg.length) + ' neglected, first dies in ~' + left(Math.min.apply(null, urg.map(function (p) { return p.deathBlock - w.tip; }))) + '</span>';
     var nc = nextCycle(w.tip); if (nc) h += '<br><span class="mpt-next" title="Every pet can eat one meal per chain day (144 blocks). A new day starts at this block. About 10 minutes per block.">⏳ Next feed cycle: block <b>' + fmt(nc.block) + '</b> (about ' + nc.about + ')</span>';
