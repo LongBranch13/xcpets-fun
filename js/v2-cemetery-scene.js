@@ -171,7 +171,7 @@
     px(x, '#1c1824', m.x - 5, m.y - 26, 12, 3); px(x, '#1c1824', m.x - 3, m.y - 29, 8, 3); px(x, '#2a2232', m.x - 4, m.y - 1, 4, 2); px(x, '#2a2232', m.x + 2, m.y - 1, 4, 2);
     var lx = m.x + 9, ly = m.y - 12 + sw; px(x, '#000', lx - 1, ly - 1, 6, 8); px(x, '#ffd166', lx, ly + 1, 4, 5); px(x, '#fff3b0', lx + 1, ly + 2, 2, 2); x.save(); x.globalAlpha = 0.1; px(x, '#ffd166', lx - 4, ly - 4, 12, 14); x.restore();
     if (hv) outline(x, m.x - 7, m.y - 31, 22, 33); S.hits.push({ x: m.x - 7, y: m.y - 31, w: 22, h: 33, k: 'mort' }); }
-  function bubble(x, s, bx, by) { x.font = '5px "Press Start 2P", monospace'; var w = Math.ceil(x.measureText(s).width) + 8; bx = Math.max(2, Math.min(W - w - 2, bx)); px(x, '#000', bx + 1, by + 1, w, 11); px(x, '#fff8e1', bx, by, w, 11); px(x, '#fff8e1', bx + 4, by + 11, 3, 3); x.fillStyle = '#1b1b1b'; x.fillText(s, bx + 4, by + 8); }
+  function bubble(x, s, bx, by) { x.font = '5px "Press Start 2P", monospace'; var w = Math.ceil(x.measureText(s).width) + 8; bx = Math.max(2, Math.min(W - w - 2, bx)); px(x, '#000', bx + 1, by + 1, w, 11); px(x, '#fff8e1', bx, by, w, 11); px(x, '#fff8e1', bx + 4, by + 11, 3, 3); x.fillStyle = '#1b1b1b'; x.fillText(s, bx + 4, by + 8); return { x: bx, y: by, w: w + 1, h: 14 }; }
   /* the seance circle (restored Oct 29 2026 from the earlier scene art, drawing unchanged; moved right of the path so the REST sign stays clear): six candles round a moon stone, lit while a seance panel is open */
   /* shared 8-bit candle bits: a flickering flame (3 shapes), a stepped glow and a smoke thread that drifts up and fades */
   function flame(x, cx, top, t, i, col, core, big) { var rm = reduced(), k = rm ? 0 : Math.floor(t / 110 + rnd(i) * 7 + Math.sin(t / 370 + i) * 1.5) % 3, sw = rm ? 0 : [0, -1, 1][Math.floor(t / 190 + i * 3) % 3], fh = 3 + (k === 1 ? 1 : 0) + (big || 0);
@@ -220,7 +220,8 @@
   function draw(t) { var x = S.x; if (!x) return; if (window.V2Sharp) V2Sharp.begin(x, S.k); else x.imageSmoothingEnabled = false; S.hits = [];
     if (!S.sky) S.sky = buildSky(); if (!S.layer) S.layer = buildLayer();
     sky(x, t); x.drawImage(S.layer, 0, HZ, W, H - HZ, 0, HZ, W, H - HZ); fog(x, t); wisps(x, t); gate(x); board(x); seance(x, t); altar(x, t); mort(x, t);
-    if (!reduced() && t - S.lt > 12000) { S.lt = t; S.line = (S.line + 1) % LINES.length; } if (S.say || (!reduced() && t - S.lt < 4000)) bubble(x, S.say || LINES[S.line], MORT.x - 6, MORT.y - 64);
+    if (!reduced() && t - S.lt > 12000) { S.lt = t; S.line = (S.line + 1) % LINES.length; } var top = []; if (S.say || (!reduced() && t - S.lt < 4000)) top.push(bubble(x, S.say || LINES[S.line], MORT.x - 6, MORT.y - 64));
+    if (window.V2Sharp && V2Sharp.top) V2Sharp.top(S.c, W, top); /* scene-top: Mort's words stay above the Doom Week / Halloween decoration layers */
     if (!reduced() && !S.off && !S.hid) S.raf = requestAnimationFrame(draw); else S.raf = 0; }
   function kick() { if (S.x && !S.raf) draw(performance.now()); }
   function card(k) { var el = document.getElementById('cemCard'); if (!el) return; if (!k) { el.hidden = true; return; } el.hidden = false;

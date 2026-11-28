@@ -37,7 +37,7 @@
   function bubble(x, s, bx, by, maxW, tailX) { x.font = '5px "Press Start 2P", monospace'; var lines = [s];
     if (maxW && x.measureText(s).width > maxW - 8) { var wd = s.split(' '), a = ''; lines = []; wd.forEach(function (q) { var t2 = a ? a + ' ' + q : q; if (a && x.measureText(t2).width > maxW - 8) { lines.push(a); a = q; } else a = t2; }); if (a) lines.push(a); lines = lines.slice(0, 2); }
     var w = Math.ceil(Math.max.apply(null, lines.map(function (l) { return x.measureText(l).width; }))) + 8, h = 4 + lines.length * 7; bx = Math.max(2, Math.min(W - w - 2, bx)); if (lines.length > 1) by -= 7;
-    px(x, '#000', bx + 1, by + 1, w, h); px(x, '#fff8e1', bx, by, w, h); var tx = tailX == null ? bx + 6 : Math.max(bx + 2, Math.min(bx + w - 5, tailX)); px(x, '#fff8e1', tx, by + h, 3, 3); x.fillStyle = '#1b1b1b'; lines.forEach(function (l, i) { x.fillText(l, bx + 4, by + 8 + i * 7); }); }
+    px(x, '#000', bx + 1, by + 1, w, h); px(x, '#fff8e1', bx, by, w, h); var tx = tailX == null ? bx + 6 : Math.max(bx + 2, Math.min(bx + w - 5, tailX)); px(x, '#fff8e1', tx, by + h, 3, 3); x.fillStyle = '#1b1b1b'; lines.forEach(function (l, i) { x.fillText(l, bx + 4, by + 8 + i * 7); }); return { x: bx, y: by, w: w + 1, h: h + 3 }; }
   function neon(x, s, cx, y, col, on, size) { x.font = (size || 9) + 'px "Press Start 2P", monospace'; x.textAlign = 'center'; if (on) { x.fillStyle = col; x.globalAlpha = .35; x.fillText(s, cx + 1, y + 1); x.fillText(s, cx - 1, y - 1); x.globalAlpha = 1; x.fillStyle = col; } else x.fillStyle = '#3a2a3a'; x.fillText(s, cx, y); x.textAlign = 'left'; }
   /* REDESIGN (owner 8:23 PM CT): no road/car; landscaping; guests WALK in. Real pet sprites from V2Render.petFrames (32x32), drawn 16x16. */
   var PETL = ['gm. Room for two?', 'One key pls.', 'Cash. No receipt.', 'Just a nap. Swear.'];
@@ -204,7 +204,8 @@
       if (q.a !== 0) putPet(x, p, q.x, q.y - (q.bob ? 1 : 0), 18, t, null, q.a == null ? null : Math.max(0, q.a));
       if (q.key && !(S.state === 'open')) keyPx(x, q.x + 6, q.y - 8); if (q.keyFly != null) { var kf = q.keyFly; keyPx(x, Math.round(lerp(128, q.x + 6, kf)), Math.round(lerp(94, q.y - 8, kf) - Math.sin(kf * Math.PI) * 14)); }
       if (q.talk) talk = [q.talk, q.x - 10, q.y - 34]; if (q.gooby) gline = q.gooby; });
-    if (talk) bubble(x, talk[0], talk[1], talk[2]); var gl = gline || S.bubble || G.line(); G.say(gl); bubble(x, gl, 104, 46, 156, 124);
+    var top = []; if (talk) top.push(bubble(x, talk[0], talk[1], talk[2])); var gl = gline || S.bubble || G.line(); G.say(gl); top.push(bubble(x, gl, 104, 46, 156, 124));
+    if (window.V2Sharp && V2Sharp.top) V2Sharp.top(S.c, W, top); /* scene-top: Gooby's and the guests' words stay above the Doom Week decoration layer */
     if (S.party && !rm) party(x, t);
     if (window.V2MotelReqs) V2MotelReqs.drawNote(x, t); /* tonight bundle: Gooby holds up a '1 waiting' note when breed requests wait at the desk */
     if (!rm && placeOn()) S.raf = requestAnimationFrame(frame); else { S.raf = 0; if (SPRN > 1 && placeOn()) setTimeout(function () { if (!S.raf && S.x) draw(performance.now()); }, 30); } /* still motion: keep drawing until every sprite is built */ }

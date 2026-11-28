@@ -131,5 +131,17 @@
       }
     });
   });
+
+  /* 5. a host's speech bubble covered by decoration (Nov 28 2026, Jake: "red candles overlap Mort's speech in the cemetery"). Scenes paint
+   * their bubbles in the canvas and copy them onto a .scene-top canvas (V2Sharp.top in js/v2-sharp.js) that must sit above every
+   * decoration layer in the scene's box. Flags anything in that box drawn over a shown bubble (a z-index at or above the top canvas). */
+  function zIn(e, box) { var z = 0; for (; e && e !== box; e = e.parentElement) { var cs = getComputedStyle(e), v = parseInt(cs.zIndex, 10); if (!isNaN(v) && cs.position !== 'static') z = v; } return z; }
+  Array.prototype.forEach.call(document.querySelectorAll('canvas.scene-top'), function (o) {
+    if (!o._on || !o._rects || !o._W || !shown(o)) return; var box = o.parentElement, R = o.getBoundingClientRect(), k = R.width / o._W, oz = zIn(o, box);
+    o._rects.forEach(function (q) { if (!q) return; var b = { l: R.left + q.x * k, t: R.top + q.y * k, r: R.left + (q.x + q.w) * k, b: R.top + (q.y + q.h) * k };
+      Array.prototype.forEach.call(box.querySelectorAll('*'), function (e) { if (e === o || e.tagName === 'CANVAS' || e.contains(o) || !shown(e)) return;
+        var r = e.getBoundingClientRect(); if (r.right <= b.l + 1 || r.left >= b.r - 1 || r.bottom <= b.t + 1 || r.top >= b.b - 1) return;
+        if (zIn(e, box) >= oz) add('speech-covered', e, 'draws over a speech bubble in ' + name(box)); }); });
+  });
   return out;
 })()
