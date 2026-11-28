@@ -25,6 +25,8 @@
   function flags(w, p, me) { var f = []; if (!p) return f; var tip = (w && w.tip) || 0;
     if ((p.tier | 0) >= 3) f.push({ k: 'leg', t: '👑 LEGENDARY' }); /* Gods and Mythics can never be offered (rules: cemOfferWhy), so they never reach this sheet */
     if (p.species === 'wizard') f.push({ k: 'wiz', t: '🧙 WIZARD' });
+    if (p.stage === 5) f.push({ k: 'myth', t: '🌈 MYTHIC' }); /* a discard can take a Mythic (the rules allow pet:hd; the Grinder never eats it): say so */
+    try { var ri = window.V2Render && V2Render.rareInfo ? V2Render.rareInfo(p) : null; if (ri) f.push({ k: 'odd', t: (ri.icon || '🌀') + ' ' + String(ri.weird ? ri.name : ri.banner || 'SPECIAL').toUpperCase() }); } catch (e) { }
     if (kept(me, p.id)) f.push({ k: 'star', t: '⭐ STARRED' });
     if (p.lastFed != null && tip - p.lastFed >= 0 && tip - p.lastFed < FED_RECENT) f.push({ k: 'fed', t: '🍖 FED ' + ago(tip - p.lastFed).toUpperCase() });
     return f; }

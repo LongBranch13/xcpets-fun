@@ -89,11 +89,13 @@ function build(out, tip) { return new Promise((res, rej) => { if (fs.existsSync(
     const picked = await pg.evaluate(() => Array.from(document.querySelectorAll('#packGrid .pkcard:not(.pkauto)')).slice(0, 3).map(d => { d.click(); return +(/#(\d+)/.exec(d.textContent) || [0, 0])[1]; }));
     await pg.waitForTimeout(200);
     const plan = await pg.textContent('#pkPlan'), num = re => Number(((plan.match(re) || [0, '0'])[1]).replace(/,/g, ''));
-    const nK = num(/Keeping ([\d,]+)/), nP = num(/\+ ([\d,]+) always kept/), nG = num(/([\d,]+) will be discarded/), nB = Number(((await pg.textContent('#packDiscard')).match(/rest \(([\d,]+)\)/) || [0, '0'])[1].replace(/,/g, ''));
+    const nK = num(/Keeping ([\d,]+)/), nP = num(/\+ ([\d,]+) starred/), nG = num(/([\d,]+) will be discarded/), nB = Number(((await pg.textContent('#packDiscard')).match(/rest \(([\d,]+)\)/) || [0, '0'])[1].replace(/,/g, ''));
     check(picked.length === 3 && nK === 3, 'tapping 3 pets keeps 3 (' + plan.trim() + ')');
-    check(nK + nP + nG === 3000 && nB === nG, 'kept + always kept + discarded = 3,000 and the button says ' + nB);
+    check(nK + nP + nG === 3000 && nB === nG, 'kept + starred + discarded = 3,000 and the button says ' + nB);
     await step('Discard the rest', () => pg.click('#packDiscard')); await pg.waitForTimeout(300);
     check(new RegExp('discards ' + nG.toLocaleString('en-US') + ' pets').test(dlg[dlg.length - 1] || ''), 'the confirm names the count before anything goes: ' + JSON.stringify((dlg[dlg.length - 1] || '').split('\n')[2]));
+    check(/THIS INCLUDES [\d,]+ Legendary/.test(dlg[dlg.length - 1] || ''), 'keep-only-picked: Legendaries go too, and the confirm names how many: ' + JSON.stringify(((dlg[dlg.length - 1] || '').match(/THIS INCLUDES[^.]*/) || [''])[0]));
+    check(nP === 0 && !/always kept/.test(plan), 'keep-only-picked: nothing but starred pets is kept without a tap');
     const hid = await pg.evaluate(() => { let l = []; Object.keys(localStorage).forEach(k => { if (k.indexOf('xcpets-hidden-') === 0) try { l = l.concat(JSON.parse(localStorage.getItem(k))); } catch (e) { } }); return l.map(Number); });
     check(picked.every(id => hid.indexOf(id) < 0), 'the 3 picked pets are not discarded');
     check(hid.length >= nG, 'the rest went to the Discard pile (' + hid.length + ')');
