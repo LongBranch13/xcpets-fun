@@ -1,0 +1,72 @@
+# Holder probe (Nov 28 2026): one-off look at XCPETS holders vs players (public chain data only).
+# Prints counts and shortened addresses. Runs by hand and when this file changes on a branch.
+name: holderprobe
+on:
+  workflow_dispatch:
+  push:
+    paths: ['.github/workflows/holderprobe.yml']
+permissions: { contents: read }
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Holders vs burners
+        run: |
+          cat > /tmp/p.js <<'JS'
+          const fs = require('fs');
+          const HOSTS = ['https://api.counterparty.io:4000', 'https://api.unspendablelabs.com:4000'];
+          async function all(path) {
+            for (const h of HOSTS) {
+              try {
+                let out = [], cur = null;
+                for (let i = 0; i < 60; i++) {
+                  const u = h + path + (path.includes('?') ? '&' : '?') + 'limit=1000&verbose=true' + (cur ? '&cursor=' + cur : '');
+                  const j = await fetch(u).then(r => r.json());
+                  out = out.concat(j.result || []);
+                  if (!j.next_cursor || !(j.result || []).length) break;
+                  cur = j.next_cursor;
+                }
+                return out;
+              } catch (e) { console.log('host failed', h, e.message); }
+            }
+            return [];
+          }
+          const s = a => a.slice(0, 8) + '…' + a.slice(-5);
+          (async () => {
+            const boot = JSON.parse(fs.readFileSync('api/boot.json'));
+            const tip = boot.tip, burn = {};
+            for (const r of boot.rows) { if (r.status !== 'valid') continue; const b = burn[r.source] || (burn[r.source] = { n: 0, q: 0, last: 0, first: 1e9 }); b.n++; b.q += r.quantity / 1e8; b.last = Math.max(b.last, r.block_index); b.first = Math.min(b.first, r.block_index); }
+            const bal = await all('/v2/assets/XCPETS/balances');
+            const hold = {};
+            for (const b of bal) { const q = +(b.quantity_normalized || b.quantity / 1e8); if (q > 0 && b.address) hold[b.address] = (hold[b.address] || 0) + q; }
+            const addrs = Object.keys(hold);
+            console.log('balance rows', bal.length, 'holders>0', addrs.length, 'total held', Math.round(addrs.reduce((t, a) => t + hold[a], 0)));
+            const never = addrs.filter(a => !burn[a]), played = addrs.filter(a => burn[a]);
+            const sum = l => Math.round(l.reduce((t, a) => t + hold[a], 0));
+            console.log('never burned holders', never.length, 'they hold', sum(never));
+            console.log('burned holders', played.length, 'they hold', sum(played));
+            const buckets = [[0, 1e3], [1e3, 1e4], [1e4, 1e5], [1e5, 1e6], [1e6, 1e12]];
+            for (const [lo, hi] of buckets) { const l = never.filter(a => hold[a] >= lo && hold[a] < hi); console.log('never-burned', lo, '-', hi, ':', l.length, 'hold', sum(l)); }
+            console.log('--- burners (all) with current balance, days since last burn');
+            for (const [a, b] of Object.entries(burn).sort((x, y) => y[1].q - x[1].q)) console.log(s(a), 'burns', b.n, 'burned', Math.round(b.q), 'daysIdle', ((tip - b.last) / 144).toFixed(1), 'holds', Math.round(hold[a] || 0));
+            console.log('--- top 60 never-burned holders');
+            never.sort((x, y) => hold[y] - hold[x]).slice(0, 60).forEach(a => console.log(s(a), Math.round(hold[a])));
+            // how did holders get XCPETS: credits by type
+            const cr = await all('/v2/assets/XCPETS/credits');
+            const byFn = {}, firstCredit = {};
+            for (const c of cr) { byFn[c.calling_function] = (byFn[c.calling_function] || 0) + 1; const a = c.address; if (a && (!firstCredit[a] || c.block_index < firstCredit[a])) firstCredit[a] = c.block_index; }
+            console.log('credit rows', cr.length, JSON.stringify(byFn));
+            const nb = never.map(a => firstCredit[a]).filter(Boolean).sort((x, y) => x - y);
+            const hist = {}; for (const b of nb) { const k = b < 970975 ? 'before game (Oct 11)' : 'week -' + Math.floor((tip - b) / 1008); hist[k] = (hist[k] || 0) + 1; }
+            console.log('never-burned holders: first got XCPETS', JSON.stringify(hist));
+            const dis = await all('/v2/assets/XCPETS/dispensers?status=open');
+            console.log('open dispensers', dis.length, JSON.stringify(dis.slice(0, 10).map(d => ({ src: s(d.source), give: d.give_quantity_normalized, rate: d.satoshirate, left: d.give_remaining_normalized }))));
+            const info = await fetch(HOSTS[0] + '/v2/assets/XCPETS?verbose=true').then(r => r.json()).catch(() => ({}));
+            console.log('asset', JSON.stringify(info.result || {}).slice(0, 600));
+            const fund = await all('/v2/assets/XCPETS.FUN.D/balances');
+            console.log('FUN.D holders', fund.filter(b => +b.quantity > 0).length, 'of which burned', fund.filter(b => +b.quantity > 0 && burn[b.address]).length);
+          })();
+          JS
+          node /tmp/p.js
